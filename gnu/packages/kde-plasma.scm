@@ -28,10 +28,13 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system qt)
+  #:use-module (guix build-system trivial)
   #:use-module (gnu packages)
   #:use-module (gnu packages base)
   #:use-module (gnu packages boost)
+  #:use-module (gnu packages bootloaders)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages fonts)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gl)
@@ -157,6 +160,45 @@ in KDE.  It contains:
     (description "Artwork, styles and assets for the Breeze visual style for
 the Plasma Desktop.  Breeze is the default theme for the KDE Plasma desktop.")
     (license license:gpl2+)))
+
+(define-public breeze-grub
+  (package
+    (name "breeze-grub")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/breeze-grub-" version ".tar.xz"))
+      (sha256
+       (base32 "0hqqz2f073jygmiw2rl295b21xg40d37ihvj1crphl77fp0yzcm0"))))
+    (build-system trivial-build-system)
+    (arguments
+    `(#:modules ((guix build utils))
+      #:builder
+        (begin
+          (use-modules (guix build utils))
+          (let ((theme-dir (string-append %output "/grub/themes/breeze"))
+                (tar      (string-append (assoc-ref %build-inputs "tar")
+                                          "/bin/tar"))
+                (PATH     (string-append (assoc-ref %build-inputs "xz")
+                                          "/bin")))
+            (setenv "PATH" PATH)
+            (system* tar "xv" "--strip-components=1"
+                     "-f" (assoc-ref %build-inputs "source"))
+            (mkdir-p theme-dir)
+            (system* "sh" "./mkfont.sh")
+            (copy-recursively "breeze" theme-dir)))))
+    (native-inputs
+     `(("grub" ,grub)
+       ("tar" ,tar)
+       ("xz" ,xz)))
+    (inputs
+     `(("font-gnu-unifont" ,font-gnu-unifont)))
+    (home-page "https://www.kde.org/plasma-desktop")
+    (synopsis "'Breeze' theme for grub")
+    (description "'Breeze' theme for grub")
+    (license license:gpl3+)))
 
 (define-public breeze-gtk
   (package
