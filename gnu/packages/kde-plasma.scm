@@ -261,6 +261,69 @@ Application Style > GNOME Application Style.  Also make sure to disable “apply
 colors to non-Qt applications“ in System Settings > Colors > Options.")
     (license license:lgpl2.1+)))
 
+(define-public discover
+  (package
+    (name "discover")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/discover-" version ".tar.xz"))
+      (sha256
+       (base32 "10izi9i9q42sjf5fa29dafmscphc9ly6vyi4ciczmfqg8mh9163g"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f ;; FIXME
+       #:validate-runpath? #f ;; FIXME
+       #:configure-flags
+       (let* ((out (assoc-ref %outputs "out"))
+              (lib (assoc-ref %outputs "out"))
+              (libdir (string-append lib "/lib")))
+         (list ;(string-append "-DCMAKE_INSTALL_PREFIX=" out)
+               ;(string-append "-DCMAKE_INSTALL_LIBDIR=" libdir)
+               ;; We need both libdir and libdir/ceph in RUNPATH.
+               (string-append "-DCMAKE_INSTALL_RPATH="
+                              libdir ";" libdir "/plasma-discover")
+;               (string-append "-DCMAKE_INSTALL_SYSCONFDIR=" out "/etc")
+;               (string-append "-DCMAKE_INSTALL_MANDIR=" out "/share/man")
+;               (string-append "-DCMAKE_INSTALL_DOCDIR=" out "/share/ceph/doc")
+;               (string-append "-DCMAKE_INSTALL_LIBEXECDIR=" out "/libexec")
+;               "-DALLOCATOR=jemalloc"
+               ))))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("attica" ,attica)
+       ("karchive" ,karchive)
+       ("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("kitemmodels" ,kitemmodels)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("kxmlgui" ,kxmlgui)
+       ("plasma-framework" ,plasma-framework)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ;; run-time packages
+       ("kirigami", kirigami)
+       ;; optional packages
+       ;;packagekitqt5 http://www.packagekit.org
+       ;;AppStreamQt Library that lists Appstream resources
+))
+    (home-page "https://www.kde.org/plasma-desktop")
+    (synopsis "Application Installer for applications delivered as AppStream packages") ; correct?
+    (description "KDE and Plasma resources management GUI.
+
+This most probably is not of much use in GuixSD for now.")
+    (license (list license:lgpl2.0+ license:gpl3+ license:fdl1.2+))))
+
 (define-public kactivitymanagerd
   (package
     (name "kactivitymanagerd")
