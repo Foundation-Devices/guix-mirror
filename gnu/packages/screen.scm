@@ -27,6 +27,7 @@
   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module (guix git-download)
+;-module (guix build utils)
   #:use-module (guix build-system gnu)
   #:use-module (gnu packages)
   #:use-module (gnu packages hurd)
@@ -185,3 +186,57 @@ reptyr to grab it, and then kill the @code{ssh} session and head on home.")
     ;; Reptyr currently does not support mips.
     (supported-systems (delete "mips64el-linux" %supported-systems))
     (license expat)))
+
+(define-public libutempter
+  (package
+    (name "libutempter")
+    (version "1.1.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "ftp://ftp.altlinux.org/pub/people/ldv/utempter/"
+                           "libutempter-" version ".tar.bz2"))
+       (sha256
+        (base32 "15y3xbgznjxnfmix4xg3bwmqdvghdw7slbhazb0ybmyf65gmd65q"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:tests? #f ;; no tests
+       ;; hand-crafted Makefile uses DESTDIR instead of PREFIX
+       #:make-flags (list (string-append "DESTDIR=" %output)
+                          "CC=gcc")
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+           (lambda _
+             (substitute* "Makefile"
+               (("^libexecdir\\s+=\\s+.*$")
+                "libexecdir = /usr/lib/libexec\n")
+               (("dir\\s+=\\s+/usr/") "dir = /"))
+             #t))
+         (add-after 'install 'link-binary
+           (lambda _
+             (let ((sbin (string-append %output "/sbin")))
+               (mkdir-p sbin)
+               (symlink "../lib/libexec/utempter/utempter"
+                        (string-append sbin "/utempter")))
+             #t)))))
+    (home-page "")
+    (synopsis "A privileged helper for utmp/wtmp updates")
+    (description "The libutempter library provides interface for terminal
+emulators such as screen and xterm to record user sessions to utmp and wtmp
+files.
+
+The utempter is a privileged helper used by libutempter library to manipulate
+utmp and wtmp files.")
+    (license lgpl2.1+)))
+
+;; (define utempter-setuid-programs
+;;   ;; Return the file name of the setuid program that we need.
+;;   (match-lambda
+;;     (($ <dbus-configuration> dbus services)
+;;      (list (file-append dbus "/libexec/utempter/utempter")))))
+
+;; chown root:utmp …/lib/utempter/utempter
+;; chmod 2755 …/lib/utempter/utempter
+;;/usr/sbin/groupadd -r -f utmp
+;;/usr/sbin/groupadd -r -f utempter
