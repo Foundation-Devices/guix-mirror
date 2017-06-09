@@ -1437,6 +1437,29 @@ development:
 @end enumerate")
     (license (list license:gpl2 license:gpl2+ license:gpl3+))))
 
+(define plasma-tests
+  (package
+    (name "plasma-tests")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-tests-" version ".tar.xz"))
+      (sha256
+       (base32 "1ywh4dqzyj96l92v94z6lghkv49davf1d7drvrf1c0lw8j7zvpri"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    ;; TODO: Add input appstreamcli
+    (home-page "https://invent.kde.org/plasma/plasma-tests")
+    (synopsis "Integration-tests for the Plasma workspace")
+    (description "Distributions should not package it, but might want to run
+it as part of their Plasma builds.")
+    ;; No license to be found in the archive. Since most parts of KDE are
+    ;; GPL2+, I assume that here, too.
+    (license license:gpl2+)))
+
 (define-public plasma-wayland-protocols
   (package
     (name "plasma-wayland-protocols")
