@@ -786,6 +786,35 @@ and minimize.  It also handles placing of windows and switching between
 them.")
     (license license:gpl2+)))
 
+(define-public kwrited
+  (package
+    (name "kwrited")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kwrited-" version ".tar.xz"))
+      (sha256
+       (base32 "1nzl5964brxwkhgsadpa94bm985vq3qi75sml1fmgnw1ap4djd69"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("kcoreaddons" ,kcoreaddons)
+       ("kdbusaddons" ,kdbusaddons)
+       ("ki18n" ,ki18n)
+       ("knotifications" ,knotifications)
+       ;; FIXME: kwrited is currently build as an executable, since we don't
+       ;; have utempter yet and thus kpty is build without utempter-support.
+       ("kpty" ,kpty)
+       ("qtbase" ,qtbase)))
+    (home-page "https://invent.kde.org/plasma/kwrited")
+    (synopsis "Read and write console output to X")
+    (description "Kwrited captures console output (e.g. broadcast messages)
+and prints it in a X window.")
+    (license license:gpl2+)))
+
 (define-public libkscreen
   (package
     (name "libkscreen")
