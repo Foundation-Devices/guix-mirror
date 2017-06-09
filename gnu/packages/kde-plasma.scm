@@ -254,6 +254,47 @@ Currently the daemon has been ported to Linux, FreeBSD, Irix,
 NetBSD, OpenBSD, Solaris and Tru64 with varying degrees of completion.")
     (license (list license:gpl2 license:gpl2+ license:gpl3)))) ;; KDE e.V.
 
+(define-public kwayland-integration
+  (package
+    (name "kwayland-integration")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kwayland-integration-" version ".tar.xz"))
+      (sha256
+       (base32 "054a5hr601f1dzy2fmd4qbbrpbdbj7w4cy216r3n0mnj9irys6vd"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f  ;; FIXME: try to make this pass
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'check)
+         (add-after 'install 'check-after-install
+           (assoc-ref %standard-phases 'check))
+         (add-before 'check-after-install 'check-setup
+           (lambda* (#:key outputs #:allow-other-keys)
+             (setenv "QT_PLUGIN_PATH"
+                     (string-append (assoc-ref outputs "out")
+                                    "/lib/qt5/plugins:"
+                                    (getenv "QT_PLUGIN_PATH")))
+             #t)))))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("qtwayland" ,qtwayland))) ;; required for the tests
+    (inputs
+     `(("kguiaddons" ,kguiaddons)
+       ("kidletime" ,kidletime)
+       ("kwayland" ,kwayland)
+       ("kwindowsystem" ,kwindowsystem)
+       ("qtbase" ,qtbase)))
+    (home-page "https://invent.kde.org/plasma/kwayland-integration")
+    (synopsis "KWayland runtime integration plugins")
+    (description "Provides integration plugins for various KDE Frameworks for
+Wayland")
+    (license license:lgpl3+))) ; KDE e.V.
+
 (define-public libkscreen
   (package
     (name "libkscreen")
