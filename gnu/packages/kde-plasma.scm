@@ -1270,6 +1270,63 @@ for better integration of Qt applications when running on a KDE Plasma
 workspace.  Applications do not need to link to this directly.")
     (license license:lgpl3+))) ;; KDE e.V.
 
+(define-public plasma-nm
+  (package
+    (name "plasma-nm")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-nm-" version ".tar.xz"))
+      (sha256
+       (base32 "1f9b9zb4lmg91a3hibf7yx4l8syzvv2n42addmkdxbmckcrf0gs3"))))
+    (build-system qt-build-system)
+    ;; TODO: Still some unknown property types, e.g for key
+    ;; "X-KDE-ModuleType", "X-NetworkManager-Services"
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)
+       ("qttools" ,qttools)))
+    (inputs
+     ;; TODO: Think about enabling openconnect
+     `(("kcompletion" ,kcompletion)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kded" ,kded) ;; required for property type definitions
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kinit" ,kinit)
+       ("kio" ,kio)
+       ("kitemviews" ,kitemviews)
+       ("knotifications" ,knotifications)
+       ("kservice" ,kservice)
+       ("kwallet" ,kwallet)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kwindowsystem" ,kwindowsystem)
+       ("kxmlgui" ,kxmlgui)
+       ("mobile-broadband-provider-info" ,mobile-broadband-provider-info)
+       ("modemmanager-qt" ,modemmanager-qt)
+       ("networkmanager-qt" ,networkmanager-qt)
+       ("plasma-framework" ,plasma-framework)
+       ("qca" ,qca)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("solid" ,solid)))
+    (home-page "https://invent.kde.org/plasma/plasma-nm")
+    (synopsis "Plasma5 NetworkManager applet")
+    (description "This package contains the Network Management plasma widget
+which aims to provide a fully featured GUI for managing networks.  Currently,
+the only supported backend is NetworkManager.  Support for wired, wireless,
+mobile and VPN networks are provided.  The widget is exclusively written for
+KDE Plasma workspaces and it is not supposed to work in other environments.
+
+In order to start using the widget, look for 'Network Management' in the 'Add
+Widgets' dialog of the Plasma workspace you're using.")
+    (license license:gpl3))) ;; KDE e.V.
+
 (define-public plasma-wayland-protocols
   (package
     (name "plasma-wayland-protocols")
