@@ -1775,3 +1775,36 @@ configuring the SDDM Display Manager.")
     (description "Plasma System Settings is an improved user interface for
 configuring the desktop and other aspects of the system.")
     (license license:gpl2+)))
+
+(define-public user-manager
+  (package
+    (name "user-manager")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/user-manager-" version ".tar.xz"))
+      (sha256
+       (base32 "1k31lkxd5l37avwr63c4lcmwm0l6l6xifi4qhs07qa7nfljhn9ir"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("kauth" ,kauth)
+       ("kcmutils" ,kcmutils)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("libpwquality" ,libpwquality)
+       ("qtbase" ,qtbase)))
+    (home-page "https://invent.kde.org/plasma/user-manager")
+    (synopsis "User management tool for the Plasma workspace")
+    (description "A simple system settings module to manage the users on your
+system.")
+    (license license:gpl2+)))
