@@ -1759,6 +1759,51 @@ PolicyKit-Kde provides a D-Bus session bus service that is used to bring up
 authentication dialogs used for obtaining privileges.")
     (license license:gpl2+)))
 
+(define-public powerdevil
+  (package
+    (name "powerdevil")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/powerdevil-" version ".tar.xz"))
+      (sha256
+       (base32 "06mcm361b07i175lnn5prdyrjfm9q9pa9b0rnzv9g04ja0y02pyi"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("bluez-qt" ,bluez-qt)
+       ("eudev", eudev)
+       ("kactivities" ,kactivities)
+       ("kauth" ,kauth)
+       ("kconfig" ,kconfig)
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kglobalaccel" ,kglobalaccel)
+       ("ki18n" ,ki18n)
+       ("kidletime" ,kidletime)
+       ("kio" ,kio)
+       ("knotifications" ,knotifications)
+       ("knotifyconfig" ,knotifyconfig)
+       ("kwayland" ,kwayland)
+       ("libkscreen" ,libkscreen)
+       ("networkmanager-qt" ,networkmanager-qt)
+       ("plasma-workspace" ,plasma-workspace)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtx11extras" ,qtx11extras)
+       ("solid" ,solid)
+       ("xcb-util-keysyms" ,xcb-util-keysyms)))
+    (home-page "https://invent.kde.org/plasma/powerdevil")
+    (synopsis "Manages the power consumption in Plasma")
+    (description "Power Devil sets and manages the power consumption according
+to your settings.")
+    (license license:gpl2+)))
+
 (define-public sddm-kcm
   (package
     (name "sddm-kcm")
