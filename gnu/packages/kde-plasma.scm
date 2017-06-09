@@ -28,12 +28,16 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system qt)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
+  #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages kde-frameworks)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages qt)
+  #:use-module (gnu packages web)
+  #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xorg))
 
 (define-public breeze
@@ -335,6 +339,141 @@ example the callback mechanism from the Wayland API is replaced by signals;
 data types are adjusted to be what a Qt developer expects, e.g.  two arguments
 of int are represented by a QPoint or a QSize.")
     (license license:lgpl2.1))) ; KDE e.V.
+
+(define-public kwin
+  (package
+    (name "kwin")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kwin-" version ".tar.xz"))
+      (sha256
+       (base32 "0fwh6khbn87i6sx2krq0mlakxhvcy2hjzqzlp2yc0c9xfxxs7brn"))))
+    (build-system qt-build-system)
+    (arguments
+     '(#:tests? #f ;; TODO 14/147 tests fail – even with the phases below
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; follow symlinks - taken from NIX
+             (substitute* "plugins/kdecorations/aurorae/src/aurorae.cpp"
+               (("^(\\s*QDirIterator it\\(path, QDirIterator::Subdirectories)(\\);)" _ a b)
+                (string-append a " | QDirIterator::FollowSymlinks " b)))
+             ;; hard-code path to xwayland binary - taken from NIX
+             ;; FIXME: This will install xorg-server-xwayland on all systems
+             ;; using kwin :-(
+             (substitute* "main_wayland.cpp"
+               (("^(\\s*m_xwaylandProcess->setProgram\\(QStringLiteral\\(\")Xwayland(\"\\)\\);)" _ a b)
+                (string-append a (assoc-ref inputs "xorg-server-xwayland")
+                               "/bin/Xwayland" b)))
+             #t))
+         (add-after 'install 'check
+           ;; NOTE: "normal phase check disables by #:tests #f
+           ;;(assoc-ref %standard-phases 'check))
+           (lambda _
+             ;;(invoke "ctest" ".")
+             #t))
+         (add-before 'check 'check-setup
+           (lambda* (#:key outputs #:allow-other-keys)
+             (setenv "HOME" (getcwd))
+             (setenv "XDG_RUNTIME_DIR" "..")
+             ;; auprobieren, ob das was bringt:
+             (setenv "XDG_DATA_DIRS"
+                     (string-append (assoc-ref outputs "out") "/share:"
+                                    (getenv "XDG_DATA_DIRS")))
+             (setenv "QT_PLUGIN_PATH"
+                     (string-append (assoc-ref outputs "out") "/lib/qt5/plugins:"
+                                    (getenv "QT_PLUGIN_PATH")))
+             ;; The test suite requires a running X server.
+             (system "Xvfb :98 -screen 0 640x480x24 &")
+             (setenv "DISPLAY" ":98")
+             #t))
+         (add-after 'install 'add-symlinks
+           ;; Some package(s) refer to these service types by the wrong name.
+           ;; I would prefer to patch those packages, but I cannot find them!
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((kst5 (string-append (assoc-ref outputs "out")
+                                        "/share/kservicetypes5/")))
+               (symlink (string-append kst5 "kwineffect.desktop")
+                        (string-append kst5 "kwin-effect.desktop"))
+               (symlink (string-append kst5 "kwinscript.desktop")
+                        (string-append kst5 "kwin-script.desktop")))
+             #t)))))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)
+       ("kdoctools" ,kdoctools)
+       ("qttools" ,qttools)
+       ;; the remaining ones are required native for running the tests
+       ("dbus" ,dbus)
+       ("kwayland-integration" ,kwayland-integration)
+       ("kwindowsystem" ,kwindowsystem)
+       ("qtwayland" ,qtwayland)
+       ("xorg-server" ,xorg-server)
+       ("xorg-server-xwayland" ,xorg-server-xwayland)))
+    (inputs
+     `(("breeze" ,breeze)
+       ("fontconfig" ,fontconfig)
+       ("freetype" ,freetype)
+       ("kactivities" ,kactivities)
+       ("kcmutils" ,kcmutils)
+       ("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdeclarative" ,kdeclarative)
+       ("kdecoration" ,kdecoration)
+       ("kglobalaccel" ,kglobalaccel)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kidletime" ,kidletime)
+       ("kinit" ,kinit)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("kpackage" ,kpackage)
+       ("kscreenlocker" ,kscreenlocker)
+       ("kservice" ,kservice)
+       ("ktextwidgets" ,ktextwidgets)
+       ("kwayland" ,kwayland)
+       ("kwayland-server" ,kwayland-server)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kxmlgui" ,kxmlgui)
+       ("libdrm" ,libdrm)
+       ("libepoxy" ,libepoxy)
+       ("libice" ,libice) ;; missing in CMakeList.txt
+       ("libinput" ,libinput)
+       ("libsm" ,libsm) ;; missing in CMakeList.txt
+       ("libxi" ,libxi)
+       ("libxkbcommon" ,libxkbcommon)
+       ("plasma-framework" ,plasma-framework)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtmultimedia" ,qtmultimedia)
+       ("qtscript" ,qtscript)
+       ("qtsensors" ,qtsensors)
+       ("qtx11extras" ,qtx11extras)
+       ("wayland" ,wayland)
+       ("xcb-util" ,xcb-util) ;; missing in CMakeList.txt
+       ("xcb-util-cursor" ,xcb-util-cursor)
+       ("xcb-util-image" ,xcb-util-image)
+       ("xcb-util-keysyms" ,xcb-util-keysyms)
+       ;; TODO: optional feature: libhybris allows to run bionic-based HW
+       ;; adaptations in glibc systems.
+       ("xcb-util-wm" ,xcb-util-wm))) ; for icccm:, optional
+    (home-page "http://community.kde.org/KWin")
+    (synopsis "KDE Plasma 5 Window Manager")
+    (description " KWin is the default window manager for the KDE Plasma
+Desktop.  It gives you complete control over your windows, making sure they're
+not in the way but aid you in your task.  It paints the window decoration, the
+bar on top of every window with (configurable) buttons like close, maximize
+and minimize.  It also handles placing of windows and switching between
+them.")
+    (license license:gpl2+)))
 
 (define-public libkscreen
   (package
