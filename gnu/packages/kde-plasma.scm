@@ -1729,3 +1729,49 @@ authentication dialogs used for obtaining privileges.")
     (description "This is a System Settings configuration module for
 configuring the SDDM Display Manager.")
     (license license:gpl2+)))
+
+(define-public systemsettings
+  (package
+    (name "systemsettings")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/systemsettings-" version ".tar.xz"))
+      (sha256
+       (base32 "1y9gkqjn985v51pbi0gg13p2w31bp76wbxnpp9qp47l6ihmxr3xs"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kactivities" ,kactivities)
+       ("kactivities-stats" ,kactivities-stats)
+       ("kcmutils" ,kcmutils)
+       ("kconfig" ,kconfig)
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kguiaddons" ,kguiaddons)
+       ("khtml" ,khtml)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("kitemmodels" ,kitemmodels)
+       ("kitemviews" ,kitemviews)
+       ("kjs" ,kjs)
+       ("kpackage" ,kpackage)
+       ("kparts" ,kparts)
+       ("kservice" ,kservice)
+       ("kwindowsystem" ,kwindowsystem)
+       ("kirigami" ,kirigami)
+       ("kxmlgui" ,kxmlgui)
+       ("plasma-workspace" ,plasma-workspace)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)))
+    (home-page "https://invent.kde.org/plasma/systemsettings")
+    (synopsis "Plasma System Settings")
+    (description "Plasma System Settings is an improved user interface for
+configuring the desktop and other aspects of the system.")
+    (license license:gpl2+)))
