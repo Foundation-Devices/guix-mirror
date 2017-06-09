@@ -1694,3 +1694,38 @@ Mount() method) for unprivileged (desktop) applications.
 PolicyKit-Kde provides a D-Bus session bus service that is used to bring up
 authentication dialogs used for obtaining privileges.")
     (license license:gpl2+)))
+
+(define-public sddm-kcm
+  (package
+    (name "sddm-kcm")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/sddm-kcm-" version ".tar.xz"))
+      (sha256
+       (base32 "0f77pmg7m8s3vjswl3ksam2rrpawy25p88w1rfigqiy83y1cd8iv"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("karchive" ,karchive)
+       ("kauth" ,kauth)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("kxmlgui" ,kxmlgui)
+       ("libxcursor" ,libxcursor) ;; Missing as dependency
+       ("qtbase" ,qtbase)
+       ("xcb-util-image" ,xcb-util-image)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtx11extras" ,qtx11extras)))
+    (home-page "https://invent.kde.org/plasma/sddm-kcm")
+    (synopsis "SDDM configuration module for KDE")
+    (description "This is a System Settings configuration module for
+configuring the SDDM Display Manager.")
+    (license license:gpl2+)))
