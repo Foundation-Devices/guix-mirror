@@ -48,6 +48,7 @@
   #:use-module (gnu packages password-utils)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages polkit)
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages python)
   #:use-module (gnu packages qt)
@@ -1657,3 +1658,39 @@ workspace.")
     ;; The archive includes the text of both gpl2 and lgpl3, but the files are
     ;; actually all lgpl3 (according to the metadata.desktop files).
     (license license:lgpl3)))
+
+(define-public polkit-kde-agent-1
+  (package
+    (name "polkit-kde-agent-1")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/polkit-kde-agent-1-" version ".tar.xz"))
+      (sha256
+       (base32 "0c6v19sp7fcqfbjz8lnb6dr3znwl00q1iv6pakrq09x8a3s2jq87"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kwindowsystem" ,kwindowsystem)
+       ("polkit-qt5" ,polkit-qt)
+       ("qtbase" ,qtbase)))
+    (home-page "https://invent.kde.org/plasma/polkit-kde-agent-1")
+    (synopsis "PolicyKit authentication agent dialogs for KDE")
+    (description "PolicyKit is an application-level toolkit for defining and
+handling the policy that allows unprivileged processes to speak to privileged
+processes.  It is a framework for centralizing the decision making process
+with respect to granting access to privileged operations (like calling the HAL
+Mount() method) for unprivileged (desktop) applications.
+
+PolicyKit-Kde provides a D-Bus session bus service that is used to bring up
+authentication dialogs used for obtaining privileges.")
+    (license license:gpl2+)))
