@@ -1001,6 +1001,47 @@ does provide application launching.  The main difference is that it
 concentrates more on searching.")
     (license license:gpl3))) ;; KDE e.V.
 
+(define-public oxygen
+  (package
+    (name "oxygen")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/oxygen-" version ".tar.xz"))
+      (sha256
+       (base32 "0d8cvg6h5zf0l4zs6sv7kplfa49n2brs7njwq8znw7c51zdd85s2"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("kde-frameworkintegration" ,kde-frameworkintegration)
+       ("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kiconthemes" ,kiconthemes)
+       ("kguiaddons" ,kguiaddons)
+       ("ki18n" ,ki18n)
+       ("kservice" ,kservice)
+       ("kwayland" ,kwayland)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kwindowsystem" ,kwindowsystem)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("kcmutils" ,kcmutils)
+       ("kdecoration" ,kdecoration)
+       ("qtx11extras" ,qtx11extras)))
+    (home-page "https://invent.kde.org/plasma/oxygen")
+    (synopsis "Widget and icon theme")
+    (description "Plasma and Qt widget style and window decorations for Plasma
+5 and KDE 4.")
+    ;; Parts of the code is Expat licensed, other parts GPL-3+. The artwork is
+    ;; under some different licenses.
+    (license (list license:expat license:lgpl3+ ;; KDE e.V.
+                   license:gpl2+ license:lgpl2.1))))
+
 (define-public plasma-desktop
   (package
     (name "plasma-desktop")
