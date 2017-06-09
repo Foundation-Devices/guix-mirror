@@ -200,6 +200,32 @@ the Plasma Desktop.  Breeze is the default theme for the KDE Plasma desktop.")
     (description "'Breeze' theme for grub")
     (license license:gpl3+)))
 
+;; (define-public breeze-plymouth
+;;   (package
+;;     (name "breeze-plymouth")
+;;     (version "5.9.3")
+;;     (source
+;;      (origin
+;;       (method url-fetch)
+;;       (uri (string-append "mirror://kde/stable/plasma/" version
+;;                           "/breeze-plymouth-" version ".tar.xz"))
+;;       (sha256
+;;        (base32 "0vz0hgx3hl03h4rkfrcaydaddljam3jbg6gd7n600a068p74s2mm"))))
+;;     ;; /gnu/store/n4nmkwvjxd1mjcl91h537m9y0h5gfv9x-breeze-plymouth-5.9.3.tar.xz
+;;     (build-system trivial-build-system)
+;;     (arguments
+;;      `(#:builder #f))
+;;     ;; TODO: GuixSD branding, see README in archive. Maybe replace the
+;;     ;; os.log.{png,svgz}
+;;     (native-inputs
+;;      `(("extra-cmake-modules" ,extra-cmake-modules)))
+;;     ;;    (inputs
+;;     ;;     `("plymouth" ,#f))
+;;     (home-page "https://www.kde.org/plasma-desktop")
+;;     (synopsis "'Breeze' theme for Plymouth")
+;;     (description "'Breeze' theme for Plymouth")
+;;     (license license:gpl2+)))
+
 (define-public breeze-gtk
   (package
     (name "breeze-gtk")
