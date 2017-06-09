@@ -1327,6 +1327,45 @@ In order to start using the widget, look for 'Network Management' in the 'Add
 Widgets' dialog of the Plasma workspace you're using.")
     (license license:gpl3))) ;; KDE e.V.
 
+(define-public plasma-pa
+  (package
+    (name "plasma-pa")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-pa-" version ".tar.xz"))
+      (sha256
+       (base32 "1n4imxjfz4zvhgzmsn10kdmxh7cdx8n54n4gwwx5zlvvgjybj3mh"))))
+    ;; TODO: Still some unknown property types, e.g for key
+    ;;  "X-KDE-ParentApp", "X-Plasma-API", "X-DocPath", "X-KDE-Keywords".
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("gconf" ,gconf)
+       ("kcmutils" ,kcmutils) ;; required for property type definitions
+       ("kcoreaddons" ,kcoreaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kglobalaccel" ,kglobalaccel)
+       ("ki18n" ,ki18n)
+       ("knotifications" ,knotifications)
+       ("kwindowsystem" ,kwindowsystem)
+       ("libcanberra" ,libcanberra)
+       ("perl" ,perl) ; for the kconf_update scripts
+       ("plasma-framework" ,plasma-framework)
+       ("pulseaudio" ,pulseaudio)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)))
+    (home-page "https://invent.kde.org/plasma/plasma-pa")
+    (synopsis "Plasma 5 Volume controller")
+    (description "Plasma applet for audio volume management using
+PulseAudio.")
+    (license license:gpl3))) ;; KDE e.V.
+
 (define-public plasma-wayland-protocols
   (package
     (name "plasma-wayland-protocols")
