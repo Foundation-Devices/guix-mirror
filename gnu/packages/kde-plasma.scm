@@ -1635,3 +1635,25 @@ integrated search, hardware management and a high degree of customizability.")
     ;; parts are LGPL2.1+. The artwork is under some different licenses.
     (license (list license:expat license:lgpl3+ ;; KDE e.V.
                    license:gpl2 license:lgpl2.1 license:gpl2+))))
+
+(define-public plasma-workspace-wallpapers
+  (package
+    (name "plasma-workspace-wallpapers")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-workspace-wallpapers-" version ".tar.xz"))
+      (sha256
+       (base32 "1ybl2flm9a8g1ycvsyn2wimwm7vxpiyrsvlnq1qwlv1m6mhc7vja"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (home-page "http://vdesign.kde.org/")
+    (synopsis "Wallpapers for Plasma workspace")
+    (description "This package contains the default wallpapers for the Plasma
+workspace.")
+    ;; The archive includes the text of both gpl2 and lgpl3, but the files are
+    ;; actually all lgpl3 (according to the metadata.desktop files).
+    (license license:lgpl3)))
