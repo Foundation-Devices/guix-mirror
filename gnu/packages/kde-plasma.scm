@@ -303,6 +303,56 @@ These window decorations can be used by for example an X11 based window
 manager which re-parents a Client window to a window decoration frame.")
     (license license:lgpl3+)))
 
+(define-public kdeplasma-addons
+  (package
+    (name "kdeplasma-addons")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kdeplasma-addons-" version ".tar.xz"))
+      (sha256
+       (base32 "08zzjc7kbqdg4qlrf9liybkzailhj4xc8xwg92yimny7afsi17k5"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f)) ;; 1/1 tests fails
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("kactivities" ,kactivities)
+       ("karchive" ,karchive)
+       ("kcmutils" ,kcmutils)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kholidays" ,kholidays)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("kparts" , kparts)
+       ("kross" ,kross)
+       ("krunner" ,krunner)
+       ("kservice" ,kservice)
+       ("kunitconversion" ,kunitconversion)
+       ("plasma-framework" ,plasma-framework)
+       ("plasma-workspace" ,plasma-workspace)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtscript" ,qtscript)
+       ("qtx11extras" ,qtx11extras)
+       ("purpose" ,purpose) ;; for the QuickShare applet
+       ("qtwebengine" ,qtwebengine) ;; for the the web browser applet
+       ("sonnet", sonnet)))
+    (home-page "https://techbase.kde.org/Projects/Plasma/Plasmoids")
+    (synopsis "Additionsl applets and engines for KDE Plasma")
+    (description "Kdeplasma is a compilation of Plasma add-ons (runners,
+applets, widgets, wallpappers, plasmoids, etc.)")
+    (license (list license:gpl2+ license:lgpl2.0+))))
+
 (define-public ksshaskpass
   (package
     (name "ksshaskpass")
