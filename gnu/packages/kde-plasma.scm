@@ -202,6 +202,58 @@ call it if it is not associated to a terminal.")
      "@code{kscreenlocker} is a library for creating secure lock screens.")
     (license license:gpl2+)))
 
+
+(define-public ksysguard
+  (package
+    (name "ksysguard")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/ksysguard-" version ".tar.xz"))
+      (sha256
+       (base32 "0ivw4sgiwxd522lybs7h62cqagw90vnfklx5knhsv0h4fp4nv9p1"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f)) ;; 2/5 tests fail, probably due to dbus issues
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kdbusaddons" ,kdbusaddons)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kinit" ,kinit)
+       ("kio" ,kio)
+       ("kitemviews" ,kitemviews)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("kwindowsystem" ,kwindowsystem)
+       ("libksysguard", libksysguard)
+       ("lm-sensors" ,lm-sensors "lib")
+       ("qtbase" ,qtbase)))
+    (home-page "https://www.kde.org/applications/system/ksysguard/")
+    (synopsis "Plasma process and performance monitor")
+    (description "KSysGuard is a program to monitor various elements of your
+system, or any other remote system with the KSysGuard daemon (ksysgardd)
+installed.
+
+It features a client/server architecture that allows monitoring of local as
+well as remote hosts.  The graphical front end uses so-called sensors to
+retrieve the information it displays.  A sensor can return simple values or
+more complex information like tables.  For each type of information, one or
+more displays are provided.  Displays are organized in worksheets that can be
+saved and loaded independently from each other.  So, KSysGuard is not only a
+simple task manager but also a very powerful tool to control large server
+farms.
+
+Currently the daemon has been ported to Linux, FreeBSD, Irix,
+NetBSD, OpenBSD, Solaris and Tru64 with varying degrees of completion.")
+    (license (list license:gpl2 license:gpl2+ license:gpl3)))) ;; KDE e.V.
+
 (define-public libkscreen
   (package
     (name "libkscreen")
