@@ -382,6 +382,38 @@ directly, you need to tell @code{ssh-add} about it.  @code{ssh-add} will then
 call it if it is not associated to a terminal.")
     (license license:gpl2+)))
 
+(define-public ksshaskpass
+  (package
+    (name "ksshaskpass")
+    (version "5.19.5")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://kde/stable/plasma/" version
+                                  "/ksshaskpass-" version ".tar.xz"))
+              (sha256
+               (base32
+                "1k2va2v9051f71w78dn3gihk642iyy5yzrkcfnp97fag8g6dpisi"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("ki18n" ,ki18n)
+       ("qtbase" ,qtbase)))
+    (home-page "http://www.kde.org/")
+    (synopsis "Monitor calibration panel for KDE")
+    (description "This package contains a settings panel for adjusting the
+brightness, contrast, and gamma-correction of a monitor.  Test patterns are
+shown to help determine the settings that accurately display the full range of
+colors.
+
+Each of the red, green, and blue components can be adjusted individually, or
+all three components can be adjusted together.")
+    (license license:gpl2+)))
+
 (define-public kscreenlocker
   (package
     (name "kscreenlocker")
