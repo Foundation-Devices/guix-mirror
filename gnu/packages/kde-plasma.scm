@@ -22,18 +22,28 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (gnu packages kde-plasma)
+  #:use-module (ice-9 textual-ports)
   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system qt)
+  #:use-module (gnu packages)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
+  #:use-module (gnu packages gnome)
+  #:use-module (gnu packages gnupg)
+  #:use-module (gnu packages gtk)
+  #:use-module (gnu packages kde)
   #:use-module (gnu packages kde-frameworks)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages iso-codes)
+  #:use-module (gnu packages networking)
+  #:use-module (gnu packages password-utils)
+  #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages web)
@@ -587,3 +597,156 @@ with a ksysguardd daemon, which may also run on a remote system.")
     (description "This project should be installing only the xml files of the
 non-standard wayland protocols we use in Plasma..")
     (license license:gpl2+)))
+
+(define-public plasma-workspace
+  (package
+    (name "plasma-workspace")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-workspace-" version ".tar.xz"))
+      (sha256
+       (base32 "09w1rrkppqnjcnw0hczmmhfzavmph2zk54bad7fnw0b3ivh2j0s9"))
+      (patches (search-patches "plasma-workspace-startkde.patch"))))
+    (build-system qt-build-system)
+    (arguments
+     `(;;#:configure-flags '("-Wno-dev") ;; too many dev-warnings, silence them
+       #:modules ((ice-9 textual-ports)
+                  ,@%qt-build-system-modules)
+       #:phases
+       (modify-phases (@ (guix build qt-build-system) %standard-phases)
+         (add-after 'unpack 'patch-qml-import-path
+           (lambda* (#:key outputs #:allow-other-keys)
+             ;; NIX: absolute-wallpaper-install-dir.patch
+             (substitute* "sddm-theme/theme.conf.cmake"
+               (("\\$\\{CMAKE_INSTALL_PREFIX}/\\$\\{WALLPAPER_INSTALL_DIR}")
+                (string-append (assoc-ref outputs "breeze")
+                               "/share/wallpapers")))
+             #t))
+         (add-before 'configure 'add-definitions
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let ((out (assoc-ref outputs "out"))
+                   (dbus (assoc-ref inputs "dbus"))
+                   (kinit (assoc-ref inputs "kinit"))
+                   (xmessage (assoc-ref inputs "xmessage"))
+                   (xprop (assoc-ref inputs "xprop"))
+                   (xrdb (assoc-ref inputs "xrdb"))
+                   (xsetroot (assoc-ref inputs "xsetroot")))
+               (with-output-to-file "CMakeLists.txt.new"
+                 (lambda _
+                   (display
+                    (string-append
+                     "add_compile_definitions(\n"
+                     "NIXPKGS_XMESSAGE=\"" xmessage "/bin/xmessage\"\n"
+                     "NIXPKGS_XRDB=\"" xrdb "/bin/xrdb\"\n"
+                     "NIXPKGS_XSETROOT=\"" xsetroot "/bin/xsetroot\"\n"
+                     "NIXPKGS_XPROP=\"" xprop "/bin/xprop\"\n"
+                     "NIXPKGS_DBUS_UPDATE_ACTIVATION_ENVIRONMENT=\""
+                     dbus "/bin/dbus-update-activation-environment\"\n"
+                     ;;"NIXPKGS_START_KDEINIT_WRAPPER=\""
+                     ;;kinit "/lib/libexec/kf5/start_kdeinit_wrapper\"\n"   ;; FIXME: should be in /libexec
+                     "NIXPKGS_KDEINIT5_SHUTDOWN=\""
+                     kinit "/bin/kdeinit5_shutdown\"\n"
+                     ")\n\n"))
+                   (display
+                    (call-with-input-file "CMakeLists.txt"
+                      get-string-all))))
+               (rename-file "CMakeLists.txt.new" "CMakeLists.txt"))
+             #t))
+         (replace 'check
+           ;; TODO: Make this test pass. check-after-install, setting
+           ;; QT_PLUGIN_PATH, starting a X11-server did not suffice to make
+           ;; testdesktop pass.
+           ;; launchertasksmodeltest fails since it relies on .desktop-files
+           ;; from installed dolphin and konquerer, see
+           ;; <https://bugs.kde.org/386458>
+           (lambda _
+             (invoke "ctest" "." "-E" "testdesktop|launchertasksmodeltest")))
+         (add-before 'check 'check-setup
+           (lambda _
+             (setenv "HOME" (getcwd))
+             #t))
+         )))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)
+       ("kdoctools" ,kdoctools)))
+    (propagated-inputs
+     `(("iso-codes" ,iso-codes))); run-time dependency
+    ;; TODO: Warning at /gnu/store/…-kpackage-5.34.0/…/KF5PackageMacros.cmake:
+    ;;   warnings during generation of metainfo for org.kde.breeze.desktop:
+    ;;   Package type "Plasma/LookAndFeel" not found
+    ;; TODO: Warning at /gnu/store/…-kpackage-5.37.0/…/KF5PackageMacros.cmake:
+    ;;  warnings during generation of metainfo for org.kde.image:
+    ;;  Package type "Plasma/Wallpaper" not found
+    ;; TODO: Still some unknown property types, e.g for key "X-KDE-ParentApp",
+    ;; "X-Plasma-RemoteLocation", "X-Plasma-EngineName",
+    ;; "X-Plasma-MainScript".
+    (inputs
+     `(;; TODO: Optional: AppStreamQt, Qalculate, libgps
+       ("baloo" ,baloo)
+       ("breeze" ,breeze)
+       ("dbus" ,dbus) ;; run-time dependency
+       ("kactivities" ,kactivities)
+       ("kactivities-stats" ,kactivities-stats)
+       ("kcmutils" ,kcmutils) ; nicht in NIX
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kded" ,kded) ;
+       ("kdelibs4support" ,kdelibs4support)
+       ("kdesu" ,kdesu)
+       ("kglobalaccel" ,kglobalaccel)
+       ("kholidays" ,kholidays) ;; optional, for Plasma Calendar plugin
+       ("ki18n" ,ki18n)
+       ("kidletime" ,kidletime)
+       ("kinit" ,kinit) ;; required by startkde, not listed as a requirement
+       ("kjs" ,kjs)
+       ("kjsembed" ,kjsembed)
+       ("knewstuff" ,knewstuff)
+       ("knotifyconfig" ,knotifyconfig)
+       ("kpackage" ,kpackage)
+       ("kpeople" ,kpeople)
+       ("krunner" ,krunner)
+       ("kscreenlocker" ,kscreenlocker)
+       ("kirigami" ,kirigami)  ;; run-time dependency  FIXME: needs patching?
+       ("ksysguard" ,ksysguard)
+       ("ktexteditor" ,ktexteditor)
+       ("ktextwidgets" ,ktextwidgets)
+       ("kuserfeedback" ,kuserfeedback) ; telemetry :-(
+       ("kwallet" ,kwallet)
+       ("kwayland" ,kwayland)
+       ("kwin" ,kwin)
+       ("kxmlrpcclient" ,kxmlrpcclient)
+       ("libkscreen" ,libkscreen)
+       ("libksysguard" ,libksysguard)
+       ("libsm" ,libsm)
+       ("libxrender" ,libxrender)
+       ("libxtst" ,libxtst) ; not listed as a requirement
+       ("networkmanager-qt" ,networkmanager-qt)
+       ("phonon" ,phonon)
+       ("plasma-framework" ,plasma-framework)
+       ("prison" ,prison)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtscript" ,qtscript)
+       ("qtx11extras" ,qtx11extras)
+       ("solid" ,solid)
+       ("xcb-util" ,xcb-util)
+       ("xcb-util-image" ,xcb-util-image)
+       ("xcb-util-keysyms" ,xcb-util-keysyms)
+       ("xrdb" ,xrdb) ;; run-time dependency
+       ("xmessage" ,xmessage) ;; run-time dependency
+       ("xprop" ,xprop) ;; run-time dependency
+       ("xsetroot" ,xsetroot) ;; run-time dependency
+       ("zlib" ,zlib)))
+    (home-page "https://invent.kde.org/plasma/plasma-workspace")
+    (synopsis "Plasma workspace components for KF5")
+    (description "Workspaces provide support for KDE Plasma Widgets,
+integrated search, hardware management and a high degree of customizability.")
+    ;; Parts of the code is Expat licensed, other parts GPL-3+ and even other
+    ;; parts are LGPL2.1+. The artwork is under some different licenses.
+    (license (list license:expat license:lgpl3+ ;; KDE e.V.
+                   license:gpl2 license:lgpl2.1 license:gpl2+))))
