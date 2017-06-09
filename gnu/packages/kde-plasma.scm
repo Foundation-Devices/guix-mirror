@@ -1366,6 +1366,77 @@ Widgets' dialog of the Plasma workspace you're using.")
 PulseAudio.")
     (license license:gpl3))) ;; KDE e.V.
 
+(define-public plasma-sdk
+  (package
+    (name "plasma-sdk")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-sdk-" version ".tar.xz"))
+      (sha256
+       (base32 "086s60lr5wf5yab0la8p40v1czviw3bnj8hmh4jy9366nvdllhwc"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'check-setup
+           (lambda _
+             (setenv "HOME" (getcwd))
+             #t)))))
+    ;; TODO: Still some unknown property types, e.g for key
+    ;; "X-KDE-ParentApp", "X-DocPath", "X-KDE-Keywords".
+    ;; TOOO: warnings during generation of metainfo for
+    ;; org.kde.plasma.plasmoidviewershell: Package type "Plasma/Shell" not
+    ;; found
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("qttools" ,qttools)))
+    (inputs
+     `(("grantlee" ,grantlee)
+       ("karchive" ,karchive)
+       ("kcmutils" ,kcmutils)
+       ("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kdevelop" ,kdevelop)
+       ("kguiaddons" ,kguiaddons)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("kirigami", kirigami) ;; runtime dependency
+       ("kitemmodels" ,kitemmodels)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("knotifyconfig" ,knotifyconfig)
+       ("kservice" ,kservice)
+       ("ktexteditor" ,ktexteditor)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kwindowsystem" ,kwindowsystem)
+       ("kxmlgui" ,kxmlgui)
+       ("plasma-framework" ,plasma-framework)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)
+       ("qtwebkit" ,qtwebkit)
+       ("threadweaver" ,threadweaver)))
+    (home-page "https://community.kde.org/Plasma/DeveloperGuide")
+    (synopsis "Development tools for Plasma 5 components")
+    (description "Plasma SDK contains the following tools for Plasma-related
+development:
+@enumerate
+@item CuttleFish - icon theme browser
+@item EngineExplorer - tool to browse and interact with data engines
+@item PlasmoidViewer - an isolated Plasma environment for testing applets
+@item ThemeExplorer - shows all components of a widget theme
+@end enumerate")
+    (license (list license:gpl2 license:gpl2+ license:gpl3+))))
+
 (define-public plasma-wayland-protocols
   (package
     (name "plasma-wayland-protocols")
