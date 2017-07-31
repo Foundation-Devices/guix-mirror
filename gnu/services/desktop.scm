@@ -5,6 +5,7 @@
 ;;; Copyright © 2016 Sou Bunnbu <iyzsong@gmail.com>
 ;;; Copyright © 2017, 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2017 Nikita <nikita@n0.is>
+;;; Copyright © 2017, 2019 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2018, 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017, 2019 Christopher Baines <mail@cbaines.net>
@@ -47,6 +48,9 @@
   #:use-module (gnu packages cups)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gnome)
+  #:use-module (gnu packages kde)
+  #:use-module (gnu packages kde-frameworks)
+  #:use-module (gnu packages kde-plasma)
   #:use-module (gnu packages xfce)
   #:use-module (gnu packages avahi)
   #:use-module (gnu packages xdisorg)
@@ -132,6 +136,11 @@
             lxqt-desktop-configuration
             lxqt-desktop-configuration?
             lxqt-desktop-service-type
+
+            plasma-desktop-configuration
+            plasma-desktop-configuration?
+            plasma-desktop-service
+            plasma-desktop-service-type
 
             xfce-desktop-configuration
             xfce-desktop-configuration?
@@ -1105,6 +1114,51 @@ rules."
 profile, and extends dbus with the ability for @code{efl} to generate
 thumbnails and makes setuid the programs which enlightenment needs to function
 as expected.")))
+
+;;;
+;;; KDE Plasma desktop service.
+;;;
+
+(define-record-type* <plasma-desktop-configuration> plasma-desktop-configuration
+  make-plasma-desktop-configuration
+  plasma-desktop-configuration
+  (plasma-package plasma-package (default plasma-workspace)))
+
+(define (plasma-polkit-settings config)
+  "Return the list of KDE Plasma dependencies that provide polkit actions and
+rules."
+  (let ((plasma-plasma (plasma-package config)))
+    (map (lambda (name)
+           ((package-direct-input-selector name) plasma-plasma))
+         '(;;"kde-settings-daemon"
+           ;;"kde-control-center"
+           "systemsettings"
+           "plasma-pa"
+           "plasma-nm"
+           "plasma-desktop"
+           ;;"oxygen-fonts"
+           ;; kinit klauncher kded kcminit ksmsettings kstartupconfig5
+           ;; qdbus
+           ;; Magia task-plasma5-minimal adds: ark dbus-x11 dolphin gwenview
+           ;;   kcalc khelpcenter kwalletmanager kwrite oxygen-fonts
+           ;;   phonon4qt5-gstreamer phonon4qt5-vlc plasma-desktop plasma-pa
+           ;;   plasma-workspace sddm systemsettings task-x11 xsettings-kde
+           ))))
+
+(define plasma-desktop-service-type
+  (service-type
+   (name 'plasma-desktop)
+   (extensions
+    (list ;;(service-extension polkit-service-type
+          ;;                   plasma-polkit-settings)
+          (service-extension profile-service-type
+                             (compose list
+                                      plasma-package))))))
+
+(define* (plasma-desktop-service #:key (config (plasma-desktop-configuration)))
+  "Return a service that adds the @code{plasma} package to the system profile,
+and extends polkit with the actions from @code{kde-settings-daemon}."
+  (service plasma-desktop-service-type config))
 
 
 ;;;
