@@ -415,6 +415,36 @@ Each of the red, green, and blue components can be adjusted individually, or
 all three components can be adjusted together.")
     (license license:gpl2+)))
 
+(define-public khotkeys
+  (package
+    (name "khotkeys")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/khotkeys-" version ".tar.xz"))
+      (sha256
+       (base32 "1nhvnflq7nzxkyfnzx1vdvjh4yrpi1qsf6mjjrnpg8w5ncgbd32n"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("kcmutils" ,kcmutils)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdelibs4support" ,kdelibs4support)
+       ("kglobalaccel" ,kglobalaccel)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("kxmlgui" ,kxmlgui)
+       ("plasma-framwork" ,plasma-framework)
+       ("plasma-workspace" ,plasma-workspace)
+       ("qtx11extras" ,qtx11extras)))
+    (home-page "https://invent.kde.org/plasma/khotkeys")
+    (synopsis "Configure input actions for KDE Plasma")
+    (description "KHotKeys is core-part of the KDE Plasma desktop.")
+    (license license:gpl2+)))
+
 (define-public kscreen
   (package
     (name "kscreen")
