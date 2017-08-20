@@ -445,6 +445,40 @@ all three components can be adjusted together.")
     (description "KHotKeys is core-part of the KDE Plasma desktop.")
     (license license:gpl2+)))
 
+(define-public kmenuedit
+  (package
+    (name "kmenuedit")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kmenuedit-" version ".tar.xz"))
+      (sha256
+       (base32 "1xl9k7a3hcmz9yfx7yhy7ff8mcqg62bs4fll8r8nzm04qds1qw7l"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kdbusaddons" ,kdbusaddons)
+       ("kded" ,kded) ; required for property type definitions
+       ("kglobalaccel" ,kglobalaccel)
+       ("khotkeys", khotkeys) ; optional
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kinit" ,kinit)
+       ("kio" ,kio)
+       ("kxmlgui" ,kxmlgui)
+       ("plasma-framework" ,plasma-framework)
+       ("qtbase" ,qtbase)
+       ("sonnet" ,sonnet)))
+    (home-page "https://invent.kde.org/plasma/kmenuedit")
+    (synopsis "Plasma XDG Menu Editor")
+    (description "This package provides a menu editor which may be used to
+edit the KDE Plasma workspaces menu or any other XDG menu.")
+    (license (list license:gpl2+ license:gpl2))))
+
 (define-public kscreen
   (package
     (name "kscreen")
