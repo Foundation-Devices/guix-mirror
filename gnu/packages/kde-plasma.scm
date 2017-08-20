@@ -965,6 +965,42 @@ manage running processes.  It obtains this information by interacting
 with a ksysguardd daemon, which may also run on a remote system.")
     (license license:gpl3+)))
 
+(define-public milou
+  (package
+    (name "milou")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/milou-" version ".tar.xz"))
+      (sha256
+       (base32 "03h4m7wfl7ffsklngx5fwxd4mj082df9j0m8mlz6z3x98v3fbipd"))))
+    (build-system qt-build-system)
+    ;; TOOO: warnings during generation of metainfo for org.kde.milou: Package
+    ;; type "Plasma/Applet" not found
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("kcoreaddons" ,kcoreaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kwindowsystem" ,kwindowsystem)
+       ("ki18n" ,ki18n)
+       ("kitemmodels" ,kitemmodels)
+       ("krunner" ,krunner)
+       ("kservice" ,kservice)
+       ("plasma-framework" ,plasma-framework)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtscript" ,qtscript)
+       ("qtbase" ,qtbase)))
+    (home-page "https://invent.kde.org/plasma/milou")
+    (synopsis "Dedicated search plasmoid built on top of Baloo")
+    (description "Milou can also be used as an alternative to KRunner, and
+does provide application launching.  The main difference is that it
+concentrates more on searching.")
+    (license license:gpl3))) ;; KDE e.V.
+
 (define-public plasma-desktop
   (package
     (name "plasma-desktop")
