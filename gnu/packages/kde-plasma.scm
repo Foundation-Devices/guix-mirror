@@ -29,6 +29,8 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system qt)
   #:use-module (gnu packages)
+  #:use-module (gnu packages base)
+  #:use-module (gnu packages boost)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
@@ -37,14 +39,16 @@
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages gtk)
+  #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages kde)
   #:use-module (gnu packages kde-frameworks)
+  #:use-module (gnu packages libcanberra)
   #:use-module (gnu packages linux)
-  #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages networking)
   #:use-module (gnu packages password-utils)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xdisorg)
@@ -574,6 +578,156 @@ basic needs and easy to configure for those who want special setups.")
 manage running processes.  It obtains this information by interacting
 with a ksysguardd daemon, which may also run on a remote system.")
     (license license:gpl3+)))
+
+(define-public plasma-desktop
+  (package
+    (name "plasma-desktop")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/plasma-desktop-" version ".tar.xz"))
+      (sha256
+       (base32 "0w0snwgckz11gfwybjwf7wdb3cg366z3bqjrj5pnaf64xn0iqgn6"))))
+    (build-system qt-build-system)
+    (arguments
+     '(#:phases
+       (modify-phases %standard-phases
+         (add-after `unpack `fix-paths
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "kcms/dateandtime/helper.cpp"
+               ;; define path to bin/hwclock
+               ;; TODO: Rethink! NIX defines the path, but this leads to
+               ;; util-linux being an additional requirement. We can just
+               ;; leave this off and let KCM search $PATH
+               (("(^\\s*QString hwclock = )QStandardPaths::findExecutable.*" l prefix)
+                (string-append prefix "QLatin1String(\""
+                               (assoc-ref inputs "util-linux")
+                               "/bin/hwclock\");"))
+               ;; define path to zoneinfo
+               ;; TODO: nix also has a patch to honor $TZDIR
+               (("\"/usr/share/zoneinfo/\"")
+                (string-append "\"" (assoc-ref inputs "tzdata")
+                               "/share/zoneinfo/\"")))
+             (substitute* "kcms/keyboard/iso_codes.h"
+               ;; define path to iso-codes
+               (("\"/usr/share/xml/iso-codes\"")
+                (string-append "\"" (assoc-ref inputs "iso-codes")
+                               "/share/xml/iso-codes\"")))
+               #t))
+         (add-after 'unpack 'patch-qml-import-path
+           (lambda _
+             (substitute*
+              '("applets/pager/package/contents/ui/main.qml"
+                "containments/desktop/package/contents/ui/FolderView.qml"
+                "containments/desktop/package/contents/ui/main.qml"
+                "containments/panel/contents/ui/main.qml")
+              (("^import \"(utils|FolderTools|LayoutManager).js\" as " line mod)
+               (string-append "import \"../code/" mod ".js\" as ")))
+             #t))
+         (add-after 'unpack 'patch-includes
+           ;; TODO: Is this correct? Why do other distributions not need this?
+           (lambda _
+             (substitute*
+              '("kcms/touchpad/backends/x11/libinputtouchpad.cpp"
+                "kcms/touchpad/backends/x11/xlibbackend.cpp"
+                "kcms/touchpad/backends/x11/xlibtouchpad.cpp")
+              (("^#include <xserver-properties.h>")
+               "#include <xorg/xserver-properties.h>"))
+             #t))
+         ;; (delete 'check)
+         ;; (add-after 'install 'check
+         ;;   (assoc-ref %standard-phases 'check))
+         (add-before 'check 'check-setup
+           (lambda* (#:key outputs #:allow-other-keys)
+             (setenv "HOME" (getcwd))
+             ;; (setenv "QT_PLUGIN_PATH"
+             ;;         (string-append (assoc-ref outputs "out") "/lib/qt5/plugins:"
+             ;;                        (getenv "QT_PLUGIN_PATH")))
+             ;; The test 'keyboard-geometry_parser' queries for device
+             ;; information, for this it requires a running X server.
+             ;;(system "Xvfb :98 -screen 0 640x480x24 &")
+             ;;(setenv "DISPLAY" ":98")
+             (with-output-to-file "bin/BLACKLIST"
+               (lambda _
+                 ;; test_kio_fonts - kcms/kfontinst/kio
+                 ;; "URL cannot be listed: fonts://foo/System"
+                 (display "[testDirLister]\n*\n")
+                 ;; lookandfeel-kcmTest - kcms/lookandfeel
+                 (display "[testWidgetStyle]\n*\n[testKCMSave]\n*\n")
+                 ;; foldermodeltest - containments/desktop/plugins/folder
+                 (display "[tst_rename]\n*\n")))
+             #t)))))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("dbus" ,dbus) ; required for running the tests
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     ;; TODO: Still some unknown property types, e.g for key "X-Plasma-API",
+     ;;  "X-KDE-ParentApp", "X-Plasma-RemoteLocation", "X-Plasma-MainScript".
+     ;; TODO: Add more optional inputs: ibus-1.0, gio, gobject-2.0, scim, glib2
+     ;; TODO: "Recommended" input AppStreamQt. appstreamcli
+     `(("attica" ,attica)
+       ("baloo" ,baloo) ; recommended
+       ("boost" ,boost) ; optional
+       ("breeze" ,breeze)
+       ("eudev", eudev) ; optional
+       ("fontconfig" ,fontconfig) ;; package fontutils
+       ("iso-codes" ,iso-codes) ; for path-substitution (see phases), required for testing
+       ("kactivities" ,kactivities)
+       ("kactivities-stats" ,kactivities-stats)
+       ("kauth" ,kauth)
+       ("kcmutils" ,kcmutils)
+       ("kconfig" ,kconfig)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdeclarative" ,kdeclarative)
+       ("kded" ,kded) ; not checked in CmakeList
+       ("kdelibs4support" ,kdelibs4support)
+       ("kemoticons" ,kemoticons)
+       ("kglobalaccel" ,kglobalaccel)
+       ("ki18n" ,ki18n)
+       ("kirigami", kirigami) ;; ~~~runtime dependency~~
+       ("kitemmodels" ,kitemmodels)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("knotifyconfig" ,knotifyconfig)
+       ("kpeople" ,kpeople)
+       ("krunner" ,krunner)
+       ("kscreenlocker" ,kscreenlocker)
+       ("kwallet" ,kwallet)
+       ("kwin" ,kwin)
+       ("libcanberra_kde" , libcanberra) ; optional
+       ("libksysguard" ,libksysguard)
+       ("libxkbcommon" ,libxkbcommon)
+       ("libxcursor", libxcursor) ; not checked in CMakelist
+       ("libxi" ,libxi) ;; X11-Xinput, for kcms/input/
+       ("libxft" ,libxft) ; feature
+       ("libxkbfile" ,libxkbfile)
+       ("libxtst", libxtst) ; not checked in CMakelist
+       ("phonon" ,phonon)
+       ("plasma-framework" ,plasma-framework)
+       ("plasma-workspace" ,plasma-workspace)
+       ("pulseaudio" ,pulseaudio) ; optional
+       ("qqc2-desktop-style" ,qqc2-desktop-style)
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)
+       ("qtx11extras" ,qtx11extras)
+       ("tzdata" ,tzdata) ; for path-substitution (see phases)
+       ("util-linux" ,util-linux) ; for path-substitution (see phases)
+       ("xcb-util" ,xcb-util)
+       ("xcb-util-image" ,xcb-util-image)
+       ("xf86-input-evdev" ,xf86-input-evdev)
+       ("xf86-input-libinput", xf86-input-libinput)
+       ("xf86-input-synaptics" ,xf86-input-synaptics)
+       ("xkeyboard-config" ,xkeyboard-config)
+       ("xorg-server" ,xorg-server))) ;; xserver-properties.h, not checked in CmakeList
+    (home-page "https://invent.kde.org/plasma/plasma-desktop")
+    (synopsis "Plasma 5 application workspace components")
+    (description "Tools and widgets for the desktop")
+    (license (list license:lgpl2.0+ license:gpl2+ license:fdl1.2+))))
 
 (define-public plasma-wayland-protocols
   (package
