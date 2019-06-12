@@ -1,0 +1,24 @@
+===================
+KDE Applications
+===================
+
+See 10-KDE-Frameworks.txt für snippets and more information.
+
+
+ark   ;; some tests fail
+filelight ;; builds, but "unable to load filelight part"
+kcalc
+kcharselect
+kdf
+kfloppy
+ktimer
+kgpg  ;; not build, still requires kde 4 and KdepimLibs
+kwalletmanager
+sweeper ;; not build, still requires kde4
+
+printer-applet: seems to be no longer maintained
+kremote-control: still requires KDE4
+
+https://community.kde.org/KDE_Utils additionally lists 
+"ksecretservice" (KDE secrets management infrastructure, aiming to replace KDE
+wallet) which seems to not be finished yet.

@@ -1,0 +1,513 @@
+==================================================================
+What is required to successfully start a minimal Plasma desktop?
+==================================================================
+
+In Plasma 5.5.0 these packages did not exist
+---------------------------------------------------------------------------
+
+This might be useful for creating seme "plasma-minimal" service)
+
+-breeze-grub
+-breeze-gtk
+-discover
+-kactivitymanagerd
+-kdecoration
+-kdeplasma-addons
+-kgamma5
+-kscreen
+-kscreenlocker
+-ksshaskpass
+-kwallet-pam
+-kwayland-integration
+-plasma-integration
+-plasma-pa
+-plasma-sdk
+-polkit-kde-agent-1
+-sddm-kcm
+-user-manager
+
+Addes in  Plasma 5.11.2
+-----------------------------------
+
+drkonqi
+kde-gtk-config
+kinfocenter
+plasma-vault
+plymouth-kcm
+xdg-desktop-portal-kde
+
+
+plasma-desktop
+---------------------
+
+Plasma 5 application workspace components
+http://sophie.zarb.org/rpms/d003b4dc3a435faa84060a1065bd2dac/files
+
+
+Files z.B.
+/etc/xdg/emoticons.knsrc
+/usr/bin/kcolorschemeeditor
+/usr/lib/qt5/plugins/kcm_joystick.so
+/usr/lib/qt5/qml/org/kde/plasma/private/kicker
+/usr/libexec/kfontprint 
+/usr/share/appdata/org.kde.plasma.kimpanel.appdata.xml
+/usr/share/dbus-1/services/org.kde.fontinst.service
+/usr/share/kdm/pics/users/_happy.png
+/usr/share/kf5/kactivitymanagerd/workspace/settings/qml/activitiesTab/main.qml
+/usr/share/kservices5/kded
+/usr/share/solid/devices/solid-device-Battery.desktop 
+
+hat ein paar patches, siehe
+http://sophie.zarb.org/rpms/5a71ad33f7bd507508da1fbf03165ce6/files
+
+Requires:       bluedevil
+Requires:       kactivitymanagerd
+Requires:       kde-cli-tools
+Requires:       kdeplasma-addons
+Requires:       kdesu
+Requires:       kglobalaccel
+Requires:       khotkeys
+Requires:       kinit
+Requires:       kio
+Requires:       kio-extras
+Requires:       kmenuedit
+Requires:       kparts
+Requires:       kscreen
+Requires:       kservice
+Requires:       mageia-plasma5-config
+Requires:       milou
+Requires:       plasma-pa
+Requires:       polkit-kde-agent-1
+Requires:       powerdevil
+Requires:       solid
+Requires:       sonnet
+Requires:       user-manager
+Requires:       xsettings-kde
+
+obsoletes:
+kcm-touchpad, kdepasswd, plasma-applet-… plasme-runner-… superkaramba
+
+
+vanilla-kde4-config
+-----------------------
+
+Default configs used for upstream KDE.
+http://sophie.zarb.org/distrib/Mageia/6/x86_64/media/core-release/by-pkgid/daba730d5001b77c799e31e97f29f396/deps
+
+Includes some scripts
+
+
+kdeplasma-addons
+--------------------
+
+kdeplasma is a compilation of plasma items
+( runners, applets, plasmoids ) for Plasma.
+
+zarb contains package meta-data for Mageia packages
+
+http://sophie.zarb.org/rpms/5b0851a8dd773fe6988df7f75c3ad1b9
+Patches:
+- http://sophie.zarb.org/rpms/5b0851a8dd773fe6988df7f75c3ad1b9/files/1
+  --> Substitute, falls nötig
+
+http://download.kde.org/stable/%version/src/kdeplasma-addons-%{version}.tar.xz
+
+
+BuildRequires: pkgconfig(Qt5X11Extras)
+BuildRequires: pkgconfig(Qt5Core)
+BuildRequires: pkgconfig(Qt5Gui)
+BuildRequires: pkgconfig(Qt5DBus)
+BuildRequires: pkgconfig(Qt5Network)
+BuildRequires: pkgconfig(Qt5Quick)
+BuildRequires: pkgconfig(Qt5Qml)
+BuildRequires: pkgconfig(Qt5Widgets)
+
+BuildRequires: kf5-macros
+BuildRequires: kconfig-devel
+BuildRequires: kconfigwidgets-devel
+BuildRequires: kcoreaddons-devel
+BuildRequires: ki18n-devel
+BuildRequires: kio-devel
+BuildRequires: kcmutils-devel
+BuildRequires: kf5-krunner-devel
+BuildRequires: kservice-devel
+BuildRequires: kunitconversion-devel
+BuildRequires: kdelibs4support-devel
+BuildRequires: knewstuff-devel
+BuildRequires: kactivities-devel
+BuildRequires: kross-devel
+BuildRequires: plasma-workspace-devel >= 5.7.0
+
+
+guixsd-plasma5-config
+-------------------------
+This package regroups all specific GuixSD config file for Plasma.
+
+http://sophie.zarb.org/rpms/b42114fdb4eee2ac3dbb0cca5c076524
+
+Files z.B.
+/etc/xdg/kdeglobals
+/usr/share/icons/breeze/places/64/mgabutton.svg
+/var/lib/plasma5-profiles/common/share/config/ksmserverrc
+/var/lib/plasma5-profiles/common/xdg/kscreenlockerrc 
+/var/lib/plasma5-profiles/common/xdg/systemsettingsrc
+/etc/xdg/plasma-workspace/env/env.sh
+
+Requires
+kf5-macros
+plasma-workspace 
+
+Source: muss noch gesucht werden
+http://sophie.zarb.org/rpms/26d24d08b01be795dbefbc444da5677f/files
+
+
+mageia-kde-translation
+-------------------------
+Localization files for Mageia KDE strings
+This package includes that translations that have been added on
+Mageia KDE.
+http://sophie.zarb.org/rpms/13b45fa5ffe8a08a9329f2f0d5c035ab
+
+
+mageia-kde4-config
+------------------------
+Falls nötig
+http://sophie.zarb.org/rpms/c6e178da9983be6b1ea005e60d555f97
+
+
+plasma-desktop
+--------------------
+
+baloo  - framework for searching and managing metadata.
+bluedevil - application
+iso-codes
+*kactivities
+*kactivitymanagerd
+kamera
+kconfig
+kde-cli-tools
+*kdeplasma-addons
+kdesu
+kglobalaccel
+khotkeys
+kimageformats
+kinit
+kio
+kio-extras
+kirigami2
+kmenuedit
+kpackage
+*kparts
+*krunner
+kscreen
+*kservice
+kwallet - application
+kwalletmanager - application
+mageia-plasma5-config
+milou  - search application
+plasma-pa  - volume management using PulseAudio
+polkit-kde-agent-1
+powerdevil - application
+qqc2-desktop-style
+solid - Tier 1 provides hardware information
+sonnet - Tier 1 solution for spell checking.
+systemsettings - application
+user-manager - application
+xsettings-kde
+
+
+
+plasma-workspace
+--------------------
+
+bluez-qt
+breeze
+breeze-gtk
+breeze-icons
+desktop-common-data >= 3.9-3
+frameworkintegration
+iso-codes
+kde-gtk-config
+kdeclarative
+kded
+kinfocenter
+kinit
+kio
+kirigami2
+konsole
+kscreenlocker
+kservice
+kwin
+kwindowsystem
+mageia-plasma5-config
+oxygen
+oxygen-fonts
+oxygen-icons5
+plasma-desktop
+plasma-framework
+plasma-integration
+plasma5-milou
+qtdeclarative5
+qtgraphicaleffects5
+qtquickcontrols5
+qttools5
+qttools5-qtdbus
+solid
+udisks2
+xmessage
+
+
+task-plasma5-minimal
+--------------------
+Metapackage for Plasma 5
+
+This package is a meta-package, meaning that its purpose is to contain
+the complete dependencies for running the Plasma 5 desktop ( plus digikam,
+calligra, ...) ### stimmt nicht, die genannten sind keinen Requirements
+
+ark
+dbus-x11
+dolphin
+gwenview
+kcalc
+kdialog
+khelpcenter
+kmozillahelper
+konqueror
+kwalletmanager
+kwrite
+okular
+oxygen-fonts
+phonon4qt5-gstreamer
+plasma-desktop
+plasma-pa
+plasma-workspace
+sddm
+systemsettings
+task-x11
+xsettings-kde
+
+
+spectacle
+----------------
+
+The new screenshot capture utility, replaces KSnapshot
+http://sophie.zarb.org/rpms/ceb4198acc2f20dfd622e8e6813fe98a
+http://download.kde.org/stable/applications/%{version}/src/%{name}-%{version}.tar.xz
+
+
+Paket-Definition in Alt-Linux
+-----------------------------------
+http://packages.altlinux.org/en/search?query=kf5
+
+kde5-runtime: qt5-phonon-backend qt5-quickcontrols qt5-quickcontrols2
+ qt5-graphicaleffects qt5-imageformats qt5-translations kf5-kio
+ kf5-kded kf5-kinit kf5-kwayland-integration
+
+kde5-mini: kde5-runtime qt5-dbus kf5-kde-cli-tools kf5-kwin
+ kf5-plasma-desktop kf5-kinit kf5-kdeclarative kde5-dolphin
+ kde5-kdialog
+
+kde5-small: icon-theme-breeze kde5-mini kde5-volume-control webclient
+ kf5-sddm-kcm kf5-polkit-kde-agent kf5-kio-extras kf5-breeze
+ kf5-oxygen kf5-powerdevil kf5-ksysguard kf5-kwallet kf5-kconfig
+ kf5-kglobalaccel kf5-kimageformats kde5-svgpart kde5-ark kde5-konsole
+ kde5-gwenview kde5-okular kde5-kwrite kde5-kwalletmanager kde5-kcalc
+ kde5-kdebugsettings kde5-kross-python kf5-milou kf5-systemsettings
+ kf5-plasma-integration
+
+kde5 = kde5-normal: gtk3-theme-breeze gtk2-theme-breeze kde5-small
+ kde5-video-player kde5-audio-player kde5-network-manager
+ kde5-plasma-applet-places-widget kf5-kde-gtk-config kf5-baloo
+ kf5-bluedevil kf5-kscreen kf5-ksshaskpass kde5-krdc kde5-kgpg
+ kf5-khotkeys kf5-kinfocenter kf5-kdeplasma-addons kde5-khelpcenter
+ kde5-kolourpaint kde5-kio-audiocd kf5-kmenuedit kf5-solid
+ kf5-kdbusaddons kf5-kgamma kde5-kfind kde5-filelight kde5-kcharselect
+ kde5-kteatime kde5-ktimer kde5-spectacle kde5-kamera
+ kde5-network-filesharing kde5-ktorrent kde5-kio-zeroconf kde5-sweeper
+ ## kde5-kget pam0_kwallet5
+
+kde5-big: kde5 kde5-email-client kf5-plasma-workspace-wallpapers
+ kf5-kwrited kf5-user-manager kde5-ksystemlog kde5-konversation
+ kde5-kate kde5-pim kde5-pim-addons kde5-kcron kde5-kruler
+ kde5-ffmpegthumbs kde5-krfb kde5-kdf kde5-kfloppy kid3-ui-kde5
+ ring-client-kde5 kde5-kipi-plugins-core
+ # kde5-telepathy
+
+kde5-maxi: kde5-konqueror kde5-keditbookmarks kde5-dragon kde5-kmail
+ kde5-juk kde5-kmouth kde5-big kde5-edu kde5-games kde5-printing
+ kde5-scanning kdenlive kde5-connect kde5-k3b kde5-kwave kde5-digikam
+ kde5-kipi-plugins
+# webclient
+# kde5-kmousetool kde5-kmag
+
+kde5-somedevel: kde5-runtime kde5-dolphin-plugins kde5-lokalize
+ kde5-okteta kde5-kapptemplate kde5-dev-scripts kde5-kompare
+ kde5-sdk-thumbnailers kde5-poxml kde5-umbrello kde5-kimagemapeditor
+# kde5-kcachegrind
+
+kde5-edu: kde5-runtime kde5-kanagram kde5-khangman kde5-parley
+ kde5-kwordquiz kde5-kturtle kde5-marble kde5-step kde5-kstars
+ kde5-kig kde5-kmplot kde5-kalgebra kde5-cantor kde5-rocs kde5-kbruch
+ kde5-kgeography kde5-ktouch kde5-kalzium
+# kde5-minuet
+Educational software based on the KDE technologies
+
+kde5-games: kde5-runtime kde5-lskat kde5-kmines kde5-kshisen
+ kde5-ktuberling kde5-bovo kde5-knetwalk kde5-katomic
+ kde5-knavalbattle kde5-kpat kde5-kmahjongg
+ kde5-kolf kde5-ksirk kde5-palapeli
+# kde5-ksudoku kde5-kigo
+High quality gaming and entertainment software.
+Summary: Set of KDE-based games
+
+kde5-printing: kde5-runtime kde5-print-manager cups
+ printer-drivers-X11
+#system-config-printer-udev
+KDE printing support applications.
+Summary: Set of printing support applications
+
+kde5-scanning: kde5-runtime kde5-skanlite hplip-sane libsane-gphoto2
+ sane
+KDE image scanning support applications.
+Summary: Set of image scanning support applications
+
+kde5-pim: kde5-akonadi-calendar-tools kde5-akonadi-import-wizard
+ kde5-kmail-account-wizard kde5-akregator kde5-blogilo
+ kde5-kaddressbook kde5-kalarm kde5-kmail kde5-knotes kde5-kontact
+ kde5-korganizer kde5-mbox-importer kde5-pim-data-exporter
+ kde5-pim-sieve-editor kde5-grantlee-editor
+## kde5-akonadiconsole
+
+
+
+Dependency chain in Mageia
+-----------------------------------
+
+xprop -> xdg-utils -> desktop-common-data -> plasma-workspace
+xset -> xdg-utils
+xrdb -> xinitrc -> xinit -> task-x11
+xsetroot -> xinitrc
+xmessage -> plasma-workspace
+
+"unable to load any usable ISO8859 font"
+
+mageia-plasma5-config -> plasma-desktop
+milou -> plasma-desktop
+plasma-pa -> plasma-desktop
+polkit-kde-agent-1 -> plasma-desktop
+powerdevil -> plasma-desktop
+sonnet -> plasma-desktop
+user-manager -> plasma-desktop
+xsettings-kde -> plasma-desktop
+bluedevil -> plasma-desktop
+kactivities -> plasma-desktop
+kactivitymanagerd -> plasma-desktop
+kconfig -> plasma-desktop
+kde-cli-tools -> plasma-desktop
+kdeplasma-addons -> plasma-desktop
+kdesu -> plasma-desktop
+kglobalaccel -> plasma-desktop
+khotkeys -> plasma-desktop
+kinit -> plasma-desktop
+kio -> plasma-desktop
+kio-extras -> plasma-desktop
+kmenuedit -> plasma-desktop
+kparts -> plasma-desktop
+krunner -> plasma-desktop
+kscreen -> plasma-desktop
+kservice -> plasma-desktop
+kwallet -> plasma-desktop
+kwalletmanager -> plasma-desktop
+
+mageia-plasma5-config -> plasma-workspace
+oxygen -> plasma-workspace
+oxygen-fonts -> plasma-workspace
+oxygen-icons5 -> plasma-workspace
+plasma-desktop -> plasma-workspace
+plasma-framework -> plasma-workspace
+plasma-integration -> plasma-workspace
+plasma5-milou -> plasma-workspace
+qtdeclarative5 -> plasma-workspace
+qtgraphicaleffects5 -> plasma-workspace
+qtquickcontrols5 -> plasma-workspace
+qttools5 -> plasma-workspace
+qttools5-qtdbus -> plasma-workspace
+solid -> plasma-workspace
+udisks2 -> plasma-workspace
+xmessage -> plasma-workspace
+bluez-qt -> plasma-workspace
+breeze -> plasma-workspace
+breeze-gtk -> plasma-workspace
+breeze-icons -> plasma-workspace
+desktop-common-data >= 3.9-3 -> plasma-workspace
+frameworkintegration -> plasma-workspace
+kde-gtk-config -> plasma-workspace
+kdeclarative -> plasma-workspace
+kded -> plasma-workspace
+kinfocenter -> plasma-workspace
+kinit -> plasma-workspace
+kio -> plasma-workspace
+konsole -> plasma-workspace
+kscreenlocker -> plasma-workspace
+kservice -> plasma-workspace
+kwin -> plasma-workspace
+kwindowsystem -> plasma-workspace
+
+
+
+plasma-desktop
+~~~~~~~~~~~~~~~~~~~~~
+
+
+$ qtpaths --locate-dirs GenericConfigLocation plasma-workspace
+/etc/xdg/plasma-workspace
+$ ls /etc/xdg/plasma-workspace
+/etc/xdg/plasma-workspace/env/env.sh
+/etc/xdg/plasma-workspace/env/plasma5-firstsetup.sh
+
+
+
+;; (define-public kde-plasma5-minimal
+;;   (package
+;;     (name "plasma5-minimal")
+;;     (version (package-version plasma-desktop))
+;;     (source #f)
+;;     (build-system trivial-build-system)
+;;     (arguments
+;;      '(#:modules ((guix build union))
+;;        #:builder
+;;        (begin
+;;          (use-modules (ice-9 match)
+;;                       (guix build union))
+;;          (match %build-inputs
+;;            (((names . directories) ...)
+;;             (union-build (assoc-ref %outputs "out")
+;;                          directories))))))
+;;     (inputs
+;;      `(("ark", ark)
+;;        ("dbus-x11", dbus-x11)
+;;        ("dolphin", dolphin)
+;;        ("gwenview", gwenview)
+;;        ("kcalc", kcalc)
+;;        ("khelpcenter", khelpcenter)
+;;        ("kwalletmanager", kwalletmanager)
+;;        ("kwrite", kwrite)
+;;        ("oxygen-fonts", oxygen-fonts)
+;;        ("phonon4qt5-backend", phonon4qt5-backend)
+;; ;       ("plasma-desktop", plasma-desktop)
+;; ;       ("plasma-pa", plasma-pa)
+;; ;       ("plasma-workspace", plasma-workspace)
+;;        ("sddm", sddm)
+;;        ("systemsettings", systemsettings)
+;;        ("task-x11", task-x11)
+;;        ("xsettings-kde", xsettings-kde)))
+;; ;    (native-search-paths
+;; ;     ;; For finding panel plugins.
+;; ;     (package-native-search-paths xfce4-panel)) ;; FIXME
+;;     (home-page "http://www.kde.org/")
+;;     (synopsis "KDA Plasma desktop environment (meta-package)")
+;;     (description
+;;      "This package is a meta-package, meaning that its purpose is to contain
+;; minimal dependencies for running a minimal Plasma 5 desktop environment.")
+;;     (license gpl2+)))

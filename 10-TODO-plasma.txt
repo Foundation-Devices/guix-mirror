@@ -1,0 +1,461 @@
+=====================
+KDE Plasma
+=====================
+
+When Plasma is running on Guix System, enlist Guix System at
+https://community.kde.org/Plasma/Packages
+
+
+https://invent.kde.org/plasma lists about 60 packages, many of which
+are applications.  I expect most of these
+applications to be not required to start the Plasma Desktop.
+I expect plasma-desktop, plasma-workspace, kwin, kwayland-server,
+plasma-wayland-protocols, kwayland-integration, and ksysguard
+to be sufficient to start the Plasma Desktop.
+This is why the commits adding these are "grouped".
+
+
+Status as of January 2021:
+
+* plasma-desktop builds, most tests are passing.
+
+* Directory 99-playground/ contains file to test the desktop following the
+  idea from
+  <https://guix.gnu.org/de/blog/2019/running-a-guix-xfce-desktop-on-centos-7/>.
+
+  The basic idea: Start an X11 server (provided by the host OS) on another
+  virtual terminal and make this run the desktop. See there for a short Readme.
+
+* when trying to start the desktop following the idea from
+  <https://guix.gnu.org/de/blog/2019/running-a-guix-xfce-desktop-on-centos-7/>
+  I get sole KDE animation, a black screen, but no desktop elements
+
+
+
+Followng Notes are from Juni 2019
+
+See 10-KDE-Frameworks.txt für snippets and more information.
+
+
+TODO
+============================
+
+Patch startkde (and startplasma?:
+XDG_DATA_DIRS=/gnu/store/...:/run/current-system/profile/share/
+
+
+
+Packages added after 5.12.2
+===================================
+
+drkonqi-5.14.4.tar.xz
+kde-gtk-config-5.14.4.tar.xz
+kinfocenter-5.14.4.tar.xz
+plasma-browser-integration-5.14.4.tar.xz
+plasma-vault-5.14.4.tar.xz
+plymouth-kcm-5.14.4.tar.xz
+xdg-desktop-portal-kde-5.14.4.tar.xz
+
+
+Packages added up to 5.18.5
+===============================
+
+{'plasma-tests', 'breeze-plymouth', 'kinfocenter', 'plasma-nano', 'plasma-phone-components', 'plymouth-kcm', 'plasma-thunderbolt', 'plasma-browser-integration'}
+
+
+Desktop-Service
+----------------------
+
+Not sure what this notes are for, I assume this is a list of rin-time packages
+required to run plasma (kinit)
+
+xrdb
+xprop
+xmessage
+qttools
+kinit
+kconfig
+#plasma-desktop kapplymousetheme -> fehlt
+qtdeclarative
+xset
+xsetroot
+
+Snippets for Commit messages or comments
+========================================
+
+Use this template to provide document what you tried to make tests pass, but
+did not suffice.
+
+Setting QT_PLUGIN_PATH,
+starting a X11-server, openbox and kdeinit5
+or running ctest via dbus-launch
+are not sufficient to make the
+two failing test-cases pass.
+
+
+Snippets for Tests
+===========================
+
+See 10-KDE-Frameworks.txt
+
+https://community.kde.org/KWin/Wayland
+https://community.kde.org/Get_Involved/Quality/Tutorial
+
+KDE test-environment [2] per default [1] does this:
+- starts `Xvfb :90 -ac -screen 0 1600x1200x24+32`
+- starts `openbox`
+- runs `dbus-launch` and sets all the environement variables
+- runs `update-mime-database …/share/mime`
+- runs `kdeinit5` in the background
+- runs `ctest -T Test --output-on-failure … --timeout {timeLimit} {additionalCTestArguments}"`
+
+[1] https://cgit.kde.org/sysadmin/ci-tooling.git/tree/helpers/helperslib/BuildSpecs.py#n54
+[2] https://cgit.kde.org/sysadmin/ci-tooling.git/tree/helpers/run-tests.py
+
+* settings for individual packages (one about a dozen) are at
+  https://cgit.kde.org/sysadmin/ci-tooling.git/tree/build-specs
+
+
+Interactively running tests within a guix build-environment
+--------------------------------------------------------------
+
+# guix environment …
+cd ../build
+make install
+export CTEST_OUTPUT_ON_FAILURE=1
+Xvfb :98 -screen 0 640x480x24 &
+$GUIX_ENVIRONMENT/bin/strace -f -o ../trace.log \
+bin/testBuiltInEffectLoader
+ctest -R testBuiltInEffectLoader
+ctest --force-new-ctest-process -R testBuiltInEffectLoader
+
+
+Status Unit-tests 5.49.0
+===================================
+
+overall stauts (first column):
+  ✔: finished
+
+`build`-status:
+  (b) builds successfully
+  (d) all config dependencies are added
+  (+) all dependencies are added
+  
+`test*-status:
+  w-blist: tests blacklisted
+  w-fail: some tests still fail
+  +: pass or given up at a reasonable acceptance level
+  
+log: logfile checked
+lic: lizenz checked
+desc: homepage, synopsis, description finished
+lint: guix lint passed
+
+discover
+  /var/log/guix/drvs/mp/l34qr78jc1052j0zy4n88snyqklhcx-discover-5.10.1.drv.bz2
+  warnings during generation of metainfo for org.kde.discovernotifier:
+  Package type "Plasma/Applet" not found
+
+✔
+				build	tests	log
+bluedevil		✔	+	+	+
+discover		later	bd	-	-  deferred
+breeze-gtk		✔	+	+	+
+kactivitymanagerd	✔	+	+	-
+kdecoration		✔	+	+	+
+kgamma5			✔	+	+	+
+--kholidays--		.	+	w-fail	.  frameworks.scm
+kscreenlocker		✔	+	+	+
+ksshaskpass		✔	+	+	+
+ksysguard		✔	+	+	+
+kwallet-pam		✔	+	+	+
+kwayland-integration	✔	+	+	+
+breeze			✔	+	+	+
+kwin			.	.	w-fail	.  TODO 35/77 tests fail
+kwrited			✔	+	+	+
+--libkscreen--		.	.	w-blist	.  build by somebody else
+milou			✔	+	+	+
+oxygen			✔	+	+	+
+plasma-nm		✔	+	+	+
+plasma-pa		✔	+	+	+
+plasma-sdk		.	.	.	.
+  --> see below
+
+plasma-tests		.	.	.	.
+plasma-workspace-wallpapers ✔	+	+	+
+polkit-kde-agent-1	✔	+	+	+
+sddm-kcm		✔	+	+	+
+user-manager		✔	+	+	+
+---
+plasma-workspace	.	.	w-fail	.
+---
+kde-cli-tools		.	X	w-fail	.  plasma-workspace
+kscreen			.	.	.	.  plasma-workspace
+systemsettings		.	.	.	.  plasma-workspace
+kdeplasma-addons	.	.	.	.
+khotkeys		.	.	.	.
+kmenuedit		.	.	.	.
+plasma-integration	.	.	w-fail	.
+powerdevil		.	.	.	.
+---
+plasma-desktop		.	.	w-blist	.
+
+breeze-grub		.	.	.	.
+breeze-plymouth		dep. missing	-	-
+
+
+plasma-workspace requirements
+============================================
+
+requirements used by other Gnu/Linux distributions
+
+fedora		nix			debian
+--------	-----------		-----------
+docbook-dtds	kconfig			coreadons
+docbook-ste-xsl	libdbusmenu		kconfig
+kdewebkit	libkscreen		kdewebkit
+kdoctools	libXcursor		kdoctools
+kfilemetadata	pam			kinit
+kinit		qtgraphicaleffects	kio
+libkscreen	qtquickcontrols		knotifyconfig
+libxml2-utils	qtquickcontrols2	libgp
+		wayland			libraw1394-dev,
+pam					Libudev-dev (systemd)
+					-libxi
+					libxkbcommon
+					libxkbfile
+					lm-sensors
+					pam
+					libdbusmenu-qt
+					qttools5
+					wayland
+					xapian-core
+					xcb-proto
+
+
+Find dependencies
+==================================================
+
+Several places where to find required packages:
+
+https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/x11/desktop-managers/plasma5.nix
+
+https://github.com/NixOS/nixpkgs/tree/master/pkgs/desktops/plasma-5
+
+https://apps.fedoraproject.org/packages/
+
+https://cgit.kde.org/sysadmin/ci-tooling.git/tree/system-images/suse-qt511/Dockerfile
+
+
+Check if the tests for a packages actually passes at KDE
+============================================================
+
+For some package versions text fail even at KDE jenkins. THus it is worth
+spending checking prior to spending time on fixing:
+
+https://build.kde.org/   # jenkins
+-> search project
+-> go to last passing build
+-> "show unformated"
+
+
+Random Snippets
+========================
+
+build:/gnu/store/8vsh99baxxsh2qbf0c0g77hiyzk7nvj0-qemu-image
+
+Run Plasma in a Test-System (QEMU)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Hint: I had had some helper scripts to run within the VM to simplify testing,
+but these got lsot somewhen.
+
+# build the VM
+./pre-inst-env guix system vm-image --image-size=7G  --fallback \
+    --share=$PWD=/exchange \
+    gnu/system/examples/plasma.tmpl
+# copy generated system-image and make it writeable (so you can change
+# things within the system without rebuilding the system-image, e.g.
+# build packages)
+cp  … /var/tmp/plasma-image
+chmod +w /var/tmp/plasma-image
+# garbace-collect generated system-image
+guix gc -d …
+# run the system
+qemu-system-x86_64 -m 2048 -smp 2 -enable-kvm -cpu host \
+  -net nic,model=virtio -net user,hostfwd=tcp::10022-:22 \
+  -virtfs local,path="$PWD",security_model=none,mount_tag="TAG_PWD" \
+  -virtfs local,path=/gnu/store,security_model=none,mount_tag="TAG_STORE" \
+  -drive file=/var/tmp/plasma-image &
+
+
+Find desktop-file defining a property
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+find /gnu/store/* -name \*.desktop 2>/dev/null | \
+   xargs grep -rl PropertyDef::X-KDE-DBus-ModuleName
+
+
+Build packages within the VM
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# log into the VM (port 10022 is forwarded to port 22, see above)
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p 10022 \
+    root@localhost
+# make your development environment available within the VM (this needs to
+# keep the same absolute path to avois re-configure
+
+mkdir -p /exchange /path/of/your/develop/env/on/the/host
+mount -t 9p TAG_PWD /exchange
+mount -t none -o bind /exchange /path/of/your/develop/env/on/the/host
+
+cd /exchange
+guix environment guix
+./configure --localstatedir=/var
+
+./pre-inst-env guix package -p /run/current-system -r ksysguard \
+   --substitute-urls="http://YOUR_HOST:8181 https://berlin.guixsd.org https://mirror.hydra.gnu.org"
+
+
+Unknon snippet (maybe for qscintilla)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+QSCI=$(for i in $(echo $CPLUS_INCLUDE_PATH | sed 's/:/ /g') ; do echo $i ; \
+done | grep qscin | sed 's!/include!!')
+echo $QSCI
+PYQT=$(for i in $(echo $LIBRARY_PATH | sed 's/:/ /g') ; do echo $i ; \
+done | grep pyqt | sed 's!/lib!!')
+echo $PYQT
+python3 configure.py \
+--pyqt=PyQt5 --qsci-incdir=$QSCI/include --qsci-libdir=$QSCI/lib \
+--pyqt-sipdir=$PYQT/share/sip
+
+
+Pattern for matching a store-name prefix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/gnu/store/................................-
+
+
+Notes about packages
+=====================================
+
+plasma-sdk 5.13.5
+---------------------------
+
+FAIL!  : TestFilters::testDateBasedFilters(date01) Compared values are not the same
+   Actual   (result): ""
+   Expected (output): "01"
+   Loc: [/tmp/guix-build-grantlee-5.1.0.drv-0/grantlee-5.1.0/templates/tests/testfilters.cpp(117)]
+FAIL!  : TestFilters::testDateBasedFilters(date02) Compared values are not the same
+   Actual   (result): ""
+   Expected (output): "Jan. 1, 2008"
+   Loc: [/tmp/guix-build-grantlee-5.1.0.drv-0/grantlee-5.1.0/templates/tests/testfilters.cpp(117)]
+
+
+plasma-workspace 5.13.5
+---------------------------
+-- The following RUNTIME packages have not been found:
+
+ * QtQuick.Controls-QMLModule, QML module 'QtQuick.Controls' is a runtime dependency.
+ * QtQuick.VirtualKeyboard-QMLModule, QML module 'QtQuick.VirtualKeyboard' is a runtime dependency.
+ * org.kde.plasma.core-QMLModule, QML module 'org.kde.plasma.core' is a runtime dependency.
+ * org.kde.plasma.components-QMLModule, QML module 'org.kde.plasma.components' is a runtime dependency.
+
+-- The following OPTIONAL packages have not been found:
+
+ * libhybris, libhybris allows to run bionic-based HW adaptations in glibc systems., <https://github.com/libhybris/libhybris>
+   Required for libhybris backend
+ * Libcap, Capabilities are a measure to limit the omnipotence of the superuser., <https://sites.google.com/site/fullycapable/>
+   Needed for running kwin_wayland with real-time scheduling policy
+
+
+
+breeze-gtk
+---------------
+
+Check if this nix-patch is required (may already be implemented in guix,
+though)
+
+  postPatch = ''
+    sed -i cmake/FindGTKEngine.cmake \
+      -e "s|\''${KDE_INSTALL_FULL_LIBDIR}|${getLib gtk2}/lib|"
+  '';
+  cmakeFlags = [ "-DWITH_GTK3_VERSION=3.22" ];
+  
+
+
+kdeinit5 (or such)
+-----------------------
+
+"/run/current-system/profilelib/libkdeinit5_kaccess.so" (missing slash in
+front of "lib")
+
+
+kcm, kcmshell or libkdeinit5_kded5.so
+-----------------------------------------
+
+In some programm that tries to load plugins "kcm_access" (.so), "kcm_style",
+"kcm_kgamma". This program might be kcm, kcmshell or libkdeinit5_kded5.so
+
+   not found: kcminit
+    
+
+klauncher
+------------------
+
+* /gnu/store/…-qtbase-5.9.2/lib/qt5/plugins/platforms/libqxcb.so
+  not found:
+    /gnu/store/…-kinit-5.37.1/lib/libexec/kf5/platforms/.
+    <<
+  /gnu/store/…-qtbase-5.9.2/lib/qt5/plugins/platforms/libqxcb.so
+
+  Seems to occur also in other e.g. libkdeinit5_kded5.so (if I spotted the
+  correct process)
+
+  Similar later with:
+
+  /gnu/store/…-plasma-integration-5.10.4/lib/qt5/plugins/platformthemes/KDEPlasmaPlatformTheme.so
+  not found:
+    /gnu/store/…-qtbase-5.9.2/lib/qt5/plugins/platformthemes/.
+    /gnu/store/…-kinit-5.37.1/lib/libexec/kf5/platformthemes/.
+    <<
+  /gnu/store/…-plasma-integration-5.10.4/lib/qt5/plugins/platformthemes/KDEPlasmaPlatformTheme.so
+
+  /gnu/store/…-qtbase-5.9.2/lib/qt5/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so
+  not found:
+    /gnu/store/…-kinit-5.37.1/lib/libexec/kf5/platforminputcontexts/.
+    <<
+  /gnu/store/…-qtbase-5.9.2/lib/qt5/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
+
+
+
+
+* Tries loading libXcursor.so.1 via RUNPATH, but it is not listed there
+
+  /gnu/store/…-xcb-util-0.4.0/lib/libxcb-util.so.1
+  /run/user/0
+  /run/user/0
+  /tmp/xauth-0-_0
+  not found:
+    /gnu/store/…-glibc-2.25/lib/libXcursor.so.1
+    /gnu/store/…-gcc-5.4.0-lib/lib/libXcursor.so.1
+    …
+
+  Other applications share the same behaviour. Which means, this is a common
+  issue.
+
+  Maybe caused by qtbase-5.9.2/lib/libQt5XcbQpa.so.5.9.2
+
+* not found:
+    /gnu/store/…-kinit-5.37.1/lib/libexec/kf5/drkonqi
+    /gnu/store/…-qtbase-5.9.2/lib/qt5/libexec/drkonqi
+    /gnu/store/…-kcrash-5.37.0/lib/libexec/drkonqi
+    <<
+   stemms from kdebase4-runtime-16.12.3-1.mga6.src.rpm
+
+
+kwin 5.13.5
+---------------------------
+
+kwin-testVirtualKeyboardDBus

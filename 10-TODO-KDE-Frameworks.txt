@@ -1,0 +1,302 @@
+===================
+KDE-Frameworks
+===================
+
+Update Instructions
+==========================
+
+To update all KDE Frameworks packages process as follows:
+
+- sh ./kde-update    # (adjust!) or run "guix download" manually
+- sh ./kde-build.sh  # (adjust!)
+- ./kde-filter-buildlog.py # run one-by-one?
+
+
+Status Unit-tests 5.49.0
+===================================
+
+  extra-cmake-modules   ✔
+
+  ;; Tier 1
+  attica        	✔ (1 test requiring network access disabled)
+  bluez-qt      	tests hang
+  breeze-icons  	✔
+  kapidox		✔ (no test-suite)
+  karchive		✔
+  kcodecs		✔
+  kconfig		✔
+  kcoreaddons   	1 blacklisted
+  kdbusaddons		✔
+  kdnssd		✔
+  kguiaddons		✔
+  ki18n			✔
+  kidletime		✔
+  kirigami      	✔
+  kitemmodels		✔
+  kitemviews		✔
+  kplotting		✔
+  ksyntaxhighlighting	✔
+  kwayland      	tests require weston to run, weston requires wayland flags in mesa
+  kwidgetsaddons	✔
+  kwindowsystem 	2 blacklisted
+  modemmanager-qt	✔
+  networkmanager-qt	✔
+  oxygen-icons		✔
+  prison		✔
+  qqc2-desktop-style	✔
+  solid			✔
+  sonnet		✔
+  threadweaver		✔
+
+  ;; Tier 2
+  kactivities		✔
+  kauth			✔
+  kcompletion		✔
+  kcrash		✔
+  kdoctools		✔
+  kfilemetadata		1 blacklisted (weil Container getxattr nicht unterstützt)
+  kimageformats		1 blacklisted (did also fail at the KDE CI farm)
+  kjobwidgets		✔
+  knotifications	✔
+  kpackage      	✔
+  kpty  		1/1 tests fail.
+  kunitconversion	1 tests disabled, FIXME: re-enable if fixed upstream
+
+  ;; Tier 3
+  baloo			✔ (but one test fails on i686 and aarch64)
+  kactivities-stats	✔
+  kbookmarks		✔
+  kcmutils		✔
+  kconfigwidgets	✔
+  kdeclarative		✔
+  kded			✔
+  kdesignerplugin	✔
+  kdesu			✔
+  kdewebkit		✔
+  kemoticons		✔
+  kglobalaccel		✔
+  kiconthemes		✔
+  kinit			✔
+  kio			41/50 tests fail.
+  knewstuff     	✔
+  knotifyconfig		✔
+  kparts		✔
+  kpeople		1/3 tests fail.
+  krunner       	2 blacklisted
+  kservice      	6/10 tests fail - findet service-defs nicht check-after-install???
+  ktexteditor   	5/66 tests fail:
+  ktextwidgets		✔
+  kwallet		✔
+  kxmlgui       	1/5 tests fail.
+  kxmlrpcclient		✔
+  plasma-framework      9/15 tests fail. (service types not found)
+
+  ;; Tier 4
+  kde-frameworkintegration	✔      
+  kdelibs4support       1 blacklisted, 2 disabled
+  khtml			✔
+  kjs			✔
+  kjsembed		✔
+  kmediaplayer		✔
+  kross			✔
+
+
+
+Find dependencies KDE uses for building
+==================================================
+
+https://cgit.kde.org/sysadmin/ci-tooling.git/tree/system-images/suse-qt511/Dockerfile
+
+
+How does the test-environemnt KDE uses look like?
+=================================================
+
+Build-Specs are in
+<https://cgit.kde.org/sysadmin/ci-tooling.git/tree/build-specs>
+
+Environment is build using
+<https://cgit.kde.org/sysadmin/ci-tooling.git/tree/helpers/run-tests.py>:
+
+  - in-source-build?  (default: False)
+  - XDG_RUNTIME_DIR='/tmp/runtime-kdeci/' + mkdir $XDG_RUNTIME_DIR
+  - force-inject-asan? (default: False)
+    Address Sanitizer library used for -fsanitize=address instrumented programs
+     -> LD_PRELOAD=...
+  - 'QT_LOGGING_RULES' = "*.debug=true" ;; make Qt noisy about debug output to make debugging tests easier
+  - 'QT_LOGGING_TO_CONSOLE' = '1'  ;; force Qt to print to stderr
+  - 'QT_FORCE_STDERR_LOGGING' = '1'
+  - 'CTEST_OUTPUT_ON_FAILURE' = '1'
+  - setup-x-environment? (default: True)
+    -> Xvfb :90 -ac -screen 0 1600x1200x24+32
+    -> DISPLAY=:90
+    -> sleep(5) ; Give Xvfb a few moments to get on it's feet
+    -> openbox
+  - launch-dbus-session? (default: True)
+    -> export $(dbus-launch)
+  - Wenn usingInstall+'share/mime' existiert
+    -> update-mime-database DIRNAME
+  - kdeinit5 && sleep(5)
+  - ctest -T test
+  
+
+Snippets for Tests
+===========================
+
+These are commonly used snippets to make the tests pass in guix
+
+         (add-before 'build 'setup-build
+           (lambda* (#:key inputs #:allow-other-keys)
+	     ;; FIXME build phase doesn't find parts.desktop
+             (setenv "XDG_DATA_DIRS"
+                     (string-append (assoc-ref inputs "kparts") "/share"))
+
+
+	`(#:configure-flags
+       `(,(string-append "-DKDE_INSTALL_DATADIR="
+                         (assoc-ref %outputs "out") "/share"))
+         (add-before 'configure 'patch-cmakelists
+           (lambda _
+             (substitute* "processcore/CMakeLists.txt"
+               (("KAUTH_HELPER_INSTALL_DIR") "KDE_INSTALL_LIBEXECDIR"))))
+
+         ;;   (assoc-ref %standard-phases 'check))
+         (add-before 'check 'check-setup
+           (lambda* (#:key inputs #:allow-other-keys)
+             (setenv "HOME" (getcwd))
+             (setenv "TMPDIR" "/tmp")
+             (setenv "CTEST_OUTPUT_ON_FAILURE" "1") ; enable debug output
+             ;; make Qt render "offscreen", required for tests
+             (setenv "QT_QPA_PLATFORM" "offscreen")
+             (setenv "QT_PLUGIN_PATH"
+                      (string-append out "/lib/plugins:"
+                                     (getenv "QT_PLUGIN_PATH")))
+             (setenv "QT_DEBUG_PLUGINS" "1") ; important helper!
+	     (setenv "QML_IMPORT_TRACE" "1") ;; Trace QML import issues
+             (setenv "XDG_RUNTIME_DIR" "/tmp")
+             (setenv "XDG_DATA_DIRS"
+                     (string-append
+                      (assoc-ref inputs "shared-mime-info") "/share:"
+                      (assoc-ref inputs "kjobwidgets") "/share:"
+		      (getenv "XDG_DATA_DIRS")))
+             (setenv "TZDIR"    ; KDateTimeTestsome needs TZDIR
+                     (string-append (assoc-ref inputs "tzdata")
+                                    "/share/zoneinfo"))
+             #t))
+         (add-before 'check 'start-xorg-server
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; The test suite requires a running X server.
+             (system (string-append (assoc-ref inputs "xorg-server")
+                                    "/bin/Xvfb :1 &"))
+             (setenv "DISPLAY" ":1")
+             #t))
+         (replace 'check
+           (lambda _
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             (setenv "CTEST_OUTPUT_ON_FAILURE" "1") ; enable debug output
+	     (use-modules (ice-9 rdelim))
+	     (use-modules (ice-9 popen))
+	     (use-modules (ice-9 match))
+	     (let ((port (open-input-pipe "dbus-launch")))
+	       (do ((line (read-line port) (read-line port)))
+	           ((eof-object? line))
+		   (match (string-split line (char-set #\=))
+		 	   ((varname value)
+			   (setenv varname value))
+	   		   (_ #t))) ;; skip any no-matching line
+               (close-pipe port))
+             (invoke
+		"strace" "-o" "trace.txt" "-f" "-e" "trace=file"
+		"dbus-launch"
+                "ctest" ".")))
+
+         ;; GuixSD's polkit service stores actions under
+	 ;; /etc/polkit-1/actions.
+         (substitute* "src/polkitbackend/polkitbackendinteractiveauthority.c"
+            (("PACKAGE_DATA_DIR \"/polkit-1/actions\"")
+              "PACKAGE_SYSCONF_DIR \"/polkit-1/actions\""))
+
+
+export $(dbus-launch)
+/usr/bin/strace -o /tmp/trace.txt -f -e trace=file \
+ctest --output-on-failure -R runnercontexttest .
+
+
+
+Patches from NixOS
+===================
+
+
+2018-02-13
+
+
+kinit/kinit-libpath.patch -- PRÜFEN
++                // Try to load the library relative to the active profiles.
++                QByteArrayList profiles = qgetenv("GUIX_KF5INIT_LIB_PATH").split(':');
++                for (const QByteArray &profile: profiles) {
++                    if (!profile.isEmpty()) {
++                        l.setFileName(QFile::decodeName(profile) + QStringLiteral("/") + libpath);
++                        if (l.load()) break;
++                    }
++		}
+
+
+extra-cmake-modules -- no need, we just replace "lib64" by "lib"
+kauth -- implemented since dc2ef09ad79803f2cc4828ef18927ca0e75e24fa
+
+kcmutils -- done
+kconfigwidgets -- done
+kdelibs4support -- comment added
+
+kdoctools -- NixOS doesn't search for package DocBookXML. Can't see any reason
+	     why we should adopt this
+
+kfilemetadata -- NixOS installs .cmake files into the @dev@ package, we don't
+	      	 do so. Thus we do not need 'cmake-install-paths.patch'.
+
+kiconthemes -- NixOS changes the defaut icon theme, we keep what KF5 wants.
+
+kinit/kdeinit-extra_libs.patch -- done
+kinit/kinit-libpath.patch -- PRÜFEN
+
+kinit/start_kdeinit-path.patch -- don't need
+-> prüfen: CMAKE_INSTALL_FULL_LIBEXECDIR_KF5 "/start_kdeinit"
+   /gnu/store/... muss in executable start_kdeinit_wrapper sein 
+
+kio/kio-debug-module-loader.patch -- implemented since
+				  bb4fcf7ba6c361f45215c0200515b7270d93dbdc
+kio/samba-search-path.patch  -- done
+
+kpackage -- done
+kservice -- done
+
+kwindowsystem -- NixOS has a patch to find plugins at some special place. We
+	      	 don't need this, since we use Qt-mechanism ($QT_PLUGIN_PATH).
+
+
+kdelibs4support
+---------------------
+FAIL!  : KStandarddirsTest::testResourceDirs() 'dir.endsWith("xdg/") || dir.endsWith("share/config/") || dir.endsWith(".kde-unit-test/xdg/config/")' returned FALSE. (/tmp/guix-build-kdelibs4support-5.39.0.drv-0/build/.kde-unit-test/xdg/config/./)
+   Loc: [/tmp/guix-build-kdelibs4support-5.39.0.drv-0/kdelibs4support-5.39.0/autotests/kstandarddirstest.cpp(113)]
+FAIL!  : KStandarddirsTest::testFindAllResources() 'dbusInterfaceFiles.count() > 20' returned FALSE. ()
+   Loc: [/tmp/guix-build-kdelibs4support-5.39.0.drv-0/kdelibs4support-5.39.0/autotests/kstandarddirstest.cpp(183)]
+FAIL!  : KStandarddirsTest::testFindResourceDir() '!configDir.isEmpty()' returned FALSE. ()
+   Loc: [/tmp/guix-build-kdelibs4support-5.39.0.drv-0/kdelibs4support-5.39.0/autotests/kstandarddirstest.cpp(289)]
+
+
+
+Notes
+===================
+
+
+KAUTH_POLICY_FILES_INSTALL_DIR   kauth
+/gnu/store/…-kauth-5.27.0/lib64/cmake/KF5Auth/KF5AuthConfig.cmake
+KDE4_AUTH_POLICY_FILES_INSTALL_DIR kdeliibs4support
+/gnu/store/…-kdelibs4support-5.27.0/lib64/cmake/KDELibs4/KDELibsDependencies.cmake
+set(KAUTH_POLICY_FILES_INSTALL_DIR "/gnu/store/4zv2cq8gh6jkvwl2d7mbq9llvx9ljdm1-kauth-5.27.0/share/polkit-1/actions")
+
+src/ConfigureChecks.cmake:    set(KAUTH_POLICY_FILES_INSTALL_DIR ${POLKITQT_POLICY_FILES_INSTALL_DIR} CACHE STRING
+
+set(KAUTH_POLICY_FILES_INSTALL_DIR "@KAUTH_POLICY_FILES_INSTALL_DIR@")
+
+muss was werden wie:
+include("${CMAKE_CURRENT_LIST_DIR}/KF5AuthTargets.cmake")
