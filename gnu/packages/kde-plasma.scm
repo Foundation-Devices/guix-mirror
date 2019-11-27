@@ -49,6 +49,7 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages pulseaudio)
+  #:use-module (gnu packages python)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xdisorg)
@@ -155,6 +156,41 @@ in KDE.  It contains:
     (description "Artwork, styles and assets for the Breeze visual style for
 the Plasma Desktop.  Breeze is the default theme for the KDE Plasma desktop.")
     (license license:gpl2+)))
+
+(define-public breeze-gtk
+  (package
+    (name "breeze-gtk")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/breeze-gtk-" version ".tar.xz"))
+      (sha256
+       (base32 "1j2nq9yw1ragmgwrz9f6ca4ifpi86qv1bbprdgd2qm2yh7vb44sj"))))
+    ;; TODO: move to gnome.scm?
+    (properties `((upstream-name . "breeze-gtk")))
+    (build-system qt-build-system)
+    (arguments
+     '(#:tests? #f)) ; No 'test' target
+    (native-inputs
+     `(("breeze" ,breeze)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("python" ,python)
+       ("python-pycairo" ,python-pycairo) ; FIXME: needs to be a propagated input?
+       ("sassc" ,sassc)))
+    (inputs
+     `(("qtbase" ,qtbase)))
+    ;; TODO: run-time dependency: GTKEngine (required for GTK 2 theme)
+    (home-page "https://www.kde.org/plasma-desktop")
+    (synopsis "GTK+ theme matching KDE's Breeze theme")
+    (description "A GTK+ theme created to match with the Plasma 5 Breeze
+theme.
+
+To set the theme in Plasma 5, install kde-gtk-config and use System Settings >
+Application Style > GNOME Application Style.  Also make sure to disable “apply
+colors to non-Qt applications“ in System Settings > Colors > Options.")
+    (license license:lgpl2.1+)))
 
 (define-public kdecoration
   (package
