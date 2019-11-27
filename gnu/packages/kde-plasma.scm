@@ -192,6 +192,52 @@ Application Style > GNOME Application Style.  Also make sure to disable “apply
 colors to non-Qt applications“ in System Settings > Colors > Options.")
     (license license:lgpl2.1+)))
 
+(define-public kactivitymanagerd
+  (package
+    (name "kactivitymanagerd")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kactivitymanagerd-" version ".tar.xz"))
+      (sha256
+       (base32 "1c6394bz0n0qgynhiin9q99xazsj2pn2sfisx6c9pn0jd2cs1hgf"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("boost" ,boost)
+       ("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kglobalaccel" ,kglobalaccel)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("kwindowsystem", kwindowsystem)
+       ("kxmlgui", kxmlgui)
+       ("qtbase" ,qtbase)))
+    (home-page "https://invent.kde.org/plasma/kactivitymanagerd")
+    (synopsis "System service to manage user's activities, track the usage patterns etc")
+    (description "When a user is interacting with a computer, there are three
+main areas of contextual information that may affect the behaviour of the
+system: who the user is, where they are, and what they are doing.
+
+*Activities* deal with the last one.  An activity might be \"developing a KDE
+application\", \"studying 19th century art\", \"composing music\" or
+\"watching funny videos\".  Each of these activites may involve multiple
+applications, and a single application may be used in multiple activities (for
+example, most activities are likely to involve using a web browser, but
+different activities will probably involve different websites).
+
+KActivities provides the infrastructure needed to manage a user's activites,
+allowing them to switch between tasks, and for applications to update their
+state to match the user's current activity.  This includes a daemon, a library
+for interacting with that daemon, and plugins for integration with other
+frameworks.")
+    (license license:gpl3+)))
+
 (define-public kdecoration
   (package
     (name "kdecoration")
