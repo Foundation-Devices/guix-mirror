@@ -238,6 +238,47 @@ for interacting with that daemon, and plugins for integration with other
 frameworks.")
     (license license:gpl3+)))
 
+(define-public kde-cli-tools
+  (package
+    (name "kde-cli-tools")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kde-cli-tools-" version ".tar.xz"))
+      (sha256
+       (base32 "1iw9afdyydng6wcxqy9jf6x9dayskzasmq10252j9d70mqr4hc87"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f)) ; TODO: 1/1 fails – propably due to search-path errors
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kactivities" ,kactivities)
+       ("kcmutils" ,kcmutils)
+       ("kconfig" ,kconfig)
+       ("kdeclarative" ,kdeclarative)
+       ("kdesu" ,kdesu)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kinit" ,kinit)
+       ("kio" ,kio)
+       ("kwindowsystem" ,kwindowsystem)
+       ("plasma-workspace" ,plasma-workspace) ;; FIXME
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)
+       ("qtx11extras" ,qtx11extras)))
+    (home-page "https://invent.kde.org/plasma/kde-cli-tools")
+    (synopsis "Tools to use KDE services from the command line")
+    (description "These command line tools enable you to use KDE services such
+as kioslaves, kdesu, QtSVG, kcontrol modules, KDE trader and start
+applications from the command line.")
+    (license (list license:gpl3+ license:gpl2)))) ;; KDE e.V.
+
 (define-public kdecoration
   (package
     (name "kdecoration")
