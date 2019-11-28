@@ -54,6 +54,61 @@
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xorg))
 
+(define-public bluedevil
+  (package
+    (name "bluedevil")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/bluedevil-" version ".tar.xz"))
+      (sha256
+       (base32 "0bgybz7wppavkfdiibij1nb0wj4v6nl3avsh8jxhhv1x7b3y6mz8"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("bluez-qt" ,bluez-qt)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kded" ,kded)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("knotifications" ,knotifications)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kwindowsystem" ,kwindowsystem)
+       ("plasma-framework" ,plasma-framework)
+       ("qtbase" ,qtbase)
+       ;; FIXME: Could NOT find Qt5Qml, Qt5QuickTest
+       ("qtdeclarative" ,qtdeclarative)
+       ("shared-mime-info" ,shared-mime-info)
+       ;; file kservicetypes5/kfileitemaction-plugin.desktop"
+       ;; Required for property type definitions
+       ("kcmutils" ,kcmutils) ;; defines only some of the properties
+       ;; run-time dependencies
+       ("bluez" ,bluez)
+       ("pulseaudio" ,pulseaudio))) ;; more specific: pulseaudio-module-bluetooth
+    (home-page "https://invent.kde.org/plasma/bluedevil")
+    (synopsis "KDE Plasma Bluetooth stack")
+    (description "BlueDevil is a set of components which integrate Bluetooth
+in KDE.  It contains:
+@itemize
+@item A KDE Control Module (KCM) to configure all the Bluetooth-related
+      options.
+@item Integration with the KDE input/output system (KIO), which allows you to
+      discover and explore Bluetooth devices from your favorite file browser.
+@item A wizard to pair your devices and connect directly to services they
+      offer, such as input (mouse, keyboard, Wiimote) and audio (headsets,
+      phones).
+@item A system tray application from where all BlueDevil actions can be done
+      (disconnect devices, send files, configure, etc).
+@item A daemon which listens to incoming requests, for example to receive
+      files or to introduce a requested PIN.
+@end itemize")
+    (license license:gpl3))) ;; KDE e.V.
+
 (define-public breeze
   (package
     (name "breeze")
