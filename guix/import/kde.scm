@@ -139,7 +139,7 @@ Output:
   (define (version->pattern part)
     ;; If a path element might be a version, replace it by a catch-all part
     (if (regexp-exec version-regexp part)
-        "[^/]+"
+        "5\\.19\\.5";;        "[^/]+"
         part))
 
   (let* ((path (uri-path uri))
