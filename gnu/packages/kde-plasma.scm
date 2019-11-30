@@ -532,6 +532,43 @@ Currently the daemon has been ported to Linux, FreeBSD, Irix,
 NetBSD, OpenBSD, Solaris and Tru64 with varying degrees of completion.")
     (license (list license:gpl2 license:gpl2+ license:gpl3)))) ;; KDE e.V.
 
+(define-public kwallet-pam
+  (package
+    (name "kwallet-pam")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kwallet-pam-" version ".tar.xz"))
+      (sha256
+       (base32 "0vwilwji3zvygahbp56h64v508gms2qg5nvh518v70jbcnbyv2kq"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f ;; no make target 'test'
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'fix-socat-path
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; Always install into /lib and not into /lib64.
+             (substitute* "pam_kwallet_init"
+               ((" socat ")
+                (string-append " " (assoc-ref inputs "socat")
+                               "/bin/socat ")))
+             #t)))))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("kwallet" ,kwallet)
+       ("libgcrypt" ,libgcrypt)
+       ("pam" ,linux-pam)
+       ("qtbase" ,qtbase)
+       ("socat" ,socat)))
+    (home-page "https://invent.kde.org/plasma/kwallet-pam")
+    (synopsis "PAM module for KWallet")
+    (description "KWallet (KDE Frameworks 5) integration with PAM")
+    (license license:lgpl2.1+)))
+
 (define-public kwayland-integration
   (package
     (name "kwayland-integration")
