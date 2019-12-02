@@ -41,6 +41,7 @@
   #:use-module (gnu packages game-development)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages ghostscript)
+  #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages golang)
@@ -824,6 +825,47 @@ Usually, FET is able to solve a complicated timetable in maximum 5-20 minutes.
 For extremely difficult timetables, it may take a longer time, a matter of
 hours.")
     (license license:agpl3+)))
+
+(define-public kalgebra
+  (package
+    (name "kalgebra")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kalgebra-" version ".tar.xz"))
+      (sha256
+       (base32 "10y9zygpik418y5781xmy5xysvf3xa97sbzdbch8lrvxwprbmkzm"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("analitza" ,analitza)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("mesa" ,mesa)
+       ("ncurses" ,ncurses)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)
+       ("qtwebengine" ,qtwebengine)
+       ("readline" ,readline)))
+    (home-page "https://kde.org/applications/education/org.kde.kalgebra")
+    (synopsis "Algebraic graphing calculator")
+    (description "KAlgebra is an application that can replace your graphing
+calculator.  It has numerical, logical, symbolic, and analysis features that
+let you calculate mathematical expressions on the console and graphically plot
+the results in 2D or 3D.  KAlgebra is rooted in the Mathematical Markup
+Language (MathML); however, one does not need to know MathML to use KAlgebra.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
 
 (define-public klavaro
   (package
