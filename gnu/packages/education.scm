@@ -30,6 +30,8 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages audio)
+  #:use-module (gnu packages algebra)
+  #:use-module (gnu packages astronomy)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages boost)
@@ -63,6 +65,7 @@
   #:use-module (gnu packages ocaml)
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages perl)
+  #:use-module (gnu packages photo)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-web)
@@ -1313,6 +1316,65 @@ KmPlot also provides numerical and visual features such as filling and
 calculating the area between the plot and the first axis, finding maxima and
 minima, changing function parameters dynamically, and plotting derivatives
 and integral functions.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
+(define-public kstars
+  (package
+    (name "kstars")
+    (version "2.9.8")  ;; Note: 17.08.3 is older then 2.x
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/Attic/"
+                           "kstars/kstars-" version ".tar.xz"))
+       (sha256
+        (base32 "0z9d4c3r1n4i2681zvzs29qa52zaaq5nkkqkbds5skf8djp6rwwm"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("eigen" ,eigen)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(;; TODO: ("cfitsio" ,cfitsio) building this backend fails
+       ("kauth" ,kauth)
+       ("kconfig" ,kconfig)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("knotifykonfig" ,knotifyconfig)
+       ("kplotting" ,kplotting)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kxmlgui" ,kxmlgui)
+       ("libraw" ,libraw)
+       ("mesa" ,mesa)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdatavis3d" ,qtdatavis3d)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtkeychain" ,qtkeychain)
+       ("qtlocation" ,qtlocation)
+       ("qtquickcontrols2" ,qtquickcontrols2)
+       ("qtsvg" ,qtsvg)
+       ("qtwebsockets" ,qtwebsockets)
+       ("wcslib" ,wcslib)
+       ("xplanet" ,xplanet)
+       ("zlib" ,zlib)))
+    ;; TODO: INDI http://www.indilib.org
+    ;; TODO: OpenMP # Needed for LibRaw
+    ;; TODO: AstrometryNet
+    (home-page "https://kde.org/applications/education/org.kde.kstars")
+    (synopsis "Desktop planetarium")
+    (description "KStars provides an accurate graphical simulation of the
+night sky, from any location on Earth, at any date and time.  The display
+includes 130,000 stars, 13,000 deep-sky objects, all 8 planets, the Sun and
+Moon, and thousands of comets and asteroids.  It includes tools for
+astronomical calculations and can control telescopes and cameras.
 
 This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
