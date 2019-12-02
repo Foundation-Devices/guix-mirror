@@ -1727,6 +1727,47 @@ machine, and more.")
 mentored learning for programming languages.")
     (license license:expat)))
 
+(define-public kturtle
+  (package
+    (name "kturtle")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kturtle-" version ".tar.xz"))
+       (sha256
+        (base32 "12jr4sbchjpvc730cy4bp2cccdsd8vw901dgyq0nar8p0pvg4ybb"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("ktextwidgets" ,ktextwidgets)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://kde.org/applications/education/org.kde.kturtle")
+    (synopsis "Educational programming environment")
+    (description "KTurtle aims to make programming as easy and touchable as
+possible, and therefore can be used to teach kids the basics of math, geometry
+and programming.
+
+It provides all programming tools from its user interface.  The programming
+language used is TurtleScript, which is loosely based on Logo.  All commands
+and messages are translated into the user's language.  KTurtle features an
+intuitive syntax highlighting, simple error messages, integrated canvas to
+make drawings, an integrated help, slow-motion and step execution.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public libkeduvocdocument
   (package
     (name "libkeduvocdocument")
