@@ -1144,6 +1144,62 @@ This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
 
+(define-public kiten
+  (package
+    (name "kiten")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kiten-" version ".tar.xz"))
+       (sha256
+        (base32 "0dfz2wdscgn0f967lnhzpyb3iz1iw068x0l10542pm5dh32afs4m"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("karchive" ,karchive)
+       ("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("khtml" ,khtml)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("kjs" ,kjs)
+       ("knotifications" ,knotifications)
+       ("kparts" ,kparts)
+       ("kxmlgui" ,kxmlgui)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)))
+    (home-page "https://kde.org/applications/education/org.kde.kiten")
+    (synopsis "Japanese reference and learning tool")
+    (description "Kiten is a Japanese reference and study tool.  It features
+an English to Japanese and Japanese to English dictionary, as well as a Kanji
+dictionary.  For the Kanji dictionary there are multiple ways supported to
+look up characters.
+
+Kiten features:
+@itemize
+@item Search with english keyword, Japanese reading, or a Kanji string on a
+      list of EDICT files.
+@item Search with english keyword, Japanese reading, number of strokes, grade
+      number, or a Kanji on a list of KANJIDIC files.
+@item Limit searches to only common entries.
+@item Nested searches of results possible.
+@item Learning dialog. (One can even open up multiple ones and have them sync
+      between each other.)
+@item Browse Kanji by grade.
+@item Add Kanji to a list for later learning.
+@item Browse list, and get quizzed on them.
+@end itemize
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
 (define-public klavaro
   (package
     (name "klavaro")
