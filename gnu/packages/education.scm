@@ -1272,6 +1272,52 @@ This package is part of the KDE education module.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
 
+(define-public kmplot
+  (package
+    (name "kmplot")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kmplot-" version ".tar.xz"))
+       (sha256
+        (base32 "0iz61jjr7z0j5bh5nqdv9nbdbiz0jhda89bxjds0n9636q42rifm"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kdelibs4support" ,kdelibs4support)
+       ("kguiaddons" ,kguiaddons)
+       ("ki18n" ,ki18n)
+       ("kparts" ,kparts)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://kde.org/applications/education/org.kde.kmplot")
+    (synopsis "Mathematical function plotter")
+    (description "KmPlot is a powerful mathematical plotter, capable of
+plotting multiple functions simultaneously and combining them into new
+functions.
+
+Cartesian, parametric, and differential functions are supported, as well as
+functions using polar coordinates.  Plots are printed with high precision at
+the correct aspect ratio.  The graphs can be colorized and the view is
+configurable, is scalable, and can be zoomed.
+
+KmPlot also provides numerical and visual features such as filling and
+calculating the area between the plot and the first axis, finding maxima and
+minima, changing function parameters dynamically, and plotting derivatives
+and integral functions.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public ktouch
   (package
     (name "ktouch")
