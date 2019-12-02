@@ -77,6 +77,36 @@
   #:use-module (guix build-system trivial)
   #:use-module (srfi srfi-1))
 
+(define-public analitza
+  (package
+    (name "analitza")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/analitza-" version ".tar.xz"))
+       (sha256
+        (base32 "1qnqqbrjpzndbffjwqlyfqmxxxz04fi3i2g8dx6y8q79z927fzkd"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("eigen" ,eigen)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("qttools" ,qttools)))
+    (inputs
+     `(("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://invent.kde.org/education/analitza")
+    (synopsis "Library to add mathematical features to your program")
+    (description "This library is used by KAlgebra and may be used by other
+software to parse and work with mathematical expressions.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
 (define-public artikulate
   (package
     (name "artikulate")
