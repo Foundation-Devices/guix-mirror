@@ -1055,6 +1055,52 @@ This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
 
+(define-public khangman
+  (package
+    (name "khangman")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/khangman-" version ".tar.xz"))
+       (sha256
+        (base32 "0ljavjbh69qyp2323pqlkibzjkwgddmdjd35m0m5n4nwvnz3l5y7"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdeclarative" ,kdeclarative)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("kxmlgui" ,kxmlgui)
+       ("libkeduvocdocument" ,libkeduvocdocument)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://kde.org/applications/education/org.kde.khangman")
+    (synopsis "Classical hangman game")
+    (description "KHangMan is a game based on the well-known hangman game.  It
+is aimed at children aged six and over.  The game has several categories of
+words to play with, for example: Animals (animals words) and three difficulty
+categories: Easy, Medium and Hard.  A word is picked at random, the letters
+are hidden, and you must guess the word by trying one letter after another.
+Each time you guess a wrong letter, part of a picture of a hangman is drawn.
+You must guess the word before being hanged! You have 10 tries.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public klavaro
   (package
     (name "klavaro")
