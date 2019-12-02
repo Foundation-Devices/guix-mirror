@@ -28,6 +28,7 @@
 (define-module (gnu packages education)
   #:use-module (ice-9 regex)
   #:use-module (gnu packages)
+  #:use-module (gnu packages algebra)
   #:use-module (gnu packages audio)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
@@ -39,16 +40,24 @@
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages game-development)
   #:use-module (gnu packages gettext)
+  #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages golang)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages image)
   #:use-module (gnu packages javascript)
+  #:use-module (gnu packages julia)
   #:use-module (gnu packages kde)
   #:use-module (gnu packages kde-frameworks) ; extra-cmake-modules
+  #:use-module (gnu packages libevent)
+  #:use-module (gnu packages lua)
+  #:use-module (gnu packages markup)
+  #:use-module (gnu packages maths)
   #:use-module (gnu packages mp3)
+  #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages pdf)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
@@ -58,6 +67,7 @@
   #:use-module (gnu packages readline)
   #:use-module (gnu packages sdl)
   #:use-module (gnu packages sqlite)
+  #:use-module (gnu packages statistics)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages video)
@@ -179,6 +189,67 @@ distinctive sound.  These buttons light up randomly, creating the sequence
 that the player must then recall.  If the player is successful in remembering
 the sequence of lights in the correct order, they advance to the next stage,
 where an identical sequence with one extra step is presented.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
+(define-public cantor
+  (package
+    (name "cantor")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/cantor-" version ".tar.xz"))
+      (sha256
+       (base32 "1qj6lmcgmqr110qw2r906b0kp73f9gzvm75ry1gdb77bza5g67x2"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("karchive" ,karchive)
+       ("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("kparts" ,kparts)
+       ("kpty" ,kpty)
+       ("ksyntaxhighlighting" ,ksyntaxhighlighting)
+       ("ktexteditor" ,ktexteditor)
+       ("ktextwidgets" ,ktextwidgets)
+       ("kxmlgui" ,kxmlgui)
+       ("libuv" ,libuv)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("poppler-qt5" ,poppler-qt5)
+       ("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)
+       ("qtxmlpatterns" ,qtxmlpatterns)
+       ;; optional:
+       ("discount" ,discount)
+       ("libspectre" ,libspectre)
+       ;; back-ends:
+       ("analitza" ,analitza)
+       ("gmp" ,gmp)  ;; for libqalculate
+       ("julia" ,julia)
+       ("libqalculate" ,libqalculate)
+       ("lua" ,luajit)
+       ("mpfr" ,mpfr)  ;; for libqalculate
+       ("python" ,python)))
+       ;; TODO: ("r" ,r) ; also requires gfortran
+    (home-page "https://kde.org/applications/education/org.kde.cantor")
+    (synopsis "Front-end for doing Mathematics and Scientific Computing")
+    (description "Cantor is a front-end to powerful mathematics and
+statistics packages.  Cantor integrates them into the KDE Platform and provides
+a nice, worksheet-based, graphical user interface.  It supports environments
+for KAlgebra, Lua, Maxima, R, Sage, Octave, Python, Scilab, and Qalculate!
 
 This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
