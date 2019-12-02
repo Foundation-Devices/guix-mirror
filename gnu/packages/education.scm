@@ -969,6 +969,43 @@ This package is part of the KDE education module")
     (license ;; GPL for programs, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
 
+(define-public kbruch
+  (package
+    (name "kbruch")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kbruch-" version ".tar.xz"))
+       (sha256
+        (base32 "06sbr6wrn4nh69hq96i5rgzbr9g0rc6c54h9g2zpnpff339lnsqi"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kauth" ,kauth)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kxmlgui" ,kxmlgui)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)))
+    (home-page "https://kde.org/applications/education/org.kde.kbruch")
+    (synopsis "Practice calculating with fractions")
+    (description "KBruch is a small program to practice calculating with
+fractions and percentages.  Different exercises are provided for this purpose
+and you can use the learning mode to practice with fractions.  The program
+checks the user's input and gives feedback.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public klavaro
   (package
     (name "klavaro")
