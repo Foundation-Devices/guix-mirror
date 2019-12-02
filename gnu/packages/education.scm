@@ -142,6 +142,48 @@ pronunciation skills by listening to native speakers.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
 
+(define-public blinken
+  (package
+    (name "blinken")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/blinken-" version ".tar.xz"))
+       (sha256
+        (base32 "05dbmh1lk1ag735yiv7vql6fx15lw9a3qihxflzhbfrgng7dsxks"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kauth" ,kauth)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdbusaddons" ,kdbusaddons)
+       ("kguiaddons" ,kguiaddons)
+       ("ki18n" ,ki18n)
+       ("kxmlgui" ,kxmlgui)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("phonon" ,phonon)
+       ("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://kde.org/applications/education/org.kde.blinken")
+    (synopsis "Simon Says memory game")
+    (description "Blinken is based on an electronic game released in 1978,
+which challenges players to remember sequences of increasing length.  On the
+face of the device, there are 4 different color buttons, each with its own
+distinctive sound.  These buttons light up randomly, creating the sequence
+that the player must then recall.  If the player is successful in remembering
+the sequence of lights in the correct order, they advance to the next stage,
+where an identical sequence with one extra step is presented.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public gcompris
   (package
     (name "gcompris")
