@@ -925,6 +925,50 @@ This package is part of the KDE education module.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
 
+(define-public kanagram
+  (package
+    (name "kanagram")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kanagram-" version ".tar.xz"))
+       (sha256
+        (base32 "0bflybrm3kz1p1n6fksihvd8m0h0jj968b2wjz88663bs48jqf6q"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdeclarative" ,kdeclarative)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("libkeduvocdocument" ,libkeduvocdocument)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtspeech" ,qtspeech)
+       ("sonnet" ,sonnet)))
+    (home-page "https://kde.org/applications/education/org.kde.kanagram")
+    (synopsis "Letter order game")
+    (description "Kanagram is a game based on anagrams of words: the puzzle is
+solved when the letters of the scrambled word are put back in the correct
+order.  There is no limit on either time taken, or the amount of attempts to
+solve the word.  It features several included word lists, a hints-and-cheats
+help system, a word list editor, and allows for updating and distributing
+wordlists via KNewStuff.  The interface is scalable and appropriate for
+children.
+
+This package is part of the KDE education module")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public klavaro
   (package
     (name "klavaro")
