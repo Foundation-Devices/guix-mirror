@@ -32,6 +32,7 @@
   #:use-module (gnu packages audio)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages boost)
   #:use-module (gnu packages chemistry)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages curl)
@@ -1096,6 +1097,48 @@ categories: Easy, Medium and Hard.  A word is picked at random, the letters
 are hidden, and you must guess the word by trying one letter after another.
 Each time you guess a wrong letter, part of a picture of a hangman is drawn.
 You must guess the word before being hanged! You have 10 tries.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
+(define-public kig
+  (package
+    (name "kig")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kig-" version ".tar.xz"))
+       (sha256
+        (base32 "0ns4rhk822p7jjqy9wnhkbrbais4ih1viw405rl5r5xlqn9bvsiz"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("boost" ,boost)
+       ("karchive" ,karchive)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kparts" ,kparts)
+       ("ktexteditor" ,ktexteditor)
+       ("kxmlgui" ,kxmlgui)
+       ("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)
+       ("qtxmlpatterns" ,qtxmlpatterns)))
+    (home-page "https://kde.org/applications/education/org.kde.kig")
+    (synopsis "Interactive geometry tool")
+    (description "Kig is an interactive mathematics software for learning and
+teaching geometry.  It allows to explore mathematical figures and concepts
+using the computer and also can serve as a drawing tool for mathematical
+figures.  Constructions can be made with points, vectors, lines, and polygons
+and all elements can be modified directly by using the mouse.  Kig helps
+teachers and students to make conjectures and to understand how to prove
+geometric theorems.
 
 This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
