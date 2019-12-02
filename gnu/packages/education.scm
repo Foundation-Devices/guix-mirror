@@ -1298,3 +1298,36 @@ machine, and more.")
     (description "Commandline client for exercism.io, a free service providing
 mentored learning for programming languages.")
     (license license:expat)))
+
+(define-public libkeduvocdocument
+  (package
+    (name "libkeduvocdocument")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/libkeduvocdocument-" version ".tar.xz"))
+       (sha256
+        (base32 "0kqnhaabfi91clqg7nlnjcybl5ca0p3ysn5zlwhxz1fcjxm83g4w"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     `(("karchive" ,karchive)
+       ("ki18n" ,ki18n)
+       ("kio" ,kio)
+       ("qtbase" ,qtbase)))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'test-setup
+           (lambda _
+             (setenv "HOME" "/tmp")
+             #t)))))
+    (home-page "https://invent.kde.org/education/libkeduvocdocument")
+    (synopsis "Library to parse, convert, and manipulate KVTML files")
+    (description "Library to parse, convert, and manipulate KVTML files and
+older formats including kvtml1, csv, etc.")
+    (license ;; LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
