@@ -32,6 +32,7 @@
   #:use-module (gnu packages audio)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages chemistry)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages databases)
@@ -58,6 +59,7 @@
   #:use-module (gnu packages mp3)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages ocaml)
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
@@ -862,6 +864,62 @@ calculator.  It has numerical, logical, symbolic, and analysis features that
 let you calculate mathematical expressions on the console and graphically plot
 the results in 2D or 3D.  KAlgebra is rooted in the Mathematical Markup
 Language (MathML); however, one does not need to know MathML to use KAlgebra.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
+(define-public kalzium
+  (package
+    (name "kalzium")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kalzium-" version ".tar.xz"))
+       (sha256
+        (base32 "1n1ar12zq2maa4dn5yq7m6l3m60n7c98c460mrd6rp7f73kadnsj"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("eigen" ,eigen)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(;; TODO: ("avogadrolibs" ,avogadrolibs)
+       ;; TODO: facile
+       ("karchive" ,karchive)
+       ("kcodecs" ,kcodecs)
+       ("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("khtml" ,khtml)
+       ("ki18n" ,ki18n)
+       ("kjs" ,kjs)
+       ("kparts" ,kparts)
+       ("kplotting" ,kplotting)
+       ("kunitconversion" ,kunitconversion)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("ocaml" ,ocaml)
+       ("openbabel" ,openbabel)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtscript" ,qtscript)
+       ("qtsvg" ,qtsvg)
+       ("solid" ,solid)))
+    (home-page "https://kde.org/applications/education/org.kde.kalzium")
+    (synopsis "Periodic table of chemistry elements")
+    (description "Kalzium is a program that shows you the Periodic Table of
+Elements.
+
+You can use Kalzium to search for information about the elements or to learn
+facts about the periodic table.  It provides an overview of the important
+data (like melting points, electron affinity, electron negativity, electron
+configuration, radii, mass, ionisation energy), an isotope table, and
+different colored views of the periodic table (separation of the different
+blocks, year simulator, temperature simulator).  It contains tools to
+visualize the spectral lines of each element, a molecular weight calculator, a
+3D molecule editor, and an equation solver for stoichiometric problems.
 
 This package is part of the KDE education module.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
