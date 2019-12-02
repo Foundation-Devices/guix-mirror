@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2016 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2016, 2017 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
+;;; Copyright © 2016, 2017, 2019, 2020, 2021 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2017, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018, 2019, 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
@@ -76,6 +76,41 @@
   #:use-module (guix build-system qt)
   #:use-module (guix build-system trivial)
   #:use-module (srfi srfi-1))
+
+(define-public artikulate
+  (package
+    (name "artikulate")
+    (version "20.12.1")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/release-service/" version
+                          "/src/artikulate-" version ".tar.xz"))
+      (sha256
+       (base32 "1cvpya408r521p9398mk0xn8pb6awqm74qcjy2r0ylx0l6bkv3ca"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("karchive" ,karchive)
+       ("kconfig" ,kconfig)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kirigami" ,kirigami)
+       ("knewstuff" ,knewstuff)
+       ("kxmlgui" ,kxmlgui)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtmultimedia" ,qtmultimedia)
+       ("qtxmlpatterns" ,qtxmlpatterns)))
+    (home-page "https://kde.org/applications/education/org.kde.artikulate")
+    (synopsis "Learning software to improve pronunciation skills")
+    (description "Artikulate is a learning software that helps improving
+pronunciation skills by listening to native speakers.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
 
 (define-public gcompris
   (package
