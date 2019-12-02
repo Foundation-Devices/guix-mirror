@@ -32,8 +32,10 @@
   #:use-module (gnu packages audio)
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages astronomy)
+  #:use-module (gnu packages audio)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages chemistry)
   #:use-module (gnu packages compression)
@@ -1816,6 +1818,76 @@ If you need more advanced language learning features, please try Parley.
 This package is part of the KDE education module.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
+(define-public labplot
+  (package
+    (name "labplot")
+    (version "2.8.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/labplot/" version
+                           "/labplot-" version ".tar.xz"))
+       (sha256
+        (base32 "16h7kv3k08x2a265cx0dxvflgd6d7rk6cbyrqi1cf8ar6fl0jsbj"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         ;; The tests require some locale.
+         (add-before 'check 'set-locales
+           (lambda* (#:key inputs #:allow-other-keys)
+             (setenv "GUIX_LOCPATH"
+                     (string-append (assoc-ref inputs "glibc-locales")
+                                    "/lib/locale"))
+             #t)))))
+    (native-inputs
+     `(("bison" ,bison)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("glibc-locales" ,glibc-locales) ; for tests
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(; FIXME: ("cantor" ,cantor)
+       ("cfitsio" ,cfitsio)
+       ("fftw" ,fftw)
+       ("gettext" ,gettext-minimal)
+       ("gsl" ,gsl)
+       ("hdf5" ,hdf5)
+       ("karchive" ,karchive)
+       ("kcompletion" ,kcompletion)
+       ("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("kparts" ,kparts)
+       ("kservice" ,kservice)
+       ("ksyntaxhighlighting" ,ksyntaxhighlighting)
+       ("ktextwidgets" ,ktextwidgets)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kxmlgui" ,kxmlgui)
+       ;, TODO: libcerf
+       ("lz4" ,lz4)
+       ("netcdf" ,netcdf)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtserialport" ,qtserialport)
+       ("qtsvg" ,qtsvg)
+       ("shared-mime-info" ,shared-mime-info)
+       ("zlib" ,zlib)))
+    (home-page "https://kde.org/applications/education/org.kde.labplot")
+    (synopsis "Interactive graphing and analysis of scientific data")
+    (description "
+LabPlot provides an easy way to create, manage and edit plots.
+It allows you to produce plots based on data from a spreadsheet or on
+data imported from external files.
+
+Plots can be exported to several pixmap and vector graphic formats.")
+    (license license:gpl2+)))
 
 (define-public libkeduvocdocument
   (package
