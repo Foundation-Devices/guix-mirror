@@ -1006,6 +1006,55 @@ This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
 
+(define-public kgeography
+  (package
+    (name "kgeography")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kgeography-" version ".tar.xz"))
+       (sha256
+        (base32 "13jsrfv17lzlwi9rg7i8q2sfl8n19k15qdbv1y5lggykvf8prp8h"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kauth" ,kauth)
+       ("kcodecs" ,kcodecs)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kitemviews" ,kitemviews)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("kxmlgui" ,kxmlgui)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)))
+    (home-page "hhttps://kde.org/applications/education/org.kde.kgeography")
+    (synopsis "Geography Trainer")
+    (description "KGeography is a geography learning tool, which allows you to
+learn about the political divisions of some countries (divisions, capitals of
+those divisions and their associated flags if there are some).
+
+Features:
+@itemize
+@item Browse the maps clicking in a map division to see its name, capital and flag
+@item The game tells you a map division name and you have to click on it
+@item The game tells you a capital and you have to guess the division it belongs to
+@item The game tells you a division and you have to guess its capital
+@item The game shows you a map division flag and you have to guess its name
+@item The game tells you a map division name and you have to guess its flag
+@item The game shows an empty map and you have to place divisions on it one by one
+@end itemize
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
+
 (define-public klavaro
   (package
     (name "klavaro")
