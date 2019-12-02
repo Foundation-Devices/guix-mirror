@@ -1227,6 +1227,51 @@ This package is part of the KDE education module.")
 language and very flexible regarding to new or unknown keyboard layouts.")
     (license license:gpl3+)))
 
+(define-public klettres
+  (package
+    (name "klettres")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/klettres-" version ".tar.xz"))
+       (sha256
+        (base32 "0k66xdkyv6i1zgk9nvz9633pmxygv1bwm4nkbg3izlh4g23rn3kk"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("breeze-icons" ,breeze-icons) ;; default icon-set
+       ("kcompletion" ,kcompletion)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ;("kemoticons" ,kemoticons)
+       ("ki18n" ,ki18n)
+       ("knewstuff" ,knewstuff)
+       ("kwidgetsaddons" ,kwidgetsaddons)
+       ("phonon" ,phonon)
+       ("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://kde.org/applications/education/org.kde.klettres")
+    (synopsis "Learn the alphabet (in a new language)")
+    (description "KLettres aims to help the user to learn an alphabet in a new
+language and then to learn to read simple syllables.  It is meant to help
+learning the very first sounds of a new language, for children or for adults.
+
+There are currently 25 languages available: Arabian, Brazilian Portuguese,
+Czech, Danish, Dutch, British English, US English, Phonics English, French,
+German, Hebrew, Hungarian, Italian, Kannada, Low Saxon, Malayalam, Norwegian
+Bokmål, Punjabi, Luganda, Romanized Hindi, Russian, Spanish, Slovak, Telugu
+and Ukrainian.  KLettres provides a special user interface and themes for
+younger users.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
 (define-public ktouch
   (package
     (name "ktouch")
