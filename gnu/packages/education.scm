@@ -1768,6 +1768,55 @@ This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
 
+(define-public kwordquiz
+  (package
+    (name "kwordquiz")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/kwordquiz-" version ".tar.xz"))
+       (sha256
+        (base32 "1dvbvfwaja4n2v9binj8pbdjizqz4zp49fiq8b4k5jxygcsgnx2p"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kconfig" ,kconfig)
+       ("kconfigwidgets" ,kconfigwidgets)
+       ("kcrash" ,kcrash)
+       ("kdelibs4support" ,kdelibs4support)
+       ("kguiaddons" ,kguiaddons)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kitemviews" ,kitemviews)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("knotifyconfig" ,knotifyconfig)
+       ("kwindowsystem" ,kwindowsystem)
+       ("kxmlgui" ,kxmlgui)
+       ("libkeduvocdocument" ,libkeduvocdocument)
+       ("phonon" ,phonon)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)))
+    (home-page "https://kde.org/applications/education/org.kde.kwordquiz")
+    (synopsis "General purpose flash card trainer")
+    (description "KWordQuiz is a general purpose flash card program.  It can be
+used for vocabulary learning and many other subjects.  It provides an editor
+and five different flashcard quiz modes.
+
+KWordQuiz can open vocabulary data in various formats, including the kvtml
+format used by KDE programs such as Parley, the WQL format used by WordQuiz
+for Windows, the xml.gz format used by Pauker, and CSV text.
+
+If you need more advanced language learning features, please try Parley.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
 (define-public libkeduvocdocument
   (package
     (name "libkeduvocdocument")
