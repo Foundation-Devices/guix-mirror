@@ -1921,3 +1921,54 @@ Plots can be exported to several pixmap and vector graphic formats.")
 older formats including kvtml1, csv, etc.")
     (license ;; LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
+
+(define-public marble
+  (package
+    (name "marble")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/marble-" version ".tar.xz"))
+       (sha256
+        (base32 "0w398igxx7pmyd4bj65ppbxfc4fiz4hsjmcffya88dnxxz73djb5"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (inputs
+     ;; TODO: o5mreader and sgp4 are included as 3rdparty
+     `(("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtlocation" ,qtlocation)
+       ("qtmultimedia" ,qtmultimedia)
+       ("qtsvg" ,qtsvg)
+       ("qtwebkit" ,qtwebkit)  ;; FIXME: qtwebengine
+       ("zlib" ,zlib)))
+    ;; FIXME: tests libmarblewidget-qt5.so.28:  No such file or directory
+    (arguments
+     `(#:configure-flags
+       (list "-DBUILD_MARBLE_TOOLS=NO"))) ;; various tools for e.g. file format conversion
+    (home-page "https://kde.org/applications/education/org.kde.marble")
+    (synopsis "Virtual globe and world atlas")
+    (description "Marble is a virtual globe and world atlas that you can use
+to learn more about Earth: You can pan and zoom around and you can look up
+places and roads.  A mouse click on a place label will provide the respective
+Wikipedia article.
+
+Features:
+@itemize
+@item Rich set of city and street level maps
+@item Search for addresses and places of interest
+@item Unified view for various search backends queried automatically
+@item Pedestrian, bike and motorcar routing with ease — online and offline,
+      with an arbitrary number of via points.
+@item Show clouds and sun shadow, satellites and space stations, updated in real-time.
+@item Time-travel using maps from past centuries.
+@item Maps of the moon and other planets.
+@end itemize
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:lgpl2.0+ license:fdl1.2+))))
