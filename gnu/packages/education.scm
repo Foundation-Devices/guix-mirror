@@ -2068,3 +2068,50 @@ Training Modes:
 This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
+
+(define-public rocs
+  (package
+    (name "rocs")
+    (version "20.08.3")  ;; 20.12.1 doesn't build, see https://invent.kde.org/education/rocs/-/issues/11
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/rocs-" version ".tar.xz"))
+       (sha256
+        (base32 "0bd9x7kh2s4z79ff9byd3ly7k040c574zwrrgi8sq21yd531hxhj"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("boost" ,boost)
+       ("grantlee" ,grantlee)
+       ("karchive" ,karchive)
+       ("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("kdeclarative" ,kdeclarative) ; TODO: remove for >= 20.12.x
+       ("ki18n" ,ki18n)
+       ("kitemviews" ,kitemviews)
+       ("ktexteditor" ,ktexteditor)
+       ("kxmlgui" ,kxmlgui)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtscript" ,qtscript)
+       ("qtsvg" ,qtsvg)
+       ("qtwebkit" ,qtwebkit)
+       ("qtxmlpatterns" ,qtxmlpatterns)))
+    (home-page "https://kde.org/applications/education/org.kde.rocs")
+    (synopsis "Graph theory
+Graph Editor and a Programming Environement")
+    (description "Rocs is a Graph Theory IDE for designing and analyzing
+graph algorithms.  It provides a visual editor for creating graphs, a
+scripting engine to execute algorithms, and several helper tools for
+simulations and experiments.  Algorithms are specified in JavaScript and every
+change in the graph script is reflected on the drawn graph.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
