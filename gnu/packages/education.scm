@@ -2115,3 +2115,53 @@ change in the graph script is reflected on the drawn graph.
 This package is part of the KDE education module.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
+
+(define-public step
+  (package
+    (name "step")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/step-" version ".tar.xz"))
+       (sha256
+        (base32 "05xj4zv4r82nnz5rzb0rmrps4dagnkw9f5lapil5mi1i1gwqfi2k"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("eigen" ,eigen)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("gmp" ,gmp)
+       ("gsl" ,gsl)  ;; TODO: Why does configure not find this?
+       ("kconfig" ,kconfig)
+       ("kcrash" ,kcrash)
+       ("kdelibs4support" ,kdelibs4support)
+       ("khtml" ,khtml)
+       ("knewstuff" ,knewstuff)
+       ("kplotting" ,kplotting)
+       ("libqalculate" ,libqalculate)
+       ("mpfr" ,mpfr)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ;; Optional: lcov and cccc, both are for code coverage
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtsvg" ,qtsvg)
+       ("shared-mime-info" ,shared-mime-info)))
+    ;; Manually-specified variables were not used by the project:
+    ;;     CMAKE_INSTALL_LIBDIR
+    (home-page "https://kde.org/applications/education/org.kde.step")
+    (synopsis "Interactive physical simulator")
+    (description "Step allows you to explore the physical world through
+simulations.  With Step you cannot only learn but feel how physics works!
+
+It works like this: you place some bodies on the scene, add some forces such
+as gravity or springs, then click \"Simulate\" and \"Step\" shows you how your
+scene will evolve according to the laws of physics.  You can change every
+property of the bodies/forces in your experiment (even during simulation) and
+see how this will change evolution of the experiment.
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:lgpl2.0+ license:fdl1.2+))))
