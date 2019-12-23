@@ -2005,3 +2005,66 @@ This package is part of the KDE education module.")
 set of ear training exercises regarding intervals, chords, scales and more.")
     (license ;; GPL for programs, LGPL for libraries, FDL for documentation
      (list license:gpl2+ license:fdl1.2+))))
+
+(define-public parley
+  (package
+    (name "parley")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/parley-" version ".tar.xz"))
+       (sha256
+        (base32 "00xc1dv3fj783brfqh3ggvrwv26m840k35vrx2izzq5lqx2g1p5a"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)))
+    (inputs
+     `(("kcmutils" ,kcmutils)
+       ("kconfig" ,kconfig)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("kiconthemes" ,kiconthemes)
+       ("kparts" ,kparts)
+       ("kio" ,kio)
+       ("knewstuff" ,knewstuff)
+       ("knotifications" ,knotifications)
+       ("kross" ,kross)
+       ("kxmlgui" ,kxmlgui)
+       ("libkeduvocdocument" ,libkeduvocdocument)
+       ("libxml2" ,libxml2)
+       ("libxslt" ,libxslt)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtmultimedia" ,qtmultimedia)
+       ("qtscript" ,qtscript)
+       ("qtsvg" ,qtsvg)
+       ("qtwebchannel" ,qtwebchannel)
+       ("qtwebengine", qtwebengine)
+       ("sonnet" ,sonnet)))
+    (home-page "https://kde.org/applications/education/org.kde.parley")
+    (synopsis "Vocabulary trainer")
+    (description "Parley is a vocabulary trainer.  It helps you to memorize
+your vocabulary, for example when you are trying to learn a foreign language.
+It supports many language specific features, but can be used for other
+learning tasks as well.  It uses the spaced repetition learning method, which
+makes learning optimal.  Vocabulary collections can be downloaded by \"Get Hot
+New Stuff\" or created with the built-in editor.
+
+Training Modes:
+@itemize
+@item Flash Cards
+@item Mixed Letters (order the letters of a word)
+@item Multiple Choice
+@item Written
+@item Language specific trainings: article, comparison forms, conjugations,
+      synonymes/antonyms/paraphrases
+@end itemize
+
+This package is part of the KDE education module.")
+    (license ;; GPL for programs, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
