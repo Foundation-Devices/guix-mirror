@@ -1972,3 +1972,36 @@ Features:
 This package is part of the KDE education module.")
     (license ;; GPL for programs, FDL for documentation
      (list license:lgpl2.0+ license:fdl1.2+))))
+
+(define-public minuet
+  (package
+    (name "minuet")
+    (version "20.12.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://kde/stable/release-service/" version
+                           "/src/minuet-" version ".tar.xz"))
+       (sha256
+        (base32 "13jlz2m57x379zyv4x5zk2h6jc0qcz1zymkyrzs431bfmhyhdna2"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("kdoctools" ,kdoctools)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("fluidsynth" ,fluidsynth)
+       ("kcoreaddons" ,kcoreaddons)
+       ("kcrash" ,kcrash)
+       ("ki18n" ,ki18n)
+       ("oxygen-icons" ,oxygen-icons) ;; default icon set
+       ("qtbase" ,qtbase)
+       ("qtdeclarative" ,qtdeclarative)
+       ("qtquickcontrols2" ,qtquickcontrols2)
+       ("qtsvg" ,qtsvg)))
+    (home-page "https://kde.org/applications/education/org.kde.minuet")
+    (synopsis "Music education and training")
+    (description "Minuet is an application for music education.  It features a
+set of ear training exercises regarding intervals, chords, scales and more.")
+    (license ;; GPL for programs, LGPL for libraries, FDL for documentation
+     (list license:gpl2+ license:fdl1.2+))))
