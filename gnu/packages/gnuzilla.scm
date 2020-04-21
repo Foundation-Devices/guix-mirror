@@ -14,6 +14,7 @@
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2019, 2020 Adrian Malacoda <malacoda@monarch-pass.net>
 ;;; Copyright © 2020 Jonathan Brielmaier <jonathan.brielmaier@web.de>
+;;; Copyright © 2020 Kei Kebreau <kkebreau@posteo.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -412,6 +413,89 @@ in C/C++.")
        ("perl" ,perl)
        ("pkg-config" ,pkg-config)
        ("python" ,python-2)))))
+
+(define-public mozjs-68
+  ;; No releases yet at <https://archive.mozilla.org/pub/spidermonkey/releases/>.
+  ;; While we could take a snapshot of the complete mozilla-esr60 repository at
+  ;; <https://treeherder.mozilla.org/#/jobs?repo=mozilla-esr68&filter-searchStr=sm-tc>,
+  ;; we take the Debian version instead, because it is easier to work with.
+  (package
+    (inherit mozjs-60)
+    (version "68.6.0-2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://salsa.debian.org/gnome-team/mozjs68.git")
+                    (commit (string-append "debian/" version))))
+              (file-name (git-file-name "mozjs" version))
+              (sha256
+               (base32
+                "1iwn19sni8pgkn2p1l4gj4skr2zvmrpl0cfgdknmvxfrvwyfb4dx"))))
+    (arguments
+     `(#:tests? #f ; FIXME: all tests pass, but then the check phase fails anyway.
+       #:test-target "check-jstests"
+       #:configure-flags
+       `("--enable-ctypes"
+         "--enable-optimize"
+         "--enable-readline"
+         "--enable-shared-js"
+         "--enable-system-ffi"
+         "--with-system-nspr"
+         "--with-system-zlib"
+         "--with-system-icu"
+         "--with-intl-api"
+         ;; This is important because without it gjs will segfault during the
+         ;; configure phase.  With jemalloc only the standalone mozjs console
+         ;; will work.
+         "--disable-jemalloc"
+         ;; We must specify the clang paths manually, because otherwise the
+         ;; Mozilla build system looks in the directories returned by
+         ;; llvm-config --bindir and llvm-config --libdir, which return paths
+         ;; in the llvm package where clang is not found.
+         ,(string-append "--with-clang-path="
+                         (assoc-ref %build-inputs "clang")
+                         "/bin/clang")
+         ,(string-append "--with-libclang-path="
+                         (assoc-ref %build-inputs "clang")
+                         "/lib"))
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+           (lambda* (#:key inputs outputs configure-flags #:allow-other-keys)
+             ;; The configure script does not accept environment variables as
+             ;; arguments.  It also must be run from a different directory,
+             ;; but not the root directory either.
+             (let ((out (assoc-ref outputs "out")))
+               (mkdir "run-configure-from-here")
+               (chdir "run-configure-from-here")
+               (setenv "SHELL" (which "sh"))
+               (setenv "CONFIG_SHELL" (which "sh"))
+               (setenv "AUTOCONF" (string-append (assoc-ref inputs "autoconf")
+                                                 "/bin/autoconf"))
+
+               (apply invoke "../js/src/configure"
+                      (cons (string-append "--prefix=" out)
+                            configure-flags))
+               #t)))
+         (add-after 'unpack 'disable-broken-tests
+           (lambda _
+             ;; This test assumes that /bin exists and contains certain
+             ;; executables.
+             (delete-file "js/src/tests/shell/os.js")
+             #t)))))
+    (native-inputs
+     `(("autoconf" ,autoconf-2.13)    ; required for "--localdir" flag to work
+       ("automake" ,automake)
+       ("which" ,which)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python)
+       ("python-2" ,python-2)
+       ("rust" ,rust)
+       ("cargo" ,rust "cargo")
+       ("rust-cbindgen" ,rust-cbindgen)
+       ("llvm" ,llvm)
+       ("clang" ,clang)))))
 
 (define mozilla-compare-locales
   (origin
