@@ -2555,21 +2555,43 @@ GNOME and KDE desktops to the icon names proposed in the specification.")
     (description "Icons for the GNOME desktop.")
     (license license:lgpl3))) ; or Creative Commons BY-SA 3.0
 
-;; gnome-icon-theme was renamed to adwaita-icon-theme after version 3.12.0.
 (define-public adwaita-icon-theme
-  (package (inherit gnome-icon-theme)
+  (package
     (name "adwaita-icon-theme")
-    (version "3.34.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "025rj1fskw1y448hiar4a9icyzpyr242nlh9xhsmyp8jb71dihp7"))))
+    (version "3.36.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32
+         "0kgiq712lfidd81yzx0yk7qwlj3q8cymp6npnxyzsk844y353674"))))
+    (build-system glib-or-gtk-build-system)
+    (arguments
+     '(#:configure-flags
+       ;; Don't create 'icon-theme.cache'.
+       (let*
+           ((coreutils (assoc-ref %build-inputs "coreutils"))
+            (true (string-append coreutils "/bin/true")))
+         (list
+          (string-append "GTK_UPDATE_ICON_CACHE=" true)))))
     (native-inputs
-     `(("gtk-encode-symbolic-svg" ,gtk+ "bin")))))
+     `(("gtk+:bin" ,gtk+ "bin")
+       ("icon-naming-utils" ,icon-naming-utils)
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)
+       ("python-wrapper" ,python-wrapper)))
+    (synopsis "GNOME icon theme")
+    (description "The standard icon theme for GNOME desktop environment.")
+    (home-page "https://wiki.gnome.org/Personalization")
+    (license
+     ;; Any one of the following licenses can be chosen.
+     (list
+      license:cc-by-sa3.0
+      license:lgpl3+))))
 
 (define-public tango-icon-theme
   (package
