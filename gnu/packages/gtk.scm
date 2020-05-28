@@ -94,30 +94,33 @@
 
 (define-public atk
   (package
-   (name "atk")
-   (version "2.34.1")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version)  "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1jwp16r6p5z66k4b2v8zlzhyshhwlmyi27ippkrgqr8jsary7w6l"))))
-   (build-system meson-build-system)
-   (propagated-inputs `(("glib" ,glib))) ; required by atk.pc
-   (native-inputs
-    `(("pkg-config" ,pkg-config)
-      ("gettext" ,gettext-minimal)
-      ("glib" ,glib "bin")                               ; glib-mkenums, etc.
-      ("gobject-introspection" ,gobject-introspection))) ; g-ir-compiler, etc.
-   (synopsis "GNOME accessibility toolkit")
-   (description
-    "ATK provides the set of accessibility interfaces that are implemented
-by other toolkits and applications.  Using the ATK interfaces, accessibility
-tools have full access to view and control running applications.")
-   (license license:lgpl2.0+)
-   (home-page "https://developer.gnome.org/atk/")))
+    (name "atk")
+    (version "2.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1217cmmykjgkkim0zr1lv5j13733m4w5vipmy4ivw0ll6rz28xpv"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t))  ; To wrap binaries and/or compile schemas.
+    (native-inputs
+     `(("gettext" ,gettext-minimal)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)))
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "GNOME accessibility toolkit")
+    (description "ATK provides the set of accessibility interfaces that are
+implemented by other toolkits and applications.  Using the ATK interfaces,
+accessibility tools have full access to view and control running applications.")
+    (home-page "https://wiki.gnome.org/Accessibility")
+    (license license:lgpl2.1+)))
 
 (define-public cairo
   (package
