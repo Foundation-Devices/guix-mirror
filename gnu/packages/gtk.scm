@@ -628,72 +628,86 @@ in the GNOME project.")
 
 (define-public at-spi2-core
   (package
-   (name "at-spi2-core")
-   (version "2.34.0")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version)  "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1ihixwhh3c16q6253qj9gf69741rb2pi51822a4rylsfcyywsafn"))))
-   (build-system meson-build-system)
-   (outputs '("out" "doc"))
-   (arguments
-    '(#:configure-flags
-      (list "-Ddocs=true")
-      #:phases
-      (modify-phases %standard-phases
-        (add-after 'unpack 'set-documentation-path
-          (lambda* (#:key outputs #:allow-other-keys)
-            ;; Ensure that the cross-references point to the "doc" output.
-            (substitute* "doc/libatspi/meson.build"
-              (("docpath =.*")
-               (string-append "docpath = '" (assoc-ref outputs "doc") "/share/gtk-doc/html'\n")))
-            #t))
-        (add-before 'install 'prepare-doc-directory
-          (lambda* (#:key outputs #:allow-other-keys)
-            (mkdir-p (string-append (assoc-ref outputs "doc") "/share"))
-            #t))
-        (add-after 'install 'move-documentation
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((out (assoc-ref outputs "out"))
-                  (doc (assoc-ref outputs "doc")))
-              (copy-recursively
-               (string-append out "/share/gtk-doc")
-               (string-append doc "/share/gtk-doc"))
-              (delete-file-recursively
-               (string-append out "/share/gtk-doc")))
-            #t))
-        (add-after 'install 'check
-          (lambda _
-            (setenv "HOME" (getenv "TMPDIR")) ; xfconfd requires a writable HOME
-            ;; Run test-suite under a dbus session.
-            (setenv "XDG_DATA_DIRS"     ; for finding org.xfce.Xfconf.service
-                    (string-append %output "/share"))
-            ;; Don't fail on missing  '/etc/machine-id'.
-            (setenv "DBUS_FATAL_WARNINGS" "0") ;
-            (invoke "dbus-launch" "ninja" "test")))
+    (name "at-spi2-core")
+    (version "2.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0nn0lnf07ayysq8c8irmvc91c2dszn04m5qs6jy60g3y1bg5gnl8"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     '(#:glib-or-gtk? #t    ; To wrap binaries and/or compile schemas.
+       #:configure-flags
+       (list
+        "-Ddocs=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'set-documentation-path
+           (lambda* (#:key outputs #:allow-other-keys)
+             ;; Ensure that the cross-references point to the "doc" output.
+             (substitute* "doc/libatspi/meson.build"
+               (("docpath =.*")
+                (string-append "docpath = '" (assoc-ref outputs "doc")
+                               "/share/gtk-doc/html'\n")))
+             #t))
+         (add-before 'install 'prepare-doc-directory
+           (lambda* (#:key outputs #:allow-other-keys)
+             (mkdir-p (string-append (assoc-ref outputs "doc")
+                                     "/share"))
+             #t))
+         (add-after 'unpack 'patch-docbook-sgml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
+                                           "/xml/dtd/docbook")))
+               (substitute* "doc/libatspi/libatspi-docs.sgml"
+                 (("http://.*/docbookx\\.dtd")
+                  (string-append xmldoc "/docbookx.dtd")))
+               #t)))
+         (add-after 'install 'move-documentation
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (copy-recursively
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               (delete-file-recursively
+                (string-append out "/share/gtk-doc")))
+             #t))
+         (add-after 'install 'check
+           (lambda _
+             (setenv "HOME" (getenv "TMPDIR")) ; xfconfd requires a writable HOME
+             ;; Run test-suite under a dbus session.
+             (setenv "XDG_DATA_DIRS" ; for finding org.xfce.Xfconf.service
+                     (string-append %output "/share"))
+             ;; Don't fail on missing  '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0") ;
+             (invoke "dbus-launch" "ninja" "test")))
          (delete 'check))))
-   (propagated-inputs
-    ;; atspi-2.pc refers to all these.
-    `(("dbus" ,dbus)
-      ("glib" ,glib)
-      ("libxi" ,libxi)
-      ("libxtst" ,libxtst)))
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk-doc" ,gtk-doc)
-      ("glib" ,glib "bin")
-      ("pkg-config" ,pkg-config)))
-   (synopsis "Assistive Technology Service Provider Interface, core components")
-   (description
-    "The Assistive Technology Service Provider Interface, core components,
-is part of the GNOME accessibility project.")
-   (license license:lgpl2.0+)
-   (home-page "https://projects.gnome.org/accessibility/")))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("glib" ,glib "bin")
+       ("pkg-config" ,pkg-config)
+       ("python-wrapper" ,python-wrapper)))
+    (propagated-inputs
+     `(("dbus" ,dbus)
+       ("glib" ,glib)
+       ("libx11" ,libx11)
+       ("libxi" ,libxi)
+       ("libxtst" ,libxtst)))
+    (synopsis "Assistive Technology Service Provider Interface, core components")
+    (description "The Assistive Technology Service Provider Interface,
+core components, is part of the GNOME accessibility project.")
+    (home-page "https://wiki.gnome.org/Accessibility/")
+    (license license:lgpl2.1+)))
 
 ;;; A minimal variant used to prevent a cycle with Inkscape.
 (define at-spi2-core-minimal
