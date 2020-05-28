@@ -41,6 +41,7 @@
   #:use-module (gnu packages enlightenment)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
+  #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gperf)
@@ -951,48 +952,77 @@ programming language.  It also contains the utility
   (package
     (name "appstream-glib")
     (version "0.7.17")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://people.freedesktop.org/~hughsient/"
-                                  "appstream-glib/releases/"
-                                  "appstream-glib-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0jg58m1p5xfrh8zkpqhhg00nqs727z5i1qy6sb0a3vyc98fyk9vw"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://people.freedesktop.org/~hughsient/"
+                       "appstream-glib/releases/"
+                       "appstream-glib-" version ".tar.xz"))
+       (sha256
+        (base32 "0jg58m1p5xfrh8zkpqhhg00nqs727z5i1qy6sb0a3vyc98fyk9vw"))))
     (build-system meson-build-system)
-    (native-inputs
-     `(("gettext" ,gettext-minimal)
-       ("glib:bin" ,glib "bin")         ; for glib-compile-resources
-       ("pkg-config" ,pkg-config)))
-    (propagated-inputs
-     `(("gcab" ,gcab) ; for .pc file
-       ("gdk-pixbuf" ,gdk-pixbuf) ; for .pc file
-       ("libuuid" ,util-linux "lib"))) ; for .pc file
-    (inputs
-     `(("glib" ,glib)
-       ("gperf" ,gperf)
-       ("gtk+" ,gtk+)
-       ("json-glib" ,json-glib)
-       ("libarchive" ,libarchive)
-       ("libsoup" ,libsoup)))
+    (outputs '("out" "doc"))
     (arguments
-     `(#:configure-flags
-       (list "-Ddep11=false"
-             "-Dintrospection=false"    ; avoid g-ir-scanner dependency
-             "-Drpm=false"
-             "-Dstemmer=false")
+     `(#:glib-or-gtk? #t    ; To wrap binaries and/or compile schemas.
+       #:configure-flags
+       (list
+        "-Dgtk-doc=true"
+        "-Ddep11=false"
+        "-Drpm=false"
+        "-Dstemmer=false")
        #:phases
        (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
+                                           "/xml/dtd/docbook")))
+               (substitute* "docs/api/appstream-glib-docs.xml"
+                 (("http://.*/docbookx\\.dtd")
+                  (string-append xmldoc "/docbookx.dtd")))
+               #t)))
          (add-after 'unpack 'patch-tests
            (lambda _
              (substitute* "libappstream-glib/as-self-test.c"
-               (("g_test_add_func.*as_test_store_local_appdata_func);") ""))
+               (("g_test_add_func.*as_test_store_local_appdata_func);")
+                ""))
              #t)))))
-    (home-page "https://github.com/hughsie/appstream-glib")
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.2)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("fontconfig" ,fontconfig)
+       ("freetype" ,freetype)
+       ("gperf" ,gperf)
+       ("gtk+" ,gtk+)
+       ("json-glib" ,json-glib)
+       ("libsoup" ,libsoup)
+       ("libxslt" ,libxslt)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("libarchive" ,libarchive)
+       ("libuuid" ,util-linux "lib")))
     (synopsis "Library for reading and writing AppStream metadata")
-    (description "This library provides objects and helper methods to help
-reading and writing @uref{https://www.freedesktop.org/wiki/Distributions/AppStream,AppStream}
-metadata.")
+    (description "AppStream-Glib provides objects and helper methods to help
+reading and writing AppStream metadata.  It also provides a simple DOM
+implementation that makes it easy to edit nodes and convert to and from the
+standardized XML representation.")
+    (home-page "https://people.freedesktop.org/~hughsient/appstream-glib/")
     (license license:lgpl2.1+)))
 
 (define perl-net-dbus
