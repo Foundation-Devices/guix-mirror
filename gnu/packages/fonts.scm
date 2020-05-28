@@ -199,24 +199,29 @@ itself."))))
 
 (define-public font-cantarell
   (package
-    (name "font-abattis-cantarell")
+    (name "font-cantarell")
     (version "0.201")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/cantarell-fonts/"
-                                  (version-major+minor version)
-                                  "/cantarell-fonts-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0qwqmkczqy09fdj8l11nr841ks0dwsydqg55qyms12m4yvjn87xn"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/cantarell-fonts/"
+                       (version-major+minor version)
+                       "/cantarell-fonts-" version ".tar.xz"))
+       (sha256
+        (base32
+         "0qwqmkczqy09fdj8l11nr841ks0dwsydqg55qyms12m4yvjn87xn"))))
     (build-system meson-build-system)
     (native-inputs
-     `(("gettext" ,gettext-minimal)))   ; for msgfmt
-    (home-page "https://wiki.gnome.org/Projects/CantarellFonts")
+     `(("gettext" ,gettext-minimal)))
     (synopsis "Cantarell sans-serif typeface")
     (description "The Cantarell font family is a contemporary Humanist
 sans-serif designed for on-screen reading.  It is used by GNOME@tie{}3.")
+    (home-page "https://wiki.gnome.org/Projects/CantarellFonts")
     (license license:silofl1.1)))
+
+(define-public font-abattis-cantarell
+  (deprecated-package "font-abattis-cantarell" font-cantarell))
 
 (define-public font-lato
   (package
