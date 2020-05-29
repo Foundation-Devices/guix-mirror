@@ -4211,44 +4211,63 @@ and RDP protocols.")
 (define-public dconf
   (package
     (name "dconf")
-    (version "0.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "mirror://gnome/sources/" name "/"
-                    (version-major+minor version) "/"
-                    name "-" version ".tar.xz"))
-              (patches (search-patches "dconf-meson-0.52.patch"))
-              (sha256
-               (base32
-                "0lnsl85cp2vpzgp8pkf6l6yd2i3lp02jdvga1icfa78j2smr8fll"))))
+    (version "0.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "mirror://gnome/sources/" name "/"
+         (version-major+minor version) "/"
+         name "-" version ".tar.xz"))
+       (sha256
+        (base32
+         "0bfs069pjv6lhp7xrzmrhz3876ay2ryqxzc6mlva1hhz34ibprlz"))))
     (build-system meson-build-system)
-    (propagated-inputs
-     ;; In Requires of dconf.pc.
-     `(("glib" ,glib)))
-    (inputs
-     `(("gtk+" ,gtk+)
-       ("dbus" ,dbus)))
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t
+       #:configure-flags
+       (list
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-timeout-tests
+           (lambda _
+             (substitute* "tests/meson.build"
+               (("^  \\['engine', .*$")
+                ""))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
      `(("bash-completion" ,bash-completion)
-       ("libxslt" ,libxslt)                     ;for xsltproc
-       ("libxml2" ,libxml2)                     ;for XML_CATALOG_FILES
        ("docbook-xml" ,docbook-xml-4.2)
        ("docbook-xsl" ,docbook-xsl)
        ("glib:bin" ,glib "bin")
        ("gtk-doc" ,gtk-doc)
+       ("libxml2" ,libxml2)
+       ("libxslt" ,libxslt)
        ("pkg-config" ,pkg-config)
+       ("python-wrapper" ,python-wrapper)
        ("vala" ,vala)))
-    (arguments
-     `(#:tests? #f ; To contact dbus it needs to load /var/lib/dbus/machine-id
-                   ; or /etc/machine-id.
-       #:glib-or-gtk? #t
-       #:configure-flags '("-Denable-gtk-doc=true")))
-    (home-page "https://developer.gnome.org/dconf/")
+    (inputs
+     `(("dbus" ,dbus)
+       ("gtk+" ,gtk+)))
+    (propagated-inputs
+     `(("glib" ,glib)))
     (synopsis "Low-level GNOME configuration system")
     (description "Dconf is a low-level configuration system.  Its main purpose
 is to provide a backend to GSettings on platforms that don't already have
 configuration storage systems.")
+    (home-page "https://wiki.gnome.org/Projects/dconf")
     (license license:lgpl2.1+)))
 
 (define-public json-glib
