@@ -5384,57 +5384,97 @@ without stepping on each others toes.")
 (define-public clutter
   (package
     (name "clutter")
-    (version "1.26.2")
+    (version "1.26.4")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "0mif1qnrpkgxi43h7pimim6w6zwywa16ixcliw0yjm9hk0a368z7"))))
+        (base32 "1rn4cd1an6a9dfda884aqpcwcgq8dgydpqvb19nmagw4b70zlj4b"))))
     ;; NOTE: mutter exports a bundled fork of clutter, so when making changes
     ;; to clutter, corresponding changes may be appropriate in mutter as well.
-    (build-system gnu-build-system)
-    (outputs '("out"
-               "doc"))                            ;9 MiB of gtk-doc HTML pages
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t    ; To wrap binaries and/or compile schemas.
+       #:configure-flags
+       (list
+        "-Dwayland_compositor=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
+                                           "/xml/dtd/docbook")))
+               (substitute* "doc/reference/clutter-docs.xml"
+                 (("http://.*/docbookx\\.dtd")
+                  (string-append xmldoc "/docbookx.dtd")))
+               #t)))
+         (add-after 'unpack 'patch-cookbook-examples
+           (lambda _
+             (substitute* "doc/cookbook/meson.build"
+               (("subdir\\('examples'\\)")
+                ""))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-before 'check 'pre-check
+           (lambda* (#:key tests? inputs #:allow-other-keys)
+             (if tests?
+                 (begin
+                   ;; The test suite requires a running X server.
+                   (system (format #f "~a/bin/Xvfb :1 +extension GLX &"
+                                   (assoc-ref inputs "xorg-server")))
+                   (setenv "DISPLAY" ":1")
+                   #t)
+                 (format #t "test suite not run~%"))
+             #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")     ; for glib-genmarshal
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("libxslt" ,libxslt)
+       ("perl" ,perl)
        ("pkg-config" ,pkg-config)
-       ("xsltproc" ,libxslt)))
+       ("ruby" ,ruby)
+       ("xorg-server" ,xorg-server-for-tests)))
     (propagated-inputs
-     `(("cogl" ,cogl)
+     `(("atk" ,atk)
+       ("cogl" ,cogl)
        ("cairo" ,cairo)
-       ("atk" ,atk)
+       ("eudev" ,eudev)
+       ("gdk-pixbuf+svg" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
        ("gtk+" ,gtk+)
        ("json-glib" ,json-glib)
-       ("glib" ,glib)
+       ("libgudev" ,libgudev)
+       ("libinput" ,libinput)
+       ("libx11" ,libx11)
        ("libxcomposite" ,libxcomposite)
        ("libxdamage" ,libxdamage)
        ("libxext" ,libxext)
-       ("xinput" ,xinput)))
-    (inputs
-     `(("libxkbcommon" ,libxkbcommon)
-       ("udev" ,eudev)))
-    (arguments
-     `(#:configure-flags (list "--enable-x11-backend=yes"
-
-                               ;; This produces share/doc/{clutter,cally}.
-                               (string-append "--with-html-dir="
-                                              (assoc-ref %outputs "doc")
-                                              "/share/doc"))
-       ;; XXX FIXME: Get test suite working.  It would probably fail in the
-       ;; same way the cogl tests fail, since clutter is based on cogl.
-       #:tests? #f))
-    (home-page "http://www.clutter-project.org")
+       ("libxi" ,libxi)
+       ("libxkbcommon" ,libxkbcommon)
+       ("pango" ,pango)
+       ("wayland" ,wayland)))
     (synopsis "OpenGL-based interactive canvas library")
-    (description
-     "Clutter is an OpenGL-based interactive canvas library, designed for
-creating fast, mainly 2D single window applications such as media box UIs,
-presentations, kiosk style applications and so on.")
-    (license license:lgpl2.0+)))
+    (description "Clutter is an OpenGL-based interactive canvas library,
+designed for creating fast, mainly 2D single window applications such as media
+box UIs, presentations, kiosk style applications and so on.")
+    (home-page "https://www.clutter-project.org")
+    (license license:lgpl2.1+)))
 
 (define-public clutter-gtk
   (package
