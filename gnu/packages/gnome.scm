@@ -5483,27 +5483,56 @@ box UIs, presentations, kiosk style applications and so on.")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
         (base32
          "01ibniy4ich0fgpam53q252idm7f4fn5xg5qvizcfww90gn9652j"))))
-    (build-system gnu-build-system)
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t    ; To wrap binaries and/or compile schemas.
+       #:configure-flags
+       (list
+        "-Denable_docs=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
+                                           "/xml/dtd/docbook")))
+               (substitute* "doc/clutter-gtk-1.0-docs.xml"
+                 (("http://.*/docbookx\\.dtd")
+                  (string-append xmldoc "/docbookx.dtd")))
+               #t)))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("gobject-introspection" ,gobject-introspection)))
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)))
     (propagated-inputs
-     ;; clutter-gtk.pc refers to all these.
      `(("clutter" ,clutter)
        ("gtk+" ,gtk+)))
-    (home-page "http://www.clutter-project.org")
-    (synopsis "OpenGL-based interactive canvas library GTK+ widget")
-    (description
-     "Clutter is an OpenGL-based interactive canvas library, designed for
-creating fast, mainly 2D single window applications such as media box UIs,
-presentations, kiosk style applications and so on.")
-    (license license:lgpl2.0+)))
+    (synopsis "GTK+ integration library for Clutter")
+    (description "Clutter-GTK is a library providing facilities to integrate
+Clutter into GTK+ applications and vice versa.  It provides a GTK+ widget,
+GtkClutterEmbed, for embedding the a Clutter stage into any GtkContainer; and
+GtkClutterActor, a Clutter actor for embedding any GtkWidget inside a Clutter
+stage.")
+    (home-page "https://www.clutter-project.org")
+    (license license:lgpl2.1+)))
 
 (define-public clutter-gst
   (package
