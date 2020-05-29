@@ -5354,41 +5354,52 @@ throughout GNOME for API documentation).")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/cogl/"
-                           (version-major+minor version) "/"
-                           "cogl-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/cogl/"
+                       (version-major+minor version) "/"
+                       "cogl-" version ".tar.xz"))
        (sha256
         (base32 "0nfph4ai60ncdx7hy6hl1i1cmp761jgnyjfhagzi0iqq36qb41d8"))))
     ;; NOTE: mutter exports a bundled fork of cogl, so when making changes to
     ;; cogl, corresponding changes may be appropriate in mutter as well.
-    (build-system gnu-build-system)
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (native-inputs
-     `(("glib:bin" ,glib "bin")     ; for glib-mkenums
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("xorg-server" ,xorg-server-for-tests)
-       ("pkg-config" ,pkg-config)))
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("python-wrapper" ,python-wrapper)
+       ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("libdrm" ,libdrm)))
     (propagated-inputs
-     `(("glib" ,glib)
-       ("gdk-pixbuf" ,gdk-pixbuf)
+     `(("cairo" ,cairo)
+       ("glib" ,glib)
+       ("gdk-pixbuf+svg" ,gdk-pixbuf+svg)
+       ("gstreamer" ,gstreamer)
+       ("gst-plugins-base" ,gst-plugins-base)
        ("libx11" ,libx11)
        ("libxext" ,libxext)
        ("libxfixes" ,libxfixes)
        ("libxdamage" ,libxdamage)
        ("libxcomposite" ,libxcomposite)
-       ("libxrandr" ,libxrandr)))
-    (inputs
-     `(("mesa" ,mesa)
-       ("cairo" ,cairo)
+       ("libxrandr" ,libxrandr)
+       ("mesa" ,mesa)
        ("pango" ,pango)
-       ("gstreamer" ,gstreamer)
-       ("gst-plugins-base" ,gst-plugins-base)
        ("wayland" ,wayland)))
     (arguments
      `(#:disallowed-references (,xorg-server-for-tests)
        #:configure-flags (list "--enable-cogl-gst"
                                "--enable-wayland-egl-platform"
                                "--enable-wayland-egl-server"
+                               "--enable-gtk-doc"
 
+                               (string-append "--with-html-dir="
+                                (assoc-ref %outputs "doc")
+                                "/share/gtk-doc/html")
                                ;; Arrange to pass an absolute file name to
                                ;; dlopen for libGL.so.
                                (string-append "--with-gl-libname="
@@ -5396,17 +5407,20 @@ throughout GNOME for API documentation).")
                                               "/lib/libGL.so"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'fix-build-with-mesa-20
-           (lambda _
-             ;; Work around a problem with Mesa 20 where some macros used by
-             ;; Cogl went missing from eglext.h.  This can likely be removed
-             ;; for newer versions of Cogl or Mesa.
-             ;; https://gitlab.gnome.org/GNOME/cogl/-/merge_requests/19
-             (substitute* '("configure"
-                            "cogl/winsys/cogl-winsys-egl-kms.c")
-               (("#include <EGL/eglext.h>" all)
-                (string-append all "\n#include <EGL/eglmesaext.h>\n")))
-             #t))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
+                                           "/xml/dtd/docbook")))
+               (with-directory-excursion "doc/reference"
+                 (substitute*
+                     '("cogl/cogl-docs.xml.in"
+                       "cogl/blend-strings.xml"
+                       "cogl-gst/cogl-gst-docs.xml.in"
+                       "cogl-2.0-experimental/cogl-2.0-experimental-docs.xml.in"
+                       "cogl-2.0-experimental/blend-strings.xml")
+                   (("http://.*/docbookx\\.dtd")
+                    (string-append xmldoc "/docbookx.dtd"))))
+               #t)))
          (add-before 'check 'start-xorg-server
                      (lambda* (#:key tests? inputs #:allow-other-keys)
                        (if tests?
@@ -5418,17 +5432,18 @@ throughout GNOME for API documentation).")
                              #t)
                            (format #t "test suite not run~%"))
                        #t)))))
+    (synopsis "Hardware accelerated 3D graphics API")
+    (description "Cogl is a small library for using 3D graphics hardware for
+rendering.  The API departs from the flat state machine style of OpenGL and is
+designed to make it easy to write orthogonal components that can render without
+stepping on each others toes.")
     (home-page "https://www.cogl3d.org")
-    (synopsis "Object oriented GL/GLES Abstraction/Utility Layer")
-    (description
-     "Cogl is a small library for using 3D graphics hardware to draw pretty
-pictures.  The API departs from the flat state machine style of OpenGL and is
-designed to make it easy to write orthogonal components that can render
-without stepping on each others toes.")
-    (license (list license:expat       ; most of the code
-                   license:bsd-3       ; cogl/cogl-point-in-poly.c
-                   license:sgifreeb2.0 ; cogl-path/tesselator/
-                   license:asl2.0))))  ; examples/android/
+    (license
+     (list
+      license:expat                     ; most of the code
+      license:bsd-3                     ; cogl/cogl-point-in-poly.c
+      license:sgifreeb2.0               ; cogl-path/tesselator/
+      license:asl2.0))))  ; examples/android/
 
 (define-public clutter
   (package
