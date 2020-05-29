@@ -5541,28 +5541,56 @@ stage.")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/clutter-gst/"
-                           (version-major+minor version) "/"
-                           "clutter-gst-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/clutter-gst/"
+                       (version-major+minor version) "/"
+                       "clutter-gst-" version ".tar.xz"))
        (sha256
         (base32 "17czmpl92dzi4h3rn5rishk015yi3jwiw29zv8qan94xcmnbssgy"))))
-    (build-system gnu-build-system)
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
+                                           "/xml/dtd/docbook")))
+               (substitute* "doc/reference/clutter-gst-docs.xml"
+                 (("http://.*/docbookx\\.dtd")
+                  (string-append xmldoc "/docbookx.dtd")))
+               #t)))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")         ; for glib-mkenums
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
-       ("gobject-introspection" ,gobject-introspection)))
-    (inputs
+       ("python-wrapper" ,python-wrapper)))
+    (propagated-inputs
      `(("clutter" ,clutter)
+       ("cogl" ,cogl)
+       ("glib" ,glib)
        ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)))
-    (home-page "http://www.clutter-project.org")
-    (synopsis "Integration library for using GStreamer with Clutter")
-    (description
-     "Clutter-Gst is an integration library for using GStreamer with Clutter.
-It provides a GStreamer sink to upload frames to GL and an actor that
-implements the ClutterGstPlayer interface using playbin.  Clutter is an
-OpenGL-based interactive canvas library.")
-    (license license:lgpl2.0+)))
+    (synopsis "GStreamer integration library for Clutter")
+    (description "Clutter-Gst is an integration library for using GStreamer with
+Clutter.  It provides a GStreamer sink to upload frames to GL and an actor that
+implements the ClutterGstPlayer interface using playbin.")
+    (home-page "https://www.clutter-project.org")
+    (license license:lgpl2.1+)))
 
 (define-public libchamplain
   (package
