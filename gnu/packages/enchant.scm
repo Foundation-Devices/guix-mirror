@@ -35,6 +35,7 @@
   #:use-module (guix git-download)
   #:use-module (guix download)
   #:use-module (guix build-system cmake)
+  #:use-module (guix build-system glib-or-gtk)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
   #:use-module (guix licenses)
@@ -120,18 +121,36 @@ working\".")
 ;; conflict with 1.x, so it's OK if both end up in the same profile.
 (define-public enchant-1.6
   (package
-    (inherit enchant)
+    (name "enchant")
     (version "1.6.0")
     (arguments '(#:configure-flags '("--disable-static")))
-    (native-inputs (alist-delete "unittest-cpp"
-                                 (package-native-inputs enchant)))
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "http://www.abisource.com/downloads/enchant/"
-                                  version "/enchant-" version ".tar.gz"))
-              (sha256
-               (base32
-                "0zq9yw1xzk8k9s6x83n1f9srzcwdavzazn3haln4nhp9wxxrxb1g"))))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "http://www.abisource.com/downloads/enchant/"
+                       version "/enchant-" version ".tar.gz"))
+       (sha256
+        (base32 "0zq9yw1xzk8k9s6x83n1f9srzcwdavzazn3haln4nhp9wxxrxb1g"))))
+    (build-system glib-or-gtk-build-system)
+    (native-inputs
+     `(("glib:bin" ,glib "bin")
+       ("pkg-config" ,pkg-config)
+       ("unittest-cpp" ,unittest-cpp)))
+    (inputs
+     `(("aspell" ,aspell)
+       ("hunspell" ,hunspell)
+       ("nuspell" ,nuspell)))
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "Generic spell checking library and program")
+    (description "Enchant is a library and command-line program, that wraps a
+number of different spelling libraries and programs with a consistent
+interface.  By using Enchant, you can use a wide range of spelling libraries,
+including some specialised for particular languages, without needing to program
+to each library's interface.")
+    (home-page "https://abiword.github.io/enchant/")
+    (license lgpl2.1+)))
 
 (define-public python-pyenchant
   (package
