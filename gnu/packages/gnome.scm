@@ -2159,56 +2159,84 @@ the font would look under various sizes.")
 (define-public gcr
   (package
     (name "gcr")
-    (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0925snsixzkwh49xiayqmj6fcrmklqk8kyy0jkv7m64h9abm1pr9"))))
-    (build-system gnu-build-system)
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "00b6bzpr8rj8mvj66r2273r417wg2y21m6n88mhkq9m22z8bxyda"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:phases
+     '(#:glib-or-gtk? #t    ; To wrap binaries and/or compile schemas.
+       #:phases
        (modify-phases %standard-phases
-         ;; These fail because /var/lib/dbus/machine-id is not present in the
-         ;; build environment.
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "gcr/gcr-visual-index.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.3")
+                                 "/xml/dtd/docbook/")))
+               (substitute* '("gcr/gcr-docs.sgml" "gck/gck-docs.sgml"
+                              "gck/gck-pkcs11-links.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         ;; Some tests fail due to missing /etc/machine-id.
          (add-after 'unpack 'disable-failing-tests
            (lambda _
-             (substitute* "Makefile.in"
-               (("[[:blank:]]+test-system-prompt\\$\\(EXEEXT\\)")
+             (substitute* "gcr/meson.build"
+               (("'system-prompt',")
                 ""))
              #t))
+         ;; Some tests expect to write to $HOME.
          (add-before 'check 'pre-check
            (lambda _
-             ;; Some tests expect to write to $HOME.
              (setenv "HOME" "/tmp")
-             #t)))))
-    (inputs
-     `(("dbus" ,dbus)
-       ("gnupg" ,gnupg)                ;called as a child process during tests
-       ("libgcrypt" ,libgcrypt)))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("python" ,python-wrapper)       ;for tests
-       ("pkg-config" ,pkg-config)
+     `(("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
        ("gettext" ,gettext-minimal)
        ("glib" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("gtk+bin" ,gtk+ "bin")
        ("libxml2" ,libxml2)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
        ("vala" ,vala)
        ("xsltproc" ,libxslt)))
-    ;; mentioned in gck.pc, gcr.pc and gcr-ui.pc
+    (inputs
+     `(("dbus" ,dbus)
+       ("gnupg" ,gnupg)
+       ("gnupg2" ,gnupg-2.0)
+       ("libgcrypt" ,libgcrypt)))
     (propagated-inputs
      `(("p11-kit" ,p11-kit)
        ("glib" ,glib)
        ("gtk+" ,gtk+)))
-    (home-page "https://www.gnome.org")
-    (synopsis "Libraries for displaying certificates and accessing key stores")
-    (description
-     "The GCR package contains libraries used for displaying certificates and
-accessing key stores.  It also provides the viewer for crypto files on the
-GNOME Desktop.")
+    (synopsis "GCR and GCK libraries for GNOME")
+    (description "GCR is a library for displaying certificates, and crypto UI,
+accessing key stores.  It also provides the viewer for crypto files on the GNOME
+desktop.  GCK is a library for accessing PKCS#11 modules like smart cards, in a
+GObject oriented way.")
+    (home-page "https://www.gnome.org") ; No dedicated home-page
     (license license:lgpl2.1+)))
 
 (define-public gdl
