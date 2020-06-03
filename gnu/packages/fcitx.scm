@@ -24,8 +24,10 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system glib-or-gtk)
   #:use-module (gnu packages check)
+  #:use-module (gnu packages compression)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages enchant)
+  #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages graphviz)
@@ -37,9 +39,11 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
   #:use-module (gnu packages sqlite)
+  #:use-module (gnu packages textutils)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
-  #:use-module (gnu packages xorg))
+  #:use-module (gnu packages xorg)
+  #:use-module (gnu packages xdisorg))
 
 (define-public presage
   (package
@@ -98,60 +102,80 @@ by the different predictive algorithms.")
   (package
     (name "fcitx")
     (version "4.2.9.7")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "http://download.fcitx-im.org/fcitx/"
-                                  "fcitx-" version "_dict.tar.xz"))
-              (sha256
-               (base32
-                "13vg7yzfq0vj2r8zdf9ly3n243nwwggkhd5qv3z6yqdyj0m3ncyg"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "http://download.fcitx-im.org/fcitx/"
+                       "fcitx-" version "_dict.tar.xz"))
+       (sha256
+        (base32 "13vg7yzfq0vj2r8zdf9ly3n243nwwggkhd5qv3z6yqdyj0m3ncyg"))))
     (build-system cmake-build-system)
     (outputs '("out" "gtk2" "gtk3"))
     (arguments
      `(#:configure-flags
-       (list "-DENABLE_TEST=ON"
-             (string-append "-DXKB_RULES_XML_FILE="
-                            (assoc-ref %build-inputs "xkeyboard-config")
-                            "/share/X11/xkb/rules/evdev.xml")
-             "-DENABLE_GTK2_IM_MODULE=ON"
-             "-DENABLE_GTK3_IM_MODULE=ON"
-             (string-append "-DGTK2_IM_MODULEDIR="
-                            (assoc-ref %outputs "gtk2")
-                            "/lib/gtk-2.0/2.10.0/immodules")
-             (string-append "-DGTK3_IM_MODULEDIR="
-                            (assoc-ref %outputs "gtk3")
-                            "/lib/gtk-3.0/3.0.0/immodules")
-             ;; XXX: Enable GObject Introspection and Qt4 support.
-             "-DENABLE_GIR=OFF"
-             "-DENABLE_QT=OFF"
-             "-DENABLE_QT_IM_MODULE=OFF")))
+       (list
+        "-DENABLE_GTK2_IM_MODULE=ON"
+        "-DENABLE_GTK3_IM_MODULE=ON"
+        "-DENABLE_QT=OFF"
+        "-DENABLE_QT_IM_MODULE=OFF"
+        "-DENABLE_QT_GUI=OFF"
+        "-DENABLE_TEST=ON"
+        (string-append "-DGOBJECT_INTROSPECTION_GIRDIR="
+                       (assoc-ref %outputs "out")
+                       "/share/gir-1.0")
+        (string-append "-DGOBJECT_INTROSPECTION_TYPELIBDIR="
+                       (assoc-ref %outputs "out")
+                       "/lib/girepository-1.0")
+        (string-append "-DXKB_RULES_XML_FILE="
+                       (assoc-ref %build-inputs "xkeyboard-config")
+                       "/share/X11/xkb/rules/evdev.xml")
+        (string-append "-DGTK2_IM_MODULEDIR="
+                       (assoc-ref %outputs "gtk2")
+                       "/lib/gtk-2.0/2.10.0/immodules")
+        (string-append "-DGTK3_IM_MODULEDIR="
+                       (assoc-ref %outputs "gtk3")
+                       "/lib/gtk-3.0/3.0.0/immodules"))))
     (native-inputs
-     `(("doxygen"    ,doxygen)
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
        ("extra-cmake-modules"
         ;; XXX: We can't simply #:use-module due to a cycle somewhere.
         ,(module-ref
           (resolve-interface '(gnu packages kde-frameworks))
           'extra-cmake-modules))
-       ("glib:bin"   ,glib "bin")       ; for glib-genmarshal
-       ("pkg-config" ,pkg-config)))
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("intltool" ,intltool)
+       ("libxml2" ,libxml2)
+       ("pkg-config" ,pkg-config)
+       ("python-wrapper" ,python-wrapper)))
     (inputs
-     `(("dbus"             ,dbus)
-       ("enchant"          ,enchant-1.6)
-       ("gettext"          ,gettext-minimal)
-       ("gtk2"             ,gtk+-2)
-       ("gtk3"             ,gtk+)
-       ("icu4c"            ,icu4c)
-       ("iso-codes"        ,iso-codes)
-       ("json-c"           ,json-c)
-       ("libxkbfile"       ,libxkbfile)
-       ("libxml2"          ,libxml2)
+     `(("cairo" ,cairo)
+       ("dbus" ,dbus)
+       ("ecm" ,ecm)
+       ("enchant" ,enchant-1.6)
+       ("fontconfig" ,fontconfig)
+       ("gtk2" ,gtk+-2)
+       ("gtk3" ,gtk+)
+       ("icu4c" ,icu4c)
+       ("iso-codes" ,iso-codes)
+       ("json-c" ,json-c)
+       ("libx11" ,libx11)
+       ("libxkbcommon" ,libxkbcommon)
+       ("libxkbfile" ,libxkbfile)
+       ("opencc" ,opencc)
+       ("pango" ,pango)
+       ("presage" ,presage)
        ("xkeyboard-config" ,xkeyboard-config)))
-    (home-page "https://fcitx-im.org")
+    (propagated-inputs
+     `(("glib" ,glib)))
     (synopsis "Input method framework")
-    (description
-     "Fcitx is an input method framework with extension support.  It has
-Pinyin, Quwei and some table-based (Wubi, Cangjie, Erbi, etc.) input methods
+    (description "Fcitx is an input method framework with extension support.  It
+has Pinyin, Quwei and some table-based (Wubi, Cangjie, Erbi, etc.) input methods
 built-in.")
+    (home-page "https://fcitx-im.org")
     (license gpl2+)))
 
 (define-public fcitx-configtool
