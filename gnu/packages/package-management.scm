@@ -1063,36 +1063,47 @@ in an isolated environment, in separate namespaces.")
 (define-public gcab
   (package
     (name "gcab")
-    (version "1.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/gcab/"
-                                  version "/gcab-" version ".tar.xz"))
-              (sha256
-               (base32
-                "038h5kk41si2hc9d9169rrlvp8xgsxq27kri7hv2vr39gvz9cbas"))))
+    (version "1.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gcab/"
+                       version "/gcab-" version ".tar.xz"))
+       (sha256
+        (base32 "13q43iqld4l50yra45lhvkd376pn6qpk7rkx374zn8y9wsdzm9b7"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")         ; for glib-mkenums
-       ("intltool" ,intltool)
+     `(("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
        ("vala" ,vala)))
     (inputs
-     `(("glib" ,glib)
-       ("zlib" ,zlib)))
-    (arguments
-     `(#:configure-flags
-       ;; XXX This ‘documentation’ is for developers, and fails informatively:
-       ;; Error in gtkdoc helper script: 'gtkdoc-mkhtml' failed with status 5
-       (list "-Ddocs=false"
-             "-Dintrospection=false")))
-    (home-page "https://wiki.gnome.org/msitools") ; no dedicated home page
+     `(("zlib" ,zlib)))
+    (propagated-inputs
+     `(("glib" ,glib)))
     (synopsis "Microsoft Cabinet file manipulation library")
     (description
      "The libgcab library provides GObject functions to read, write, and modify
 Microsoft cabinet (.@dfn{CAB}) files.")
-    (license (list license:gpl2+        ; tests/testsuite.at
-                   license:lgpl2.1+)))) ; the rest
+    (home-page "https://wiki.gnome.org/msitools") ; no dedicated home page
+    (license license:lgpl2.1+)))
 
 (define-public msitools
   (package
