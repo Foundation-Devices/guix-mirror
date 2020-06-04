@@ -540,63 +540,65 @@ highlighting and other features typical of a source code editor.")
 
 (define-public gdk-pixbuf
   (package
-   (name "gdk-pixbuf")
-   (version "2.40.0")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version)  "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1rnlx9yfw970maxi2x6niaxmih5la11q1ilr7gzshz2kk585k0hm"))))
-   (build-system meson-build-system)
-   (arguments
-    `(#:configure-flags '("-Dinstalled_tests=false")
-      #:phases
-      (modify-phases %standard-phases
-        (add-after
-         'unpack 'disable-failing-tests
-         (lambda _
-           (substitute* "tests/meson.build"
-             ;; XXX FIXME: This test fails on armhf machines with:
-             ;; SKIP Not enough memory to load bitmap image
-             ;; ERROR: cve-2015-4491 - too few tests run (expected 4, got 2)
-             ((".*'cve-2015-4491'.*") "")
-             ;; XXX FIXME: This test fails with:
-             ;; ERROR:pixbuf-jpeg.c:74:test_type9_rotation_exif_tag:
-             ;; assertion failed (error == NULL): Data differ
-             ;; (gdk-pixbuf-error-quark, 0)
-             ((".*'pixbuf-jpeg'.*") ""))
-           #t))
-        ;; The slow tests take longer than the specified timeout.
-        ,@(if (any (cute string=? <> (%current-system))
-                   '("armhf-linux" "aarch64-linux"))
-            '((replace 'check
-              (lambda _
-                (invoke "meson" "test" "--timeout-multiplier" "5"))))
-            '()))))
-   (propagated-inputs
-    `(;; Required by gdk-pixbuf-2.0.pc
-      ("glib" ,glib)
-      ("libpng" ,libpng)
-      ;; Used for testing and required at runtime.
-      ("shared-mime-info" ,shared-mime-info)))
-   (inputs
-    `(("libjpeg" ,libjpeg-turbo)
-      ("libtiff" ,libtiff)
-      ("libx11"  ,libx11)))
-   (native-inputs
-     `(("pkg-config" ,pkg-config)
+    (name "gdk-pixbuf")
+    (version "2.40.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1rnlx9yfw970maxi2x6niaxmih5la11q1ilr7gzshz2kk585k0hm"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Djasper=true"
+        "-Dinstalled_tests=false")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "meson.build"
+                 (("http://docbook.sourceforge.net/release/xsl/current/")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-1.79.1/")))
+               (substitute* '("gdk-pixbuf-csource.xml"
+                              "gdk-pixbuf-from-drawables.xml"
+                              "gdk-pixbuf-query-loaders.xml"
+                              "gdk-pixbuf-rendering.xml" "gdk-pixbuf.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
        ("gettext" ,gettext-minimal)
-       ("glib" ,glib "bin")                               ; glib-mkenums, etc.
-       ("gobject-introspection" ,gobject-introspection))) ; g-ir-compiler, etc.
-   (synopsis "GNOME image loading and manipulation library")
-   (description
-    "GdkPixbuf is a library for image loading and manipulation developed
-in the GNOME project.")
-   (license license:lgpl2.0+)
-   (home-page "https://developer.gnome.org/gdk-pixbuf/")))
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
+    (inputs
+     `(("jasper" ,jasper)
+       ("libjpeg" ,libjpeg-turbo)
+       ("libpng" ,libpng)
+       ("libtiff" ,libtiff)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("libx11"  ,libx11)
+       ("shared-mime-info" ,shared-mime-info)))
+    (synopsis "Image loading library")
+    (description "GdkPixbuf is a library that loads image data in various
+formats and stores it as linear buffers in memory.  The buffers can then be
+scaled, composited, modified, saved, or rendered.")
+    (home-page "https://wiki.gnome.org/Projects/GdkPixbuf")
+    (license license:lgpl2.1+)))
 
 ;; To build gdk-pixbuf with SVG support, we need librsvg, and librsvg depends
 ;; on gdk-pixbuf, so this new varibale.  Also, librsvg adds 90MiB to the
