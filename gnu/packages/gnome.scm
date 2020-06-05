@@ -4895,36 +4895,63 @@ output devices.")
     (version "2.5.6")
     (source
      (origin
-       (method url-fetch)
+       (method git-fetch)
        (uri
-        (string-append "https://gitlab.freedesktop.org/geoclue/geoclue/-/archive/"
-                       version "/geoclue-" version ".tar.bz2"))
+        (git-reference
+         (url "https://gitlab.freedesktop.org/geoclue/geoclue.git")
+         (commit version)))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "0a833x5apzabxj80ywvsh8crd635vni2i9v9c1p095f6hvmfc45k"))
+        (base32 "13fk6n4j74lvcsrg3kwbw1mkxgcr3iy9dnysmy0pclfsym8z5m5m"))
        (patches (search-patches "geoclue-config.patch"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags (list "-Dbus-srv-user=geoclue")))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Ddbus-srv-user=geoclue")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* '("geoclue-docs.xml" "lib/libgeoclue-docs.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("modem-manager" ,modem-manager)
-       ("libnotify" ,libnotify)
        ("gtk-doc", gtk-doc)
-       ("intltool" ,intltool)))
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
     (inputs
      `(("avahi" ,avahi)
-       ("glib:bin" ,glib "bin")
        ("glib-networking" ,glib-networking)
        ("json-glib" ,json-glib)
-       ("libsoup" ,libsoup)))
+       ("libnotify" ,libnotify)
+       ("libsoup" ,libsoup)
+       ("modem-manager" ,modem-manager)))
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "Geoinformation Service")
+    (description "Geoclue is a D-Bus geoinformation service.  The goal of the
+Geoclue project is to make creating location-aware applications as simple as
+possible.")
     (home-page "https://gitlab.freedesktop.org/geoclue/geoclue/-/wikis/home")
-    (synopsis "Geolocation service")
-    (description "Geoclue is a D-Bus service that provides location
-information.  The primary goal of the Geoclue project is to make creating
-location-aware applications as simple as possible, while the secondary goal is
-to ensure that no application can access location information without explicit
-permission from user.")
     (license license:gpl2+)))
 
 (define-public geocode-glib
