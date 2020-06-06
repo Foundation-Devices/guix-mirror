@@ -4413,31 +4413,42 @@ library.")
 (define-public glib-networking
   (package
     (name "glib-networking")
-    (version "2.62.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/glib-networking/"
-                                  (version-major+minor version) "/"
-                                  "glib-networking-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0i2mw75297ql72h47vyvff3hqa0kcmqybblj52fqrarb0kfbhi06"))))
+    (version "2.62.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/glib-networking/"
+                       (version-major+minor version) "/"
+                       "glib-networking-" version ".tar.xz"))
+       (sha256
+        (base32 "1kwlnaiz4qfy2d1as5hd8sgxy7jjfxps1h2443hxq3s8xjg2i3y1"))))
     (build-system meson-build-system)
     (arguments
-     `(#:configure-flags '("-Dlibproxy_support=false")))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dopenssl=auto")))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("intltool" ,intltool)))
+     `(("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)))
     (inputs
      `(("glib" ,glib)
        ("gnutls" ,gnutls)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)))
-    (home-page "https://www.gnome.org")
-    (synopsis "Network-related GIO modules")
-    (description
-     "This package contains various network related extensions for the GIO
-library.")
-    (license license:lgpl2.0+)))
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("libproxy" ,libproxy)
+       ("openssl" ,openssl)))
+    (synopsis "Network extensions for GLib")
+    (description "Glib-networking contains the implementations of certain GLib
+networking features that cannot be implemented directly in GLib itself because
+of their dependencies.  Currently it contains GnuTLS and OpenSSL-based
+implementations of GTlsBackend, a libproxy-based implementation of
+GProxyResolver, GLibproxyResolver, and a GNOME GProxyResolver that uses the
+proxy information from the GSettings schemas in gsettings-desktop-schemas.")
+    (home-page "https://wiki.gnome.org/Projects/GLib")
+    (license license:lgpl2.1+)))
 
 (define-public rest
   (package
