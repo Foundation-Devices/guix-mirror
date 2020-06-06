@@ -87,6 +87,7 @@
   #:use-module (gnu packages cdrom)
   #:use-module (gnu packages check)
   #:use-module (gnu packages cmake)
+  #:use-module (gnu packages code)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages crates-io)
   #:use-module (gnu packages cups)
@@ -6940,61 +6941,71 @@ configuration program to choose applications starting on login.")
 (define-public gjs
   (package
     (name "gjs")
-    (version "1.58.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1bkksx362007zs8c31ydygb29spwa5g5kch1ad2grc2sp53wv7ya"))))
-    (build-system gnu-build-system)
+    (version "1.58.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "10gkmxbhwpnq27db0gkn25b0gw28n05msjkzwjg3sdhpdisfpcvz"))))
+    (build-system glib-or-gtk-build-system)
     (arguments
-     '(#:phases
+     '(#:configure-flags
+       (list
+        "--enable-code-coverage"
+        "--enable-asan"
+        "--enable-ubsan")
+       #:phases
        (modify-phases %standard-phases
          (add-before
-          'check 'pre-check
-          (lambda _
-            ;; The test suite requires a running X server.
-            (system "Xvfb :1 &")
-            (setenv "DISPLAY" ":1")
-
-            ;; For the missing /etc/machine-id.
-            (setenv "DBUS_FATAL_WARNINGS" "0")
-
-            ;; Our mozjs-38 package does not compile the required Intl API
-            ;; support for these failing tests.
-            (substitute* "installed-tests/js/testLocale.js"
-              ((".*toBeDefined.*") "")
-              ((".*expect\\(datestr\\).*") ""))
-            (substitute* "installed-tests/scripts/testCommandLine.sh"
-              (("Valentín") "")
-              (("☭") ""))
-            #t)))))
+             'check 'pre-check
+           (lambda _
+             ;; The test suite requires a running X server.
+             (system "Xvfb :1 &")
+             (setenv "DISPLAY" ":1")
+             ;; For the missing /etc/machine-id.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             ;; Our mozjs package does not compile the required Intl API
+             ;; support for these failing tests.
+             (substitute* "installed-tests/js/testLocale.js"
+               ((".*toBeDefined.*") "")
+               ((".*expect\\(datestr\\).*") ""))
+             (substitute* "installed-tests/scripts/testCommandLine.sh"
+               (("Valentín") "")
+               (("☭") ""))
+             #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")       ; for glib-compile-resources
-       ("pkg-config" ,pkg-config)
-       ("xmllint" ,libxml2)
-       ;; For testing
-       ("dbus-launch" ,dbus)
-       ("dconf" ,dconf) ; required to properly store settings
-       ("uuidgen" ,util-linux)
-       ("xvfb" ,xorg-server-for-tests)))
-    (propagated-inputs
-     ;; These are all in the Requires.private field of gjs-1.0.pc.
-     `(("cairo" ,cairo)
+     `(("dbus-launch" ,dbus)
+       ("dconf" ,dconf)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("mozjs" ,mozjs-60)))
+       ("lcov" ,lcov)
+       ("pkg-config" ,pkg-config)
+       ("uuidgen" ,util-linux)
+       ("xmllint" ,libxml2)
+       ("xvfb" ,xorg-server-for-tests)))
     (inputs
      `(("gtk+" ,gtk+)
-       ("readline" ,readline)))
+       ("ncurses" ,ncurses)
+       ("readline" ,readline)
+       ("sysprof" ,sysprof)))
+    (propagated-inputs
+     `(("cairo" ,cairo)
+       ("glib" ,glib)
+       ("libffi" ,libffi)
+       ("mozjs" ,mozjs-60)))
     (synopsis "Javascript bindings for GNOME")
-    (home-page "https://live.gnome.org/Gjs")
-    (description
-     "Gjs is a javascript binding for GNOME.  It's mainly based on spidermonkey
-javascript engine and the GObject introspection framework.")
-    (license license:gpl2+)))
+    (description "Gjs is a javascript binding for GNOME.  It's mainly based on
+spidermonkey javascript engine and the GObject introspection framework.")
+    (home-page "https://wiki.gnome.org/Projects/Gjs")
+    (license
+     ;; The project is dual-licensed.
+     (list
+      license:expat
+      license:lgpl2.0+))))
 
 (define-public gedit
   (package
