@@ -2477,45 +2477,30 @@ on the GNOME Desktop with a single simple application.")
 (define-public gsettings-desktop-schemas
   (package
     (name "gsettings-desktop-schemas")
-    (version "3.34.0")
+    (version "3.37.1")
     (source
      (origin
-      (method url-fetch)
-      (uri (string-append "mirror://gnome/sources/" name "/"
-                          (version-major+minor version)  "/"
-                          name "-" version ".tar.xz"))
-      (sha256
-       (base32
-        "1bayr76aylawf2fhyjhv9zgk4kpv7ivrrmd80khb0h3h1wk092r8"))))
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0fvnchxvvx7d00ffn7cx007ahgfpwa0aw5jhspl22kd9prrazi8p"))))
     (build-system meson-build-system)
     (arguments
-     '(#:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'patch-schemas
-                    (lambda* (#:key inputs #:allow-other-keys)
-                      (let ((theme (assoc-ref inputs "gnome-backgrounds")))
-                        (substitute* (find-files "schemas"
-                                                 "\\.gschema\\.xml\\.in$")
-                          ;; Provide the correct file name of the default GNOME
-                          ;; background, 'adwaita-timed.xml'.
-                          (("@datadir@/backgrounds/gnome")
-                           (string-append theme "/share/backgrounds/gnome"))
-                          ;; Do not reference fonts, that may not exist.
-                          (("'Source Code Pro 10'") "'Monospace 11'"))
-                        #t))))))
-    (inputs
-     `(("glib" ,glib)
-       ("gnome-backgrounds" ,gnome-backgrounds)))
+     '(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
     (native-inputs
-     `(("intltool" ,intltool)
-       ("glib" ,glib "bin")                       ; glib-compile-schemas, etc.
+     `(("gettext" ,gettext-minimal)
+       ("glib" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("glib" ,glib)))
+    (synopsis "Shared GSettings schemas for the GNOME desktop")
+    (description "Gsettings-desktop-schemas contains a collection of GSettings
+schemas for settings shared by various components of the GNOME desktop.")
     (home-page "https://launchpad.net/gsettings-desktop-schemas")
-    (synopsis
-     "GNOME settings for various desktop components")
-    (description
-     "Gsettings-desktop-schemas contains a collection of GSettings schemas
-for settings shared by various components of the GNOME desktop.")
     (license license:lgpl2.1+)))
 
 (define-public icon-naming-utils
