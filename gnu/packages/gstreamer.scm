@@ -38,6 +38,7 @@
   #:use-module (gnu packages audio)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages cdrom)
   #:use-module (gnu packages curl)
@@ -61,7 +62,9 @@
   #:use-module (gnu packages libunwind)
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages maths)
   #:use-module (gnu packages mp3)
+  #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages networking)
   #:use-module (gnu packages ocr)
@@ -407,73 +410,83 @@ arrays of data.")
 (define-public gstreamer
   (package
     (name "gstreamer")
-    (version "1.16.2")
-    (source
-     (origin
-      (method url-fetch)
-      (uri (string-append
-            "https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-"
-            version ".tar.xz"))
-      (sha256
-       (base32
-        "0kp93622y29pck8asvil1fmzf55s2gx76wv475a6izc3cwj49w73"))))
-    (build-system meson-build-system)
-    (outputs '("out" "doc"))
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         ,@%common-gstreamer-phases
-         ;; FIXME: Since switching to the meson-build-system, two tests
-         ;; started failing on i686.  See
-         ;; <https://gitlab.freedesktop.org/gstreamer/gstreamer/issues/499>.
-         ,@(if (string-prefix? "i686" (or (%current-target-system)
-                                          (%current-system)))
-               `((add-after 'unpack 'disable-some-tests
-                   (lambda _
-                     (substitute* "tests/check/gst/gstsystemclock.c"
-                       (("tcase_add_test \\(tc_chain, test_stress_cleanup_unschedule.*")
-                        "")
-                       (("tcase_add_test \\(tc_chain, test_stress_reschedule.*")
-                      ""))
-                     #t)))
-               '())
-         (add-after 'install 'move-docs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (doc (assoc-ref outputs "doc")))
-               (mkdir-p (string-append doc "/share"))
-               (copy-recursively (string-append out "/share/gtk-doc")
-                                 (string-append doc "/share/gtk-doc"))
-               (delete-file-recursively (string-append out "/share/gtk-doc"))
-               #t))))))
-    (propagated-inputs `(("glib" ,glib))) ; required by gstreamer-1.0.pc.
-    (native-inputs
-     `(("bison" ,bison)
-       ("flex" ,flex)
-       ("glib" ,glib "bin")
-       ("gobject-introspection" ,gobject-introspection)
-       ("gtk-doc" ,gtk-doc)
-       ("perl" ,perl)
-       ("pkg-config" ,pkg-config)
-       ("python-wrapper" ,python-wrapper)))
-    (native-search-paths
-     (list (search-path-specification
-            (variable "GST_PLUGIN_SYSTEM_PATH")
-            (files '("lib/gstreamer-1.0")))))
-    (home-page "https://gstreamer.freedesktop.org/")
-    (synopsis "Multimedia library")
-    (description
-     "GStreamer is a library for constructing graphs of media-handling
-components.  The applications it supports range from simple Ogg/Vorbis
-playback, audio/video streaming to complex audio mixing and video
-non-linear editing.
-
-Applications can take advantage of advances in codec and filter technology
-transparently.  Developers can add new codecs and filters by writing a
-simple plugin with a clean, generic interface.
-
-This package provides the core library and elements.")
-    (license license:lgpl2.0+)))
+     (version "1.16.2")
+     (source
+      (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-"
+         version ".tar.xz"))
+       (sha256
+        (base32 "0kp93622y29pck8asvil1fmzf55s2gx76wv475a6izc3cwj49w73"))))
+     (build-system meson-build-system)
+     (outputs '("out" "doc"))
+     (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* '("gst/building.xml" "gst/running.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.3")
+                                 "/xml/dtd/docbook/")))
+               (substitute* '("libs/gstreamer-libs-docs.sgml"
+                              "plugins/gstreamer-plugins-docs.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+          (add-after 'install 'move-docs
+            (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+                (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+                #t))))))
+     (native-inputs
+     `(("bash-completion" ,bash-completion)
+       ("bison" ,bison)
+       ("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+        ("flex" ,flex)
+       ("gettext" ,gettext-minimal)
+        ("glib" ,glib "bin")
+        ("gobject-introspection" ,gobject-introspection)
+        ("gtk-doc" ,gtk-doc)
+       ("libxml2" ,libxml2)
+        ("perl" ,perl)
+        ("pkg-config" ,pkg-config)
+        ("python-wrapper" ,python-wrapper)))
+    (inputs
+     `(("gmp" ,gmp)
+       ("gsl" ,gsl)
+       ("gtk+" ,gtk+)
+       ("setcap" ,libcap)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("libdw" ,elfutils)
+       ("libunwind" ,libunwind)))
+     (native-search-paths
+     (list
+      (search-path-specification
+       (variable "GST_PLUGIN_SYSTEM_PATH")
+       (files '("lib/gstreamer-1.0")))))
+     ;; To load gst-plugins.
+     (search-paths native-search-paths)
+    (synopsis "Multimedia framework core library")
+    (description "GStreamer is a library for constructing graphs of
+media-handling components.  The applications it supports range from simple
+Ogg/Vorbis playback, audio/video streaming to complex audio and video
+processing.")
+     (home-page "https://gstreamer.freedesktop.org/")
+     (license license:lgpl2.0+)))
 
 (define-public gst-plugins-base
   (package
