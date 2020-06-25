@@ -492,66 +492,103 @@ processing.")
   (package
     (name "gst-plugins-base")
     (version "1.16.2")
-    (source
-     (origin
-      (method url-fetch)
-      (uri (string-append "https://gstreamer.freedesktop.org/src/" name "/"
-                          name "-" version ".tar.xz"))
-      (sha256
-       (base32
-        "0sl1hxlyq46r02k7z70v09vx1gi4rcypqmzra9jid93lzvi76gmi"))))
-    (build-system meson-build-system)
-    (propagated-inputs
-     `(("glib" ,glib)              ;required by gstreamer-sdp-1.0.pc
-       ("gstreamer" ,gstreamer)    ;required by gstreamer-plugins-base-1.0.pc
-
-       ;; XXX: Do not enable Orc optimizations on ARM systems because
-       ;; it leads to two test failures.
-       ;; https://gitlab.freedesktop.org/gstreamer/gst-plugins-base/issues/683
-       ,@(if (string-prefix? "arm" (or (%current-target-system)
-                                       (%current-system)))
-             '()
-             `(("orc" ,orc)))))         ;required by gstreamer-audio-1.0.pc
+     (source
+      (origin
+        (method url-fetch)
+       (uri
+        (string-append "https://gstreamer.freedesktop.org/src/" name "/"
+                       name "-" version ".tar.xz"))
+        (sha256
+        (base32 "0sl1hxlyq46r02k7z70v09vx1gi4rcypqmzra9jid93lzvi76gmi"))))
+     (build-system meson-build-system)
+    (outputs '("out" "doc"))
+     (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+        #:phases
+        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* '("libs/compiling.sgml"
+                              "libs/gst-plugins-base-libs-docs.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'unpack 'patch-tests
+            (lambda _
+              (substitute* "tests/check/libs/pbutils.c"
+                (("/bin/sh") (which "sh")))
+             #t))
+         (add-before
+             'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests look for $XDG_RUNTIME_DIR.
+             (setenv "XDG_RUNTIME_DIR" (getcwd))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("python-wrapper" ,python-wrapper)
+       ("xmllint" ,libxml2)
+       ("xorg-server" ,xorg-server-for-tests)))
     (inputs
-     `(("cdparanoia" ,cdparanoia)
-       ("pango" ,pango)
+     `(("alsa-lib" ,alsa-lib)
+       ("cdparanoia" ,cdparanoia)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glu" ,glu)
+       ("graphene" ,graphene)
+       ("gtk+" ,gtk+)
+       ("iso-codes" ,iso-codes)
+       ("libgudev" ,libgudev)
+       ("libjpeg" ,libjpeg-turbo)
        ("libogg" ,libogg)
        ("libtheora" ,libtheora)
+       ("libvisual" ,libvisual)
        ("libvorbis" ,libvorbis)
        ("libx11" ,libx11)
-       ("zlib" ,zlib)
-       ("libXext" ,libxext)
+       ("libxext" ,libxext)
+       ("libxshm" ,libxshmfence)
        ("libxv" ,libxv)
-       ("alsa-lib" ,alsa-lib)
-       ;; XXX Don't build with opus on 32-bit systems:
-       ;; <https://bugs.gnu.org/32360>
-       ,@(if (target-64bit?)
-             `(("opus" ,opus))
-             '())))
-    (native-inputs
-      `(("pkg-config" ,pkg-config)
-        ("glib:bin" ,glib "bin")
-        ("gobject-introspection" ,gobject-introspection)
-        ("python-wrapper" ,python-wrapper)))
-    (arguments
-     `(#:configure-flags '("-Dgl=disabled"
-                           ;; FIXME: Documentation fails to build without
-                           ;; enabling GL above, which causes other problems.
-                           "-Ddoc=false")
-       #:phases
-       (modify-phases %standard-phases
-         ,@%common-gstreamer-phases
-         (add-before 'configure 'patch
-           (lambda _
-             (substitute* "tests/check/libs/pbutils.c"
-               (("/bin/sh") (which "sh")))
-             #t)))))
-    (home-page "https://gstreamer.freedesktop.org/")
-    (synopsis
-     "Plugins for the GStreamer multimedia library")
-    (description "This package provides an essential exemplary set of plug-ins
-for the GStreamer multimedia library.")
-    (license license:lgpl2.0+)))
+       ("mesa" ,mesa)
+       ("opus" ,opus)
+       ("pango" ,pango)
+       ("sdl" ,sdl)
+       ("wayland" ,wayland)
+       ("zlib" ,zlib)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gstreamer" ,gstreamer)
+       ("orc" ,orc)))
+    (synopsis "GStreamer plugins and helper libraries")
+    (description "Gst-Plugins-Base is a well-groomed and well-maintained
+collection of GStreamer plug-ins and elements, spanning the range of possible
+types of elements one would want to write for GStreamer.")
+     (home-page "https://gstreamer.freedesktop.org/")
+     (license license:lgpl2.0+)))
 
 (define-public gst-plugins-good
   (package
