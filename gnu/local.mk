@@ -1066,9 +1066,6 @@ dist_patch_DATA =						\
   %D%/packages/patches/gnupg-default-pinentry.patch		\
   %D%/packages/patches/gnutls-skip-trust-store-test.patch	\
   %D%/packages/patches/gnutls-cross.patch			\
-  %D%/packages/patches/gobject-introspection-absolute-shlib-path.patch \
-  %D%/packages/patches/gobject-introspection-cc.patch		\
-  %D%/packages/patches/gobject-introspection-girepository.patch	\
   %D%/packages/patches/go-skip-gc-test.patch			\
   %D%/packages/patches/gpm-glibc-2.26.patch			\
   %D%/packages/patches/gpsbabel-minizip.patch     		\

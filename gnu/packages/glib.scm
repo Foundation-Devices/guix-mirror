@@ -331,56 +331,47 @@ threads, dynamic loading, and an object system.")
 (define gobject-introspection
   (package
     (name "gobject-introspection")
-    (version "1.62.0")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/"
-                   "gobject-introspection/" (version-major+minor version)
-                   "/gobject-introspection-" version ".tar.xz"))
-             (sha256
-              (base32 "18lhglg9v6y83lhqzyifc1z0wrlawzrhzzxx0a3h1g7xaz97xvmi"))
-             (patches (search-patches
-                       "gobject-introspection-cc.patch"
-                       "gobject-introspection-girepository.patch"
-                       "gobject-introspection-absolute-shlib-path.patch"))))
+    (version "1.64.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/"
+                       name "/" (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "19vz7vp10h0zj3f491yk72dp89bix6rgkzxg4qcm4d6151ksxgl0"))))
     (build-system meson-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'do-not-use-/usr/bin/env
-           (lambda _
-             (substitute* "tools/g-ir-tool-template.in"
-               (("#!@PYTHON_CMD@")
-                (string-append "#!" (which "python3"))))
-             #t)))))
-    (inputs
+     `(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
+    (native-inputs
      `(("bison" ,bison)
        ("flex" ,flex)
-       ("glib" ,glib)
-       ("python" ,python-wrapper)
-       ("zlib" ,zlib)))
-    (native-inputs
-     `(("glib" ,glib "bin")
+       ("glib" ,glib "bin")
        ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("glib" ,glib)
+       ("python" ,python-wrapper)))
     (propagated-inputs
-     `(;; In practice, GIR users will need libffi when using
-       ;; gobject-introspection.
-       ("libffi" ,libffi)))
+     `(("libffi" ,libffi)))
     (native-search-paths
      (list (search-path-specification
             (variable "GI_TYPELIB_PATH")
             (files '("lib/girepository-1.0")))))
     (search-paths native-search-paths)
-    (home-page "https://wiki.gnome.org/GObjectIntrospection")
-    (synopsis "Generate interface introspection data for GObject libraries")
-    (description
-     "GObject introspection is a middleware layer between C libraries (using
-GObject) and language bindings.  The C library can be scanned at compile time
-and generate a metadata file, in addition to the actual native C library.  Then
-at runtime, language bindings can read this metadata and automatically provide
-bindings to call into the C library.")
-    ; Some bits are distributed under the LGPL2+, others under the GPL2+
-    (license license:gpl2+)))
+    (synopsis "GObject introspection tools and libraries")
+    (description "GObject introspection is a middleware layer between
+C libraries (using GObject) and language bindings.  The C library can be scanned
+at compile time and generate metadata files, in addition to the actual native
+C library.  Then language bindings can read this metadata and automatically
+provide bindings to call into the C library.")
+    (home-page "https://wiki.gnome.org/Projects/GObjectIntrospection")
+    (license
+     (list
+      ;; For library.
+      license:lgpl2.0+
+      ;; For tools.
+      license:gpl2+))))
 
 (define intltool
   (package
