@@ -292,27 +292,40 @@ threads, dynamic loading, and an object system.")
   ;; which in turn depends on glib.
   (package
     (inherit glib)
-    (properties (alist-delete 'hidden? (package-properties glib)))
-    (outputs (cons "doc" (package-outputs glib))) ; 20 MiB of GTK-Doc reference
     (native-inputs
-     `(("gtk-doc" ,gtk-doc)             ; for the doc
-       ("docbook-xml" ,docbook-xml)
-       ("libxml2" ,libxml2)
+     `(("gtk-doc" ,gtk-doc)
+       ("docbook-xml-4.2" ,docbook-xml-4.2)
+       ("docbook-xml-4.5" ,docbook-xml)
        ,@(package-native-inputs glib)))
+    (outputs (cons "doc" (package-outputs glib)))
     (arguments
      (substitute-keyword-arguments (package-arguments glib)
        ((#:configure-flags flags ''())
         `(cons "-Dgtk_doc=true" ,flags))
        ((#:phases phases)
         `(modify-phases ,phases
+           (add-after 'unpack 'patch-docbook-xml
+             (lambda* (#:key inputs #:allow-other-keys)
+               (with-directory-excursion "docs/reference"
+                 (substitute* '("gio/gdbus-object-manager-example/.*\\.xml"
+                                "gio/.*\\.xml" "glib/.*\\.xml" "gobject/.*\\.xml")
+                   (("http://www.oasis-open.org/docbook/xml/4.5/")
+                    (string-append (assoc-ref inputs "docbook-xml-4.5")
+                                   "/xml/dtd/docbook/")))
+                 (substitute* "gio/gio.xml"
+                   (("http://www.oasis-open.org/docbook/xml/4.2/")
+                    (string-append (assoc-ref inputs "docbook-xml-4.2")
+                                   "/xml/dtd/docbook/"))))
+               #t))
            (add-after 'install 'move-doc
              (lambda* (#:key outputs #:allow-other-keys)
                (let ((out (assoc-ref outputs "out"))
                      (doc (assoc-ref outputs "doc"))
                      (html (string-append "/share/gtk-doc")))
-                 (copy-recursively (string-append out html)
-                                   (string-append doc html))
-                 (delete-file-recursively (string-append out html))
+                 (mkdir-p (string-append doc "/share"))
+                 (rename-file
+                  (string-append out html)
+                  (string-append doc html))
                  #t)))))))))
 
 (define gobject-introspection
