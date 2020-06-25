@@ -4398,7 +4398,7 @@ library.")
 (define-public glib-networking
   (package
     (name "glib-networking")
-    (version "2.62.4")
+    (version "2.64.3")
     (source
      (origin
        (method url-fetch)
@@ -4407,7 +4407,7 @@ library.")
                        (version-major+minor version) "/"
                        "glib-networking-" version ".tar.xz"))
        (sha256
-        (base32 "1kwlnaiz4qfy2d1as5hd8sgxy7jjfxps1h2443hxq3s8xjg2i3y1"))))
+        (base32 "0s518l4bwvdvcp51lbjqcw8g0vq18bznpf5hq2zi6a054jqhcylk"))))
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
