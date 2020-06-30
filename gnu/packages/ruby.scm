@@ -11659,3 +11659,32 @@ which snapshots to consider and what files to include.")
 defined in @file{.travis.yml} on your local machine, using @code{rvm},
 @code{rbenv}, or @code{chruby} to test different versions of Ruby.")
     (license license:expat)))
+
+(define-public ruby-slim
+  (package
+    (name "ruby-slim")
+    (version "4.0.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/slim-template/slim.git")
+         (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "19118dddf6n6vwzl130qgqj61wr280qrh5y9hjhmym2da3q7m90c"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f))           ; XXX: rake/testtask not being detected
+    (native-inputs
+     `(("git" ,git-minimal)
+       ("rake" ,ruby-rake)))
+    (inputs
+     `(("temple" ,ruby-temple)
+       ("tilt" ,ruby-tilt)))
+    (synopsis "Lightweight templating engine for Ruby")
+    (description "Slim is a Ruby template language whose goal is reduce the
+syntax to the essential parts without becoming cryptic.")
+    (home-page "http://slim-lang.com/")
+    (license license:expat)))
