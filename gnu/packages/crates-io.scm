@@ -11340,6 +11340,27 @@ for the most common image formats.")
         ("rust-num-complex" ,rust-num-complex-0.2)
         ("rust-quickcheck" ,rust-quickcheck-0.6))))))
 
+(define-public rust-imgref
+  (package
+    (name "rust-imgref")
+    (version "1.6.1")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (crate-uri "imgref" version))
+        (file-name
+         (string-append name "-" version ".tar.gz"))
+        (sha256
+         (base32
+          "1f2m9lq769248bwbyzda714a8xcgk5bdpdsi20xcnavikiw449g8"))))
+    (build-system cargo-build-system)
+    (home-page "https://lib.rs/crates/imgref")
+    (synopsis "Image processing library")
+    (description
+     "A trivial struct for interchange of 2d-dimensional pixel buffers
+with width, height & stride.")
+    (license license:cc0)))
+
 (define-public rust-indexmap-1
   (package
     (name "rust-indexmap")
