@@ -6293,43 +6293,48 @@ part of udev-extras, then udev, then systemd.  It's now a project on its own.")
 (define-public gvfs
   (package
     (name "gvfs")
-    (version "1.40.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/gvfs/"
-                                  (version-major+minor version) "/"
-                                  "gvfs-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1cfnzamr4mvgpf6yhm28lh9cafy9z6842s8jpbqnfizfxybg8ylj"))
-              ;; This patch may be removed when upgrading to version 1.46.x.
-              (patches
-               (search-patches "gvfs-add-support-for-libplist-2.2.patch"))))
+    (version "1.44.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gvfs/"
+                       (version-major+minor version) "/"
+                       "gvfs-" version ".tar.xz"))
+       (sha256
+        (base32 "0ipv0jgzim6glsgizmfjkx0m3gd1l9lr242m0jj6cdmhs52k5vsh"))
+       ;; This patch may be removed when upgrading to version 1.46.x.
+       (patches
+        (search-patches "gvfs-add-support-for-libplist-2.2.patch"))))
     (build-system meson-build-system)
     (arguments
      '(#:glib-or-gtk? #t
        #:configure-flags
-       (list "-Dsystemduserunitdir=no"
-             "-Dtmpfilesdir=no"
-             ;; Otherwise, the RUNPATH will lack the final path component.
-             (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out") "/lib/gvfs"))))
+       (list
+        "-Dsystemduserunitdir=no"
+        "-Dtmpfilesdir=no"
+        "-Dman=true"
+        ;; Otherwise, the RUNPATH will lack the final path component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out") "/lib/gvfs"))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-genmarshal, etc.
+     `(("docbook-xml" ,docbook-xml-4.2)
+       ("docbook-xsl" ,docbook-xsl)
        ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
        ("gtk-doc" ,gtk-doc)
+       ("gobject-introspection" ,gobject-introspection)
        ("pkg-config" ,pkg-config)
        ("xsltproc" ,libxslt)))
     (inputs
      `(("avahi" ,avahi)
-       ("docbook-xml" ,docbook-xml-4.2)
-       ("docbook-xsl" ,docbook-xsl)
        ("dbus" ,dbus)
        ("elogind" ,elogind)
        ("fuse" ,fuse)
        ("gcr" ,gcr)
        ("glib" ,glib)
        ("gnome-online-accounts" ,gnome-online-accounts)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("libarchive" ,libarchive)
        ("libbluray" ,libbluray)
        ("libcap" ,libcap)
@@ -6341,23 +6346,23 @@ part of udev-extras, then udev, then systemd.  It's now a project on its own.")
        ("libimobiledevice" ,libimobiledevice)
        ("libmtp" ,libmtp)
        ("libnfs" ,libnfs)
+       ("libplist" ,libplist)
        ("libsecret" ,libsecret)
        ("libsmbclient" ,samba)
        ("libsoup" ,libsoup)
+       ("libusb" ,libusb)
        ("libxml2" ,libxml2)
        ("openssh" ,openssh)
        ("polkit" ,polkit)
        ("udisks" ,udisks)))
+    (synopsis "Virtual filesystem implementation for GIO")
+    (description "GVfs is a userspace virtual filesystem implementation for GIO
+(a library available in GLib).  GVfs comes with a set of backends, including
+trash support, SFTP, SMB, HTTP, DAV, and many others.  GVfs also contains
+modules for GIO that implement volume monitors and persistent metadata storage.
+There is also FUSE support that provides limited access to the GVfs filesystems
+for applications not using GIO.")
     (home-page "https://wiki.gnome.org/gvfs/")
-    (synopsis "Userspace virtual file system for GIO")
-    (description
-     "GVFS is a userspace virtual file system designed to work with the I/O
-abstraction of GIO.  It contains a GIO module that seamlessly adds GVFS support
-to all applications using the GIO API.  It also supports exposing the GVFS
-mounts to non-GIO applications using FUSE.
-
-GVFS comes with a set of backends, including trash support, SFTP, SMB, HTTP,
-DAV, and others.")
     (license license:lgpl2.0+)))
 
 (define-public gusb
