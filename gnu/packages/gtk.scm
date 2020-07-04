@@ -72,6 +72,7 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages graphics)
+  #:use-module (gnu packages groovy)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
   #:use-module (gnu packages iso-codes)
@@ -84,6 +85,7 @@
   #:use-module (gnu packages profiling)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages ruby)
   #:use-module (gnu packages guile)
   #:use-module (gnu packages guile-xyz)
   #:use-module (gnu packages cups)
@@ -482,52 +484,97 @@ printing and other features typical of a source code editor.")
     (home-page "https://developer.gnome.org/gtksourceview/")))
 
 (define-public gtksourceview
- (package
-   (name "gtksourceview")
-   (version "4.2.0")
-   (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/gtksourceview/"
-                                 (version-major+minor version) "/"
-                                 "gtksourceview-" version ".tar.xz"))
-             (sha256
-              (base32
-               "0xgnjj7jd56wbl99s76sa1vjq9bkz4mdsxwgwlcphg689liyncf4"))))
-   (build-system gnu-build-system)
-   (arguments
-    '(#:phases
-      (modify-phases %standard-phases
-        (add-before
-         'check 'pre-check
-         (lambda* (#:key inputs #:allow-other-keys)
-           (let ((xorg-server (assoc-ref inputs "xorg-server")))
+  (package
+    (name "gtksourceview")
+    (version "4.6.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gtksourceview/"
+                       (version-major+minor version) "/"
+                       "gtksourceview-" version ".tar.xz"))
+       (sha256
+        (base32 "11csdnb5xj1gkn1shynp3jdsfhhi7ks3apgmavfan0p6n85f64sc"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc" "glade"))
+    (arguments
+     `(#:glib-or-gtk? #t ;To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dglade_catalog=true"
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("gtksourceview-docs.xml.in" "intro.xml.in"
+                              "lang-reference.xml.in" "lang-tutorial.xml"
+                              "porting-guide-3-to-4.xml" "style-reference.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
              ;; Tests require a running X server.
-             (system (format #f "~a/bin/Xvfb :1 &" xorg-server))
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
-             ;; For the missing /etc/machine-id.
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests look for $XDG_RUNTIME_DIR.
+             (setenv "XDG_RUNTIME_DIR" (getcwd))
+             ;; For missing '/etc/machine-id'.
              (setenv "DBUS_FATAL_WARNINGS" "0")
-             #t))))))
-   (native-inputs
-    `(("glib:bin" ,glib "bin") ; for glib-genmarshal, etc.
-      ("intltool" ,intltool)
-      ("itstool" ,itstool)
-      ("gobject-introspection" ,gobject-introspection)
-      ("pkg-config" ,pkg-config)
-      ("vala" ,vala)
-      ;; For testing.
-      ("xorg-server" ,xorg-server-for-tests)
-      ("shared-mime-info" ,shared-mime-info)))
-   (propagated-inputs
-    ;; gtksourceview-3.0.pc refers to all these.
-    `(("glib" ,glib)
-      ("gtk+" ,gtk+)
-      ("libxml2" ,libxml2)))
-   (home-page "https://wiki.gnome.org/Projects/GtkSourceView")
-   (synopsis "GNOME source code widget")
-   (description "GtkSourceView is a text widget that extends the standard
-GTK+ text widget GtkTextView.  It improves GtkTextView by implementing syntax
-highlighting and other features typical of a source code editor.")
-   (license license:lgpl2.1+)))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc")))
+             #t))
+         (add-after 'install 'move-glade
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (glade (assoc-ref outputs "glade")))
+               (mkdir-p (string-append glade "/share"))
+               (rename-file
+                (string-append out "/share/glade")
+                (string-append glade "/share/glade")))
+             #t)))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("groovy" ,groovy)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("ruby" ,ruby)
+       ("shared-mime-info" ,shared-mime-info)
+       ("vala" ,vala)
+       ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("glade" ,glade3)))
+    (propagated-inputs
+     `(("fribidi" ,fribidi)
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libxml2" ,libxml2)))
+    (synopsis "GNOME source code widget")
+    (description "GtkSourceView is a GNOME library that extends GtkTextView, the
+standard GTK+ widget for multiline text editing.  GtkSourceView adds support for
+syntax highlighting, undo/redo, file loading and saving, search and replace, a
+completion system, printing, displaying line numbers, and other features typical
+of a source code editor.")
+    (home-page "https://wiki.gnome.org/Projects/GtkSourceView")
+    (license license:lgpl2.1+)))
 
 (define-public gtksourceview-3
  (package (inherit gtksourceview)
