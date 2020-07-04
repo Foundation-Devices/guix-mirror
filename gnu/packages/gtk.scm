@@ -577,17 +577,61 @@ of a source code editor.")
     (license license:lgpl2.1+)))
 
 (define-public gtksourceview-3
- (package (inherit gtksourceview)
-   (name "gtksourceview")
-   (version "3.24.10")
-   (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/" name "/"
-                                 (version-major+minor version) "/"
-                                 name "-" version ".tar.xz"))
-             (sha256
-              (base32
-               "16ym7jwiki4s1pilwr4incx0yg7ll94f1cajrnpndkxxs36hcm5b"))))))
+  (package
+    (inherit gtksourceview)
+    (name "gtksourceview")
+    (version "3.24.11")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32"1zbpj283b5ycz767hqz5kdq02wzsga65pp4fykvhg8xj6x50f6v9"))))
+    (build-system glib-or-gtk-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--enable-glade-catalog"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("gtksourceview-docs.xml.in" "intro.xml.in"
+                              "lang-reference.xml.in" "lang-tutorial.xml"
+                              "style-reference.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests look for $XDG_RUNTIME_DIR.
+             (setenv "XDG_RUNTIME_DIR" (getcwd))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             #t))
+         (add-after 'install 'move-glade
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (glade (assoc-ref outputs "glade")))
+               (mkdir-p (string-append glade "/share"))
+               (rename-file
+                (string-append out "/share/glade")
+                (string-append glade "/share/glade")))
+             #t)))))))
 
 (define-public gdk-pixbuf
   (package
