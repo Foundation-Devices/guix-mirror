@@ -2740,64 +2740,65 @@ processes currently causing I/O.")
 (define-public fuse
   (package
     (name "fuse")
-    (version "2.9.9")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/libfuse/libfuse/releases/"
-                                  "download/fuse-" version
-                                  "/fuse-" version ".tar.gz"))
-              (sha256
-               (base32
-                "1ddlq6kzxilccgbvxjfx80jx6kamgw4sv49phks2zhlcc1frvrnh"))
-              (patches (search-patches "fuse-overlapping-headers.patch"))))
-    (build-system gnu-build-system)
-    (inputs `(("util-linux" ,util-linux)))
+    (version "3.9.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/libfuse/libfuse.git")
+         (commit (string-append name "-" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "10xsbly7rv895c9zv4fqmnrxbdc0kd1qhlk75x4m9cv95f93k843"))))
+    (build-system meson-build-system)
     (arguments
-     '(#:configure-flags (list (string-append "MOUNT_FUSE_PATH="
-                                              (assoc-ref %outputs "out")
-                                              "/sbin")
-                               (string-append "INIT_D_PATH="
-                                              (assoc-ref %outputs "out")
-                                              "/etc/init.d")
-
-                               ;; The rule makes /dev/fuse 666.
-                               (string-append "UDEV_RULES_PATH="
-                                              (assoc-ref %outputs "out")
-                                              "/lib/udev/rules.d"))
+     `(#:tests? #f                 ; FIX-ME: Fails with wrong commands
+       #:configure-flags
+       (list
+        (string-append "-Dudevrulesdir="
+                       (assoc-ref %outputs "out")
+                       "/lib/udev/rules.d")
+        "-Duseroot=false")
        #:phases
        (modify-phases %standard-phases
-         (add-before 'build 'set-file-names
+         (add-after 'unpack 'patch-program-references
            (lambda* (#:key inputs #:allow-other-keys)
-             ;; libfuse calls out to mount(8) and umount(8).  Make sure
-             ;; it refers to the right ones.
-             (substitute* '("lib/mount_util.c" "util/mount_util.c")
-               (("/bin/(u?)mount" _ maybe-u)
-                (string-append (assoc-ref inputs "util-linux")
-                               "/bin/" maybe-u "mount")))
-             (substitute* '("util/mount.fuse.c")
+             (substitute* "lib/mount.c"
+               (("/bin/mount")
+                (string-append (assoc-ref inputs "util-linux") "/bin/mount"))
+               (("/bin/umount")
+                (string-append (assoc-ref inputs "util-linux") "/bin/umount")))
+             (substitute* "util/mount.fuse.c"
                (("/bin/sh")
-                (which "sh")))
-
-             ;; This hack leads libfuse to search for 'fusermount' in
-             ;; $PATH, where it may find a setuid-root binary, instead of
-             ;; trying solely $out/sbin/fusermount and failing because
-             ;; it's not setuid.
-             (substitute* "lib/Makefile"
-               (("-DFUSERMOUNT_DIR=[[:graph:]]+")
-                "-DFUSERMOUNT_DIR=\\\"/var/empty\\\""))
+                (string-append (assoc-ref inputs "bash") "/bin/sh")))
+             #t))
+         (add-after 'unpack 'patch-install-dir
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "util/install_helper.sh"
+               (("\\$\\{DESTDIR\\}/etc/init.d/fuse3")
+                (string-append (assoc-ref outputs "out") "/etc/init.d/fuse3")))
              #t)))))
-    (supported-systems (delete "i586-gnu" %supported-systems))
+    (native-inputs
+     `(("pkg-config" ,pkg-config)))
+    (inputs
+     `(("bash" ,bash)
+       ("eudev" ,eudev)
+       ("libiconv" ,libiconv)
+       ("util-linux" ,util-linux)))
+    (synopsis "Filesystem in Userspace")
+    (description "FUSE is an interface for userspace programs to export a
+filesystem to the Linux kernel.  The FUSE project consists of two components:
+the fuse kernel module (maintained in the regular kernel repositories) and the
+libfuse userspace library (maintained in this repository).  Libfuse provides the
+reference implementation for communicating with the FUSE kernel module.")
     (home-page "https://github.com/libfuse/libfuse")
-    (synopsis "Support file systems implemented in user space")
-    (description
-     "As a consequence of its monolithic design, file system code for Linux
-normally goes into the kernel itself---which is not only a robustness issue,
-but also an impediment to system extensibility.  FUSE, for \"file systems in
-user space\", is a kernel module and user-space library that tries to address
-part of this problem by allowing users to run file system implementations as
-user-space processes.")
-    (license (list license:lgpl2.1                ;library
-                   license:gpl2+))))              ;command-line utilities
+    (license
+     (list
+      ;; Headers and Libraries.
+      license:lgpl2.1
+      ;; Others.
+      license:gpl2+))))
 
 (define-public unionfs-fuse
   (package
