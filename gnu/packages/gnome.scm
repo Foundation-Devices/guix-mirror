@@ -1749,54 +1749,77 @@ relationship modeling, and network diagrams.  The program supports various file
 formats like PNG, SVG, PDF and EPS.")
       (license license:gpl2+))))
 
-;; This is the unstable release, but it is required for the current stable
-;; release of gvfs (1.38.1).
 (define-public libgdata
   (package
     (name "libgdata")
-    (version "0.17.9")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0fj54yqxdapdppisqm1xcyrpgcichdmipq0a0spzz6009ikzgi45"))))
-    (build-system gnu-build-system)
+    (version "0.17.12")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0613nihsvwvdnmlbjnwi8zqxgmpwyxdapzznq4cy1fp84246zzd0"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:phases
+     '(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Doauth1=enabled"
+        "-Dman=true"
+        "-Dgtk_doc=true")
+       #:phases
        (modify-phases %standard-phases
-         (add-before 'check 'disable-failing-tests
-           (lambda _
-             ;; The PicasaWeb API tests fail with gnome-online-accounts@3.24.2.
-             ;; They have been removed in libgdata 0.17.6, so just do the same.
-             (substitute* "gdata/tests/Makefile"
-               (("picasaweb\\$\\(EXEEXT\\) ") ""))
-             #t)))))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("gdata-docs.xml"
+                              "gdata-overview.xml"
+                              "gdata-running.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-docs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk-doc" ,gtk-doc)
+       ("gtk+:bin" ,gtk+ "bin")
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("uhttpmock" ,uhttpmock)))
+       ("uhttpmock" ,uhttpmock)
+       ("vala" ,vala)))
     (inputs
-     `(("cyrus-sasl" ,cyrus-sasl)
-       ("glib-networking" ,glib-networking)))
+     `(("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("gtk+" ,gtk+)))
     (propagated-inputs
      `(("gcr" ,gcr)
        ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("json-glib" ,json-glib)
-       ("liboauth" ,liboauth)
        ("libsoup" ,libsoup)
-       ("libxml2" ,libxml2)))
+       ("libxml2" ,libxml2)
+       ("oauth" ,liboauth)))
+    (synopsis "Google Data APIs")
+    (description "LibGData is a GLib-based library for accessing online service
+APIs using the GData protocol.  It provides APIs to access the common Google
+services, and has full asynchronous support.")
     (home-page "https://wiki.gnome.org/Projects/libgdata")
-    (synopsis "Library for accessing online service APIs")
-    (description
-     "libgdata is a GLib-based library for accessing online service APIs using
-the GData protocol — most notably, Google's services.  It provides APIs to
-access the common Google services, and has full asynchronous support.")
     (license license:lgpl2.1+)))
 
 (define-public libgxps
