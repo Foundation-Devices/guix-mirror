@@ -35,6 +35,7 @@
   #:use-module (guix build-system meson)
   #:use-module (guix utils)
   #:use-module (gnu packages)
+  #:use-module (gnu packages aidc)
   #:use-module (gnu packages audio)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
@@ -49,6 +50,7 @@
   #:use-module (gnu packages flex)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gettext)
+  #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
@@ -57,6 +59,7 @@
   #:use-module (gnu packages graphviz)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages image)
+  #:use-module (gnu packages image-processing)
   #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages java)
   #:use-module (gnu packages libunwind)
@@ -65,10 +68,13 @@
   #:use-module (gnu packages maths)
   #:use-module (gnu packages mp3)
   #:use-module (gnu packages multiprecision)
+  #:use-module (gnu packages music)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages nettle)
   #:use-module (gnu packages networking)
   #:use-module (gnu packages ocr)
   #:use-module (gnu packages perl)
+  #:use-module (gnu packages photo)
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages rdf)
@@ -86,6 +92,8 @@
   #:use-module (gnu packages telephony)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages version-control)
+  #:use-module (gnu packages vulkan)
+  #:use-module (gnu packages webkit)
   #:use-module (gnu packages assembly)
   #:use-module (gnu packages xml))
 
@@ -693,92 +701,177 @@ model to base your own plug-in on, here it is.")
   (package
     (name "gst-plugins-bad")
     (version "1.16.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://gstreamer.freedesktop.org/src/"
-                                  name "/" name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0x0y0hm0ga3zqi5q4090hw5sjh59y1ry9ak16qsaascm72i7mjzi"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://gstreamer.freedesktop.org/src/"
+                       name "/" name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0x0y0hm0ga3zqi5q4090hw5sjh59y1ry9ak16qsaascm72i7mjzi"))))
     (build-system meson-build-system)
     (arguments
-     `(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
        (modify-phases %standard-phases
-         ,@%common-gstreamer-phases
-         ,@(if (string-prefix? "arm" (or (%current-target-system)
-                                         (%current-system)))
-               ;; Disable test that fails on ARMv7.
-               ;; https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/issues/1188
-               `((add-after 'unpack 'disable-asfmux-test
-                   (lambda _
-                     (substitute* "tests/check/meson.build"
-                       (("\\[\\['elements/asfmux\\.c'\\]\\],")
-                        ""))
-                     #t)))
-               '())
-         (add-after 'unpack 'disable-failing-test
+         (add-after 'unpack 'fix-build-errors
            (lambda _
-             ;; FIXME: Why is this failing.
+             (substitute* "ext/vulkan/vkerror.c"
+               (("VK_RESULT_BEGIN_RANGE")
+                "VK_RESULT_MAX_ENUM"))
+             #t))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* '("libs/compiling.sgml"
+                              "libs/gst-plugins-bad-libs-docs.sgml"
+                              "plugins/gst-plugins-bad-plugins-docs.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'unpack 'disable-failing-tests
+           (lambda _
              (substitute* "tests/check/meson.build"
-               ((".*elements/dash_mpd\\.c.*")
+               (("\\[\\['elements/msdkh264enc.c'\\], not have_msdk, \\[msdk_dep\\]\\],")
+                "")
+               (("\\[\\['elements/dash_mpd.c'\\], not xml2_dep.found\\(\\), \\[xml2_dep\\]\\],")
+                "")
+               (("\\[\\['elements/shm.c'\\], not shm_enabled, shm_deps\\],")
+                "")
+               (("\\[\\['elements/webrtcbin.c'\\], not libnice_dep.found\\(\\), \\[gstwebrtc_dep\\]\\],")
                 ""))
+             #t))
+         (add-before
+             'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests look for $XDG_RUNTIME_DIR.
+             (setenv "XDG_RUNTIME_DIR" (getcwd))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
              #t)))))
-    (propagated-inputs
-     `(("gst-plugins-base" ,gst-plugins-base)))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-mkenums, etc.
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ;; TODO: Enable documentation for 1.18.
-       ;;("gtk-doc" ,gtk-doc)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("perl" ,perl)
        ("pkg-config" ,pkg-config)
-       ("python" ,python)))
+       ("python-wrapper" ,python-wrapper)
+       ("xorg-server" ,xorg-server-for-tests)))
     (inputs
-     ;; XXX: The following dependencies are missing:
-     ;;  vo-amrwbenc, vo-aacenc, bs2b, chromaprint, directfb, daala, libdts,
-     ;;  faac, flite, libgsm, libde265, libmms, libmimic, mjpegtools,
-     ;;  mpeg2enc, libofa, opencv, openh264, openni2, libtimemmgr, wildmidi,
-     ;;  openspc, gme, sbc, schroedinger, zbar, librtmp, spandsp
      `(("bluez" ,bluez)
+       ("bzip2" ,bzip2)
+       ("cairo" ,cairo)
+       ("ccextractor" ,ccextractor)
+       ("chromaprint" ,chromaprint)
        ("curl" ,curl)
+       ("directfb" ,directfb)
+       ;;("dssim" ,dssim)
+       ("faac" ,faac)
        ("faad2" ,faad2)
+       ("flite" ,flite)
        ("fluidsynth" ,fluidsynth)
+       ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("glu" ,glu)
+       ("gsm" ,gsm)
        ("gtk+" ,gtk+)
+       ("iqa" ,iqa)
        ("ladspa" ,ladspa)
+       ("lcms" ,lcms)
+       ("libaom" ,libaom)
        ("libass" ,libass)
+       ("libbs2b" ,libbs2b)
+       ("libdc1394" ,libdc1394)
+       ("libdca" ,libdca)
+       ("libde265" ,libde265)
+       ("libdrm" ,libdrm)
        ("libdvdnav" ,libdvdnav)
        ("libdvdread" ,libdvdread)
+       ("libexif" ,libexif)
+       ("libfdk" ,libfdk)
        ("libgcrypt" ,libgcrypt)
+       ("libgme" ,libgme)
        ("libgudev" ,libgudev)
        ("libkate" ,libkate)
+       ("libmfx" ,mediasdk)
+       ("libmms" ,libmms)
        ("libmodplug" ,libmodplug)
+       ("libmpcdec" ,libmpcdec)
+       ("libnice" ,libnice)
+       ("libofa" ,libofa)
+       ("libopenmpt" ,libopenmpt)
        ("librsvg" ,librsvg)
        ("libsndfile" ,libsndfile)
        ("libsrtp" ,libsrtp)
        ("libssh2" ,libssh2)
+       ("libtiff" ,libtiff)
        ("libusb" ,libusb)
+       ("libva" ,libva)
        ("libvdpau" ,libvdpau)
        ("libwebp" ,libwebp)
+       ("libx11" ,libx11)
+       ("libxcb" ,libxcb)
+       ("libxext" ,libxext)
+       ("libxkbcommon" ,libxkbcommon)
        ("libxml2" ,libxml2)
+       ("libxshm" ,libxshmfence)
+       ("lilv" ,lilv)
        ("lrdf" ,lrdf)
+       ("lv2" ,lv2)
        ("mesa" ,mesa)
+       ("mjpegtools" ,mjpegtools)
        ("neon" ,neon)
+       ("nettle" ,nettle)
        ("openal" ,openal)
+       ("opencv" ,opencv)
        ("openexr" ,openexr)
+       ("openh264" ,openh264)
        ("openjpeg" ,openjpeg)
+       ("openni2" ,openni2)
+       ("opensles" ,opensles)
        ("openssl" ,openssl)
        ("opus" ,opus)
        ("orc" ,orc)
-       ;("qtbase" ,qtbase)
-       ;("qtdeclarative" ,qtdeclarative)
-       ;("qtx11extras" ,qtx11extras)
+       ("pango" ,pango)
+       ("rtmp" ,rtmpdump)
+       ("sbc" ,sbc)
+       ("sctp" ,lksctp-tools)
        ("soundtouch" ,soundtouch)
+       ("spandsp" ,spandsp)
+       ("srt" ,srt)
+       ("svthevcenc" ,svt-hevc)
+       ("tinyalsa" ,tinyalsa)
+       ("transcode" ,transcode)
+       ("v4l" ,v4l-utils)
+       ("voaacenc", vo-aacenc)
+       ("voamrwbenc" ,vo-amrwbenc)
+       ("vulkan-headers" ,vulkan-headers)
+       ("vulkan-loader" ,vulkan-loader)
        ("x265" ,x265)
-       ("wayland" ,wayland)))
+       ("wayland" ,wayland)
+       ("webrtcdsp" ,webrtc-audio-processing)
+       ("wildmidi" ,wildmidi)
+       ("wpebackend-fdo" ,wpebackend-fdo)
+       ;;("wpewebkit" ,wpewebkit)
+       ("zbar" ,zbar)
+       ("zxing" ,zxing-cpp)))
+    (propagated-inputs
+     `(("gstreamer" ,gstreamer)
+       ("gst-plugins-base" ,gst-plugins-base)))
+    (synopsis "GStreamer plugins and helper libraries")
+    (description "Gst-Plugins-Bad are Bad with a capital B.  They look fine on
+the outside, and might even appear to get the job done, but at the end of the
+day they're a black sheep.  Without a golden-haired angel to watch over them,
+they'll probably land in an unmarked grave at the final showdown.")
     (home-page "https://gstreamer.freedesktop.org/")
-    (synopsis "Plugins for the GStreamer multimedia library")
-    (description
-     "GStreamer Bad Plug-ins is a set of plug-ins whose quality aren't up to
-par compared to the rest.")
     (license license:lgpl2.0+)))
 
 (define-public gst-plugins-ugly
