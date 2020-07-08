@@ -6768,37 +6768,39 @@ wraps things up in a developer-friendly way.")
   (package
     (name "libgee")
     (version "0.20.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/libgee/"
-                                  (version-major+minor version) "/"
-                                  "libgee-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1pm525wm11dhwz24m8bpcln9547lmrigl6cxf3qsbg4cr3pyvdfh"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/libgee/"
+                       (version-major+minor version) "/"
+                       "libgee-" version ".tar.xz"))
+       (sha256
+        (base32
+         "1pm525wm11dhwz24m8bpcln9547lmrigl6cxf3qsbg4cr3pyvdfh"))))
+    (build-system glib-or-gtk-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'fix-introspection-install-dir
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((out (assoc-ref outputs "out")))
-              (substitute* "gee/Makefile.in"
-                (("@INTROSPECTION_GIRDIR@")
-                 (string-append out "/share/gir-1.0/"))
-                (("@INTROSPECTION_TYPELIBDIR@")
-                 (string-append out "/lib/girepository-1.0/")))))))))
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out")))
+               (substitute* "gee/Makefile.in"
+                 (("@INTROSPECTION_GIRDIR@")
+                  (string-append out "/share/gir-1.0/"))
+                 (("@INTROSPECTION_TYPELIBDIR@")
+                  (string-append out "/lib/girepository-1.0/")))))))))
     (native-inputs
      `(("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("perl" ,perl)
        ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("glib" ,glib)
-       ("gobject-introspection" ,gobject-introspection)))
-    (home-page "https://wiki.gnome.org/Projects/Libgee")
+    (propagated-inputs
+     `(("glib" ,glib)))
     (synopsis "GObject collection library")
-    (description
-     "Libgee is a utility library providing GObject-based interfaces and
-classes for commonly used data structures.")
+    (description "Libgee is a utility library providing GObject-based interfaces
+and classes for commonly used data structures.")
+    (home-page "https://wiki.gnome.org/Projects/Libgee")
     (license license:lgpl2.1+)))
 
 (define-public gexiv2
