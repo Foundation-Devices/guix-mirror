@@ -26,10 +26,12 @@
   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module (guix git-download)
+  #:use-module (guix build-system glib-or-gtk)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
   #:use-module (guix utils)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages databases)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages glib)
@@ -46,44 +48,40 @@
     (version "0.30")
     (source
      (origin
-      (method url-fetch)
-
-      ;; This used to be at 0pointer.de but it vanished.
-      (uri (string-append
-            "http://pkgs.fedoraproject.org/repo/pkgs/libcanberra/libcanberra-"
-            version ".tar.xz/34cb7e4430afaf6f447c4ebdb9b42072/libcanberra-"
-            version ".tar.xz"))
-      (sha256
-       (base32
-        "0wps39h8rx2b00vyvkia5j40fkak3dpipp1kzilqla0cgvk73dn2"))
-      ;; "sound-theme-freedesktop" is the default and fall-back sound theme for
-      ;; XDG desktops and should always be present.
-      ;; http://www.freedesktop.org/wiki/Specifications/sound-theme-spec/
-      ;; We make sure libcanberra will find it.
-      ;;
-      ;; We add the default sounds store directory to the code dealing with
-      ;; XDG_DATA_DIRS and not XDG_DATA_HOME. This is because XDG_DATA_HOME
-      ;; can only be a single directory and is inspected first.  XDG_DATA_DIRS
-      ;; can list an arbitrary number of directories and is only inspected
-      ;; later.  This is designed to allows the user to modify any theme at
-      ;; his pleasure.
-      (patch-flags '("-p0"))
-      (patches
-       (search-patches "libcanberra-sound-theme-freedesktop.patch"))))
-    (build-system gnu-build-system)
-    (inputs
-     `(("alsa-lib" ,alsa-lib)
-       ("gstreamer" ,gstreamer)
-       ("gtk+" ,gtk+)
-       ("libltdl" ,libltdl)
-       ("libvorbis" ,libvorbis)
-       ("pulseaudio" ,pulseaudio)
-       ("udev" ,eudev)
-       ("sound-theme-freedesktop" ,sound-theme-freedesktop)))
-    (native-inputs
-     `(("pkg-config" ,pkg-config)))
+       (method git-fetch)
+       ;; The original source is no longer available.
+       (uri
+        (git-reference
+         (url "https://salsa.debian.org/gnome-team/libcanberra.git")
+         (commit
+          (string-append "upstream/" version))))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "14bsgi9pf9hbscsg4ad7pzv9k9iyb5nkns474syx9sw8kfgzx6cc"))
+       ;; "sound-theme-freedesktop" is the default and fall-back sound theme for
+       ;; XDG desktops and should always be present.
+       ;; http://www.freedesktop.org/wiki/Specifications/sound-theme-spec/
+       ;; We make sure libcanberra will find it.
+       ;;
+       ;; We add the default sounds store directory to the code dealing with
+       ;; XDG_DATA_DIRS and not XDG_DATA_HOME. This is because XDG_DATA_HOME
+       ;; can only be a single directory and is inspected first.  XDG_DATA_DIRS
+       ;; can list an arbitrary number of directories and is only inspected
+       ;; later.  This is designed to allows the user to modify any theme at
+       ;; his pleasure.
+       (patch-flags '("-p0"))
+       (patches
+        (search-patches "libcanberra-sound-theme-freedesktop.patch"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:phases
+     `(#:configure-flags
+       (list
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
        (modify-phases %standard-phases
          (add-before 'build 'patch-default-sounds-directory
            (lambda* (#:key inputs #:allow-other-keys)
@@ -93,14 +91,27 @@
                  (assoc-ref inputs "sound-theme-freedesktop")
                  "/share")))
              #t)))))
+    (native-inputs
+     `(("pkg-config" ,pkg-config)))
+    (inputs
+     `(("alsa-lib" ,alsa-lib)
+       ("glib" ,glib)
+       ("gstreamer" ,gstreamer)
+       ("libltdl" ,libltdl)
+       ("libvorbis" ,libvorbis)
+       ("pulseaudio" ,pulseaudio)
+       ("tdb" ,tdb)
+       ("udev" ,eudev)
+       ("sound-theme-freedesktop" ,sound-theme-freedesktop)))
+    (propagated-inputs
+     `(("gtk+2" ,gtk+-2)
+       ("gtk+3" ,gtk+)))
+    (synopsis "FreeDesktop.org Sound Theme and Name Specifications")
+    (description "Libcanberra is an implementation of the XDG Sound Theme and
+Name Specifications, for generating event sounds on free desktops, such as
+GNOME.  It comes with several backends (ALSA, PulseAudio, OSS, GStreamer, null)
+and is designed to be portable.")
     (home-page "http://0pointer.de/lennart/projects/libcanberra/")
-    (synopsis
-     "Implementation of the XDG Sound Theme and Name Specifications")
-    (description
-     "Libcanberra is an implementation of the XDG Sound Theme and Name
-Specifications, for generating event sounds on free desktops, such as
-GNOME.  It comes with several backends (ALSA, PulseAudio, OSS, GStreamer,
-null) and is designed to be portable.")
     (license lgpl2.1+)))
 
 (define-public libcanberra/gtk+-2
