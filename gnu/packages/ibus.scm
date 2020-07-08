@@ -42,6 +42,7 @@
   #:use-module (gnu packages databases)
   #:use-module (gnu packages datastructures)
   #:use-module (gnu packages dbm)
+  #:use-module (gnu packages docbook)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages glib)
@@ -49,70 +50,64 @@
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages logging)
+  #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages serialization)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages unicode)
-  #:use-module (gnu packages xorg))
+  #:use-module (gnu packages xorg)
+  #:use-module (gnu packages xdisorg))
 
 (define-public ibus
   (package
     (name "ibus")
     (version "1.5.22")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/ibus/ibus/"
-                                  "releases/download/"
-                                  version "/ibus-" version ".tar.gz"))
-              (sha256
-               (base32
-                "0jmy2w01phpmqnjnfnak7nvfna57mpgfnl87jwc4iai8ijjynw41"))))
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/ibus/ibus.git")
+         (commit version)))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "09ynn7gq84q18hhbg6wq2yrliwil42qbzxbwbpggry1s955jg5xb"))
+       (patches
+        (search-patches "ibus-disable-failing-tests.patch"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f  ; tests fail because there's no connection to dbus
-       #:parallel-build? #f ; race condition discovered with emoji support
-       #:configure-flags (list "--enable-python-library"
-                               (string-append
-                                "--with-unicode-emoji-dir="
-                                (assoc-ref %build-inputs "unicode-emoji")
-                                "/share/unicode/emoji")
-                               (string-append
-                                "--with-emoji-annotation-dir="
-                                (assoc-ref %build-inputs "unicode-cldr-common")
-                                "/share/unicode/cldr/common/annotations")
-                               (string-append "--with-ucd-dir="
-                                              (assoc-ref %build-inputs "ucd")
-                                              "/share/ucd")
-                               "--enable-wayland")
+     `(#:configure-flags
+       (list
+        "--enable-wayland"
+        "--enable-appindicator"
+        "--enable-gtk-doc"
+        "--enable-memconf"
+        "--enable-python-library"
+        (string-append
+         "--with-unicode-emoji-dir="
+         (assoc-ref %build-inputs "unicode-emoji")
+         "/share/unicode/emoji")
+        (string-append
+         "--with-emoji-annotation-dir="
+         (assoc-ref %build-inputs "unicode-cldr-common")
+         "/share/unicode/cldr/common/annotations")
+        (string-append "--with-ucd-dir="
+                       (assoc-ref %build-inputs "ucd")
+                       "/share/ucd"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'patch-python-target-directories
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((root (string-append (assoc-ref outputs "out")
-                                        "/lib/python"
-                                        ,(version-major+minor (package-version python))
-                                        "/site-packages")))
-               (substitute* "configure"
-                 (("(py2?overridesdir)=.*" _ var)
-                  (string-append var "=" root "/gi/overrides/"))
-                 (("(pkgpython2dir=).*" _ var)
-                  (string-append var root "/ibus"))))
-             #t))
-         (add-before 'configure 'disable-dconf-update
-           (lambda _
-             (substitute* "data/dconf/Makefile.in"
-               (("dconf update") "echo dconf update"))
-             #t))
-         (add-after 'unpack 'delete-generated-files
-           (lambda _
-             (for-each (lambda (file)
-                         (let ((c (string-append (string-drop-right file 4) "c")))
-                           (when (file-exists? c)
-                             (format #t "deleting ~a\n" c)
-                             (delete-file c))))
-                       (find-files "." "\\.vala"))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference/ibus"
+               (substitute* "ibus-docs.sgml.in"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
              #t))
          (add-after 'unpack 'fix-paths
            (lambda* (#:key inputs #:allow-other-keys)
@@ -124,50 +119,104 @@
                (("\"(setxkbmap|xmodmap)\"" _ prog)
                 (string-append "\"" (assoc-ref inputs prog) "/bin/" prog "\"")))
              #t))
+         (add-after 'unpack 'disable-dconf-update
+           (lambda _
+             (substitute* "data/dconf/Makefile.am"
+               (("dconf update")
+                "echo dconf update"))
+             #t))
+         (add-before 'configure 'patch-python-target-directories
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((root (string-append (assoc-ref outputs "out")
+                                         "/lib/python"
+                                         ,(version-major+minor (package-version python))
+                                         "/site-packages")))
+               (substitute* "configure"
+                 (("(py2?overridesdir)=.*" _ var)
+                  (string-append var "=" root "/gi/overrides/"))
+                 (("(pkgpython2dir=).*" _ var)
+                  (string-append var root "/ibus"))))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests require running iBus daemon.
+             (system "./bus/ibus-daemon --daemonize")
+             #t))
+         (add-after 'install 'move-docs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
          (add-after 'wrap-program 'wrap-with-additional-paths
            (lambda* (#:key outputs #:allow-other-keys)
              ;; Make sure 'ibus-setup' runs with the correct PYTHONPATH and
              ;; GI_TYPELIB_PATH.
-             (let ((out (assoc-ref outputs "out")))
+             (let* ((out (assoc-ref outputs "out")))
                (wrap-program (string-append out "/bin/ibus-setup")
                  `("PYTHONPATH" ":" prefix (,(getenv "PYTHONPATH")))
                  `("GI_TYPELIB_PATH" ":" prefix
                    (,(getenv "GI_TYPELIB_PATH")
                     ,(string-append out "/lib/girepository-1.0")))))
              #t)))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("glib" ,glib "bin")
+       ("gnome-common" ,gnome-common)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk+:bin" ,gtk+ "bin")
+       ("gtk-doc" ,gtk-doc)
+       ("libtool" ,libtool)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
+       ("which" ,which)
+       ("xorg-server" ,xorg-server-for-tests)))
     (inputs
      `(("dbus" ,dbus)
+       ("dbus-python" ,python-dbus)
+       ("dbus-python2" ,python2-dbus)
        ("dconf" ,dconf)
        ("gconf" ,gconf)
+       ("glib" ,glib)
        ("gtk2" ,gtk+-2)
-       ("gtk+" ,gtk+)
+       ("gtk3" ,gtk+)
+       ("iso-codes" ,iso-codes)
        ("json-glib" ,json-glib)
        ("libnotify" ,libnotify)
-       ("libx11" ,libx11)
+       ("pygobject" ,python-pygobject)
+       ("pygobject2" ,python2-pygobject)
+       ("python" ,python-wrapper)
+       ("python2" ,python-2)
+       ("python3" ,python-3)
        ("setxkbmap" ,setxkbmap)
-       ("wayland" ,wayland)
-       ("xmodmap" ,xmodmap)
-       ("iso-codes" ,iso-codes)
-       ("pygobject2" ,python-pygobject)
-       ("python" ,python)))
-    (native-inputs
-     `(("glib" ,glib "bin") ; for glib-genmarshal
-       ("gettext" ,gettext-minimal)
-       ("gobject-introspection" ,gobject-introspection) ; for g-ir-compiler
        ("ucd" ,ucd)
-       ("unicode-emoji" ,unicode-emoji)
        ("unicode-cldr-common" ,unicode-cldr-common)
-       ("vala" ,vala)
-       ("pkg-config" ,pkg-config)))
+       ("unicode-emoji" ,unicode-emoji)
+       ("wayland" ,wayland)
+       ("x11" ,libx11)
+       ("xkbcommon" ,libxkbcommon)
+       ("xmodmap" ,xmodmap)
+       ("xtst" ,libxtst)))
     (native-search-paths
-     (list (search-path-specification
-            (variable "IBUS_COMPONENT_PATH")
-            (files '("share/ibus/component")))))
-    (synopsis "Input method framework")
-    (description
-     "IBus is an input framework providing a full-featured and user-friendly
-input method user interface.  It comes with multilingual input support.  It
-may also simplify input method development.")
+     (list
+      (search-path-specification
+       (variable "IBUS_COMPONENT_PATH")
+       (files '("share/ibus/component")))))
+    ;; To load iBus components.
+    (search-paths native-search-paths)
+    (synopsis "Intelligent Input Bus")
+    (description "IBus is an input framework providing a full-featured and
+user-friendly input method user interface.  It comes with multilingual input
+support.  It may also simplify input method development.")
     (home-page "https://github.com/ibus/ibus/wiki")
     (license lgpl2.1+)))
 
