@@ -4311,30 +4311,63 @@ configuration storage systems.")
   (package
     (name "json-glib")
     (version "1.4.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0ixwyis47v5bkx6h8a1iqlw3638cxcv57ivxv4gw2gaig51my33j"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0ixwyis47v5bkx6h8a1iqlw3638cxcv57ivxv4gw2gaig51my33j"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Ddocs=true"
+        "-Dman=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "json-glib-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/")))
+               (substitute* "meson.build"
+                 (("http://docbook.sourceforge.net/release/xsl/current/")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-1.79.1/"))))
+             #t))
+         (add-after 'install 'move-docs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("gettext" ,gettext-minimal)
-       ("glib" ,glib "bin")              ;for glib-mkenums and glib-genmarshal
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("glib" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("pkg-config" ,pkg-config)))
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
     (propagated-inputs
-     `(("glib" ,glib)))                         ;according to json-glib-1.0.pc
-    (home-page "https://wiki.gnome.org/Projects/JsonGlib")
-    (synopsis "Compiler for the GObject type system")
-    (description
-     "JSON-GLib is a C library based on GLib providing serialization and
+     `(("glib" ,glib)))
+    (synopsis "Glib and GObject implementation of JSON")
+    (description "JSON-GLib is a library providing serialization and
 deserialization support for the JavaScript Object Notation (JSON) format
-described by RFC 4627.  It provides parser and generator GObject classes and
-various wrappers for the complex data types employed by JSON, such as arrays
-and objects.")
+described by RFC 4627.  It implements a full JSON parser and generator using
+GLib and GObject, and integrates JSON with GLib data types.")
+    (home-page "https://wiki.gnome.org/Projects/JsonGlib")
     (license license:lgpl2.1+)))
 
 (define-public libxklavier
