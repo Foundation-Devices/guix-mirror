@@ -3066,21 +3066,35 @@ dealing with different structured file formats.")
   (package
     (name "librsvg")
     (version "2.40.21")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1fljkag2gr7c4k5mn798lgf9903xslz8h51bgvl89nnay42qjqpp"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1fljkag2gr7c4k5mn798lgf9903xslz8h51bgvl89nnay42qjqpp"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
      `(#:configure-flags
-       (list "--disable-static"
-             "--enable-vala") ; needed for e.g. gnome-mines
+       (list
+        "--disable-static"
+        "--enable-vala"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "rsvg-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          (add-before 'configure 'pre-configure
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "gdk-pixbuf-loader/Makefile.in"
@@ -3089,7 +3103,7 @@ dealing with different structured file formats.")
                (("gdk_pixbuf_moduledir = .*$")
                 (string-append "gdk_pixbuf_moduledir = "
                                "$(prefix)/lib/gdk-pixbuf-2.0/2.10.0/"
-                                "loaders\n"))
+                               "loaders\n"))
                ;; Drop the 'loaders.cache' file, it's in gdk-pixbuf+svg.
                (("gdk_pixbuf_cache_file = .*$")
                 "gdk_pixbuf_cache_file = $(TMPDIR)/loaders.cache\n"))
@@ -3098,37 +3112,38 @@ dealing with different structured file formats.")
            (lambda _
              (with-directory-excursion "tests/fixtures/reftests"
                (for-each delete-file
-                         '(;; This test fails on i686:
-                           "svg1.1/masking-path-04-b.svg"
-                           ;; This test fails on armhf:
-                           "svg1.1/masking-mask-01-b.svg"
-                           ;; This test fails on aarch64:
+                         '("bugs/340047.svg"
+                           "bugs/587721-text-transform.svg"
+                           "bugs/749415.svg"
                            "bugs/777834-empty-text-children.svg")))
              #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("vala" ,vala)
-       ("glib" ,glib "bin")                               ; glib-mkenums, etc.
-       ("gobject-introspection" ,gobject-introspection))) ; g-ir-compiler, etc.
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("vala" ,vala)))
     (inputs
-     `(;; XXX: 1.44 causes some test failures, so we stick with 1.42 for
-       ;; this ancient version of librsvg.
-       ("pango" ,pango-1.42)
+     `(("bzip2" ,bzip2)
+       ("fontconfig" ,fontconfig)
+       ("freetype" ,freetype)
+       ("harfbuzz" ,harfbuzz)
        ("libcroco" ,libcroco)
-       ("bzip2" ,bzip2)
        ("libgsf" ,libgsf)
-       ("libxml2" ,libxml2)))
+       ("libxml2" ,libxml2)
+       ("pango" ,pango)))
     (propagated-inputs
-     ;; librsvg-2.0.pc refers to all of that.
      `(("cairo" ,cairo)
        ("gdk-pixbuf" ,gdk-pixbuf)
        ("glib" ,glib)))
+    (synopsis "SVG rendering library")
+    (description "Librsvg is a library to render SVG images to Cairo surfaces.
+GNOME uses this to render SVG icons.  Outside of GNOME, other desktop
+environments use it for similar purposes.  Wikimedia uses it for Wikipedia's SVG
+diagrams.")
     (home-page "https://wiki.gnome.org/LibRsvg")
-    (synopsis "Render SVG files using Cairo")
-    (description
-     "Librsvg is a C library to render SVG files using the Cairo 2D graphics
-library.")
-    (license license:lgpl2.0+)))
+    (license license:lgpl2.1+)))
 
 (define-public librsvg-next
   (package
