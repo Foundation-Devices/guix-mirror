@@ -2795,38 +2795,64 @@ configuring CUPS.")
 (define-public libnotify
   (package
     (name "libnotify")
-    (version "0.7.7")
+    (version "0.7.9")
     (source
      (origin
-      (method url-fetch)
-      (uri (string-append "mirror://gnome/sources/" name "/"
-                          (version-major+minor version)  "/"
-                          name "-" version ".tar.xz"))
-      (sha256
-       (base32
-        "017wgq9n00hx39n0hm784zn18hl721hbaijda868cm96bcqwxd4w"))))
-    (build-system gnu-build-system)
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0qa7cx6ra5hwqnxw95b9svgjg5q6ynm8y843iqjszxvds5z53h36"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:configure-flags '("--disable-static")))
-    (propagated-inputs
-     `(;; In Requires of libnotify.pc.
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("glib" ,glib)))
-    (inputs
-     `(("gtk+" ,gtk+)
-       ("libpng" ,libpng)))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dman=false")                  ; XXX: docbook-xsl-ns not available
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute*
+                   (append
+                    (list
+                     "notification-spec.xml"
+                     "reference/libnotify-docs.sgml")
+                    (find-files "releases" "\\.xml$"))
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))))
+         (add-after 'install 'move-docs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-      `(("pkg-config" ,pkg-config)
-        ("glib" ,glib "bin")
-        ("gobject-introspection" ,gobject-introspection)))
-    (home-page "https://developer-next.gnome.org/libnotify/")
-    (synopsis
-     "GNOME desktop notification library")
-    (description
-     "Libnotify is a library that sends desktop notifications to a
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
+    (inputs
+     `(("gtk+" ,gtk+)))
+    (propagated-inputs
+     `(("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)))
+    (synopsis "GNOME desktop notification library")
+    (description "Libnotify is a library that sends desktop notifications to a
 notification daemon, as defined in the Desktop Notifications spec.  These
-notifications can be used to inform the user about an event or display
-some form of information without getting in the user's way.")
+notifications can be used to inform the user about an event or display some
+form of information without getting in the user's way.")
+    (home-page "https://developer.gnome.org/libnotify/")
     (license license:lgpl2.1+)))
 
 (define-public libpeas
