@@ -4708,49 +4708,81 @@ and the GLib main loop, to integrate well with GNOME applications.")
   (package
     (name "libsecret")
     (version "0.20.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "mirror://gnome/sources/libsecret/"
-                    (version-major+minor version) "/"
-                    "libsecret-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1r4habxdzmn02id324m0m4mg5isf22q1z436bg3vjjmcz1b3rjsg"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1r4habxdzmn02id324m0m4mg5isf22q1z436bg3vjjmcz1b3rjsg"))))
+    (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f ; FIXME: Testing hangs.
-       #:configure-flags
-       (list (string-append "--with-html-dir="
-                            (assoc-ref %outputs "doc")
-                            "/share/gtk-doc/html"))))
+     `(#:glib-or-gtk? #t
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "man/secret-tool.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.2")
+                                 "/xml/dtd/docbook/")))
+               (substitute* '("reference/libsecret/libsecret-docs.sgml"
+                              "reference/libsecret/libsecret-examples.sgml"
+                              "reference/libsecret/libsecret-using.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))))))
+         (replace 'check
+           (lambda _
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             (invoke "dbus-launch" "meson" "test")
+             #t))
+         (add-after 'install 'move-docs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("gettext" ,gettext-minimal)
-       ("glib:bin" ,glib "bin") ; for gdbus-codegen, etc.
+     `(("dbus" ,dbus)
+       ("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.2" ,docbook-xml-4.2)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("python-dbus" ,python-dbus)
+       ("python-pygobject" ,python-pygobject)
        ("vala" ,vala)
        ("xsltproc" ,libxslt)))
-       ;; These are needed for the tests.
-       ;; FIXME: Add gjs once available.
-       ;("dbus" ,dbus)
-       ;("python2" ,python-2)
-       ;("python2-dbus" ,python2-dbus)
-       ;("python2-pygobject" ,python2-pygobject)
-       ;("python2-pygobject-2" ,python2-pygobject-2)))
-    (propagated-inputs
-     `(("glib" ,glib))) ; required by libsecret-1.pc
     (inputs
-     `(("docbook-xsl" ,docbook-xsl)
-       ("libgcrypt" ,libgcrypt)
-       ("libxml2" ,libxml2))) ; for XML_CATALOG_FILES
+     `(("libxml2" ,libxml2)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("libgcrypt" ,libgcrypt)))
+    (synopsis "GObject bindings for Secret Service API")
+    (description "Libsecret is a library for storing and retrieving passwords
+and other secrets.  It communicates with the Secret Service, using D-Bus.
+Gnome-Keyring and Ksecretservice are both implementations of a Secret Service.")
     (home-page "https://wiki.gnome.org/Projects/Libsecret/")
-    (synopsis "GObject bindings for \"Secret Service\" API")
-    (description
-     "Libsecret is a GObject based library for storing and retrieving passwords
-and other secrets.  It communicates with the \"Secret Service\" using DBus.")
-    (license license:lgpl2.1+)))
+    (license
+     (list
+      ;; Tests
+      license:asl2.0
+      license:gpl2+
+      ;; Others
+      license:lgpl2.1+))))
 
 (define-public five-or-more
   (package
