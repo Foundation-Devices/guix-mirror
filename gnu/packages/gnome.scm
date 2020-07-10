@@ -116,6 +116,7 @@
   #:use-module (gnu packages geo)
   #:use-module (gnu packages gperf)
   #:use-module (gnu packages graphviz)
+  #:use-module (gnu packages gsasl)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages guile)
@@ -4570,124 +4571,79 @@ libxml to ease remote use of the RESTful API.")
   (package
     (name "libsoup")
     (version "2.70.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/libsoup/"
-                                  (version-major+minor version) "/"
-                                  "libsoup-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0hjk9lgppc5435my0lyywbpmj7ib5vvcylwfin8ki97g9bvj1c2l"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/libsoup/"
+                       (version-major+minor version) "/"
+                       "libsoup-" version ".tar.xz"))
+       (sha256
+        (base32 "0hjk9lgppc5435my0lyywbpmj7ib5vvcylwfin8ki97g9bvj1c2l"))))
     (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:modules ((guix build utils)
-                  (guix build meson-build-system)
-                  (ice-9 popen))
-
-       #:configure-flags '("-Dgtk_doc=true")
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dgtk_doc=true")
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'adjust-tests
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("libsoup-2.4-docs.sgml"
+                              "build-howto.xml" "client-howto.xml"
+                              "request-howto.xml" "server-howto.xml"
+                              "session-porting.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'unpack 'disable-failing-tests
+           ;; These tests require network services.
            (lambda _
-             ;; This test fails due to missing /etc/nsswitch.conf
-             ;; in the build environment.
-             (substitute* "tests/socket-test.c"
-               ((".*/sockets/unconnected.*") ""))
-
-             ;; These fail because "subdomain.localhost" does not resolve in
-             ;; the build environment.
-             (substitute* "tests/hsts-test.c"
-               ((".*/hsts/basic.*") "")
-               ((".*/hsts/subdomains.*") "")
-               ((".*/hsts/superdomain.*") "")
-               ((".*/hsts/utf8-address.*") ""))
-             (substitute* "tests/hsts-db-test.c"
-               ((".*/hsts-db/subdomains.*") ""))
-
-             ;; Generate a self-signed certificate that has "localhost" as its
-             ;; 'dnsName'.  Failing to do that, and starting with GnuTLS
-             ;; 3.5.12, tests such as "ssl-tests" fail:
-             ;;
-             ;; ERROR:ssl-test.c:406:do_tls_interaction_test: Unexpected status 6 Unacceptable TLS certificate (expected 200 OK)
-             ;;
-             ;; 'certtool' is interactive so we have to pipe it the answers.
-             ;; Reported at <https://bugzilla.gnome.org/show_bug.cgi?id=784696>.
-             (let ((pipe (open-output-pipe "certtool --generate-self-signed \
- --load-privkey tests/test-key.pem --outfile tests/test-cert.pem")))
-               (for-each (lambda (line)
-                           (display line pipe)
-                           (newline pipe))
-                         '(""               ;Common name
-                           ""               ;UID
-                           "Guix"           ;Organizational unit name
-                           "GNU"            ;Organization name
-                           ""               ;Locality name
-                           ""               ;State or province
-                           ""               ;Country
-                           ""               ;subject's domain component (DC)
-                           ""               ;E-mail
-                           ""               ;serial number
-                           "-1"             ;expiration time
-                           "N"              ;belong to authority?
-                           "N"              ;web client certificate?
-                           "N"              ;IPsec IKE?
-                           "Y"              ;web server certificate?
-                           "localhost"      ;dnsName of subject
-                           ""               ;dnsName of subject (end)
-                           ""               ;URI of subject
-                           "127.0.0.1"      ;IP address of subject
-                           ""               ;signing?
-                           ""               ;encryption (RSA)?
-                           ""               ;data encryption?
-                           ""               ;sign OCSP requests?
-                           ""               ;sign code?
-                           ""               ;time stamping?
-                           ""               ;email protection?
-                           ""               ;URI of the CRL distribution point
-                           "y"              ;above info OK?
-                           ))
-               (close-pipe pipe))
+             (substitute* "tests/meson.build"
+               (("\\['socket', true, \\[\\]\\],")
+                ""))
              #t))
          (add-after 'install 'move-doc
            (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (doc (assoc-ref outputs "doc")))
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
                (mkdir-p (string-append doc "/share"))
-               (copy-recursively (string-append out "/share/gtk-doc")
-                                 (string-append doc "/share/gtk-doc"))
-               (delete-file-recursively (string-append out "/share/gtk-doc"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
                #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")                   ; for glib-mkenums
+     `(("curl" ,curl)
+       ("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("gtk-doc" ,gtk-doc)
+       ("httpd" ,httpd)
        ("intltool" ,intltool)
+       ("php" ,php)
        ("pkg-config" ,pkg-config)
        ("python" ,python-wrapper)
-       ("vala" ,vala)
-       ("php" ,php)
-       ("curl" ,curl)
-       ("gnutls" ,gnutls)                         ;for 'certtool'
-       ("httpd" ,httpd)))
+       ("vala" ,vala)))
+    (inputs
+     `(("krb5_config" ,mit-krb5)
+       ("ntlm_auth" ,samba)))
     (propagated-inputs
-     ;; libsoup-2.4.pc refers to all these.
      `(("brotli" ,google-brotli)
        ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
        ("libpsl" ,libpsl)
        ("libxml2" ,libxml2)
        ("sqlite" ,sqlite)
        ("zlib" ,zlib)))
-    (inputs
-     `(("glib-networking" ,glib-networking)
-       ("mit-krb5" ,mit-krb5)))
-    (home-page "https://live.gnome.org/LibSoup/")
     (synopsis "GLib-based HTTP Library")
-    (description
-     "LibSoup is an HTTP client/server library for GNOME.  It uses GObjects
-and the GLib main loop, to integrate well with GNOME applications.")
+    (description "LibSoup is an HTTP client/server library for GNOME.  It uses
+GObjects and the GLib main loop, to integrate well with GNOME applications.")
+    (home-page "https://wiki.gnome.org/Projects/libsoup")
     (license license:lgpl2.0+)))
-
 
 ;;; A minimal version of libsoup used to prevent a cycle with Inkscape.
 (define-public libsoup-minimal
