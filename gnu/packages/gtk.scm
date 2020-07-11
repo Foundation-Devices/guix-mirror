@@ -78,6 +78,7 @@
   #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages man)
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
@@ -298,54 +299,56 @@ applications.")
 
 (define-public pango
   (package
-   (name "pango")
-   (version "1.44.7")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/pango/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (patches (search-patches "pango-skip-libthai-test.patch"))
-            (sha256
-             (base32
-              "07qvxa2sk90chp1l12han6vxvy098mc37sdqcznyywyv2g6bd9b6"))))
-   (build-system meson-build-system)
-   (arguments
-    '(#:phases (modify-phases %standard-phases
-                 (add-after 'unpack 'disable-cantarell-tests
-                   (lambda _
-                     (substitute* "tests/meson.build"
-                       ;; XXX FIXME: These tests require "font-cantarell", but
-                       ;; adding it here would introduce a circular dependency.
-                       (("\\[ 'test-harfbuzz'.*") "")
-                       (("\\[ 'test-itemize'.*") "")
-                       (("\\[ 'test-layout'.*") ""))
-                     #t)))))
-   (propagated-inputs
-    ;; These are all in Requires or Requires.private of the '.pc' files.
-    `(("cairo" ,cairo)
-      ("fribidi" ,fribidi)
-      ("fontconfig" ,fontconfig)
-      ("freetype" ,freetype)
-      ("glib" ,glib)
-      ("harfbuzz" ,harfbuzz)
-
-      ;; Some packages, such as Openbox, expect Pango to be built with the
-      ;; optional libxft support.
-      ("libxft" ,libxft)))
-   (inputs
-    `(("zlib" ,zlib)))
-   (native-inputs
-    `(("pkg-config" ,pkg-config)
-      ("glib" ,glib "bin")                               ; glib-mkenums, etc.
-      ("gobject-introspection" ,gobject-introspection))) ; g-ir-compiler, etc.
-   (synopsis "GNOME text and font handling library")
-   (description
-    "Pango is the core text and font handling library used in GNOME
-applications.  It has extensive support for the different writing systems
-used throughout the world.")
-   (license license:lgpl2.0+)
-   (home-page "https://developer.gnome.org/pango/")))
+    (name "pango")
+    (version "1.44.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/pango/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "07qvxa2sk90chp1l12han6vxvy098mc37sdqcznyywyv2g6bd9b6"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'disable-failing-tests
+           (lambda _
+             (substitute* "tests/meson.build"
+               (("\\[ 'test-harfbuzz'.*") "")
+               (("\\[ 'test-itemize'.*") "")
+               (("\\[ 'test-layout'.*") ""))
+             #t)))))
+    (native-inputs
+     `(("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("help2man" ,help2man)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
+    (inputs
+     `(("zlib" ,zlib)))
+    (propagated-inputs
+     `(("cairo" ,cairo)
+       ("fontconfig" ,fontconfig)
+       ("freetype" ,freetype)
+       ("fribidi" ,fribidi)
+       ("glib" ,glib)
+       ("harfbuzz" ,harfbuzz)
+       ("libthai" ,libthai)
+       ("libxft" ,libxft)
+       ("libxrender" ,libxrender)))
+    (synopsis "Text and font handling library")
+    (description "Pango is a library for laying out and rendering of text, with
+an emphasis on internationalization.  Pango can be used anywhere that text
+layout is needed, though most of the work on Pango so far has been done in the
+context of the GTK+ widget toolkit.  Pango forms the core of text and font
+handling for GTK+-2.x.")
+    (home-page "https://pango.gnome.org/")
+    (license license:lgpl2.0+)))
 
 (define-public pango-1.42
   (package
