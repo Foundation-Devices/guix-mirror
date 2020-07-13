@@ -136,6 +136,7 @@
   #:use-module (gnu packages lirc)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages mail)
+  #:use-module (gnu packages man)
   #:use-module (gnu packages mp3)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages music)
@@ -4089,46 +4090,61 @@ passwords in the GNOME keyring.")
 (define-public vala
   (package
     (name "vala")
-    (version "0.46.5")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "07fv895sp9wq74b20qig7hic0r4ynrr5pfaqba02r44xb794fy0s"))))
-    (build-system gnu-build-system)
+    (version "0.48.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0lswkb7gj0chas9n3l3dbrm9l71hs77adhvm2v600id2ipi37pi8"))))
+    (build-system glib-or-gtk-build-system)
     (arguments
-     '(#:phases
+     `(#:configure-flags
+       (list
+        "--enable-coverage")
+       #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/manual"
+               (substitute* '("manual.xml" "version.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.4/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          (add-before 'check 'pre-check
-                     (lambda _
-                       (setenv "CC" "gcc")
-                       (substitute* "valadoc/tests/testrunner.sh"
-                         (("export PKG_CONFIG_PATH=" m)
-                          (string-append m "$PKG_CONFIG_PATH:")))
-                       ;; For missing '/etc/machine-id'.
-                       (setenv "DBUS_FATAL_WARNINGS" "0")
-                       #t)))))
+           (lambda _
+             (setenv "CC" "gcc")
+             (substitute* "valadoc/tests/testrunner.sh"
+               (("export PKG_CONFIG_PATH=" m)
+                (string-append m "$PKG_CONFIG_PATH:")))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("bison" ,bison)
+       ("dbus" ,dbus)
+       ("docbook-xml" ,docbook-xml-4.4)
+       ("docbook-xsl" ,docbook-xsl)
        ("flex" ,flex)
-       ("bison" ,bison)
-       ("xsltproc" ,libxslt)
-       ("dbus" ,dbus)                                     ; for dbus tests
-       ("gobject-introspection" ,gobject-introspection))) ; for gir tests
-    (inputs
-     `(("graphviz" ,graphviz)))
+       ("gobject-introspection" ,gobject-introspection)
+       ("help2man" ,help2man)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
     (propagated-inputs
-     `(("glib" ,glib))) ; required by libvala-0.40.pc
-    (home-page "https://live.gnome.org/Vala/")
-    (synopsis "Compiler for the GObject type system")
-    (description
-     "Vala is a programming language that aims to bring modern programming
-language features to GNOME developers without imposing any additional runtime
-requirements and without using a different ABI compared to applications and
-libraries written in C.")
+     `(("glib" ,glib)
+       ("libgvc" ,graphviz)))
+    (synopsis "Compiler using the GObject type system")
+    (description "Vala is a programming language using modern high level
+abstractions without imposing additional runtime requirements and without using
+a different ABI compared to applications and libraries written in C.  Vala uses
+the GObject type system and has additional code generation routines that make
+targeting the GNOME stack simple.")
+    (home-page "https://wiki.gnome.org/Projects/Vala/")
     (license license:lgpl2.1+)))
 
 (define-public vala-0.48
