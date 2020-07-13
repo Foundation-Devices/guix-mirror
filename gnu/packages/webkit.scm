@@ -95,13 +95,14 @@ the WPE-flavored port of WebKit.")
   (package
     (name "wpebackend-fdo")
     (version "1.6.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://wpewebkit.org/releases/"
-                                  "wpebackend-fdo-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1jdi43gciqjgvhnqxs160f3hmp1hkqhrllb0hhmldyxc4wryw3kl"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://wpewebkit.org/releases/"
+                       "wpebackend-fdo-" version ".tar.xz"))
+       (sha256
+        (base32 "1jdi43gciqjgvhnqxs160f3hmp1hkqhrllb0hhmldyxc4wryw3kl"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f))                    ;no tests
@@ -109,14 +110,14 @@ the WPE-flavored port of WebKit.")
      `(("pkg-config" ,pkg-config)))
     (inputs
      `(("glib" ,glib)
-       ("libwpe" ,libwpe)
        ("mesa" ,mesa)
        ("wayland" ,wayland)))
+    (propagated-inputs
+     `(("libwpe" ,libwpe)))
+    (synopsis "A FreeDesktop.org backend for WPE.")
+    (description "This package provides a backend implementation for the WPE
+WebKit engine that uses Wayland for graphics output.")
     (home-page "https://wpewebkit.org/")
-    (synopsis "Wayland WPE backend")
-    (description
-     "This package provides a backend implementation for the WPE WebKit
-engine that uses Wayland for graphics output.")
     (license license:bsd-2)))
 
 (define-public wpewebkit
