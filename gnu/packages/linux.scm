@@ -95,6 +95,7 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages golang)
   #:use-module (gnu packages gperf)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages haskell-apps)
@@ -138,6 +139,7 @@
   #:use-module (gnu packages rsync)
   #:use-module (gnu packages selinux)
   #:use-module (gnu packages swig)
+  #:use-module (gnu packages vulkan)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system go)
@@ -7169,42 +7171,81 @@ types and interfaces and translates so that the X server can use them.")
 (define-public pipewire
   (package
     (name "pipewire")
-    (version "0.2.7")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/PipeWire/pipewire")
-                    (commit version)))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "1q5wrqnhhs6r49p8yvkw1pl0cnsd4rndxy4h5lvdydwgf1civcwc"))))
+    (version "0.3.6")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://gitlab.freedesktop.org/pipewire/pipewire.git")
+         (commit version)))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "0g149vyaigf4gzm764fcgxxci9niw19z0af9afs4diwq5xzr1qd3"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags '("-Dsystemd=false")))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Ddocs=true"
+        "-Dsystemd=false"
+        "-Daudiotestsrc=true"
+        "-Dffmpeg=true"
+        ;; XXX: EVL not available.
+        ;; https://evlproject.org/
+        ;; "-Devl=true"
+        "-Dtest=true"
+        "-Dlibcamera=true"
+        "-Dvideotestsrc=true"
+        "-Dvolume=true"
+        ;; Required for RUNPATH validation.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out") "/lib"
+                       ":"
+                       (assoc-ref %outputs "out") "/lib/pipewire-0.3"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)))
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)
+       ("xmltoman" ,xmltoman)))
     (inputs
-     `(("alsa-lib" ,alsa-lib)
+     `(("alsa" ,alsa-lib)
+       ("bluez" ,bluez)
+       ("camera" ,libcamera)
        ("dbus" ,dbus)
-       ("eudev" ,eudev)
        ("ffmpeg" ,ffmpeg)
+       ("glib" ,glib)
        ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)
+       ("jack" ,jack-2)
        ("libva" ,libva)
+       ("pulseaudio" ,pulseaudio)
        ("sbc" ,sbc)
-       ("sdl2" ,sdl2)))
+       ("sdl2" ,sdl2)
+       ("sndfile" ,libsndfile)
+       ("udev" ,eudev)
+       ("vulkan-headers" ,vulkan-headers)
+       ("vulkan-loader" ,vulkan-loader)))
+    (synopsis "Multimedia processing graphs")
+    (description "PipeWire is a server and user space API to deal with
+multimedia pipelines.  It provides a low-latency, graph based processing engine
+on top of audio and video devices that can be used to support the use cases
+currently handled by both pulseaudio and JACK.")
     (home-page "https://pipewire.org/")
-    (synopsis "Server and user space API to deal with multimedia pipelines")
-    (description
-     "PipeWire is a project that aims to greatly improve handling of audio and
-video under Linux.  It aims to support the usecases currently handled by both
-PulseAudio and Jack and at the same time provide same level of powerful handling
-of Video input and output.  It also introduces a security model that makes
-interacting with audio and video devices from containerized applications easy,
-with supporting Flatpak applications being the primary goal.  Alongside Wayland
-and Flatpak we expect PipeWire to provide a core building block for the future
-of Linux application development.")
     (license license:lgpl2.0+)))
 
 (define-public pipewire-0.3
