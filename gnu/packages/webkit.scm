@@ -238,83 +238,57 @@ acceleration in mind, leveraging common 3D graphics APIs for best performance.")
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (arguments
-     '(#:tests? #f ; no tests
-       #:build-type "Release" ; turn off debugging symbols to save space
-       #:configure-flags (list
-                          "-DPORT=GTK"
-                          "-DENABLE_GTKDOC=ON" ; No doc by default
-                          (string-append ; uses lib64 by default
-                           "-DLIB_INSTALL_DIR="
-                           (assoc-ref %outputs "out") "/lib")
-
-                          ;; XXX Adding GStreamer GL support would apparently
-                          ;; require adding gst-plugins-bad to the inputs,
-                          ;; which might entail a security risk as a result of
-                          ;; the plugins of dubious code quality that are
-                          ;; included.  More investigation is needed.  For
-                          ;; now, we explicitly disable it to prevent an error
-                          ;; at configuration time.
-                          "-DUSE_GSTREAMER_GL=OFF"
-
-                          ;; XXX Disable WOFF2 ‘web fonts’.  These were never
-                          ;; supported in our previous builds.  Enabling them
-                          ;; requires building libwoff2 and possibly woff2dec.
-                          "-DUSE_WOFF2=OFF")
+     `(#:tests? #f                      ; XXX: To be enabled
+       #:configure-flags
+       (list
+        "-DPORT=GTK"
+        ;; XXX: To be enabled.
+        ;; "-DENABLE_ACCELERATED_2D_CANVAS=ON"
+        "-DENABLE_GLES2=ON"
+        "-DENABLE_GTKDOC=ON"
+        "-DENABLE_MINIBROWSER=ON")
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'configure-bubblewrap-store-directory
-           (lambda _
-             ;; This phase is a corollary to 'webkitgtk-share-store.patch' to
-             ;; avoid hard coding /gnu/store, for users with other prefixes.
-             (let ((store-directory (%store-directory)))
-               (substitute*
-                   "Source/WebKit/UIProcess/Launcher/glib/BubblewrapLauncher.cpp"
-                 (("@storedir@") store-directory))
-               #t)))
-         (add-after 'unpack 'patch-gtk-doc-scan
+         (add-after 'unpack 'patch-docbook-xml
            (lambda* (#:key inputs #:allow-other-keys)
-             (for-each (lambda (file)
-                         (substitute* file
-                           (("http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd")
-                            (string-append (assoc-ref inputs "docbook-xml")
-                                           "/xml/dtd/docbook/docbookx.dtd"))))
-                       (find-files "Source" "\\.sgml$"))
+             (for-each
+              (lambda (file)
+                (substitute* file
+                  (("http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd")
+                   (string-append (assoc-ref inputs "docbook-xml")
+                                  "/xml/dtd/docbook/docbookx.dtd"))))
+              (find-files "Source" "\\.sgml$"))
              #t))
-         (add-after 'unpack 'embed-absolute-wpebackend-reference
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((wpebackend-fdo (assoc-ref inputs "wpebackend-fdo")))
-               (substitute* "Source/WebKit/UIProcess/glib/WebProcessPoolGLib.cpp"
-                 (("libWPEBackend-fdo-([\\.0-9]+)\\.so" all version)
-                  (string-append wpebackend-fdo "/lib/" all)))
-               #t)))
          (add-after 'install 'move-doc-files
            (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (doc (assoc-ref outputs "doc")))
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
                (mkdir-p (string-append doc "/share"))
-               (rename-file (string-append out "/share/gtk-doc")
-                            (string-append doc "/share/gtk-doc"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
                #t))))))
     (native-inputs
      `(("bison" ,bison)
+       ("docbook-xml" ,docbook-xml-4.1.2)
+       ("docbook-xsl" ,docbook-xsl)
        ("gettext" ,gettext-minimal)
-       ("glib:bin" ,glib "bin") ; for glib-mkenums, etc.
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("gperf" ,gperf)
+       ("gtk-doc" ,gtk-doc)
        ("perl" ,perl)
        ("pkg-config" ,pkg-config)
        ("python" ,python-wrapper)
-       ("gtk-doc" ,gtk-doc) ; For documentation generation
-       ("docbook-xml" ,docbook-xml) ; For documentation generation
+       ("python2" ,python-2.7)
        ("ruby" ,ruby)))
-    (propagated-inputs
-     `(("gtk+" ,gtk+)
-       ("libsoup" ,libsoup)))
     (inputs
-     `(("at-spi2-core" ,at-spi2-core)
+     `(("atk" ,atk)
+       ("at-spi2-core" ,at-spi2-core)
        ("bubblewrap" ,bubblewrap)
        ("enchant" ,enchant)
        ("geoclue" ,geoclue)
+       ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)
        ("gtk+-2" ,gtk+-2)
        ("harfbuzz" ,harfbuzz)
@@ -336,17 +310,23 @@ acceleration in mind, leveraging common 3D graphics APIs for best performance.")
        ("mesa" ,mesa)
        ("openjpeg" ,openjpeg)
        ("sqlite" ,sqlite)
+       ("wayland" ,wayland)
+       ("woff2" ,woff2)
        ("wpebackend-fdo" ,wpebackend-fdo)
+       ("x11" ,libx11)
        ("xdg-dbus-proxy" ,xdg-dbus-proxy)))
-    (home-page "https://www.webkitgtk.org/")
-    (synopsis "Web content engine for GTK+")
-    (description
-     "WebKitGTK+ is a full-featured port of the WebKit rendering engine,
-suitable for projects requiring any kind of web integration, from hybrid
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libsoup" ,libsoup)))
+    (synopsis "WebKit port for GTK+")
+    (description "WebKitGTK+ is a full-featured port of the WebKit rendering
+engine, suitable for projects requiring any kind of web integration, from hybrid
 HTML/CSS applications to full-fledged web browsers.")
-    ;; WebKit's JavaScriptCore and WebCore components are available under
-    ;; the GNU LGPL, while the rest is available under a BSD-style license.
-    (license (list license:lgpl2.0
-                   license:lgpl2.1+
-                   license:bsd-2
-                   license:bsd-3))))
+    (home-page "https://www.webkitgtk.org/")
+    (license
+     (list
+      ;; Rendering and JavaScript Engines.
+      license:lgpl2.1+
+      ;; Others
+      license:bsd-2))))
