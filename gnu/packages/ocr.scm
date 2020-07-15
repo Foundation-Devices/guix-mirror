@@ -65,8 +65,8 @@ it produces text in 8-bit or UTF-8 formats.")
        (sha256
         (base32 "0h1x4z1h86n2gwknd0wck6gykkp99bmm02lg4a47a698g4az6ybv"))))
     (build-system gnu-build-system)
-    (inputs
-     `(("leptonica" ,leptonica)))
+    (propagated-inputs
+     `(("leptonica" ,leptonica))) ; Refered by .pc file
     (arguments
      '(#:configure-flags
        (let ((leptonica (assoc-ref %build-inputs "leptonica")))
