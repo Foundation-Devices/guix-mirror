@@ -6723,26 +6723,44 @@ of running programs and invoke methods on those interfaces.")
 (define-public yelp-xsl
   (package
     (name "yelp-xsl")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1bdpgkzawhqmw52l6zx8czzg1ndfgcf1p44m2bxjdpqkc4afcgqc"))))
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1hsfj3q3a3kca0cf9i02xlq2qd4vy12qsjb89hh4r6mp6c11rrag"))))
     (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--enable-doc")))
     (native-inputs
-     `(("gettext-minimal" ,gettext-minimal)
+     `(("ducktype" ,mallard-ducktype)
+       ("gettext" ,gettext-minimal)
+       ("intltool" ,intltool)
        ("itstool" ,itstool)
-       ("xmllint" ,libxml2)))
-    (home-page "https://wiki.gnome.org/Apps/Yelp")
+       ("xmllint" ,libxml2)
+       ("xsltproc" ,libxslt)))
     (synopsis "XSL stylesheets for Yelp")
-    (description
-     "Yelp-xsl contains XSL stylesheets that are used by the yelp help browser
-to format Docbook and Mallard documents.")
-    (license license:gpl2+)))
+    (description "Yelp-XSL is a collection of programs and data files to help
+you build, maintain, and distribute documentation.  It provides XSLT stylesheets
+that can be built upon for help viewers and publishing systems.  These
+stylesheets output JavaScript and CSS content, and reference images
+provided by yelp-xsl. It also redistributes copies of the jQuery and
+jQuery.Syntax JavaScript libraries.")
+    (home-page "https://wiki.gnome.org/Apps/Yelp")
+    (license
+     (list
+      ;; XSLT
+      license:gpl2+
+      ;; Images
+      license:lgpl2.1+
+      ;; JavaScript
+      license:expat))))
 
 (define-public yelp
   (package
