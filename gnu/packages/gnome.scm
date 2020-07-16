@@ -7245,27 +7245,43 @@ powerful general purpose text editor.")
   (package
     (name "zenity")
     (version "3.32.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/zenity/"
-                                  (version-major+minor version) "/"
-                                  "zenity-" version ".tar.xz"))
-              (sha256
-               (base32
-                "15fdh8xfdhnwcynyh4byx3mrjxbyprqnwxzi7qn3g5wwaqryg1p7"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/zenity/"
+                       (version-major+minor version) "/"
+                       "zenity-" version ".tar.xz"))
+       (sha256
+        (base32 "15fdh8xfdhnwcynyh4byx3mrjxbyprqnwxzi7qn3g5wwaqryg1p7"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "help"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--enable-libnotify"
+        "--enable-webkitgtk"
+        (string-append "--with-help-dir="
+                       (assoc-ref %outputs "help")
+                       "/share/help"))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gtk+:bin" ,gtk+ "bin")
        ("itstool" ,itstool)
-       ("pkg-config" ,pkg-config)))
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("libnotify" ,libnotify)
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libnotify" ,libnotify)
+       ("x11" ,libx11)
        ("webkitgtk" ,webkitgtk)))
-    (synopsis "Display graphical dialog boxes from shell scripts")
-    (home-page "https://www.gnome.org")
-    (description
-     "Zenity is a rewrite of gdialog, the GNOME port of dialog which allows you
-to display dialog boxes from the commandline and shell scripts.")
+    (synopsis "Rewrite of gdialog")
+    (description "Zenity is a tool that allows you to display GTK dialog boxes
+in commandline and shell scripts.")
+    (home-page "https://wiki.gnome.org/Projects/Zenity")
     (license license:lgpl2.0+)))
 
 (define-public mutter
