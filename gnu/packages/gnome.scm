@@ -6765,35 +6765,57 @@ jQuery.Syntax JavaScript libraries.")
 (define-public yelp
   (package
     (name "yelp")
-    (version "3.32.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0yrl96icmmrxvg7sxl519gzg9qb368cmzgrr9ddh181ignkxzx7f"))))
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "097djjyl096zmicjpxlb858yz6rd5cj813xc8azbxlhsscikwjzx"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "libyelp/libyelp-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-genmarshal, etc.
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("glib:bin" ,glib "bin")
+       ("gtk+:bin" ,gtk+ "bin")
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
-       ("pkg-config" ,pkg-config)))
-    (propagated-inputs
-     `(("dconf" ,dconf)))
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
     (inputs
-     `(("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libxml2" ,libxml2)
        ("libxslt" ,libxslt)
        ("sqlite" ,sqlite)
        ("webkitgtk" ,webkitgtk)
        ("yelp-xsl" ,yelp-xsl)))
-    (home-page "https://wiki.gnome.org/Apps/Yelp")
     (synopsis "GNOME help browser")
-    (description
-     "Yelp is the help viewer in Gnome.  It natively views Mallard, DocBook,
-man, info, and HTML documents.  It can locate documents according to the
-freedesktop.org help system specification.")
+    (description "Yelp is the help viewer in Gnome.  It natively views Mallard,
+DocBook, man, info, and HTML documents.  It can locate documents according to
+the freedesktop.org help system specification.")
+    (home-page "https://wiki.gnome.org/Apps/Yelp")
     (license license:gpl2+)))
 
 (define-public yelp-tools
