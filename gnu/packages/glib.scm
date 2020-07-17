@@ -34,6 +34,7 @@
   #:use-module (gnu packages backup)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bison)
+  #:use-module (gnu packages boost)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages docbook)
@@ -46,6 +47,7 @@
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gperf)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages linux)
@@ -502,28 +504,56 @@ by GDBus included in Glib.")
 (define libsigc++
   (package
     (name "libsigc++")
-    (version "2.10.3")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/libsigc++/"
-                                 (version-major+minor version) "/"
-                                 name "-" version ".tar.xz"))
-             (sha256
-              (base32
-               "11j7j1jv4z58d9s7jvl42fnqa1dzl4idgil9r45cjv1w673dys0b"))))
+    (version "3.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/libsigc++/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1dpdqs3nxkxj43fnyx5467ym2s2bpk3cq8pvwi9y1nsbi5m8dx74"))))
     (build-system gnu-build-system)
-    (native-inputs `(("pkg-config" ,pkg-config)
-                     ("m4" ,m4)))
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--enable-benchmark=yes"
+        (string-append "--with-boost="
+                       (assoc-ref %build-inputs "boost"))
+        (string-append "--with-boost-libdir="
+                       (assoc-ref %build-inputs "boost")
+                       "/lib"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
+    (native-inputs
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
+       ("m4" ,m4)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("xsltproc" ,libxslt)))
+    (inputs
+     `(("boost" ,boost)))
+    (synopsis "Callback Framework for C++")
+    (description "Libsigc++ implements a typesafe callback system for standard
+C++.  It allows you to define signals and to connect those signals to any
+callback function, either global or a member function, regardless of whether it
+is static or virtual.  It also contains adaptor classes for connection of
+dissimilar callbacks and has an ease of use unmatched by other C++ callback
+libraries.")
     (home-page "https://libsigcplusplus.github.io/libsigcplusplus/")
-    (synopsis "Type-safe callback system for standard C++")
-    (description
-     "Libsigc++ implements a type-safe callback system for standard C++.  It
-allows you to define signals and to connect those signals to any callback
-function, either global or a member function, regardless of whether it is
-static or virtual.
-
-It also contains adaptor classes for connection of dissimilar callbacks and
-has an ease of use unmatched by other C++ callback libraries.")
     (license license:lgpl2.1+)))
 
 (define-public libsigc++-2
