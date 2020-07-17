@@ -469,30 +469,34 @@ following the mouse.")
 (define-public pixman
   (package
     (name "pixman")
-    (version "0.38.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://www.cairographics.org/releases/pixman-"
-                    version ".tar.gz"))
-              (sha256
-               (base32
-                "1ryxzdf048x7wsx4dlvrr1p00gzwfs7lybnhgc7ygbj0dvyxcrns"))
-              (patches (search-patches "pixman-CVE-2016-5296.patch"))))
+    (version "0.40.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://www.cairographics.org/releases/pixman-"
+         version ".tar.gz"))
+       (sha256
+        (base32 "1z13n96m7x91j25qq9wlkxsbq04wfwjhw66ir17frna06zn0s83d"))
+       (patches
+        (search-patches "pixman-CVE-2016-5296.patch"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:configure-flags '("--disable-static")))
-    (inputs
-     `(("libpng" ,libpng)
-       ("zlib" ,zlib)))
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-timers"
+        "--enable-gnuplot")))
     (native-inputs
      `(("pkg-config" ,pkg-config)))
+    (inputs
+     `(("libpng" ,libpng)))
+    (synopsis "Image processing and manipulation library")
+    (description "Pixman is a library that provides low-level pixel manipulation
+features such as image compositing and trapezoid rasterization.")
     (home-page "http://www.pixman.org/")
-    (synopsis "Low-level pixel manipulation library")
-    (description "Pixman is a low-level software library for pixel
-manipulation, providing features such as image compositing and trapezoid
-rasterisation.")
-    (license license:x11)))
+    (license license:expat)))
 
 (define-public libdrm
   (package
