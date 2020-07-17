@@ -131,57 +131,71 @@ accessibility tools have full access to view and control running applications.")
 
 (define-public cairo
   (package
-   (name "cairo")
-   (version "1.16.0")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "https://cairographics.org/releases/cairo-"
-                                version ".tar.xz"))
-            (sha256
-             (base32
-              "0c930mk5xr2bshbdljv005j3j8zr47gqmkry3q6qgvqky6rjjysy"))))
-   (build-system gnu-build-system)
-   (propagated-inputs
-    `(("fontconfig" ,fontconfig)
-      ("freetype" ,freetype)
-      ("glib" ,glib)
-      ("libpng" ,libpng)
-      ("libx11" ,libx11)
-      ("libxext" ,libxext)
-      ("libxrender" ,libxrender)
-      ("pixman" ,pixman)))
-   (inputs
-    `(("ghostscript" ,ghostscript)
-      ("libspectre" ,libspectre)
-      ("poppler" ,poppler)
-      ("xorgproto" ,xorgproto)
-      ("zlib" ,zlib)))
-   (native-inputs
-     `(("pkg-config" ,pkg-config)
-      ("python" ,python-wrapper)))
+    (name "cairo")
+    (version "1.16.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://cairographics.org/releases/cairo-"
+                       version ".tar.xz"))
+       (sha256
+        (base32 "0c930mk5xr2bshbdljv005j3j8zr47gqmkry3q6qgvqky6rjjysy"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f  ; see http://lists.gnu.org/archive/html/bug-guix/2013-06/msg00085.html
-       #:configure-flags '("--enable-tee"      ;needed for GNU Icecat
-                           "--enable-xml"      ;for cairo-xml support
-                           "--disable-static")))
-   (synopsis "2D graphics library")
-   (description
-    "Cairo is a 2D graphics library with support for multiple output devices.
-Currently supported output targets include the X Window System (via both
-Xlib and XCB), Quartz, Win32, image buffers, PostScript, PDF, and SVG file
-output.  Experimental backends include OpenGL, BeOS, OS/2, and DirectFB.
-
-Cairo is designed to produce consistent output on all output media while
-taking advantage of display hardware acceleration when available
-eg. through the X Render Extension).
-
-The cairo API provides operations similar to the drawing operators of
-PostScript and PDF.  Operations in cairo including stroking and filling cubic
-Bézier splines, transforming and compositing translucent images, and
-antialiased text rendering.  All drawing operations can be transformed by any
-affine transformation (scale, rotation, shear, etc.).")
-   (license license:lgpl2.1) ; or Mozilla Public License 1.1
-   (home-page "https://cairographics.org/")))
+     `(#:tests? #f ; See http://lists.gnu.org/archive/html/bug-guix/2013-06/msg00085.html
+       #:configure-flags
+       (list
+        "--disable-static"
+        ;; XXX: To be enabled.
+        ;; "--enable-gallium=yes"
+        ;; "--enable-gl=yes"
+        ;; " --enable-glesv2=yes"
+        ;; "--enable-glesv3=yes"
+        ;; "--enable-cogl=yes"
+        ;; "--enable-directfb=yes"
+        ;; "--enable-vg=yes"
+        "--enable-tee=yes"
+        "--enable-xml=yes"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))))
+    (native-inputs
+     `(("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
+    (inputs
+     `(("drm" ,libdrm)
+       ("ghostscript" ,ghostscript)
+       ("libspectre" ,libspectre)
+       ("poppler" ,poppler)))
+    (propagated-inputs
+     `(;; ("cogl" ,cogl)
+       ;; ("directfb" ,directfb)
+       ("fontconfig" ,fontconfig)
+       ("freetype" ,freetype)
+       ("glib" ,glib)
+       ;; ("gtk+" ,gtk+)
+       ("libpng" ,libpng)
+       ;; ("librsvg" ,librsvg)
+       ;; ("opengl" ,mesa)
+       ("pixman" ,pixman)
+       ("x11" ,libx11)
+       ("xcb" ,libxcb)
+       ("xext" ,libxext)
+       ("xrender" ,libxrender)))
+    (synopsis "Multi-platform 2D graphics library")
+    (description "Cairo is a 2D graphics library with support for multiple output
+devices.  Currently supported output targets include the X Window System (via
+both Xlib and XCB), Quartz, Win32, image buffers, PostScript, PDF, and SVG file
+output.  Experimental backends include OpenGL, BeOS, OS/2, and DirectFB.")
+    (home-page "https://cairographics.org/")
+    (license
+     ;; This project is dual-licensed.
+     (list
+      license:lgpl2.1+
+      license:mpl1.1))))
 
 (define-public cairo-xcb
   (package
