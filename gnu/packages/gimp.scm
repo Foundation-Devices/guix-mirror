@@ -51,6 +51,8 @@
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages photo)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages ruby)
+  #:use-module (gnu packages w3m)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xorg))
 
@@ -166,39 +168,41 @@ of a larger interface.")
   (package
     (name "babl")
     (version "0.1.78")
-    (source (origin
-              (method url-fetch)
-              (uri (list (string-append "https://download.gimp.org/pub/babl/"
-                                        (version-major+minor version)
-                                        "/babl-" version ".tar.xz")
-                         (string-append "https://ftp.gtk.org/pub/babl/"
-                                        (version-major+minor version)
-                                        "/babl-" version ".tar.xz")
-                         (string-append "ftp://ftp.gtk.org/pub/babl/"
-                                        (version-major+minor version)
-                                        "/babl-" version ".tar.xz")))
-              (sha256
-               (base32
-                "0fjjfb0pbgimlqi7rk8cqz8pq595b7gw8nrpkxfmixdz6cv4km8p"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (list
+         (string-append "https://download.gimp.org/pub/babl/"
+                        (version-major+minor version)
+                        "/babl-" version ".tar.xz")
+         (string-append "https://ftp.gtk.org/pub/babl/"
+                        (version-major+minor version)
+                        "/babl-" version ".tar.xz")
+         (string-append "ftp://ftp.gtk.org/pub/babl/"
+                        (version-major+minor version)
+                        "/babl-" version ".tar.xz")))
+       (sha256
+        (base32 "0fjjfb0pbgimlqi7rk8cqz8pq595b7gw8nrpkxfmixdz6cv4km8p"))))
     (build-system meson-build-system)
     (arguments
-     `(#:configure-flags
-       (list "-Denable-gir=false")))
+     `(#:glib-or-gtk? #t))   ; To wrap binaires and/or compile schemas
     (native-inputs
-     `(("pkg-config" ,pkg-config)))
+     `(("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("ruby" ,ruby)
+       ("vala" ,vala)))
+    (inputs
+     `(("rsvg-convert" ,librsvg)
+       ("w3m" ,w3m)))
     (propagated-inputs
-     ;; Propagated to satisfy ‘babl.pc’.
      `(("lcms" ,lcms)))
+    (synopsis "Pixel encoding and color space conversion engine in C")
+    (description "Babl is a pixel encoding and color space conversion engine,
+with format introspection, cached runtime self-benchmarking alternate and cpu
+specific code paths.")
     (home-page "http://gegl.org/babl/")
-    (synopsis "Image pixel format conversion library")
-    (description
-     "Babl is a dynamic, any-to-any pixel format translation library.
-It allows converting between different methods of storing pixels, known as
-@dfn{pixel formats}, that have different bit depths and other data
-representations, color models, and component permutations.
-
-A vocabulary to formulate new pixel formats from existing primitives is
-provided, as well as a framework to add new color models and data types.")
     (license license:lgpl3+)))
 
 (define-public gegl
