@@ -57,6 +57,7 @@
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages boost)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
@@ -72,6 +73,7 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages graphics)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages groovy)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
@@ -1366,29 +1368,46 @@ guile-gnome-platform (GNOME developer libraries), and guile-gtksourceview.")
 (define-public cairomm
   (package
     (name "cairomm")
-    (version "1.12.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://www.cairographics.org/releases/"
-                                  name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "16fmigxsaz85c3lgcls7biwyz8zy8c8h3jndfm54cxxas3a7zi25"))))
+    (version "1.15.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://www.cairographics.org/releases/"
+                       name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1lg3q5ixs6igd2b4674mq5i4w0il0d92bxri94mwdjkq8gs2kdld"))))
     (build-system gnu-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     ;; The examples lack -lcairo.
-     '(#:make-flags '("LDFLAGS=-lcairo")))
-    (native-inputs `(("pkg-config" ,pkg-config)))
+     `(#:configure-flags
+       (list
+        "CXXFLAGS=-std=c++17")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
+    (native-inputs
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
     (propagated-inputs
-     `(("libsigc++" ,libsigc++)
-       ("freetype" ,freetype)
-       ("fontconfig" ,fontconfig)
-       ("cairo" ,cairo)))
-    (home-page "https://cairographics.org/")
-    (synopsis "C++ bindings to the Cairo 2D graphics library")
-    (description
-     "Cairomm provides a C++ programming interface to the Cairo 2D graphics
-library.")
+     `(("cairo" ,cairo)
+       ("sigc++" ,libsigc++)))
+    (synopsis "C++ API for Cairo")
+    (description "Cairomm is a C++ wrapper for the cairo graphics library.  It
+offers all the power of cairo with an interface familiar to C++ developers,
+including use of the Standard Template Library where it makes sense.")
+    (home-page "https://cairographics.org/cairomm/")
     (license license:lgpl2.0+)))
 
 (define-public cairomm-1.13
