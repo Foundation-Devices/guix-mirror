@@ -1431,28 +1431,53 @@ including use of the Standard Template Library where it makes sense.")
 (define-public pangomm
   (package
     (name "pangomm")
-    (version "2.42.0")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/" name "/"
-                                 (version-major+minor version)  "/"
-                                 name "-" version ".tar.xz"))
-             (sha256
-              (base32
-               "0mmzxp3wniaafkxr30sb22mq9x44xckb5d60h1bl99lkzxks0vfa"))))
-    (build-system gnu-build-system)
-    (native-inputs `(("pkg-config" ,pkg-config)))
+    (version "2.43.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1yin5b7hfvz0qdfxgnlk6kclyfhcv0fz10kjsgai59zv0v6g6kbr"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
+    (native-inputs
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
+       ("m4" ,m4)
+       ("mm-common" ,mm-common)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("xsltproc" ,libxslt)))
     (propagated-inputs
-     `(("cairo" ,cairo)
-       ("cairomm" ,cairomm)
+     `(("cairomm" ,cairomm)
        ("glibmm" ,glibmm)
        ("pango" ,pango)))
-    (home-page "https://pango.gnome.org//")
-    (synopsis "C++ interface to the Pango text rendering library")
-    (description
-     "Pangomm provides a C++ programming interface to the Pango text rendering
+    (synopsis "C++ API for Pango")
+    (description "Pangomm is the C++ interface for the Pango font layout
 library.")
-    (license license:lgpl2.1+)))
+    (home-page "https://pango.gnome.org//")
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Tools
+      license:gpl2+))))
 
 (define-public pangomm-2.42
   (package
