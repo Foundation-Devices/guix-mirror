@@ -5423,32 +5423,53 @@ which are easy to play with the aid of a mouse.")
 (define-public amtk
   (package
     (name "amtk")
-    (version "5.0.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/amtk/"
-                                  (version-major+minor version) "/"
-                                  "amtk-" version ".tar.xz"))
-              (sha256
-               (base32
-                "11jgz2i9wjzv4alrxl1qyxiapb52w7vs5ygfgsw0qgdap8gqkk3i"))))
-    (build-system gnu-build-system)
+    (version "5.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/amtk/"
+                       (version-major+minor version) "/"
+                       "amtk-" version ".tar.xz"))
+       (sha256
+        (base32 "1wax6mim8dj0m21k8ima7ysm3bzzp54r00jganwbzakq8bfnnrgr"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags '("--enable-gtk-doc")))
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("amtk-docs.xml.in"
+                              "amtk-intro.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
-       ("glib:bin" ,glib "bin")         ; for glib-mkenums
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk+:bin" ,gtk+ "bin")
        ("gtk-doc" ,gtk-doc)
-       ("pkg-config" ,pkg-config)))
-    (inputs
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
+    (propagated-inputs
      `(("glib" ,glib)
        ("gtk+" ,gtk+)))
-    (home-page "https://wiki.gnome.org/Projects/Amtk")
     (synopsis "Actions, Menus and Toolbars Kit for GTK+ applications")
-    (description
-     "Amtk is the acronym for @acronym{Amtk, Actions Menus and Toolbars Kit}.
-It is a basic GtkUIManager replacement based on GAction.  It is suitable for
-both a traditional UI or a modern UI with a GtkHeaderBar.")
+    (description "Amtk is the acronym for @acronym{Amtk, Actions Menus and
+Toolbars Kit}.  It is a basic GtkUIManager replacement based on GAction.  It is
+suitable for both a traditional UI or a modern UI with a GtkHeaderBar.")
+    (home-page "https://wiki.gnome.org/Projects/Amtk")
     (license license:lgpl2.1+)))
 
 (define-public devhelp
