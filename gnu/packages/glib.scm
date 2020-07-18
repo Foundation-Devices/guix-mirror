@@ -353,10 +353,10 @@ threads, dynamic loading, and an object system.")
        ("glib" ,glib "bin")
        ("pkg-config" ,pkg-config)))
     (inputs
-     `(("glib" ,glib)
-       ("python" ,python-wrapper)))
+     `(("python" ,python-wrapper)))
     (propagated-inputs
-     `(("libffi" ,libffi)))
+     `(("glib" ,glib)
+       ("libffi" ,libffi)))
     (native-search-paths
      (list (search-path-specification
             (variable "GI_TYPELIB_PATH")
