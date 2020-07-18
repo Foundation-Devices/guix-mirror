@@ -80,6 +80,7 @@
   #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages m4)
   #:use-module (gnu packages man)
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages perl)
@@ -1476,24 +1477,49 @@ library.")
   (package
     (name "atkmm")
     (version "2.28.0")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/" name "/"
-                                 (version-major+minor version)  "/"
-                                 name "-" version ".tar.xz"))
-             (sha256
-              (base32
-               "0fnxrspxkhhbrjphqrpvl3zjm66n50s4cywrrrwkhbflgy8zqk2c"))))
-    (build-system gnu-build-system)
-    (native-inputs `(("pkg-config" ,pkg-config)))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0fnxrspxkhhbrjphqrpvl3zjm66n50s4cywrrrwkhbflgy8zqk2c"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
+    (native-inputs
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
+       ("m4" ,m4)
+       ("mm-common" ,mm-common)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
     (propagated-inputs
-     `(("glibmm" ,glibmm) ("atk" ,atk)))
-    (home-page "https://www.gtkmm.org")
-    (synopsis "C++ interface to the ATK accessibility library")
-    (description
-     "ATKmm provides a C++ programming interface to the ATK accessibility
-toolkit.")
-    (license license:lgpl2.1+)))
+     `(("atk" ,atk)
+       ("glibmm" ,glibmm-2.64)))
+    (synopsis "C++ bindings for ATK")
+    (description "ATKmm is the C++ binding for the ATK library.")
+    (home-page "https://wiki.gnome.org/Accessibility")
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Tools
+      license:gpl2+))))
 
 (define-public gtkmm
   (package
