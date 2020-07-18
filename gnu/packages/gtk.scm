@@ -1635,30 +1635,48 @@ tutorial.")
 (define-public gtksourceviewmm
   (package
     (name "gtksourceviewmm")
-    (version "3.18.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32 "0fgvmhm4h4qmxig87qvangs6ijw53mi40siz7pixlxbrsgiil22i"))))
-    (build-system gnu-build-system)
+    (version "3.21.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1danc9mp5mnb65j01qxkwj92z8jf1gns41wbgp17qh7050f0pc6v"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)))
+     `(("dot" ,graphviz)
+       ("doxygen" ,doxygen)
+       ("m4" ,m4)
+       ("mm-common" ,mm-common)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
     (propagated-inputs
-     ;; In 'Requires' of gtksourceviewmm-3.0.pc.
-     `(("glibmm" ,glibmm)
+     `(("glibmm" ,glibmm-2.64)
        ("gtkmm" ,gtkmm)
        ("gtksourceview" ,gtksourceview-3)))
-    (synopsis "C++ interface to the GTK+ 'GtkTextView' widget")
-    (description
-     "gtksourceviewmm is a portable C++ library that extends the standard GTK+
-framework for multiline text editing with support for configurable syntax
-highlighting, unlimited undo/redo, search and replace, a completion framework,
-printing and other features typical of a source code editor.")
-    (license license:lgpl2.1+)
-    (home-page "https://developer.gnome.org/gtksourceview/")))
+    (synopsis "C++ binding for GtkSourceView")
+    (description "GtkSourceViewmm is a C++ wrapper for the gtksourceview widget
+library.  It offers all the power of gtksourceview with an interface familiar to
+C++ developers, including users of the gtkmm library.")
+    (home-page "https://wiki.gnome.org/Projects/GtkSourceView")
+    (license license:lgpl2.1+)))
 
 ;;;
 ;;; Python bindings.
