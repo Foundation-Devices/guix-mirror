@@ -7478,91 +7478,146 @@ Exchange, Last.fm, IMAP/SMTP, Jabber, SIP and Kerberos.")
 (define-public evolution-data-server
   (package
     (name "evolution-data-server")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (patches (search-patches "evolution-data-server-locales.patch"
-                                       "evolution-data-server-libical-compat.patch"))
-              (sha256
-               (base32
-                "16z85y6hhazcrp5ngw47w4x9r0j8zrj7awv5im58hhp0xs19zf1y"))))
+    (version "3.36.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "03sc7r6hpi62kcxpnzm5gv1ky3hmslh4fnf2vy2qghb5xqg3zy1r"))))
     (build-system cmake-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags
-       (let* ((lib (string-append (assoc-ref %outputs "out") "/lib"))
-              (runpaths (map (lambda (s)
-                               (string-append lib "/evolution-data-server/" s))
-                             '("addressbook-backends" "calendar-backends"
-                               "camel-providers" "credential-modules"
-                               "registry-modules"))))
-         (list "-DENABLE_UOA=OFF"             ;disable Ubuntu Online Accounts support
-               "-DENABLE_GOOGLE=OFF"          ;disable Google Contacts support
-               "-DENABLE_GOOGLE_AUTH=OFF"     ;disable Google authentication
-               "-DENABLE_VALA_BINDINGS=ON"
-               (string-append "-DCMAKE_INSTALL_RPATH=" lib ";"
-                              (string-append lib "/evolution-data-server;")
-                              (string-join runpaths ";"))
-               "-DENABLE_INTROSPECTION=ON"))  ;required for Vala bindings
+     `(#:imported-modules
+       (,@%cmake-build-system-modules
+        (guix build glib-or-gtk-build-system))
+       #:modules
+       ((guix build cmake-build-system)
+        ((guix build glib-or-gtk-build-system)
+         #:prefix glib-or-gtk:)
+        (guix build utils))
+       #:configure-flags
+       (list
+        (string-append "-DSENDMAIL_PATH="
+                       (assoc-ref %build-inputs "sendmail"))
+        "-DWITH_SYSTEMDUSERUNITDIR=OFF"
+        "-DENABLE_INTROSPECTION=ON"
+        "-DENABLE_GTK_DOC=ON"
+        "-DWITH_PRIVATE_DOCS=ON"
+        "-DENABLE_BACKEND_PER_PROCESS=ON"
+        "-DENABLE_VALA_BINDINGS=ON"
+        ;; Required for RUNPATH validation.
+        (string-append "-DCMAKE_INSTALL_RPATH="
+                       (assoc-ref %outputs "out")
+                       "/lib"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/evolution-data-server"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/evolution-data-server/addressbook-backends"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/evolution-data-server/calendar-backends"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/evolution-data-server/camel-providers"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/evolution-data-server/credential-modules"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/evolution-data-server/registry-modules"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'disable-failing-tests
-           (lambda _
-             ;; tests/book-migration/test-migration.c:160:test_fetch_contacts:
-             ;; assertion failed (g_slist_length (contacts) == 20): (0 == 20)
-             (delete-file-recursively "tests/book-migration")
-             (substitute* "tests/CMakeLists.txt"
-               (("add_subdirectory\\(book-migration\\)") ""))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("camel/camel-docs.sgml.in"
+                              "evolution-data-server/evolution-data-server-docs.sgml.in"
+                              "private/libedbus-private-docs.sgml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
              #t))
-         (add-after 'unpack 'patch-paths
-          (lambda _
-            (substitute* '("tests/test-server-utils/e-test-server-utils.c"
-                           "tests/libedata-book/data-test-utils.c"
-                           "tests/libedata-book/test-book-cache-utils.c"
-                           "tests/libedata-cal/test-cal-cache-utils.c")
-              (("/bin/rm") (which "rm")))
-            #t))
-         (add-before 'configure 'dont-override-rpath
+         (add-after 'patch-docbook-xml 'fix-errors
            (lambda _
+             ;; Entity not available.
+             (substitute* "docs/reference/evolution-data-server/evolution-data-server-docs.sgml.in"
+               (("<xi:include href=\"xml/e-cal-time-util.xml\"/>")
+                ""))
+             ;; CMakeLists.txt hard-codes runpath to just the libdir.
+             ;; Remove it so the configure flag is respected.
              (substitute* "CMakeLists.txt"
-               ;; CMakeLists.txt hard-codes runpath to just the libdir.
-               ;; Remove it so the configure flag is respected.
-               (("SET\\(CMAKE_INSTALL_RPATH .*") ""))
-             #t)))))
+               (("SET\\(CMAKE_INSTALL_RPATH \"\\$\\{privlibdir\\}\"\\)")
+                ""))
+             ;; Fix references to 'rm' program.
+             (substitute* '("tests/test-server-utils/e-test-server-utils.c"
+                            "tests/libedata-book/data-test-utils.c"
+                            "tests/libedata-book/test-book-cache-utils.c"
+                            "tests/libedata-cal/test-cal-cache-utils.c")
+               (("/bin/rm") (which "rm")))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'glib-or-gtk-compile-schemas
+           (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas))
+         (add-after 'glib-or-gtk-compile-schemas 'glib-or-gtk-wrap
+           (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-mkenums, etc.
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gperf" ,gperf)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk-doc" ,gtk-doc)
+       ("gtk+:bin" ,gtk+ "bin")
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)
-       ("python" ,python-wrapper)))
+       ("python" ,python-wrapper)
+       ("vala" ,vala)))
+    (inputs
+     `(("gcr" ,gcr)
+       ("gweather" ,libgweather)
+       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
+       ("gperf" ,gperf)
+       ("icu" ,icu4c)
+       ("json-glib" ,json-glib)
+       ("krb5" ,mit-krb5)
+       ("libcanberra" ,libcanberra)
+       ("libdb" ,bdb)
+       ("libgdata" ,libgdata)
+       ("oauth" ,liboauth)
+       ("openldap" ,openldap)
+       ("sendmail" ,sendmail)
+       ("webkitgtk" ,webkitgtk)))
     (propagated-inputs
-     ;; These are all in the Requires field of .pc files.
-     `(("gtk+" ,gtk+)
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gtk+" ,gtk+)
        ("libical" ,libical)
        ("libsecret" ,libsecret)
        ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)
+       ("nspr" ,nspr)
        ("nss" ,nss)
        ("sqlite" ,sqlite)))
-    (inputs
-     `(("bdb" ,bdb)
-       ("gcr" ,gcr)
-       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
-       ("json-glib" ,json-glib)
-       ("libcanberra" ,libcanberra)
-       ("libgweather" ,libgweather)
-       ("mit-krb5" ,mit-krb5)
-       ("openldap" ,openldap)
-       ("webkitgtk" ,webkitgtk)))
-    (synopsis "Store address books and calendars")
+    (synopsis "Backend for Evolution")
+    (description "Evolution-Data-Server package provides a unified backend for
+programs that work with contacts, tasks, and calendar information.  It provides
+a single database for common, desktop-wide information, such as a user's address
+book or calendar events.  It was originally developed for Evolution, but is now
+used by other packages as well.")
     (home-page "https://wiki.gnome.org/Apps/Evolution")
-    (description
-     "This package provides a unified backend for programs that work with
-contacts, tasks, and calendar information.  It was originally developed for
-Evolution (hence the name), but is now used by other packages as well.")
     (license license:lgpl2.0)))
 
 (define-public caribou
