@@ -9788,46 +9788,82 @@ the Moka icon theme.")
 (define-public folks
   (package
     (name "folks")
-    (version "0.13.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "mirror://gnome/sources/folks/"
-                    (version-major+minor version) "/"
-                    "folks-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0pda8sx4ap3lyri5fdrnakl29la1zkhwlc9bmnp13qigp1iwdw9x"))))
+    (version "0.14.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/folks/"
+                       (version-major+minor version) "/"
+                       "folks-" version ".tar.xz"))
+       (sha256
+        (base32 "1f9b52vmwnq7s51vj26w2618dn2ph5g12ibbkbyk6fvxcgd7iryn"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc" "help"))
     (arguments
-     '(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dtracker_backend=true"
+        "-Dzeitgeist=true"
+        "-Ddocs=true")
+       #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
+         (add-after 'unpack 'disable-failing-tests
+           ;; Telepathy and Tracker tests require networking.
            (lambda _
-             (substitute* "meson_post_install.py"
-               (("gtk-update-icon-cache") "true"))
-             #t)))))
-    (inputs
-     `(("bdb" ,bdb)
-       ("dbus-glib" ,dbus-glib)
-       ("evolution-data-server" ,evolution-data-server)
-       ("glib" ,glib)
-       ("libgee" ,libgee)
-       ("readline" ,readline)
-       ("telepathy-glib" ,telepathy-glib)))
+             (substitute* "tests/meson.build"
+               (("subdir\\('telepathy'\\)")
+                "")
+               (("subdir\\('tracker'\\)")
+                ""))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/devhelp")
+                (string-append help "/share/devhelp"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
+     `(("cmake" ,cmake)
+       ("docbook-xml" ,docbook-xml-4.3)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("gtk+:bin" ,gtk+ "bin")
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("python-dbusmock" ,python-dbusmock)
        ("vala" ,vala)))
-    (synopsis "Library to aggregate data about people")
-    (description "Libfolks is a library that aggregates information about people
-from multiple sources (e.g., Telepathy connection managers for IM contacts,
-Evolution Data Server for local contacts, libsocialweb for web service contacts,
-etc.) to create metacontacts.  It's written in Vala, which generates C code when
-compiled.")
+    (inputs
+     `(("dbus-glib" ,dbus-glib)
+       ("libxml2" ,libxml2)
+       ("readline" ,readline)
+       ("zeitgeist" ,zeitgeist)))
+    (propagated-inputs
+     `(("evolution-data-server" ,evolution-data-server)
+       ("glib" ,glib)
+       ("gee" ,libgee)
+       ("telepathy-glib" ,telepathy-glib)
+       ("tracker-sparql" ,tracker)))
+    (synopsis "Contact aggregation library")
+    (description "Libfolks is a library that aggregates people from multiple
+sources (eg, Telepathy connection managers for IM contacts, Evolution Data
+Server for local contacts, etc.) to create metacontacts.  It's written in Vala,
+which generates C code when compiled.")
     (home-page "https://wiki.gnome.org/Projects/Folks")
     (license license:lgpl2.1+)))
 
