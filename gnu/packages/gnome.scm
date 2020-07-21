@@ -6942,23 +6942,48 @@ and classes for commonly used data structures.")
                (base32
                 "0xxxq8xdkgkn146my307jgws4qgxx477h0ybg1mqza1ycmczvsla"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "gexiv2-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("gcr" ,gcr)
+     `(("docbook-xml" ,docbook-xml-4.3)
        ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
+       ("python2" ,python-2)
+       ("python3" ,python)
        ("vala" ,vala)))
     (propagated-inputs
-     ;; Listed in "Requires" section of gexiv2.pc
-     `(("exiv2" ,exiv2)))
-    (inputs
-     `(("glib" ,glib)
-       ("gobject-introspection" ,gobject-introspection)))
+     `(("exiv2" ,exiv2)
+       ("glib" ,glib)))
+    (synopsis "GObject-based Exiv2 wrapper")
+    (description "Gexiv2 is a GObject wrapper around the Exiv2 photo metadata
+library.  It allows for GNOME applications to easily inspect and update EXIF,
+IPTC, and XMP metadata in photo and video files of various formats.")
     (home-page "https://wiki.gnome.org/Projects/gexiv2")
-    (synopsis "GObject wrapper around the Exiv2 photo metadata library")
-    (description
-     "Gexiv2 is a GObject wrapper around the Exiv2 photo metadata library.  It
-allows for GNOME applications to easily inspect and update EXIF, IPTC, and XMP
-metadata in photo and video files of various formats.")
     (license license:gpl2+)))
 
 (define-public shotwell
