@@ -5124,46 +5124,70 @@ possible.")
 (define-public geocode-glib
   (package
     (name "geocode-glib")
-    (version "3.26.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/geocode-glib/"
-                                  (version-major+minor version) "/"
-                                  "geocode-glib-" version ".tar.xz"))
-              (sha256
-               (base32
-                "076ydfpyc4n5c9dbqmf26i4pilfi5jpw6cjcgrbgrjbndavnmajv"))))
+    (version "3.26.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/geocode-glib/"
+                       (version-major+minor version) "/"
+                       "geocode-glib-" version ".tar.xz"))
+       (sha256
+        (base32 "1l8g0f13xgkrk335afr9w8k46mziwb2jnyhl07jccl5yl37q9zh1"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Denable-installed-tests=false")
+       #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "geocode-glib-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          ;; The tests require a bunch of locales.
          (add-before 'check 'set-locales
            (lambda* (#:key inputs #:allow-other-keys)
              (setenv "GUIX_LOCPATH"
                      (string-append (assoc-ref inputs "glibc-locales")
                                     "/lib/locale"))
-             #t)))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-mkenums
-       ("glibc-locales" ,glibc-locales) ; for tests
+     `(("docbook-xml" ,docbook-xml-4.3)
        ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("glibc-locales" ,glibc-locales)
        ("gobject-introspection" ,gobject-introspection)
        ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
-       ("json-glib" ,json-glib)))
-    (propagated-inputs
-     ;; geocode-glib-1.0.pc refers to GIO.
-     `(("glib" ,glib)))
+       ("python" ,python-wrapper)))
     (inputs
-     `(("libsoup" ,libsoup)))
-    (home-page "https://github.com/GNOME/geocode-glib/")
+     `(("json-glib" ,json-glib)
+       ("libsoup" ,libsoup)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)))
     (synopsis "Geocoding and reverse-geocoding library")
-    (description
-     "geocode-glib is a convenience library for geocoding (finding longitude,
-and latitude from an address) and reverse geocoding (finding an address from
-coordinates) using the Nominatim service.  geocode-glib caches requests for
-faster results and to avoid unnecessary server load.")
+    (description "Geocode-Glib is a convenience library for geocoding (finding
+longitude, and latitude from an address) and reverse geocoding (finding an
+address from coordinates) using the Nominatim service.  It also caches requests
+for faster results and to avoid unnecessary server load.")
+    (home-page "https://developer.gnome.org/geocode-glib/")
     (license license:lgpl2.0+)))
 
 (define-public upower
