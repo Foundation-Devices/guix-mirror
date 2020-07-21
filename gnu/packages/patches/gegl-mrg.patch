@@ -1,0 +1,25 @@
+From 271e2654229db0ba72a95a7256cb9d148aa7621a Mon Sep 17 00:00:00 2001
+From: Raghav Gururajan <raghavgururajan@disroot.org>
+Date: Sat, 25 Jul 2020 05:04:26 -0400
+Subject: [PATCH] [PATCH]: Fix build with mrg. #259
+
+---
+ bin/mrg-gegl.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bin/mrg-gegl.h b/bin/mrg-gegl.h
+index 485ec97bf..2c055a69a 100644
+--- a/bin/mrg-gegl.h
++++ b/bin/mrg-gegl.h
+@@ -1,7 +1,7 @@
+ #ifndef MRG_GEGL_H
+ #define MRG_GEGL_H
+ 
+-#include <mrg/mrg.h>
++#include <mrg.h>
+ #include <gegl/gegl.h>
+ 
+ void mrg_gegl_buffer_blit (Mrg *mrg,
+-- 
+2.27.0
+

@@ -35,8 +35,10 @@
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages docbook)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages fontutils)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages gnome)
@@ -45,13 +47,19 @@
   #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages xml)
+  #:use-module (gnu packages lua)
+  #:use-module (gnu packages maths)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages patchutils)
+  #:use-module (gnu packages perl)
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages photo)
+  #:use-module (gnu packages pretty-print)
   #:use-module (gnu packages python)
   #:use-module (gnu packages ruby)
+  #:use-module (gnu packages sdl)
+  #:use-module (gnu packages video)
   #:use-module (gnu packages w3m)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xorg))
@@ -209,46 +217,108 @@ specific code paths.")
   (package
     (name "gegl")
     (version "0.4.24")
-    (source (origin
-              (method url-fetch)
-              (uri (list (string-append "https://download.gimp.org/pub/gegl/"
-                                        (string-take version 3)
-                                        "/gegl-" version ".tar.xz")
-                         (string-append "https://ftp.gtk.org/pub/gegl/"
-                                        (version-major+minor version)
-                                        "/gegl-" version ".tar.xz")
-                         (string-append "ftp://ftp.gtk.org/pub/gegl/"
-                                        (version-major+minor version)
-                                        "/gegl-" version ".tar.xz")))
-              (sha256
-               (base32
-                "0ji57s7cba94vzy49agn7x47ca61rccm6rif0cb0s6rl4ygljrbp"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (list
+         (string-append "https://download.gimp.org/pub/gegl/"
+                        (string-take version 3)
+                        "/gegl-" version ".tar.xz")
+         (string-append "https://ftp.gtk.org/pub/gegl/"
+                        (version-major+minor version)
+                        "/gegl-" version ".tar.xz")
+         (string-append "ftp://ftp.gtk.org/pub/gegl/"
+                        (version-major+minor version)
+                        "/gegl-" version ".tar.xz")))
+       (sha256
+        (base32 "0ji57s7cba94vzy49agn7x47ca61rccm6rif0cb0s6rl4ygljrbp"))
+       (patches
+        ;; Fix for the bug,
+        ;; https://gitlab.gnome.org/GNOME/gegl/-/issues/259
+        (search-patches "gegl-mrg.patch"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
      `(#:configure-flags
-       (list "-Dintrospection=false")))
-    ;; These are propagated to satisfy 'gegl-0.4.pc'.
+       (list
+        "-Ddocs=true"
+        "-Dworkshop=true"
+        "-Dsdl1=auto")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "gegl-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
+    (native-inputs
+     `(("asciidoc" ,asciidoc)
+       ("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("enscript" ,enscript)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ("pygobject" ,python-pygobject)
+       ("python" ,python-wrapper)
+       ("ruby" ,ruby)
+       ("vapigen" ,vala)))
+    (inputs
+     `(("cairo" ,cairo)
+       ("exiv2" ,exiv2)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("gexiv2" ,gexiv2)
+       ("jasper" ,jasper)
+       ("lcms" ,lcms)
+       ("lensfun" ,lensfun)
+       ("libav" ,ffmpeg)
+       ("libnsgif" ,libnsgif)
+       ("libpng" ,libpng)
+       ("libjpeg" ,libjpeg-turbo)
+       ("libraw" ,libraw)
+       ("librsvg" ,librsvg)
+       ("libspiro" ,libspiro)
+       ("libtiff" ,libtiff)
+       ("lua" ,lua)
+       ("luajit" ,luajit)
+       ("mrg" ,mrg)
+       ("openexr" ,openexr)
+       ("pango" ,pango)
+       ;; To be enabled after upstream fixes the bug,
+       ;; https://gitlab.gnome.org/GNOME/gegl/-/issues/258
+       ;; ("poly2tri-c" ,poly2tri-c)
+       ("poppler" ,poppler)
+       ("sdl1" ,sdl)
+       ("sdl2" ,sdl2)
+       ("umfpack" ,suitesparse)
+       ("v4l" ,v4l-utils)
+       ("webp" ,libwebp)))
     (propagated-inputs
      `(("babl" ,babl)
        ("glib" ,glib)
        ("json-glib" ,json-glib)))
-    (inputs
-     `(("cairo" ,cairo)
-       ("pango" ,pango)
-       ("libpng" ,libpng)
-       ("libjpeg" ,libjpeg-turbo)))
-    (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("glib" ,glib "bin")             ; for gtester
-       ("intltool" ,intltool)))
+    (synopsis "Generic Graphics Library")
+    (description "GEGL is a data flow based image processing framework,
+providing floating point processing and non-destructive image processing
+capabilities to GNU Image Manipulation Program and other projects.")
     (home-page "http://gegl.org")
-    (synopsis "Graph based image processing framework")
-    (description "GEGL (Generic Graphics Library) provides infrastructure to
-do demand based cached non destructive image editing on larger than RAM
-buffers.")
-    ;; The library itself is licensed under LGPL while the sample commandline
-    ;; application and GUI binary gegl is licensed under GPL.
-    (license (list license:lgpl3+ license:gpl3+))))
+    (license license:lgpl3+)))
 
 (define-public gimp
   (package
