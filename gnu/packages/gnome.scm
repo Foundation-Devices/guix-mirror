@@ -8737,27 +8737,50 @@ core C library, and bindings for Python (PyGTK).")
   (package
     (name "gnome-autoar")
     (version "0.2.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0yk56ch46n3wfy633mq31kif9n7v06rlij4vqbsbn6l4z1vw6d0a"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0yk56ch46n3wfy633mq31kif9n7v06rlij4vqbsbn6l4z1vw6d0a"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "out")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "gnome-autoar-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
-       ("pkg-config" ,pkg-config)))
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("vapigen" ,vala)))
     (propagated-inputs
-     `(("libarchive" ,libarchive)))  ; Required by gnome-autoar-0.pc
-    (inputs
-     `(("gtk+" ,gtk+)))
-    (synopsis "Archives integration support for GNOME")
-    (home-page "https://git.gnome.org/browse/gnome-autoar/")
-    (description
-     "GNOME Autoar is a library which makes creating and extracting archives
-easy, safe, and automatic.")
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libarchive" ,libarchive)))
+    (synopsis "Archive management for GNOME")
+    (description "GNOME Autoar provides functions, widgets, and gschemas for
+GNOME applications which want to use archives as a convenient method to transfer
+directories over the internet.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-autoar")
     (license license:lgpl2.1+)))
 
 (define-public tracker
