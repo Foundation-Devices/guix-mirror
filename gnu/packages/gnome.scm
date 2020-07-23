@@ -7471,24 +7471,46 @@ window manager.")
   (package
     (name "gnome-online-accounts")
     (version "3.36.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0bigfi225g1prnxpb9lcc1i7mdcrkplwb05vilc43jik12cn53qw"))))
-    (outputs '("out" "lib"))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0bigfi225g1prnxpb9lcc1i7mdcrkplwb05vilc43jik12cn53qw"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "lib" "doc"))
     (arguments
      `(#:configure-flags
-       (list (string-append "--libdir=" (assoc-ref %outputs "out") "/lib"))
+       (list
+        (string-append "--libdir="
+                       (assoc-ref %outputs "out")
+                       "/lib")
+        "--disable-static"
+        "--enable-documentation"
+        "--enable-gtk-doc"
+        "--enable-inspector"
+        "--enable-media-server"
+        "--enable-lastfm"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* '("goa-daemon.xml"
+                              "goa-docs.xml" "goa-overview.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          (add-before 'configure 'patch-libgoa-output
            (lambda* (#:key outputs #:allow-other-keys)
-             (let ((lib (assoc-ref outputs "lib")))
+             (let* ((lib (assoc-ref outputs "lib")))
                (substitute* '("src/goa/Makefile.in" "src/goa/goa-1.0.pc.in")
                  (("@prefix@") lib)
                  (("@exec_prefix@") lib)
@@ -7500,28 +7522,34 @@ window manager.")
                (setenv "outputs" "out lib")
                #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-compile-schemas, etc.
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("docbook-xsl" ,docbook-xsl)
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
        ("vala" ,vala)
        ("xsltproc" ,libxslt)))
-    (propagated-inputs
-     `(("glib" ,glib)           ; required by goa-1.0.pc
-       ("gtk+" ,gtk+)))         ; required by goa-backend-1.0.pc
     (inputs
-     `(("docbook-xsl" ,docbook-xsl)
+     `(("dbus" ,dbus)
+       ("gcr" ,gcr)
        ("json-glib" ,json-glib)
+       ("krb5" ,mit-krb5)
        ("libsecret" ,libsecret)
+       ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)
        ("rest" ,rest)
        ("webkitgtk" ,webkitgtk)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gtk+" ,gtk+)))
     (synopsis "Single sign-on framework for GNOME")
+    (description "GNOME Online Accounts aims to provide a way for users to setup
+online accounts to be used by the core system and core applications only.
+Calendar entries show up in GNOME Shell, e-mail in Evolution, online storages
+are exposed as GVolumes, and so on.")
     (home-page "https://wiki.gnome.org/Projects/GnomeOnlineAccounts")
-    (description
-     "GNOME Online Accounts provides interfaces so that applications and
-libraries in GNOME can access the user's online accounts.  It has providers for
-Google, ownCloud, Facebook, Flickr, Windows Live, Pocket, Foursquare, Microsoft
-Exchange, Last.fm, IMAP/SMTP, Jabber, SIP and Kerberos.")
     (license license:lgpl2.0+)))
 
 (define-public evolution-data-server
