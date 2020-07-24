@@ -10637,59 +10637,75 @@ that support the Assistive Technology Service Provider Interface (AT-SPI).")
 (define-public gspell
   (package
     (name "gspell")
-    (version "1.8.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1miybm1z5cl91i25l7mfqlxhv7j8yy8rcgi0s1bgbb2vm71rb4dv"))
-              (patches (search-patches "gspell-dash-test.patch"))))
+    (version "1.8.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1s1dns070pz8dg04ppshdbx1r86n9406vkxcfs8hdghn0bfi9ras"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags (list "--enable-vala")
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("gspell-docs.xml.in" "intro.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'patch-docbook-xml 'disable-failing-tests
+           (lambda _
+             (substitute* "testsuite/test-checker.c"
+               (("g_test_add_func \\(\"/checker/dashes\", test_dashes\\);")
+                ""))
+             #t))
          (add-before 'check 'pre-check
            (lambda* (#:key inputs #:allow-other-keys)
              ;; Tests require a running X server.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
-
              ;; For the missing /etc/machine-id.
              (setenv "DBUS_FATAL_WARNINGS" "0")
-
              ;; Allow Enchant and its Aspell backend to find the en_US
              ;; dictionary.
              (setenv "ASPELL_DICT_DIR"
                      (string-append (assoc-ref inputs "aspell-dict-en")
                                     "/lib/aspell"))
              #t)))))
-    (inputs
-     `(("gtk+" ,gtk+)
-       ("glib" ,glib)
-       ("iso-codes" ,iso-codes)))
     (native-inputs
-     `(("glib" ,glib "bin")
+     `(("aspell-dict-en" ,aspell-dict-en)
+       ("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)                             ;for VAPI, needed by Geary
+       ("vala" ,vala)
        ("xmllint" ,libxml2)
-
-       ;; For tests.
-       ("aspell-dict-en" ,aspell-dict-en)
        ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("iso-codes" ,iso-codes)))
     (propagated-inputs
-     `(("enchant" ,enchant)))            ;enchant.pc is required by gspell-1.pc
+     `(("enchant" ,enchant)
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "Spell-checking library for GTK+ applications")
+    (description "GSpell provides a flexible API to add spell-checking to a GTK+
+application.")
     (home-page "https://wiki.gnome.org/Projects/gspell")
-    (synopsis "GNOME's alternative spell checker")
-    (description
-     "gspell provides a flexible API to add spell-checking to a GTK+
-application.  It provides a GObject API, spell-checking to text entries and
-text views, and buttons to choose the language.")
-    (license license:gpl2+)))
+    (license license:lgpl2.1+)))
 
 (define-public gnome-planner
   (package
