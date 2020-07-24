@@ -6031,42 +6031,74 @@ as possible!")
 (define-public grilo
   (package
     (name "grilo")
-    (version "0.3.10")
+    (version "0.3.12")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "1s7ilyywf18q26aj5c4709kfizqywjlnacp4jzmj9v9i9kkv4i3y"))))
+        (base32 "0w8sq5g6g1rg85h53vbll8va70fcp6082mlpmy98aa03444ddyyv"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/grilo"
+               (substitute* '("environment-setup.xml"
+                              "grilo-docs.sgml" "overview.xml"
+                              "plugins-sources.xml" "plugins-testing.xml"
+                              "quick-start.xml" "writing-apps.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")         ; for glib-mkenums and glib-genmarshal
-       ("intltool" ,intltool)
-       ("pkg-config" ,pkg-config)
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("gtk-doc" ,gtk-doc)
-       ("vala" ,vala)))
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("vapigen" ,vala)))
     (inputs
-     `(("cyrus-sasl" ,cyrus-sasl)
-       ("glib" ,glib)
-       ("gtk+" ,gtk+)
-       ("libxml2" ,libxml2)
+     `(("gtk+" ,gtk+)
        ("liboauth" ,liboauth)
        ("libsoup" ,libsoup)
        ("totem-pl-parser" ,totem-pl-parser)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("libxml2" ,libxml2)))
     (native-search-paths
-     (list (search-path-specification
-            (variable "GRL_PLUGIN_PATH")
-            (files (list (string-append "lib/grilo-"
-                                        (version-major+minor version)))))))
-    (home-page "https://wiki.gnome.org/action/show/Projects/Grilo")
-    (synopsis "Framework for discovering and browsing media")
-    (description
-     "Grilo is a framework focused on making media discovery and browsing easy
-for application developers.")
+     (list
+      (search-path-specification
+       (variable "GRL_PLUGIN_PATH")
+       (files
+        (list
+         (string-append "lib/grilo-"
+                        (version-major+minor version)))))))
+    ;; To load grilo-plugins.
+    (search-paths native-search-paths)
+    (synopsis "Media Framework for GNOME")
+    (description "Grilo is a framework for browsing and searching media content
+from various sources using a single API.")
+    (home-page "https://wiki.gnome.org/Projects/Grilo")
     (license license:lgpl2.1+)))
 
 (define-public grilo-plugins
