@@ -1150,34 +1150,63 @@ Facebook, Flickr, Google, ownCloud and SkyDrive.")
 
 (define-public gssdp
   (package
-   (name "gssdp")
-   (version "1.2.3")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1s57i8a8wnnxnsfl27cq4503dkdlzbrhry5zpg23sfqfffvdqqx2"))))
-   (build-system meson-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk-doc" ,gtk-doc)
-      ("pkg-config" ,pkg-config)
-      ("vala" ,vala)))
-   (inputs
-    `(("gtk+" ,gtk+)
-      ("libsoup" ,libsoup)))
-   (synopsis "GObject-based API over @acronym{SSDP, Simple Service Discovery
+    (name "gssdp")
+    (version "1.2.3")
+    (source (origin
+             (method url-fetch)
+             (uri (string-append "mirror://gnome/sources/" name "/"
+                                 (version-major+minor version) "/"
+                                 name "-" version ".tar.xz"))
+             (sha256
+              (base32
+               "1s57i8a8wnnxnsfl27cq4503dkdlzbrhry5zpg23sfqfffvdqqx2"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "gssdp-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
+    (inputs
+     `(("gtk+" ,gtk+)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("libsoup" ,libsoup)))
+    (synopsis "GObject-based API over @acronym{SSDP, Simple Service Discovery
 Protocol} for GNOME")
-   (description "This package provides a library to handle resource discovery
+    (description "This package provides a library to handle resource discovery
 and announcement over @acronym{SSDP, Simple Service Discovery Protocol} and
 a debugging tool, @command{gssdp-device-sniffer}.")
-   (home-page "https://gitlab.gnome.org/GNOME/gssdp")
-   (license license:lgpl2.0+)))
+    (home-page "https://gitlab.gnome.org/GNOME/gssdp")
+    (license license:lgpl2.0+)))
 
 (define-public gupnp
   (package
