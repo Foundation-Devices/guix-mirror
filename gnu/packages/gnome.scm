@@ -1210,34 +1210,74 @@ a debugging tool, @command{gssdp-device-sniffer}.")
 
 (define-public gupnp
   (package
-   (name "gupnp")
-   (version "1.2.4")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1ld7mrpdv9cszmfzh7i19qx4li25j3fr7x1jp38l8phzlmz3187p"))))
-   (build-system meson-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk-doc" ,gtk-doc)
-      ("pkg-config" ,pkg-config)
-      ("vala" ,vala)))
-   (inputs
-    `(("gssdp" ,gssdp)
-      ("gtk+" ,gtk+)
-      ("libsoup" ,libsoup)))
-   (synopsis "PnP API for GNOME")
-   (description "This package provides GUPnP, an object-oriented framework
+    (name "gupnp")
+    (version "1.2.4")
+    (source (origin
+             (method url-fetch)
+             (uri (string-append "mirror://gnome/sources/" name "/"
+                                 (version-major+minor version) "/"
+                                 name "-" version ".tar.xz"))
+             (sha256
+              (base32
+               "1ld7mrpdv9cszmfzh7i19qx4li25j3fr7x1jp38l8phzlmz3187p"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* '("client-tutorial.xml" "glossary.xml"
+                              "overview.xml" "server-tutorial.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.4/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.4")
+                                 "/xml/dtd/docbook/")))
+               (substitute* '("gupnp-binding-tool.xml" "gupnp-docs.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
+    (native-inputs
+     `(("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.4" ,docbook-xml-4.4)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
+       ("gjs" ,gjs)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("xsltproc" ,libxslt)))
+    (inputs
+     `(("gtk+" ,gtk+)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gssdp" ,gssdp)
+       ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)))
+    (synopsis "PnP API for GNOME")
+    (description "This package provides GUPnP, an object-oriented framework
 for creating UPnP devices and control points, written in C using
 @code{GObject} and @code{libsoup}.")
-   (home-page "https://gitlab.gnome.org/GNOME/gupnp")
-   (license license:lgpl2.0+)))
+    (home-page "https://gitlab.gnome.org/GNOME/gupnp")
+    (license license:lgpl2.0+)))
 
 (define-public gupnp-dlna
   (package
