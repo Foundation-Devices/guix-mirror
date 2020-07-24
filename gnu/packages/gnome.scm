@@ -6194,50 +6194,65 @@ from various sources using a single API.")
 (define-public grilo-plugins
   (package
     (name "grilo-plugins")
-    (version "0.3.10")
+    (version "0.3.11")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "0jldaixc4kzycn5v8ixkjld1n0z3dp0l1p3vchgdwpvdvc7kcfw0"))))
+        (base32 "0wyd3n5mn7b77hxylkc3f62v01mlavh96901pz342hwrn42ydqnx"))))
     (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'disable-failing-tests
+           (lambda _
+             (substitute* "tests/meson.build"
+               (("'chromaprint',")
+                ""))
+             #t)))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("gtk+:bin" ,gtk+ "bin")
        ("itstool" ,itstool)
-       ("pkg-config" ,pkg-config)))
-    ;; TODO: ahavi, gstreamer
+       ("lua" ,lua)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
     (inputs
-     `(("grilo" ,grilo)
-       ;("gmime" ,gmime) ; unused
+     `(("avahi" ,avahi)
+       ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gmime" ,gmime)
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("gom" ,gom)
-       ;("gssdp" ,gssdp) ; unused
-       ;("gupnp" ,gupnp) ; unused
-       ;("gupnp-av" ,gupnp-av) ; unused
+       ("gperf" ,gperf)
+       ("grilo" ,grilo)
+       ("gssdp" ,gssdp)
+       ("gstreamer" ,gstreamer)
+       ("gupnp" ,gupnp)
+       ("gupnp-av" ,gupnp-av)
        ("json-glib" ,json-glib)
-       ("avahi" ,avahi)
+       ("libarchive" ,libarchive)
+       ("libdmapsharing" ,libdmapsharing)
        ("libgdata" ,libgdata)
        ("libmediaart" ,libmediaart)
-       ;("librest" ,rest) ; unused
+       ("librest" ,rest)
        ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)
+       ("oauth" ,liboauth)
+       ("sqlite" ,sqlite)
        ("totam-pl-parser" ,totem-pl-parser)
-       ("tracker" ,tracker))) ; unused because it's too old
-    (arguments
-     `(#:glib-or-gtk? #t
-       ;;Disable lua-factory as it needs missing dependencies
-       #:configure-flags '("-Denable-lua-factory=no")))
-    (home-page "https://live.gnome.org/Grilo")
-    (synopsis "Plugins for the Grilo media discovery library")
-    (description
-     "Grilo is a framework focused on making media discovery and browsing easy
-for application developers.  This package provides plugins for common media
-discovery protocols.")
+       ("tracker" ,tracker)))
+    (synopsis "Plugins for Grilo")
+    (description "Grilo-Plugins is a collection of plugins for Grilo implementing
+Grilo's API for various multimedia content providers.")
+    (home-page "https://wiki.gnome.org/Projects/Grilo")
     (license license:lgpl2.1+)))
 
 (define-public totem
