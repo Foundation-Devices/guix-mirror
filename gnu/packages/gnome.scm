@@ -1321,7 +1321,6 @@ for creating UPnP devices and control points, written in C using
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("gtk-doc" ,gtk-doc)
-       ("libxml" ,libxml2)
        ("pkg-config" ,pkg-config)
        ("vala" ,vala)))
     (inputs
@@ -9624,28 +9623,49 @@ specified duration and save it as a GIF encoded animated image file.")
   (package
     (name "gsound")
     (version "1.0.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0lwfwx2c99qrp08pfaj59pks5dphsnxjgrxyadz065d8xqqgza5v"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0lwfwx2c99qrp08pfaj59pks5dphsnxjgrxyadz065d8xqqgza5v"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "gsound-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("docbook-xml" ,docbook-xml-4.3)
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
        ("vala" ,vala)))
     (inputs
      `(("glib" ,glib)
        ("libcanberra" ,libcanberra)))
-    (home-page "https://wiki.gnome.org/Projects/GSound")
     (synopsis "GObject wrapper for libcanberra")
-    (description
-     "GSound is a small library for playing system sounds.  It's designed to be
-used via GObject Introspection, and is a thin wrapper around the libcanberra C
-library.")
+    (description "GSound is a small library for playing system sounds.  It's
+designed to be used via GObject Introspection, and is a thin wrapper around the
+libcanberra C library.")
+    (home-page "https://wiki.gnome.org/Projects/GSound")
     (license license:lgpl2.1+)))
 
 (define-public libzapojit
