@@ -10598,28 +10598,29 @@ automatically and it can stream songs from online music services and charts.")
 (define-public gnome-video-effects
   (package
     (name "gnome-video-effects")
-    (version "0.4.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/" name "-"
-                                  version ".tar.xz"))
-              (sha256
-               (base32
-                "06c2f1kihyhawap1s3zg5w7q7fypsybkp7xry4hxkdz4mpsy0zjs"))))
-    (build-system glib-or-gtk-build-system)
+    (version "0.5.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/" name "-"
+                       version ".tar.xz"))
+       (sha256
+        (base32 "1j6h98whgkcxrh30bwvnxvyqxrxchgpdgqhl0j71xz7x72dqxijd"))))
+    (build-system meson-build-system)
     (arguments
-     `(#:out-of-source? #f))
+     `(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
     (native-inputs
-     `(("glib:bin" ,glib "bin")
+     `(("gettext" ,gettext-minimal)
        ("intltool" ,intltool)
-       ("gettext" ,gettext-minimal)
+       ("perl" ,perl)
+       ("perl-xml-parser" ,perl-xml-parser)
        ("pkg-config" ,pkg-config)))
+    (synopsis "GNOME Video Effects")
+    (description "GNOME-Video-Effects is a collection of GStreamer effects to be
+used in different GNOME Modules.")
     (home-page "https://wiki.gnome.org/Projects/GnomeVideoEffects")
-    (synopsis "Video effects for Cheese and other GNOME applications")
-    (description
-     "A collection of GStreamer video filters and effects to be used in
-photo-booth-like software, such as Cheese.")
     (license license:gpl2+)))
 
 (define-public cheese
