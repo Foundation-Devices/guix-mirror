@@ -1114,34 +1114,37 @@ in the GNOME desktop.")
   (package
     (name "gnome-online-miners")
     (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1n2jz9i8a42zwxx5h8j2gdy6q1vyydh4vl00r0al7w8jzdh24p44"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1n2jz9i8a42zwxx5h8j2gdy6q1vyydh4vl00r0al7w8jzdh24p44"))))
     (build-system glib-or-gtk-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static")))
     (native-inputs
      `(("gettext" ,gettext-minimal)
-       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk+:bin" ,gtk+ "bin")
        ("pkg-config" ,pkg-config)))
     (inputs
-     `(("gnome-online-accounts" ,gnome-online-accounts)
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("grilo" ,grilo)
        ("libgdata" ,libgdata)
        ("libgfbgraph" ,gfbgraph)
-       ("libzapojit" ,libzapojit)
-       ("rest" ,rest)
-       ("tracker" ,tracker)))
+       ("tracker" ,tracker)
+       ("zapojit" ,libzapojit)))
     (synopsis "Web Crawlers for GNOME")
-    (description "GNOME Online Miners provides a set of crawlers that
-go through your online content and index them locally in Tracker.
-It has miners for Facebook, Flickr, Google, ownCloud and SkyDrive.")
+    (description "GNOME Online Miners provides a set of crawlers that go through
+your online content and index them locally in Tracker.  It has miners for
+Facebook, Flickr, Google, ownCloud and SkyDrive.")
     (home-page "https://wiki.gnome.org/Projects/GnomeOnlineMiners")
     (license license:gpl2+)))
 
