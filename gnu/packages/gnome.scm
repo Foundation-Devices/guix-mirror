@@ -1281,37 +1281,63 @@ for creating UPnP devices and control points, written in C using
 
 (define-public gupnp-dlna
   (package
-   (name "gupnp-dlna")
-   (version "0.10.5")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "0spzd2saax7w776p5laixdam6d7smyynr9qszhbmq7f14y13cghj"))))
-   (build-system gnu-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk-doc" ,gtk-doc)
-      ("libxml" ,libxml2)
-      ("pkg-config" ,pkg-config)
-      ("vala" ,vala)))
-   (inputs
-    `(("gstreamer" ,gstreamer)
-      ("gupnp" ,gupnp)))
-   (propagated-inputs
-    `(("gst-plugins-base" ,gst-plugins-base)
-      ("gst-plugins-good" ,gst-plugins-good)))
-   (synopsis "GUPnP DLNA for GNOME")
-   (description "This package provides a small utility library to
-support DLNA-related tasks such as media profile guessing, transcoding to a
-given profile, etc.  DLNA is a subset of UPnP A/V.")
-   (home-page "https://gitlab.gnome.org/GNOME/gupnp-dlna")
-   (license license:lgpl2.0+)))
+    (name "gupnp-dlna")
+    (version "0.10.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0spzd2saax7w776p5laixdam6d7smyynr9qszhbmq7f14y13cghj"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute*
+                   '("gupnp-dlna-gst/gupnp-dlna-gst-docs.sgml"
+                     "gupnp-dlna-metadata/gupnp-dlna-metadata-docs.sgml"
+                     "gupnp-dlna/gupnp-dlna-docs.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("libxml" ,libxml2)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
+    (inputs
+     `(("gupnp" ,gupnp)
+       ("libxml2" ,libxml2)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gstreamer" ,gstreamer)
+       ("gst-plugins-base" ,gst-plugins-base)))
+    (synopsis "GUPnP DLNA for GNOME")
+    (description "GUPnP-DLNA is a small utility library that aims to ease the
+DLNA-related tasks such as media profile guessing, transcoding to a given
+profile, etc.")
+    (home-page "https://gitlab.gnome.org/GNOME/gupnp-dlna")
+    (license license:lgpl2.0+)))
 
 (define-public gupnp-av
   (package
