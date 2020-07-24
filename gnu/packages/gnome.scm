@@ -9981,28 +9981,45 @@ which generates C code when compiled.")
                (base32
                 "0yck7dwvjk16a52nafjpi0a39rxwmg0w833brj45acz76lgkjrb0"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f                      ; tests appear to require the network
-       #:configure-flags '("--disable-static"
-                           "--enable-gtk-doc"
-                           "--enable-introspection")))
+     `(#:tests? #f                      ; Tests require networking
+       #:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        "--enable-introspection"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "gfbgraph-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
-       ("gtk-doc" ,gtk-doc)
-       ("pkg-config" ,pkg-config)
-
-       ;; The 0.2.4 ‘release’ tarball isn't bootstrapped.
-       ("autoconf" ,autoconf)
+     `(("autoconf" ,autoconf)
        ("automake" ,automake)
+       ("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("libtool" ,libtool)
+       ("pkg-config" ,pkg-config)
        ("which" ,which)))
-    (inputs
-     `(("json-glib" ,json-glib)
+    (propagated-inputs
+     `(("glib" ,glib)
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
+       ("json-glib" ,json-glib)
+       ("libsoup" ,libsoup)
        ("rest" ,rest)))
-    (synopsis "GLib/GObject wrapper for the Facebook API")
-    (description "This library allows you to use the Facebook API from
-GLib/GObject code.")
+    (synopsis "GObject library for Facebook Graph API")
+    (description "GFBGraph is a GLib/GObject wrapper for the Facebook API.")
     (home-page "https://wiki.gnome.org/Projects/GFBGraph")
     (license license:lgpl2.1+)))
 
