@@ -5888,33 +5888,64 @@ such as OpenStreetMap, OpenCycleMap, OpenAerialMap, and Maps for free.")
 (define-public gom
   (package
     (name "gom")
-    (version "0.3.2")
+    (version "0.4")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/gom/"
-                           (version-major+minor version) "/"
-                           "gom-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/gom/"
+                       (version-major+minor version) "/"
+                       "gom-" version ".tar.xz"))
        (sha256
-        (base32
-         "1zaqqwwkyiswib3v1v8wafpbifpbpak0nn2kp13pizzn9bwz1s5w"))))
-    (build-system gnu-build-system)
+        (base32 "17ca07hpg7dqxjn0jpqim3xqcmplk2a87wbwrrlq3dd3m8381l38"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Denable-gtk-doc=true"
+        (string-append "-Dpygobject-override-dir="
+                       (assoc-ref %outputs "out")
+                       "/lib/python"
+                       ,(version-major+minor
+                         (package-version python))
+                       "/site-packages/gi/overrides"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "gom-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("intltool" ,intltool)
-       ("pkg-config" ,pkg-config)
-       ("gobject-introspection" ,gobject-introspection)))
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gjs" ,gjs)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)))
     (inputs
      `(("glib" ,glib)
-       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("sqlite" ,sqlite)))
-    ;; XXX TODO: Figure out how to run the test suite.
-    (arguments `(#:tests? #f))
+    (synopsis "GObject Data Mapper")
+    (description "Gom provides an object mapper from GObjects to SQLite.  It
+helps you write applications that need to store structured data as well as make
+complex queries upon that data.")
     (home-page "https://wiki.gnome.org/Projects/Gom")
-    (synopsis "Object mapper from GObjects to SQLite")
-    (description
-     "Gom provides an object mapper from GObjects to SQLite.  It helps you
-write applications that need to store structured data as well as make complex
-queries upon that data.")
     (license license:lgpl2.1+)))
 
 (define-public libgnome-games-support
