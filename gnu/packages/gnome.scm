@@ -1315,32 +1315,53 @@ given profile, etc.  DLNA is a subset of UPnP A/V.")
 
 (define-public gupnp-av
   (package
-   (name "gupnp-av")
-   (version "0.12.11")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1p3grslwqm9bc8rmpn4l48d7v9s84nina4r9xbd932dbj8acz7b8"))))
-   (build-system gnu-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk-doc" ,gtk-doc)
-      ("libxml" ,libxml2)
-      ("pkg-config" ,pkg-config)))
-   (inputs
-    `(("gtk+" ,gtk+)
-      ("gupnp" ,gupnp)))
-   (synopsis "GUPnP A/V for GNOME")
-   (description "This package provides a small library for handling
-and implementation of UPnP A/V profiles.")
-   (home-page "https://gitlab.gnome.org/GNOME/gupnp-av")
-   (license license:lgpl2.0+)))
+    (name "gupnp-av")
+    (version "0.12.11")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1p3grslwqm9bc8rmpn4l48d7v9s84nina4r9xbd932dbj8acz7b8"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "gupnp-av-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
+    (inputs
+     `(("gtk+" ,gtk+)
+       ("gupnp" ,gupnp)
+       ("libxml2" ,libxml2)))
+    (synopsis "GUPnP A/V for GNOME")
+    (description "GUPnP-AV is a small utility library that aims to ease the
+handling and implementation of UPnP A/V profiles.")
+    (home-page "https://gitlab.gnome.org/GNOME/gupnp-av")
+    (license license:lgpl2.0+)))
 
 (define-public libmediaart
   (package
