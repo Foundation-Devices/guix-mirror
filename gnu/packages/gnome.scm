@@ -5967,37 +5967,90 @@ implements the ClutterGstPlayer interface using playbin.")
 (define-public libchamplain
   (package
     (name "libchamplain")
-    (version "0.12.16")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "mirror://gnome/sources/libchamplain/0.12/libchamplain-"
-                    version ".tar.xz"))
-              (sha256
-               (base32
-                "13chvc2n074i0jw5jlb8i7cysda4yqx58ca6y3mrlrl9g37k2zja"))))
-    (build-system gnu-build-system)
-    (arguments '(#:configure-flags '("--enable-vala")))
+    (version "0.12.20")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "mirror://gnome/sources/libchamplain/0.12/libchamplain-"
+         version ".tar.xz"))
+       (sha256
+        (base32 "0rihpb0npqpihqcdz4w03rq6xl7jdckfqskvv9diq2hkrnzv8ch2"))
+       (patches
+        (search-patches
+         ;; To fix the upstream bug,
+         ;; https://gitlab.gnome.org/GNOME/libchamplain/-/issues/55
+         "libchamplain-memphis-demos.patch"))))
+    (build-system meson-build-system)
+    (outputs '("out" "demos" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dmemphis=true"
+        "-Dgtk_doc=true"
+        "-Ddemos=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "champlain-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'enable-demos
+           (lambda _
+             (with-directory-excursion "demos"
+               (substitute* "meson.build"
+                 (("install: false,")
+                  "install: true,")))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-demos
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (demos (assoc-ref outputs "demos")))
+               (mkdir-p (string-append demos "/bin"))
+               (rename-file
+                (string-append out "/bin")
+                (string-append demos "/bin"))
+               #t))))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gjs" ,gjs)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)))
+       ("python" ,python-wrapper)
+       ("vapigen" ,vala)))
     (propagated-inputs
-     `(("libsoup" ,libsoup)
-       ("sqlite" ,sqlite)
+     `(("cairo" ,cairo)
        ("clutter" ,clutter)
        ("clutter-gtk" ,clutter-gtk)
-       ("glib:bin" ,glib "bin")                   ;glib-mkenums, etc.
-       ("cairo" ,cairo)
-       ("gtk+3" ,gtk+)
-       ("glib" ,glib)))
-    (home-page "https://projects.gnome.org/libchamplain/")
-    (synopsis "C library providing a ClutterActor to display maps")
-    (description
-     "libchamplain is a C library providing a ClutterActor to display maps.
-It also provides a Gtk+ widget to display maps in Gtk+ applications.  Python
-and Perl bindings are also available.  It supports numerous free map sources
-such as OpenStreetMap, OpenCycleMap, OpenAerialMap, and Maps for free.")
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libsoup" ,libsoup)
+       ("memphis" ,memphis)
+       ("sqlite" ,sqlite)))
+    (synopsis "Map Widget")
+    (description "LibChamplain is a Gtk+ widget displaying zoomable and pannable
+maps that can be loaded from various network sources.  It supports overlay
+layers, markers, and custom elements displayed on top of the maps.  The library
+is written in C but other language mappings are also available thanks to
+GObject-Introspection.")
+    (home-page "https://https://wiki.gnome.org/Projects/libchamplain")
     (license license:lgpl2.1+)))
 
 (define-public gom

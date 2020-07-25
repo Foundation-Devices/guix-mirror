@@ -1,0 +1,24 @@
+From 84df89f5490e995d271b4ac56999450e94bfd563 Mon Sep 17 00:00:00 2001
+From: Raghav Gururajan <raghavgururajan@disroot.org>
+Date: Sat, 25 Jul 2020 10:21:45 -0400
+Subject: [PATCH] [PATCH]: Fix demos build with memphis.
+
+---
+ demos/meson.build | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/demos/meson.build b/demos/meson.build
+index cf852d1..bf9b3bb 100644
+--- a/demos/meson.build
++++ b/demos/meson.build
+@@ -85,6 +85,7 @@ if build_with_memphis and build_gtk_widgetry
+       dependencies: [
+         libchamplain_dep,
+         libchamplain_gtk_dep,
++        memphis_dep,
+       ]
+     )
+   endforeach
+-- 
+GitLab
+
