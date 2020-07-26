@@ -11159,42 +11159,79 @@ hexadecimal or ASCII.  It is useful for editing binary files in general.")
 (define-public libdazzle
   (package
     (name "libdazzle")
-    (version "3.34.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/libdazzle/"
-                                  (version-major+minor version) "/"
-                                  "libdazzle-" version ".tar.xz"))
-              (sha256
-               (base32
-                "01cmcrd75b7ns7j2b4p6h7pv68vjhkcl9zbvzzx7pf4vknxir61x"))))
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/libdazzle/"
+                       (version-major+minor version) "/"
+                       "libdazzle-" version ".tar.xz"))
+       (sha256
+        (base32 "0n6r16a07in82cnzw91vl675pbjzbvazkxwbqxq2kihganzipcw2"))))
     (build-system meson-build-system)
+    (outputs '("out" "tools" "doc"))
     (arguments
-     `(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Denable_rdtscp=true"
+        "-Denable_gtk_doc=true")
+       #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "dazzle-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          (add-before 'check 'pre-check
            (lambda _
              ;; Tests require a running X server.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
-             #t)))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-tools
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (tools (assoc-ref outputs "tools")))
+               (mkdir-p (string-append tools "/bin"))
+               (rename-file
+                (string-append out "/bin")
+                (string-append tools "/bin"))
+               #t))))))
     (native-inputs
-     `(("glib" ,glib "bin")             ; glib-compile-resources
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gettext" ,gettext-minimal)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
-       ;; For tests.
+       ("vapigen" ,vala)
+       ("xmllint" ,libxml2)
        ("xorg-server" ,xorg-server-for-tests)))
     (inputs
-     `(("glib" ,glib)
-       ("gobject-introspection" ,gobject-introspection)
-       ("gtk+" ,gtk+)
-       ("vala" ,vala)))
-    (home-page "https://gitlab.gnome.org/GNOME/libdazzle")
+     `(("glib" ,glib)))
+    (propagated-inputs
+     `(("gtk+" ,gtk+)))
     (synopsis "Companion library to GObject and Gtk+")
-    (description "The libdazzle library is a companion library to GObject and
-Gtk+.  It provides various features that the authors wish were in the
-underlying library but cannot for various reasons.  In most cases, they are
-wildly out of scope for those libraries.  In other cases, they are not quite
-generic enough to work for everyone.")
+    (description "LibDazzle is a companion library to GObject and Gtk+.  It
+provides various features that the authors wish were in the underlying library
+but cannot for various reasons.  In most cases, they are wildly out of scope for
+those libraries.  In other cases, they are not quite generic enough to work for
+everyone.")
+    (home-page "https://gitlab.gnome.org/GNOME/libdazzle")
     (license license:gpl3+)))
 
 (define-public evolution
