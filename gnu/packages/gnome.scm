@@ -6669,32 +6669,49 @@ side panel;
 (define-public libgudev
   (package
     (name "libgudev")
-    (version "232")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  version "/" name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0q3qki451zzgdjazlgshsfzbbm0in40lyx7dyrag7kbkqnwv4k7f"))))
-    (build-system gnu-build-system)
+    (version "233")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       version "/" name "-" version ".tar.xz"))
+       (sha256
+        (base32 "00xvva04lgqamhnf277lg32phjn971wgpc9cxvgf5x13xdq4jz2q"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags
-       ;; umockdev depends on libgudev.
-       (list "--disable-umockdev")))
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        "--disable-umockdev"            ; Due to circular-dependency
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "gudev-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-genmarshal, etc.
+     `(("docbook-xml" ,docbook-xml-4.3)
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)))
-    (propagated-inputs
-     `(("glib" ,glib))) ; required by gudev-1.0.pc
     (inputs
      `(("udev" ,eudev)))
-    (home-page "https://wiki.gnome.org/Projects/libgudev")
+    (propagated-inputs
+     `(("glib" ,glib)))
     (synopsis "GObject bindings for libudev")
-    (description
-     "This library provides GObject bindings for libudev.  It was originally
-part of udev-extras, then udev, then systemd.  It's now a project on its own.")
+    (description "LibGudev is a library that provides GObject bindings for
+libudev.  It was originally part of udev-extras, then udev, then systemd.
+It's now a project on its own.")
+    (home-page "https://wiki.gnome.org/Projects/libgudev")
     (license license:lgpl2.1+)))
 
 (define-public gvfs
