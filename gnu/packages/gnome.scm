@@ -3148,39 +3148,74 @@ XML/CSS rendering engine.")
   (package
     (name "libgsf")
     (version "1.14.47")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0kbpp9ksl7977xiga37sk1gdw1r039v6zviqznl7alvvg39yp26i"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0kbpp9ksl7977xiga37sk1gdw1r039v6zviqznl7alvvg39yp26i"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "bin" "doc"))
     (arguments
-     '(#:configure-flags '("--disable-static")))
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-introspection"
+        (string-append "--with-gir-dir="
+                       (assoc-ref %outputs "out")
+                       "/share/gir-"
+                       ,(version-major
+                         (package-version gobject-introspection))
+                       ".0")
+        (string-append "--with-typelib-dir="
+                       (assoc-ref %outputs "out")
+                       "/lib/girepository-"
+                       ,(version-major
+                         (package-version gobject-introspection))
+                       ".0")
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html")
+        "--with-zlib"
+        "--with-bz2")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "gsf-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.5/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("docbook-xml" ,docbook-xml)
        ("gettext" ,gettext-minimal)
-
-       ;; For tests.
+       ("gobject-introspection" ,gobject-introspection)
        ("perl" ,perl)
-       ("perl-xml-parser" ,perl-xml-parser)))
+       ("perl-xml-parser" ,perl-xml-parser)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
     (inputs
-     `(("zlib" ,zlib)
-       ("bzip2" ,bzip2)))
+     `(("bzip2" ,bzip2)
+       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("zlib" ,zlib)))
     (propagated-inputs
-     `(("gdk-pixbuf" ,gdk-pixbuf)
-       ("glib" ,glib)
+     `(("glib" ,glib)
        ("libxml2" ,libxml2)))
-    (home-page "https://www.gnome.org/projects/libgsf")
-    (synopsis "GNOME's Structured File Library")
-    (description
-     "Libgsf aims to provide an efficient extensible I/O abstraction for
-dealing with different structured file formats.")
-
-    ;; LGPLv2.1-only.
-    (license license:lgpl2.1)))
+    (synopsis "G Structured File Library")
+    (description "Libgsf aims to provide an efficient extensible I/O abstraction
+for dealing with different structured file formats.")
+    (home-page "https://gitlab.gnome.org/GNOME/libgsf")
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Others
+      license:lgpl2.0+))))
 
 (define-public librsvg
   (package
