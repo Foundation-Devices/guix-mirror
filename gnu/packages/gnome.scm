@@ -5443,43 +5443,76 @@ service via the system message bus.")
 (define-public libgweather
   (package
     (name "libgweather")
-    (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1fgiqswkhiaijanml3mb16ajn5aanrk7x6yiwagp9n9rssam6902"))))
+    (version "3.36.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0l74hc02rvzm4p530y539a67jwb080fqdaazdl8j0fr3xvq0j9yy"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f ; one of two tests requires network access
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:tests? #f           ; Tests require networking
        #:configure-flags
-       `(,(string-append "-Dzoneinfo_dir="
-                         (assoc-ref %build-inputs "tzdata")
-                         "/share/zoneinfo"))))
+       (list
+        (string-append "-Dzoneinfo_dir="
+                       (assoc-ref %build-inputs "tzdata")
+                       "/share/zoneinfo")
+        ;; NOTE: This is the API-Key for OpenWeatherMaps.
+        ;; It has been generated from my OWM account.
+        ;; Currently, the account subscription is on "Free Plan".
+        ;; It provides 3 hour forecast for 5 days.
+        ;; It allows 60 calls/minute and 1,000,000 calls/month.
+        ;; Feel free to use it.
+        ;; Raghav (RG) Gururajan <raghavgururajan@disroot.org>
+        "-Dowm_apikey=9c052a3406aa129d5261cfb999104cb7"
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "libgweather-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-mkenums
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)
-       ("intltool" ,intltool)))
-    (propagated-inputs
-     ;; gweather-3.0.pc refers to GTK+, GDK-Pixbuf, GLib/GObject, libxml, and
-     ;; libsoup.
-     `(("gtk+" ,gtk+)
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("libxml2" ,libxml2)
-       ("libsoup" ,libsoup)
-       ("geocode-glib" ,geocode-glib)))
+       ("vala" ,vala)))
     (inputs
-     `(("tzdata" ,tzdata)))
-    (home-page "https://wiki.gnome.org/action/show/Projects/LibGWeather")
-    (synopsis "Location, time zone, and weather library for GNOME")
-    (description
-     "libgweather is a library to access weather information from online
-services for numerous locations.")
+     `(("glade" ,glade)
+       ("tzdata" ,tzdata)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("geocode-glib" ,geocode-glib)
+       ("gtk+" ,gtk+)
+       ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)))
+    (synopsis "Weather information library and database")
+    (description "LibGWeather is a library to access weather information from
+online services for numerous locations.")
+    (home-page "https://wiki.gnome.org/Projects/LibGWeather")
     (license license:gpl2+)))
 
 (define-public gnome-settings-daemon
