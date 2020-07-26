@@ -10297,29 +10297,33 @@ which generates C code when compiled.")
   (package
     (name "libgnomekbd")
     (version "3.26.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/libgnomekbd/"
-                                  (version-major+minor version)  "/"
-                                  "libgnomekbd-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0y962ykn3rr9gylj0pwpww7bi20lmhvsw6qvxs5bisbn2mih5jpp"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/libgnomekbd/"
+                       (version-major+minor version)  "/"
+                       "libgnomekbd-" version ".tar.xz"))
+       (sha256
+        (base32 "0y962ykn3rr9gylj0pwpww7bi20lmhvsw6qvxs5bisbn2mih5jpp"))))
+    (build-system glib-or-gtk-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static")))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("glib" ,glib "bin")
-       ("intltool" ,intltool)))
+     `(("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)))
     (propagated-inputs
-     ;; Referred to in .h files and .pc.
      `(("glib" ,glib)
        ("gtk+" ,gtk+)
        ("libxklavier" ,libxklavier)))
-    (home-page "https://www.gnome.org")
     (synopsis "GNOME keyboard configuration library")
-    (description
-     "Libgnomekbd is a keyboard configuration library for the GNOME desktop
-environment, which can notably display keyboard layouts.")
+    (description "Libgnomekbd is a keyboard configuration library for the
+GNOME desktop environment, which can notably display keyboard layouts.")
+    (home-page "https://gitlab.gnome.org/GNOME/libgnomekbd")
     (license license:lgpl2.0+)))
 
 ;;; This package is no longer maintained:
