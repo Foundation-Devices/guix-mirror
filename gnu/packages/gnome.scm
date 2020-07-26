@@ -3062,57 +3062,83 @@ additional GDK objects which support OpenGL rendering in GTK+ and GtkWidget
 API add-ons to make GTK+ widgets OpenGL-capable.")
     (license license:lgpl2.1+)))
 
-(define-public glade3
+(define-public glade
   (package
     (name "glade")
     (version "3.36.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "023gx8rj51njn8fsb6ma5kz1irjpxi4js0n8rwy22inc4ysldd8r"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "023gx8rj51njn8fsb6ma5kz1irjpxi4js0n8rwy22inc4ysldd8r"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc" "help"))
     (arguments
-     `(#:phases
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        "--enable-man-pages"
+        "--enable-gladeui"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html")
+        (string-append "--with-help-dir="
+                       (assoc-ref %outputs "help")
+                       "/share/help"))
+       #:phases
        (modify-phases %standard-phases
-         (add-before 'configure 'fix-docbook
+         (add-after 'unpack 'patch-docbook-xml
            (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "man/Makefile.in"
-               (("http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl")
-                (string-append (assoc-ref inputs "docbook-xsl")
-                               "/xml/xsl/docbook-xsl-"
-                               ,(package-version docbook-xsl)
-                               "/manpages/docbook.xsl")))
+             (with-directory-excursion "doc"
+               (substitute* "gladeui-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.5/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
              #t))
          (add-before 'check 'pre-check
            (lambda _
-             (setenv "HOME" "/tmp")
              ;; Tests require a running X server.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
              #t)))))
-    (inputs
-     `(("gtk+" ,gtk+)
-       ("libxml2" ,libxml2)))
     (native-inputs
-     `(("hicolor-icon-theme" ,hicolor-icon-theme)
+     `(("docbook-xml" ,docbook-xml)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("hicolor-icon-theme" ,hicolor-icon-theme)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
-       ("libxslt" ,libxslt) ;for xsltproc
-       ("docbook-xml" ,docbook-xml-4.2)
-       ("docbook-xsl" ,docbook-xsl)
-       ("python" ,python-2)
        ("pkg-config" ,pkg-config)
-       ("xorg-server" ,xorg-server-for-tests)))
+       ("pygobject" ,python-pygobject)
+       ("python" ,python-wrapper)
+       ("xorg-server" ,xorg-server-for-tests)
+       ("xsltproc" ,libxslt)))
+    (inputs
+     `(("glib" ,glib)
+       ("webkitgtk" ,webkitgtk)))
+    (propagated-inputs
+     `(("gtk+" ,gtk+)
+       ("libxml2" ,libxml2)))
+    (synopsis "User Interface designer for Gtk+ and GNOME")
+    (description "Glade is a RAD tool to enable quick and easy development of
+user interfaces for the GTK+ toolkit and the GNOME desktop environment.")
     (home-page "https://glade.gnome.org")
-    (synopsis "GTK+ rapid application development tool")
-    (description "Glade is a rapid application development (RAD) tool to
-enable quick & easy development of user interfaces for the GTK+ toolkit and
-the GNOME desktop environment.")
-    (license license:lgpl2.0+)))
+    (license
+     (list
+      ;; Most of the code base.
+      license:lgpl2.0+
+      ;; Some of the code base.
+      license:gpl2+))))
 
 (define-public libcroco
   (package
