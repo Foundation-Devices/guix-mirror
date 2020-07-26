@@ -8666,27 +8666,50 @@ providing graphical log-ins and managing local and remote displays.")
   (package
     (name "libgtop")
     (version "2.40.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/libgtop/"
-                                  (version-major+minor version) "/"
-                                  "libgtop-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1m6jbqk8maa52gxrf223442fr5bvvxgb7ham6v039i3r1i62gwvq"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/libgtop/"
+                       (version-major+minor version) "/"
+                       "libgtop-" version ".tar.xz"))
+       (sha256
+        (base32 "1m6jbqk8maa52gxrf223442fr5bvvxgb7ham6v039i3r1i62gwvq"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/reference"
+               (substitute* "libgtop-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gettext" ,gettext-minimal)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("perl" ,perl)
        ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("x11" ,libx11)))
     (propagated-inputs
-     `(("glib" ,glib))) ; required by libgtop-2.0.pc
-    (synopsis "Portable system access library")
-    (home-page "https://www.gnome.org/")
-    (description
-     "LibGTop is a library to get system specific data such as CPU and memory
-usage and information about running processes.")
+     `(("glib" ,glib)))
+    (synopsis "System Monitoring Library")
+    (description "LibGTop is a library for collecting system monitoring data.")
+    (home-page "https://gitlab.gnome.org/GNOME/libgtop")
     (license license:gpl2+)))
 
 (define-public gnome-bluetooth
