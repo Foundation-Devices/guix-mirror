@@ -4861,34 +4861,60 @@ proxy information from the GSettings schemas in gsettings-desktop-schemas.")
   (package
     (name "rest")
     (version "0.8.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/rest/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1j81bgqmd55s5lxyaxcplym9n6xywcs1cm9wmvafsg2xiv9sl4q5"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/rest/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1j81bgqmd55s5lxyaxcplym9n6xywcs1cm9wmvafsg2xiv9sl4q5"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:tests? #f ; tests require internet connection
-       #:configure-flags
-       '("--with-ca-certificates=/etc/ssl/certs/ca-certificates.crt")))
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html")
+        "--with-ca-certificates=/etc/ssl/certs/ca-certificates.crt")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference/rest"
+               (substitute* "rest-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'disable-failing-tests
+           (lambda _
+             (substitute* "tests/Makefile.in"
+               (("oauth\\$\\(EXEEXT\\) oauth-async\\$\\(EXEEXT\\) oauth2\\$\\(EXEEXT\\)")
+                "")
+               (("flickr\\$\\(EXEEXT\\) lastfm\\$\\(EXEEXT\\) xml\\$\\(EXEEXT\\)")
+                "")
+               (("XFAIL_TESTS = xml\\$\\(EXEEXT\\)")
+                "XFAIL_TESTS ="))
+             #t)))))
     (native-inputs
-     `(("glib-mkenums" ,glib "bin")
+     `(("docbook-xml" ,docbook-xml-4.1.2)
        ("gobject-introspection" ,gobject-introspection)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)))
     (propagated-inputs
-     ;; rest-0.7.pc refers to all these.
-     `(("glib"    ,glib)
+     `(("glib" ,glib)
        ("libsoup" ,libsoup)
        ("libxml2" ,libxml2)))
-    (home-page "https://www.gtk.org/")
-    (synopsis "RESTful web api query library")
-    (description
-     "This library was designed to make it easier to access web services that
-claim to be \"RESTful\".  It includes convenience wrappers for libsoup and
+    (synopsis "Library for Representational State Transfer")
+    (description "LibREST was designed to make it easier to access web services
+that claim to be RESTful.  It includes convenience wrappers for libsoup and
 libxml to ease remote use of the RESTful API.")
+    (home-page "https://gitlab.gnome.org/GNOME/librest")
     (license license:lgpl2.1+)))
 
 (define-public libsoup
