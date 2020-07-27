@@ -1653,26 +1653,37 @@ client devices can handle.")
 (define-public libnma
   (package
     (name "libnma")
-    (version "1.8.28")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "09mp6k0hfam1vyyv9kcd8j4gb2r58i05ipx2nswb58ris599bxja"))))
+    (version "1.8.30")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1d5gzn7ss5vi0bhc8s4i5gsrck1ajslajam5jxfqazg094mffcys"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-docbook-xml
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
-                                          "/xml/dtd/docbook")))
-               (substitute* "libnma-docs.xml"
-                 (("http://.*/docbookx\\.dtd")
-                  (string-append xmldoc "/docbookx.dtd")))
+             (substitute* "libnma-docs.xml"
+               (("http://www.oasis-open.org/docbook/xml/4.3/")
+                (string-append (assoc-ref inputs "docbook-xml")
+                               "/xml/dtd/docbook/")))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
                #t))))))
     (native-inputs
      `(("docbook-xml" ,docbook-xml-4.3)
@@ -1684,18 +1695,23 @@ client devices can handle.")
        ("vala" ,vala)))
     (inputs
      `(("gcr" ,gcr)
+       ("glib" ,glib)
        ("gtk+" ,gtk+)
        ("iso-codes" ,iso-codes)
-       ("mobile-broadband-provider-info" ,mobile-broadband-provider-info)
-       ("network-manager" ,network-manager)))
-    (synopsis "Network Manager's applet library")
+       ("mobile-broadband-provider-info" ,mobile-broadband-provider-info)))
+    (propagated-inputs
+     `(("libnm" ,network-manager)))
+    (synopsis "Network-Manager Applet Library")
     (description "Libnma is an applet library for Network Manager.  It was
 initially part of network-manager-applet and has now become a separate
 project.")
     (home-page "https://gitlab.gnome.org/GNOME/libnma")
-    ;; Some files carry the "GPL-2.0+" SPDX identifier while others say
-    ;; "LGPL-2.1+".
-    (license license:gpl2+)))
+    (license
+     (list
+      ;; Library
+      license:gpl2+
+      ;; Others
+      license:lgpl2.1+))))
 
 (define-public gnome-menus
   (package
