@@ -1946,34 +1946,78 @@ services, and has full asynchronous support.")
   (package
     (name "libgxps")
     (version "0.3.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "157s4c9gjjss6yd7qp7n4q6s72gz1k4ilsx4xjvp357azk49z4qs"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "157s4c9gjjss6yd7qp7n4q6s72gz1k4ilsx4xjvp357azk49z4qs"))))
     (build-system meson-build-system)
+    (outputs '("out" "bin" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Denable-gtk-doc=true"
+        "-Denable-man=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs"
+               (substitute* "reference/libgxps-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/")))
+               (substitute* "tools/meson.build"
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-bin
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (assoc-ref outputs "bin")))
+               (mkdir-p (string-append bin "/bin"))
+               (rename-file
+                (string-append out "/bin")
+                (string-append bin "/bin"))
+               #t))))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
-       ("pkg-config" ,pkg-config)))
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("gtk+" ,gtk+)
-       ("libjpeg" ,libjpeg-turbo)
+     `(("freetype" ,freetype)
+       ("gtk+" ,gtk+)
        ("lcms" ,lcms)
+       ("libjpeg" ,libjpeg-turbo)
+       ("libpng" ,libpng)
        ("libtiff" ,libtiff)))
     (propagated-inputs
-     ;; In Requires of libgxps.pc.
      `(("cairo" ,cairo)
        ("glib" ,glib)
        ("libarchive" ,libarchive)))
+    (synopsis "XPS management library")
+    (description "LibGxps is a GObject-based library for handling and rendering XPS
+documents.")
     (home-page "https://wiki.gnome.org/Projects/libgxps")
-    (synopsis "GObject-based library for handling and rendering XPS documents")
-    (description
-     "libgxps is a GObject-based library for handling and rendering XPS
-documents.  This package also contains binaries that can convert XPS documents
-to other formats.")
     (license license:lgpl2.1+)))
 
 (define-public gnome-characters
