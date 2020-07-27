@@ -10014,28 +10014,51 @@ libcanberra C library.")
   (package
     (name "libzapojit")
     (version "0.0.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0zn3s7ryjc3k1abj4k55dr2na844l451nrg9s6cvnnhh569zj99x"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0zn3s7ryjc3k1abj4k55dr2na844l451nrg9s6cvnnhh569zj99x"))))
+    (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "libzapojit-0.0-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("json-glib" ,json-glib)
+       ("libsoup" ,libsoup)
        ("rest" ,rest)))
+    (synopsis "REST API Wrapper")
+    (description "LibZapojit is a GLib/GObject wrapper for the SkyDrive and
+Hotmail REST APIs.")
     (home-page "https://wiki.gnome.org/Projects/Zapojit")
-    (synopsis "Library for accessing SkyDrive and Hotmail")
-    (description
-     "Libzapojit is a GLib-based library for accessing online service APIs of
-Microsoft SkyDrive and Hotmail, using their REST protocols.")
     (license license:lgpl2.1+)))
 
 (define-public gnome-clocks
