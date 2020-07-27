@@ -3062,51 +3062,96 @@ form of information without getting in the user's way.")
 (define-public libpeas
   (package
     (name "libpeas")
-    (version "1.24.1")
+    (version "1.26.0")
     (source
      (origin
-      (method url-fetch)
-      (uri (string-append "mirror://gnome/sources/" name "/"
-                          (version-major+minor version)  "/"
-                          name "-" version ".tar.xz"))
-      (sha256
-       (base32
-        "1162dr7smmfb02czmhshr0f93hqj7w0nw29bys5lzfvwarxcyflw"))))
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0xkk9zhkw8f2fm7g9nb4ry4xxig5n27s7rjmx6l7jr2941zdfxm9"))))
     (build-system meson-build-system)
+    (outputs '("out" "demo" "doc"))
     (arguments
-     '(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dpython2=true"
+        "-Dvapi=true"
+        "-Dgtk_doc=true")
+       #:phases
        (modify-phases %standard-phases
-         (add-before 'check 'start-xserver
+         (add-after 'unpack 'patch-docbook-xml
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((xorg-server (assoc-ref inputs "xorg-server"))
-                   (disp ":1"))
-               (setenv "DISPLAY" disp)
-               ;; Tests require a running X server.
-               (system (format #f "~a/bin/Xvfb ~a &" xorg-server disp))
+             (with-directory-excursion "docs/reference"
+               (substitute* "libpeas-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-demo
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (demo (assoc-ref outputs "demo")))
+               (mkdir-p (string-append demo "/bin"))
+               (mkdir-p (string-append demo "/lib"))
+               (rename-file
+                (string-append out "/bin")
+                (string-append demo "/bin"))
+               (rename-file
+                (string-append out "/lib/peas-demo")
+                (string-append demo "/lib/peas-demo"))
                #t))))))
-    (inputs
-     `(("gtk+" ,gtk+)
-       ("glade" ,glade3)
-       ("python" ,python)
-       ("python-pygobject" ,python-pygobject)))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("docbook-xml" ,docbook-xml-4.3)
        ("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("luajit" ,luajit)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
        ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("glade" ,glade)
+       ("lua" ,lua)
+       ("python2" ,python-2)
+       ("python3" ,python)
+       ("python2-pygobject" ,python2-pygobject)
+       ("python3-pygobject" ,python-pygobject)))
     (propagated-inputs
-     ;; The .pc file "Requires" gobject-introspection.
-     `(("gobject-introspection" ,gobject-introspection)))
-    (home-page "https://wiki.gnome.org/Libpeas")
-    (synopsis "GObject plugin system")
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "GObject Plugin System")
     (description
      "Libpeas is a gobject-based plugin engine, targeted at giving every
 application the chance to assume its own extensibility.  It also has a set of
 features including, but not limited to: multiple extension points; on-demand
 (lazy) programming language support for C, Python and JS; simplicity of the
 API.")
-    (license license:lgpl2.0+)))
+    (home-page "https://wiki.gnome.org/Projects/Libpeas")
+    (license license:lgpl2.1+)))
 
 (define-public gtkglext
   (package
