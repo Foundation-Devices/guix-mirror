@@ -11590,47 +11590,100 @@ advanced image management tool")
 (define-public libhandy
   (package
     (name "libhandy")
-    (version "0.0.12")
+    (version "0.0.13")
     (source
      (origin
        (method git-fetch)
-       (uri (git-reference
-             (url "https://source.puri.sm/Librem5/libhandy")
-             (commit (string-append "v" version))))
+       (uri
+        (git-reference
+         (url "https://gitlab.gnome.org/GNOME/libhandy.git")
+         (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "09wlknarzsbk9hr5ws6s7x5kibkhx9ayrbhshfqib4zkhq2f76hw"))))
+        (base32 "1y23k623sjkldfrdiwfarpchg5mg58smcy1pkgnwfwca15wm1ra5"))))
     (build-system meson-build-system)
+    (outputs '("out" "examples" "doc"))
     (arguments
-     `(#:configure-flags
-       '("-Dglade_catalog=disabled"
-         "-Dgtk_doc=true")
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dgtk_doc=true")
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute*
+                   '("build-howto.xml"
+                     "handy-docs.xml"
+                     "visual-index.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'patch-docbook-xml 'patch-glade
+           (lambda _
+             (substitute* "glade/meson.build"
+               (("gladeui_dep\\.get_pkgconfig_variable\\('moduledir'\\)")
+                "libdir / 'glade' / 'modules'")
+               (("gladeui_dep\\.get_pkgconfig_variable\\('catalogdir'\\)")
+                "datadir / 'glade' / 'catalogs'"))
+             (substitute* '("glade/glade-hdy-header-group.c"
+                            "glade/glade-hdy-swipe-group.c")
+               (("GPC_OBJECT_DELIMITER")
+                "G_STR_DELIMITERS"))
+             #t))
+         (add-before 'configure 'disable-failing-tests
+           (lambda _
+             (substitute* "tests/meson.build"
+               (("'test-avatar',")
+                ""))
+             #t))
          (add-before 'check 'pre-check
            (lambda _
              ;; Tests require a running X server.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
-             #t)))))
-    (inputs
-     `(("gtk+" ,gtk+)))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-examples
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (examples (assoc-ref outputs "examples")))
+               (mkdir-p (string-append examples "/bin"))
+               (rename-file
+                (string-append out "/bin")
+                (string-append examples "/bin"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
-       ("gobject-introspection" ,gobject-introspection) ; for g-ir-scanner
-       ("vala" ,vala)
-       ("gtk-doc" ,gtk-doc)
-       ("pkg-config" ,pkg-config)
+     `(("hicolor-icon-theme" ,hicolor-icon-theme)
+       ("docbook-xml" ,docbook-xml-4.3)
        ("gettext" ,gettext-minimal)
-
-       ;; Test suite dependencies.
-       ("xorg-server" ,xorg-server-for-tests)
-       ("hicolor-icon-theme" ,hicolor-icon-theme)))
-    (home-page "https://source.puri.sm/Librem5/libhandy")
-    (synopsis "Library full of GTK+ widgets for mobile phones")
-    (description "The aim of the handy library is to help with developing user
-interfaces for mobile devices using GTK+.  It provides responsive GTK+ widgets
-for usage on small and big screens.")
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("gtk+:bin" ,gtk+ "bin")
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
+       ("xmllint" ,libxml2)
+       ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("glade" ,glade)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "Building blocks for modern adaptive GNOME apps")
+    (description "LibHandy aims to help with developing UI for mobile devices
+using GTK/GNOME.")
+    (home-page "https://gitlab.gnome.org/GNOME/libhandy")
     (license license:lgpl2.1+)))
 
 (define-public libgit2-glib
