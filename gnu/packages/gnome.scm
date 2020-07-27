@@ -1392,28 +1392,52 @@ handling and implementation of UPnP A/V profiles.")
   (package
     (name "libmediaart")
     (version "1.9.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0gc10imyabk57ar54m0qzms0x9dnmkymhkzyk8w1aj3y4lby0yx5"))))
-    (build-system gnu-build-system)
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0gc10imyabk57ar54m0qzms0x9dnmkymhkzyk8w1aj3y4lby0yx5"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference/libmediaart"
+               (substitute* "libmediaart-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("gdk-pixbuf" ,gdk-pixbuf)
+     `(("docbook-xml" ,docbook-xml-4.1.2)
        ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk+:doc", gtk+ "doc")
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
        ("vala" ,vala)))
-    (synopsis "Media art library for the GNOME desktop")
-    (description
-     "The libmediaart library is the foundation for media art caching,
-extraction, and lookup for applications on the desktop.")
+    (propagated-inputs
+     `(("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)))
+    (synopsis "Media-Art Library")
+    (description "LibMediaArt provides library tasked with managing, extracting
+and handling media art caches.")
     (home-page "https://gitlab.gnome.org/GNOME/libmediaart")
     (license license:lgpl2.1+)))
 
