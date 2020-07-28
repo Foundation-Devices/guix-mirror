@@ -989,14 +989,15 @@ freedesktop.org desktop notification specification.")
   (package
     (name "mm-common")
     (version "1.0.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/mm-common/"
-                                  (version-major+minor version) "/"
-                                  "mm-common-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1jasx9a9g7nqf7jcv3mrg4qh5cp9sq724jxjaz4wa1dzmxsxg8i8"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/mm-common/"
+                       (version-major+minor version) "/"
+                       "mm-common-" version ".tar.xz"))
+       (sha256
+        (base32 "1jasx9a9g7nqf7jcv3mrg4qh5cp9sq724jxjaz4wa1dzmxsxg8i8"))))
     (build-system meson-build-system)
     (arguments
      `(#:phases
@@ -1004,27 +1005,31 @@ freedesktop.org desktop notification specification.")
          (add-after 'unpack 'patch
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "util/mm-common-prepare.in"
-              (("ln") (string-append (assoc-ref inputs "coreutils")
-                                     "/bin/ln"))
-              (("cp") (string-append (assoc-ref inputs "coreutils")
-                                     "/bin/cp"))
-              (("sed") (string-append (assoc-ref inputs "sed")
-                                      "/bin/sed"))
-              (("cat") (string-append (assoc-ref inputs "coreutils")
-                                      "/bin/cat")))
+               (("ln")
+                (string-append (assoc-ref inputs "coreutils")
+                               "/bin/ln"))
+               (("cp")
+                (string-append (assoc-ref inputs "coreutils")
+                               "/bin/cp"))
+               (("sed")
+                (string-append (assoc-ref inputs "sed")
+                               "/bin/sed"))
+               (("cat")
+                (string-append (assoc-ref inputs "coreutils")
+                               "/bin/cat")))
              #t)))))
     (native-inputs
-     `(("coreutils" ,coreutils)
-       ("gettext" ,gettext-minimal)
-       ("pkg-config" ,pkg-config)
-       ("sed" ,sed)))
+     `(("pkg-config" ,pkg-config)))
     (inputs
-     `(("python" ,python)))
+     `(("automake" ,automake)
+       ("coreutils" ,coreutils)
+       ("sed" ,sed)
+       ("python" ,python)))
     (synopsis "Module of GNOME C++ bindings")
-    (description "The mm-common module provides the build infrastructure
-and utilities shared among the GNOME C++ binding libraries.  Release
-archives of mm-common include the Doxygen tag file for the GNU C++
-Library reference documentation.")
+    (description "The mm-common module provides the build infrastructure and
+utilities shared among the GNOME C++ binding libraries.  Release archives of
+mm-common include the Doxygen tag file for the GNU C++ Library reference
+documentation.")
     (home-page "https://gitlab.gnome.org/GNOME/mm-common")
     (license license:gpl2+)))
 
