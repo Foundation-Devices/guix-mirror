@@ -85,6 +85,7 @@
   #:use-module (gnu packages build-tools)
   #:use-module (gnu packages calendar)
   #:use-module (gnu packages cdrom)
+  #:use-module (gnu packages certs)
   #:use-module (gnu packages check)
   #:use-module (gnu packages cmake)
   #:use-module (gnu packages code)
@@ -8285,58 +8286,115 @@ users.")
 (define-public network-manager
   (package
     (name "network-manager")
-    (version "1.24.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/NetworkManager/"
-                                  (version-major+minor version) "/"
-                                  "NetworkManager-" version ".tar.xz"))
-              (patches (search-patches "network-manager-plugin-path.patch"))
-              (sha256
-               (base32
-                "06044fl60bjlj7c6rqqfbm5795h61h6yzp7ch392hzcnm46wwhn3"))
-              (modules '((guix build utils)))
-              (snippet
-               '(begin
-                  (substitute* "src/devices/wwan/nm-modem-manager.c"
-                    (("systemd") "elogind"))
-                  #t))))
+    (version "1.26.0")
+    (properties '((upstream-name . "NetworkManager")))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/NetworkManager/"
+                       (version-major+minor version) "/"
+                       "NetworkManager-" version ".tar.xz"))
+       (sha256
+        (base32 "0isdqwp58d7r92sqsk7l2vlqwy518n8b7c7z94jk9gc1bdmjf8sj"))
+       (patches
+        (search-patches "network-manager-plugin-path.patch"))))
     (build-system meson-build-system)
-    (outputs '("out"
-               "doc")) ; 8 MiB of gtk-doc HTML
+    (outputs '("out" "doc"))
     (arguments
-     `(#:configure-flags
-       (let ((out      (assoc-ref %outputs "out"))
-             (dhclient (string-append (assoc-ref %build-inputs "isc-dhcp")
-                                      "/sbin/dhclient")))
-         (list
-          ;; Otherwise, the RUNPATH will lack the final 'NetworkManager' path
-          ;; component.
-          (string-append "-Dc_link_args=-Wl,-rpath="
-                         out "/lib:"
-                         out "/lib/NetworkManager/" ,version)
-          "-Dsystemd_journal=false"
-          "-Dsession_tracking=elogind"
-          "-Dsuspend_resume=elogind"
-          "-Dsystemdsystemunitdir=no"
-          "-Dsession_tracking_consolekit=false"
-          "-Ddhcpcd=no"
-          "-Ddhcpcanon=no"
-          "-Dcrypto=gnutls"
-          "-Diwd=true"
-          "-Dlibaudit=yes"
-          "-Dqt=false"
-          "-Ddocs=true"
-          "--sysconfdir=/etc"
-          "--localstatedir=/var"
-          (string-append "-Dudev_dir="
-                         out "/lib/udev")
-          (string-append "-Ddbus_conf_dir="
-                         out "/etc/dbus-1/system.d")
-
-          (string-append "-Ddhclient=" dhclient)))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        ;; System Paths
+        "-Dsystemdsystemunitdir=no"
+        (string-append "-Dsystem_ca_path="
+                       (assoc-ref %build-inputs "nss-certs")
+                       "/etc/ssl/certs")
+        (string-append "-Dudev_dir="
+                       (assoc-ref %outputs "out")
+                       "/lib/udev")
+        (string-append "-Ddbus_conf_dir="
+                       (assoc-ref %outputs "out")
+                       "/share/dbus-1/system.d")
+        (string-append "-Dkernel_firmware_dir="
+                       (assoc-ref %outputs "out")
+                       "/lib/firmware")
+        (string-append "-Diptables="
+                       (assoc-ref %build-inputs "iptables"))
+        (string-append "-Ddnsmasq="
+                       (assoc-ref %build-inputs "dnsmasq"))
+        (string-append "-Ddnssec_trigger="
+                       (assoc-ref %build-inputs "dnssec-trigger:nm")
+                       "/libexec/dnssec-trigger-script")
+        ;; Platform
+        "-Dsession_tracking_consolekit=false"
+        "-Dsession_tracking=elogind"
+        "-Dsuspend_resume=upower"
+        "-Dconfig_auth_polkit_default=true"
+        "-Dmodify_system=true"
+        "-Dpolkit_agent=true"
+        "-Dsystemd_journal=false"
+        "-Dconfig_logging_backend_default=syslog"
+        "-Dlibaudit=yes"
+        ;; Features
+        "-Diwd=true"
+        "-Dofono=true"
+        "-Dnm_cloud_setup=true"
+        "-Dbluez5_dun=true"
+        "-Debpf=true"
+        ;; Handlers for resolv.conf
+        "-Dnetconfig=no"
+        "-Dconfig_dns_rc_manager_default=resolvconf"
+        ;; DHCP Clients
+        "-Ddhcpcanon=no"
+        "-Ddhcpcd=no"
+        "-Dconfig_dhcp_default=dhclient"
+        ;; Miscellaneous
+        "-Ddocs=true"
+        "-Dcrypto=gnutls"
+        "-Dqt=false"
+        ;; Otherwise, the RUNPATH will lack the final 'NetworkManager' path
+        ;; component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/NetworkManager/" ,version))
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute*
+                 '("docs/api/network-manager-docs.xml"
+                   "docs/libnm/libnm-docs.xml")
+               (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                               "/xml/dtd/docbook/")))
+             (substitute*
+                 '("docs/api/network-manager-docs.xml"
+                   "docs/libnm/libnm-docs.xml"
+                   "man/NetworkManager.conf.xml"
+                   "man/NetworkManager.xml"
+                   "man/nm-initrd-generator.xml"
+                   "man/nm-online.xml"
+                   "man/nm-openvswitch.xml"
+                   "man/nmcli-examples.xml"
+                   "man/nmcli.xml"
+                   "man/nmtui.xml")
+               (("http://www.oasis-open.org/docbook/xml/4.2/")
+                (string-append (assoc-ref inputs "docbook-xml-4.2")
+                               "/xml/dtd/docbook/")))
+             (substitute*
+                 '("docs/api/settings-spec.xsl"
+                   "man/nm-settings-dbus.xsl"
+                   "man/nm-settings-ifcfg-rh.xsl"
+                   "man/nm-settings-keyfile.xsl"
+                   "man/nm-settings-nmcli.xsl")
+               (("http://www.oasis-open.org/docbook/xml/4.3/")
+                (string-append (assoc-ref inputs "docbook-xml-4.3")
+                               "/xml/dtd/docbook/")))
+             #t))
          (add-before 'configure 'pre-configure
            (lambda _
              ;; These tests try to test aspects of network-manager's
@@ -8345,101 +8403,106 @@ users.")
              ;; lacks some features that they would like to proxy over (like
              ;; a /sys mount).
              (substitute* "src/platform/tests/meson.build"
-               ((".*test-address-linux.*") "")
-               ((".*test-cleanup-linux.*") "")
-               ((".*test-link-linux.*") "")
-               ((".*test-route-linux.*") ""))
+               ((".*test-address-linux.*")
+                "")
+               ((".*test-cleanup-linux.*")
+                "")
+               ((".*test-link-linux.*")
+                "")
+               ((".*test-route-linux.*")
+                "")
+               ((".*test-tc-linux.*")
+                ""))
              (substitute* "src/devices/tests/meson.build"
-               ((".*test-acd.*") "")
-               ((".*test-lldp.*") ""))
+               ((".*test-acd.*")
+                "")
+               ((".*test-lldp.*")
+                ""))
              #t))
-         (add-after 'unpack 'patch-docbook-xml
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
-                                          "/xml/dtd/docbook")))
-               (substitute* (find-files "." ".*\\.(xsl|xml)")
-                 (("http://.*/docbookx\\.dtd")
-                  (string-append xmldoc "/docbookx.dtd")))
-               #t)))
          (add-before 'check 'pre-check
            (lambda _
              ;; For the missing /etc/machine-id.
              (setenv "DBUS_FATAL_WARNINGS" "0")
              #t))
-         (add-before 'install 'no-polkit-magic
-           ;; Meson ‘magically’ invokes pkexec, which fails (not setuid).
-           (lambda _
-             (setenv "PKEXEC_UID" "something")
-             #t))
          (add-after 'install 'move-doc
            (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (doc (assoc-ref outputs "doc")))
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
                (mkdir-p (string-append doc "/share"))
-               (for-each (lambda (directory)
-                           (copy-recursively (string-append out directory)
-                                             (string-append doc directory))
-                           (delete-file-recursively
-                            (string-append out directory)))
-                         '("/share/doc" "/share/gtk-doc"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
                #t))))))
-    (propagated-inputs
-     `(("glib" ,glib)))
     (native-inputs
-     `(("glib:bin" ,glib "bin")         ; for gdbus-codegen
-       ("gtk-doc" ,gtk-doc)
-       ("gobject-introspection" ,gobject-introspection)
-       ("docbook-xml" ,docbook-xml)
+     `(("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.2" ,docbook-xml-4.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
        ("docbook-xsl" ,docbook-xsl)
+       ("gjs" ,gjs)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
-       ("libxslt" ,libxslt)
-       ("libxml2" ,libxml2)
+       ("lua" ,lua)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)
-       ;; For testing.
        ("python" ,python-wrapper)
        ("python-dbus" ,python-dbus)
-       ("python-pygobject" ,python-pygobject)))
+       ("python-pygobject" ,python-pygobject)
+       ("ruby" ,ruby)
+       ("vala" ,vala)
+       ("xmllint" ,libxml2)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("curl" ,curl)
-       ("cyrus-sasl" ,cyrus-sasl)
-       ("dbus-glib" ,dbus-glib)
+     `(("audit" ,audit)
+       ("bluez" ,bluez)
+       ("dbus" ,dbus)
        ("dnsmasq" ,dnsmasq)
-       ("eudev" ,eudev)
+       ("dnssec-trigger:nm" ,dnssec-trigger "nm")
        ("gnutls" ,gnutls)
        ("iptables" ,iptables)
        ("isc-dhcp" ,isc-dhcp)
-       ("iwd" ,iwd)                     ; wpa_supplicant alternative
+       ("iwd" ,iwd)
        ("jansson" ,jansson)
-       ("libaudit" ,audit)
-       ("libgcrypt" ,libgcrypt)
-       ("libgudev" ,libgudev)
+       ("libcurl" ,curl)
+       ("libelogind" ,elogind)
        ("libndp" ,libndp)
+       ("libnewt" ,newt)
        ("libnl" ,libnl)
+       ("libpsl" ,libpsl)
+       ("libselinux" ,libselinux)
        ("libsoup" ,libsoup)
+       ("libudev" ,eudev)
+       ("mm-glib" ,modem-manager)
        ("mobile-broadband-provider-info" ,mobile-broadband-provider-info)
-       ("modem-manager" ,modem-manager)
-       ("newt" ,newt)                       ;for the 'nmtui' console interface
-       ("openresolv" ,openresolv)           ; alternative resolv.conf manager
+       ("nss" ,nss)
+       ("nss-certs" ,nss-certs)
+       ("openresolv" ,openresolv)
        ("polkit" ,polkit)
        ("ppp" ,ppp)
        ("readline" ,readline)
-       ("util-linux" ,util-linux)
-       ("elogind" ,elogind)))
-    (synopsis "Network connection manager")
+       ("upower" ,upower)
+       ("util-linux" ,util-linux)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)))
+    (synopsis "Network Management Daemon")
+    (description "NetworkManager daemon attempts to make networking
+configuration and operation as painless and automatic as possible by managing
+the primary network connection and other network interfaces, like Ethernet,
+Wi-Fi, and Mobile Broadband devices.  It will connect any network device when a
+connection for that device becomes available, unless that behavior is disabled.
+Information about networking is exported via a D-Bus interface to any interested
+application, providing a rich API with which to inspect and control network
+settings and operation.")
     (home-page "https://wiki.gnome.org/Projects/NetworkManager")
-    (description
-     "NetworkManager is a system network service that manages your network
-devices and connections, attempting to keep active network connectivity when
-available.  It manages ethernet, WiFi, mobile broadband (WWAN), and PPPoE
-devices, and provides VPN integration with a variety of different VPN
-services.")
-    ;; “This NetworkManager project consists of the daemon, client tools, and
-    ;; libnm. libnm is licensed LGPL-2.1+, while the rest is licensed under
-    ;; GPL-2.0+.”
-    (license (list license:gpl2+
-                   license:lgpl2.1+))
-    (properties '((upstream-name . "NetworkManager")))))
+    (license
+     (list
+      ;; Documentation
+      license:fdl1.1+
+      ;; Library
+      license:lgpl2.1+
+      ;; Others
+      license:gpl2+))))
 
 (define-public network-manager-openvpn
   (package
