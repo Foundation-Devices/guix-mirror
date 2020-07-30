@@ -8693,44 +8693,44 @@ settings for different service providers in different countries.")
 (define-public network-manager-applet
   (package
     (name "network-manager-applet")
-    (version "1.16.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/network-manager-applet/"
-                                  (version-major+minor version) "/"
-                                  "network-manager-applet-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1rf3nm0hjcy9f8ajb4vmvwy503w8yj8d4daxkcb7w7i7b92qmyfn"))))
+    (version "1.18.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/network-manager-applet/"
+                       (version-major+minor version) "/"
+                       "network-manager-applet-" version ".tar.xz"))
+       (sha256
+        (base32 "12xiy8g8qk18jvxvn78mvq03zvzp06bww49na765jjw0rq541fyx"))))
     (build-system meson-build-system)
     (arguments
-     '(#:glib-or-gtk? #t))
+     `(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
     (native-inputs
-     `(("intltool" ,intltool)
-       ("glib:bin" ,glib "bin") ; for glib-compile-resources, etc.
+     `(("desktop-file-vaildate" ,desktop-file-utils)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk-doc" ,gtk-doc)
-       ("pkg-config" ,pkg-config)))
-    (propagated-inputs
-     ;; libnm-gtk.pc refers to all these.
-     `(("dbus-glib" ,dbus-glib)
-       ("gtk+" ,gtk+)
-       ("network-manager" ,network-manager)
-       ;; nm-applet need by org.gnome.nm-applet.gschema.xml
-       ("libnma" ,libnma)))
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("gcr" ,gcr)
-       ("libgudev" ,libgudev)
+     `(("appindicator" ,libappindicator)
+       ("appstream-util" ,appstream-glib)
+       ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gtk+" ,gtk+)
+       ("gudev" ,libgudev)
+       ("jansson" ,jansson)
+       ("libnm" ,network-manager)
+       ("libnma" ,libnma)
        ("libnotify" ,libnotify)
        ("libsecret" ,libsecret)
        ("libselinux" ,libselinux)
-       ("jansson" ,jansson) ; for team support
-       ("modem-manager" ,modem-manager)))
-    (synopsis "Applet for managing network connections")
+       ("mm-glib" ,modem-manager)))
+    (synopsis "Applet for NetworkManager")
+    (description "Network-Manager-Applet is a tray applet and an advanced
+network connection editor.")
     (home-page "https://wiki.gnome.org/Projects/NetworkManager")
-    (description
-     "This package contains a systray applet for NetworkManager.  It displays
-the available networks and allows users to easily switch between them.")
     (license license:gpl2+)))
 
 (define-public libxml++
