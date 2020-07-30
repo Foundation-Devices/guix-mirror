@@ -1036,32 +1036,91 @@ documentation.")
 
 (define-public phodav
   (package
-   (name "phodav")
-   (version "2.4")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1hxq8c5qfah3w7mxcyy3yhzdgswplll31a69p5mqdl04bsvw5pbx"))))
-   (build-system meson-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gtk-doc" ,gtk-doc)
-      ("pkg-config" ,pkg-config)))
-   (inputs
-    `(("avahi" ,avahi)
-      ("libgudev" ,libgudev)
-      ("libsoup" ,libsoup)))
-   (synopsis "WebDav server implementation using libsoup")
-   (description "PhoDav was initially developed as a file-sharing mechanism for Spice,
-but it is generic enough to be reused in other projects,
-in particular in the GNOME desktop.")
-   (home-page "https://wiki.gnome.org/phodav")
-   (license license:lgpl2.1+)))
+    (name "phodav")
+    (version "2.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1hxq8c5qfah3w7mxcyy3yhzdgswplll31a69p5mqdl04bsvw5pbx"))))
+    (build-system meson-build-system)
+    (outputs '("out" "tools" "spice" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dsystemd=disabled")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/reference"
+               (substitute* '("phodav-2.0-docs.sgml" "phodav-docs.sgml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'patch-udevdir
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "meson.build"
+               (("udev\\.get_pkgconfig_variable\\('udevdir'\\)")
+                (string-append "'"
+                               (assoc-ref outputs "out")
+                               "/lib/udev" "'")))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-tools
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (tools (assoc-ref outputs "tools")))
+               (mkdir-p (string-append tools "/bin"))
+               (rename-file
+                (string-append out "/bin")
+                (string-append tools "/bin"))
+               #t)))
+         (add-after 'move-tools 'move-spice
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (spice (assoc-ref outputs "spice")))
+               (mkdir-p (string-append spice "/sbin"))
+               (rename-file
+                (string-append out "/sbin")
+                (string-append spice "/sbin"))
+               #t))))))
+    (native-inputs
+     `(("asciidoc" ,asciidoc)
+       ("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("xmlto" ,xmlto)))
+    (inputs
+     `(("avahi" ,avahi)
+       ("udev" ,eudev)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)))
+    (synopsis "WebDAV Support for GNOME")
+    (description "PhoDav is a WebDav server implementation using libsoup
+(RFC 4918).")
+    (home-page "https://wiki.gnome.org/phodav")
+    (license license:lgpl2.1+)))
 
 (define-public gnome-color-manager
   (package
