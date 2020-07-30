@@ -5872,39 +5872,66 @@ settings, themes, mouse settings, and startup of other daemons.")
     (license license:gpl2+)))
 
 (define-public totem-pl-parser
- (package
-   (name "totem-pl-parser")
-   (version "3.26.3")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/totem-pl-parser/"
-                                (version-major+minor version) "/"
-                                "totem-pl-parser-" version ".tar.xz"))
-            (sha256
-             (base32
-              "13a45py2j1r9967zgww8kd24bn2fhycd4m3kzr90sxx9l2w03z8f"))))
-   (build-system meson-build-system)
-   (arguments
-    ;; FIXME: Tests require gvfs.
-    `(#:tests? #f))
-   (native-inputs
-    `(("intltool" ,intltool)
-      ("glib" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("pkg-config" ,pkg-config)))
-   (propagated-inputs
-    `(("glib" ,glib)
-      ("gmime" ,gmime)
-      ("libarchive" ,libarchive)
-      ("libgcrypt" ,libgcrypt)
-      ("libxml2" ,libxml2)))
-   (inputs
-    `(("libsoup" ,libsoup)))
-   (home-page "https://projects.gnome.org/totem")
-   (synopsis "Library to parse and save media playlists for GNOME")
-   (description "Totem-pl-parser is a GObjects-based library to parse and save
-playlists in a variety of formats.")
-   (license license:lgpl2.0+)))
+  (package
+    (name "totem-pl-parser")
+    (version "3.26.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/totem-pl-parser/"
+                       (version-major+minor version) "/"
+                       "totem-pl-parser-" version ".tar.xz"))
+       (sha256
+        (base32 "132jihnf51zs98yjkc6jxyqib4f3dawpjm17g4bj4j78y93dww2k"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:tests? #f           ; Tests require networking
+       #:configure-flags
+       (list
+        "-Denable-gtk-doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "totem-pl-parser-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("intltool" ,intltool)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("libgcrypt" ,libgcrypt)
+       ("libquvi" ,libquvi)
+       ("libsoup" ,libsoup)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("libarchive" ,libarchive)
+       ("libxml2" ,libxml2)))
+    (synopsis "Totem Playlist Parser")
+    (description "Totem-pl-parser is a simple GObject-based library to parse a
+host of playlist formats, as well as save those.")
+    (home-page "http://wiki.gnome.org/Apps/Videos")
+    (license license:lgpl2.0+)))
 
 (define-public aisleriot
   (package
