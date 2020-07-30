@@ -9685,45 +9685,60 @@ search tool.  This package provides Tracker-Core, that contains the database
   (package
     (name "tracker-miners")
     (version "2.3.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/tracker-miners/"
-                                  (version-major+minor version)
-                                  "/tracker-miners-" version ".tar.xz"))
-              (sha256
-               (base32
-                "06abxrnrz7xayykrabn135rpsm6z0fqw7gibrb9j09l6swlalwkl"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/tracker-miners/"
+                       (version-major+minor version)
+                       "/tracker-miners-" version ".tar.xz"))
+       (sha256
+        (base32 "06abxrnrz7xayykrabn135rpsm6z0fqw7gibrb9j09l6swlalwkl"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       (list "-Dminer_rss=false" ; libgrss is required.
-             ;; Ensure the RUNPATH contains all installed library locations.
-             (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out")
-                            "/lib/tracker-miners-2.0")
-             ;; TODO: Enable functional tests. Currently, the following error
-             ;; appears:
-             ;; Exception: The functional tests require DConf to be the default
-             ;; GSettings backend. Got GKeyfileSettingsBackend instead.
-             "-Dfunctional_tests=false")))
+       (list
+        "-Dfunctional_tests=false"
+        "-Dguarantee_metadata=true"
+        "-Dbattery_detection=upower"
+        "-Dcharset_detection=icu"
+        "-Dgeneric_media_extractor=gstreamer"
+        "-Dgstreamer_backend=discoverer"
+        "-Dsystemd_user_services=no"
+        ;; Ensure the RUNPATH contains all installed library locations.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/tracker-miners-"
+                       ,(version-major version)
+                       ".0"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'disable-failing-tests
+           (lambda _
+             (substitute* "tests/libtracker-miners-common/meson.build"
+               (("'file-utils',")
+                ""))
+             #t)))))
     (native-inputs
-     `(("dbus" ,dbus)
-       ("intltool" ,intltool)
-       ("glib:bin" ,glib "bin")
+     `(("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
        ("python-pygobject" ,python-pygobject)))
     (inputs
-     `(("exempi" ,exempi)
-       ("ffmpeg" ,ffmpeg)
+     `(("dbus" ,dbus)
+       ("exempi" ,exempi)
        ("flac" ,flac)
+       ("gexiv2" ,gexiv2)
        ("giflib" ,giflib)
        ("glib" ,glib)
        ("gstreamer" ,gstreamer)
-       ("icu4c" ,icu4c)
+       ("gst-plugins-base" ,gst-plugins-base)
+       ("icu-uc" ,icu4c)
        ("libcue" ,libcue)
        ("libexif" ,libexif)
+       ("libgrss" ,libgrss)
        ("libgsf" ,libgsf)
        ("libgxps" ,libgxps)
        ("libiptcdata" ,libiptcdata)
@@ -9732,25 +9747,27 @@ search tool.  This package provides Tracker-Core, that contains the database
        ("libpng" ,libpng)
        ("libseccomp" ,libseccomp)
        ("libtiff" ,libtiff)
-       ("libvorbis" ,libvorbis)
        ("libxml2" ,libxml2)
-       ("poppler" ,poppler)
+       ("poppler-glib" ,poppler)
        ("taglib" ,taglib)
-       ("totem-pl-parser" ,totem-pl-parser)
+       ("totem-plparser" ,totem-pl-parser)
        ("tracker" ,tracker)
-       ("upower" ,upower)
+       ("upower-glib" ,upower)
+       ("vorbisfile" ,libvorbis)
        ("zlib" ,zlib)))
-    (synopsis "Metadata database, indexer and search tool")
+    (synopsis "Search Engine and Triplestore")
+    (description "Tracker is a filesystem indexer, metadata storage system and
+search tool.  This package provides Tracker-Miners, that contains the indexer
+daemon (tracker-miner-fs) and tools to extract metadata from many different
+filetypes.")
     (home-page "https://wiki.gnome.org/Projects/Tracker")
-    (description
-     "Tracker is an advanced framework for first class objects with associated
-metadata and tags.  It provides a one stop solution for all metadata, tags,
-shared object databases, search tools and indexing.")
-    ;; src/libtracker-*/* and src/tracker-extract/* are covered by lgpl2.1+,
-    ;; src/gvdb/* are covered by lgpl2.0+, and the rest is gpl2+.
-    (license (list license:gpl2+
-                   license:lgpl2.1+
-                   license:lgpl2.0+))))
+    (license
+     (list
+      ;; LibTracker-Extract, LibTracker-Miners-Common
+      ;; and Tracker-Extract
+      license:lgpl2.1+
+      ;; Miners-Apps and Miners-FS
+      license:gpl2+))))
 
 (define-public nautilus
   (package
