@@ -106,6 +106,7 @@
   #:use-module (gnu packages file-systems)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
+  #:use-module (gnu packages fribidi)
   #:use-module (gnu packages game-development)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages ghostscript)
@@ -4546,30 +4547,63 @@ targeting the GNOME stack simple.")
                (base32
                 "0al2v6fn061v4j1wwvppim1q283y2a6s0iyl29hxhmx3h48nxdzy"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:configure-flags
-       '("-Dvapi=true"
-         "-D_systemd=false")))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Ddocs=true"
+        "-D_systemd=false")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/reference"
+               (substitute* "vte-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("docbook-xml" ,docbook-xml-4.1.2)
        ("gettext" ,gettext-minimal)
-       ("vala" ,vala)
+       ("glib" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("glib" ,glib "bin")             ; for glib-genmarshal, etc.
-       ("gperf" ,gperf)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
        ("xmllint" ,libxml2)))
+    (inputs
+     `(("fribidi" ,fribidi)
+       ("gnutls" ,gnutls)
+       ("gperf" ,gperf)
+       ("icu-uc" ,icu4c)
+       ("libpcre2" ,pcre2)
+       ("zlib" ,zlib)))
     (propagated-inputs
-     `(("gtk+" ,gtk+)                   ; required by vte-2.91.pc
-       ("gnutls" ,gnutls)               ; ditto
-       ("pcre2" ,pcre2)))               ; ditto
-    (home-page "https://www.gnome.org/")
-    (synopsis "Virtual Terminal Emulator")
-    (description
-     "VTE is a library (libvte) implementing a terminal emulator widget for
-GTK+, and a minimal sample application (vte) using that.  Vte is mainly used in
-gnome-terminal, but can also be used to embed a console/terminal in games,
-editors, IDEs, etc.")
-    (license license:lgpl2.1+)))
+     `(("glib" ,glib)
+       ("pango" ,pango)
+       ("gtk+" ,gtk+)))
+    (synopsis "Virtual Terminal library")
+    (description "VTE provides a virtual terminal widget for GTK applications.")
+    (home-page "https://wiki.gnome.org/Apps/Terminal/VTE")
+    (license
+     (list
+      ;; Documentation
+      license:cc-by-sa4.0
+      ;; Library
+      license:lgpl3+
+      ;; Others
+      license:gpl3+))))
 
 (define-public vte-ng
   (package
