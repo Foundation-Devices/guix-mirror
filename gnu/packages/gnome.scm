@@ -129,6 +129,7 @@
   #:use-module (gnu packages inkscape)
   #:use-module (gnu packages iso-codes)
   #:use-module (gnu packages kerberos)
+  #:use-module (gnu packages language)
   #:use-module (gnu packages libcanberra)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages libunistring)
@@ -9577,71 +9578,108 @@ directories over the internet.")
   (package
     (name "tracker")
     (version "2.3.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/tracker/"
-                                  (version-major+minor version) "/"
-                                  "tracker-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0vai0qz9jn3z5dlzysynwhbbmslp84ygdql81f5wfxxr98j54yap"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/tracker/"
+                       (version-major+minor version) "/"
+                       "tracker-" version ".tar.xz"))
+       (sha256
+        (base32 "0vai0qz9jn3z5dlzysynwhbbmslp84ygdql81f5wfxxr98j54yap"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t
        #:configure-flags
-       ;; Otherwise, the RUNPATH will lack the final path component.
-       (list (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out") "/lib:"
-                            (assoc-ref %outputs "out") "/lib/tracker-2.0"))
+       (list
+        "-Ddocs=true"
+        "-Dunicode_support=icu"
+        "-Dsystemd_user_services=no"
+        ;; Otherwise, the RUNPATH will lack the final path component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/tracker-"
+                       ,(version-major version)
+                       ".0"))
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute*
+                   '("libtracker-control/libtracker-control-docs.xml"
+                     "libtracker-control/migrating-1to2.xml"
+                     "libtracker-miner/libtracker-miner-docs.xml"
+                     "libtracker-miner/migrating-1to2.xml"
+                     "libtracker-sparql/libtracker-sparql-docs.xml"
+                     "libtracker-sparql/migrating-1to2.xml"
+                     "ontology/ontology-docs.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.5/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.5")
+                                 "/xml/dtd/docbook/"))
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.3")
+                                 "/xml/dtd/docbook/"))
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          (add-before 'check 'pre-check
            (lambda _
              ;; Some tests expect to write to $HOME.
-             (setenv "HOME" "/tmp")
-             #t)))))
+             (setenv "HOME" (getcwd))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
+     `(("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
+       ("docbook-xml-4.5" ,docbook-xml)
+       ("docbook-xsl" ,docbook-xsl)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("python-pygobject" ,python-pygobject)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("python-pygobject" ,python-pygobject)
        ("vala" ,vala)))
     (inputs
      `(("dbus" ,dbus)
-       ("sqlite" ,sqlite)
-       ("libxml2" ,libxml2)
-       ("icu4c" ,icu4c)                 ; libunistring gets miner-miner-fs test to fail.
+       ("icu-uc" ,icu4c)
        ("json-glib" ,json-glib)
-       ("libsoup" ,libsoup)))
-    (synopsis "Metadata database, indexer and search tool")
+       ("libnm" ,network-manager)
+       ("libsoup" ,libsoup)
+       ("libstemmer" ,libstemmer)
+       ("libxml2" ,libxml2)
+       ("sqlite" ,sqlite)))
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "Search Engine and Triplestore")
+    (description "Tracker is a filesystem indexer, metadata storage system and
+search tool.  This package provides Tracker-Core, that contains the database
+(tracker-store), the database ontologies, the commandline user interface
+(tracker), and several support libraries.")
     (home-page "https://wiki.gnome.org/Projects/Tracker")
-    (description
-     "Tracker is a search engine and triplestore for desktop, embedded and mobile.
-
-It is a middleware component aimed at desktop application developers who want
-their apps to browse and search user content.  It's not designed to be used
-directly by desktop users, but it provides a commandline tool named
-@command{tracker} for the adventurous.
-
-Tracker allows your application to instantly perform full-text searches across
-all documents.  This feature is used by the @{emph{search} bar in GNOME Files, for
-example.  This is achieved by indexing the user's home directory in the
-background.
-
-Tracker also allows your application to query and list content that the user
-has stored.  For example, GNOME Music displays all the music files that are
-found by Tracker.  This means that GNOME Music doesn't need to maintain a
-database of its own.
-
-If you need to go beyond simple searches, Tracker is also a linked data
-endpoint and it understands SPARQL. ")
-    ;; https://gitlab.gnome.org/GNOME/tracker/-/blob/master/COPYING:
-    ;; src/libtracker-*/* and src/tracker-extract/* are covered by lgpl2.1+,
-    ;; libstemmer is bsd-3 and the rest is gpl2+.
-    (license (list license:gpl2+
-                   license:bsd-3
-                   license:lgpl2.1+))))
+    (license
+     (list
+      ;; LibTracker, Tracker-Extract, Tracker-Utils and GVDB
+      license:lgpl2.1+
+      ;; LibStemmer
+      license:bsd-3
+      ;; Others
+      license:gpl2+))))
 
 (define-public tracker-miners
   (package
