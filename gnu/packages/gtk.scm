@@ -523,7 +523,7 @@ diagrams.")
        ("vala" ,vala)
        ("xorg-server" ,xorg-server-for-tests)))
     (inputs
-     `(("glade" ,glade3)))
+     `(("glade" ,glade)))
     (propagated-inputs
      `(("fribidi" ,fribidi)
        ("glib" ,glib)
