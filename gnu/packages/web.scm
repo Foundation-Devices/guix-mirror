@@ -1520,21 +1520,24 @@ hash/signatures.")
 (define-public libquvi-scripts
   (package
     (name "libquvi-scripts")
-    (version "0.4.21")
+    (version "0.9.20131130")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append
-             "mirror://sourceforge/quvi/" (version-major+minor version) "/"
-             name "/" name "-" version ".tar.xz"))
+       (uri
+        (string-append
+         "mirror://sourceforge/quvi/" (version-major+minor version) "/"
+         name "/" name "-" version ".tar.xz"))
        (sha256
-        (base32 "0d0giry6bb57pnidymvdl7i5x9bq3ljk3g4bs294hcr5mj3cq0kw"))))
+        (base32 "1qvp6z5k1qgcys7vf7jd6fm0g07xixmciwj14ypn1kqhmjgizwhp"))))
     (build-system gnu-build-system)
+    (native-inputs
+     `(("pkg-config" ,pkg-config)))
+    (synopsis "Scripts for Libquvi")
+    (description "Libquvi-Scripts is a selection of Lua scripts that libquvi
+calls upon to parse the properties for a media URL.")
     (home-page "http://quvi.sourceforge.net/")
-    (synopsis "Media stream URL parser")
-    (description "This package contains support scripts called by libquvi to
-parse media stream properties.")
-    (license license:lgpl2.1+)))
+    (license license:agpl3+)))
 
 (define-public libquvi
   (package
