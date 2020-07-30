@@ -905,15 +905,47 @@ between different kinds of computer systems.")
                        (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "0mm2z849hnni7597an05mrv0dckrxjngpf2xfa0g5s17i8x6gxp6"))))
+        (base32 "0mm2z849hnni7597an05mrv0dckrxjngpf2xfa0g5s17i8x6gxp6"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f))                    ; FIX-ME: Requires gvfs
+     `(#:configure-flags
+       (list
+        "--enable-gtk-doc"
+        (string-append "--with-html-dir="
+                       (assoc-ref %outputs "doc")
+                       "/share/gtk-doc/html"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '( "api-breaks.xml" "intro.xml.in"
+                               "porting-guides.xml" "tepl-docs.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'disable-failing-tests
+           (lambda _
+             (substitute* "testsuite/Makefile.in"
+               (("test-file-loader\\$\\(EXEEXT\\) test-file-metadata\\$\\(EXEEXT\\)")
+                "test-file-loader$(EXEEXT)"))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             #t)))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
-       ("pkg-config" ,pkg-config)))
-    (inputs
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)
+       ("xorg-server" ,xorg-server-for-tests)))
+    (propagated-inputs
      `(("amtk" ,amtk)
        ("glib" ,glib)
        ("gtk+" ,gtk+)
