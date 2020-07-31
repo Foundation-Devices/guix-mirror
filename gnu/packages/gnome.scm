@@ -9832,38 +9832,56 @@ files.")
 (define-public baobab
   (package
     (name "baobab")
-    (version "3.32.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "mirror://gnome/sources/" name "/"
-                    (version-major+minor version) "/"
-                    name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0b33s9bhpiffv5wl76cq2bbnqhvx3qs2vxyxmil5gcs583llqh9r"))))
+    (version "3.34.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "mirror://gnome/sources/" name "/"
+         (version-major+minor version) "/"
+         name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1i90gc1cpw5507zn54k46hj4mjgdxsq8cvpnlgxq0ksy2d7iv63z"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:glib-or-gtk? #t))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("intltool" ,intltool)
-       ("pkg-config" ,pkg-config)
-       ("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
-       ("gtk+-bin" ,gtk+ "bin") ; for gtk-update-icon-cache
-       ("itstool" ,itstool)
-       ("xmllint" ,libxml2)
+     `(("desktop-file-utils" ,desktop-file-utils)
        ("glib" ,glib "bin")
-       ("vala" ,vala)))
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk+-bin" ,gtk+ "bin")
+       ("intltool" ,intltool)
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("gtk+" ,gtk+)))
-    (synopsis "Disk usage analyzer for GNOME")
-    (description
-     "Baobab (Disk Usage Analyzer) is a graphical application to analyse disk
-usage in the GNOME desktop environment.  It can easily scan device volumes or
-a specific user-requested directory branch (local or remote).  Once the scan
-is complete it provides a graphical representation of each selected folder.")
-    (home-page "https://wiki.gnome.org/Apps/Baobab")
-    (license license:gpl2+)))
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "Disk Usage Analyzer")
+    (description "Baobab scans folders, devices or remote locations and reports
+on the disk space consumed by each element.  It provides both a tree-like and a
+graphical representation.")
+    (home-page "https://wiki.gnome.org/Apps/DiskUsageAnalyzer")
+    (license
+     (list
+      ;; Documentation
+      license:fdl1.1+
+      ;; Others
+      license:gpl2+))))
 
 (define-public gnome-backgrounds
   (package
