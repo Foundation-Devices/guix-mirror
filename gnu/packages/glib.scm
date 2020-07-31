@@ -343,7 +343,12 @@ threads, dynamic loading, and an object system.")
                        name "/" (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32 "19vz7vp10h0zj3f491yk72dp89bix6rgkzxg4qcm4d6151ksxgl0"))))
+        (base32 "19vz7vp10h0zj3f491yk72dp89bix6rgkzxg4qcm4d6151ksxgl0"))
+       (patches
+        (search-patches
+         "gobject-introspection-cc.patch"
+         "gobject-introspection-girepository.patch"
+         "gobject-introspection-absolute-shlib-path.patch"))))
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
