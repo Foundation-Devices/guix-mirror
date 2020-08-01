@@ -333,6 +333,8 @@ integrates with various databases on GUI toolkits such as Qt and Tk.")
                (("(TEST\\(Viz, )([a-z].*\\).*)" all pre post)
                 (string-append pre "DISABLED_" post)))
 
+             (delete-file-recursively "../opencv-contrib/modules/structured_light/test")
+
              ;; This one fails with "unknown file: Failure"
              ;; But I couldn't figure out which file was missing:
              (substitute* "../opencv-contrib/modules/face/test/test_face_align.cpp"
