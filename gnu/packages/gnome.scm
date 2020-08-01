@@ -11523,66 +11523,95 @@ used in different GNOME Modules.")
   (package
     (name "cheese")
     (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/" name "-"
-                                  version ".tar.xz"))
-              (sha256
-               (base32
-                "0wvyc9wb0avrprvm529m42y5fkv3lirdphqydc9jw0c8mh05d1ni"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/" name "-"
+                       version ".tar.xz"))
+       (sha256
+        (base32 "0wvyc9wb0avrprvm529m42y5fkv3lirdphqydc9jw0c8mh05d1ni"))))
+    (build-system meson-build-system)
+    (outputs '("out" "help" "doc"))
     (arguments
-     `(#:glib-or-gtk? #t
-       ;; Tests require GDK.
-       #:tests? #f
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           (lambda _
-             ;; Don't create 'icon-theme.cache'
-             (substitute* "meson_post_install.py"
-               (("gtk-update-icon-cache") (which "true")))
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("cheese-docs.xml" "cheese.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
              #t))
-         (add-after 'install 'wrap-cheese
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                (which "true")))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t)))
+         (add-after 'move-doc 'wrap-cheese
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out             (assoc-ref outputs "out"))
-                   (gst-plugin-path (getenv "GST_PLUGIN_SYSTEM_PATH")))
+             (let* ((out (assoc-ref outputs "out"))
+                    (gst-plugin-path (getenv "GST_PLUGIN_SYSTEM_PATH")))
                (wrap-program (string-append out "/bin/cheese")
                  `("GST_PLUGIN_SYSTEM_PATH" ":" prefix (,gst-plugin-path))))
              #t)))))
-    (build-system meson-build-system)
     (native-inputs
-     `(("docbook-xsl" ,docbook-xsl)
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
        ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
-       ("libxml2" ,libxml2)
        ("libxslt" ,libxslt)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)))
-    (propagated-inputs
-     `(("gnome-video-effects" ,gnome-video-effects)
-       ("clutter" ,clutter)
-       ("clutter-gst" ,clutter-gst)
-       ("clutter-gtk" ,clutter-gtk)
-       ("libcanberra" ,libcanberra)
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("glib" ,glib)
-       ("gstreamer" ,gstreamer)))
+       ("vala" ,vala)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("gnome-desktop" ,gnome-desktop)
-       ("gobject-introspection" ,gobject-introspection)
+     `(("dbus" ,dbus)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gnome-video-effects" ,gnome-video-effects)
+       ("libcanberra" ,libcanberra)
+       ("xext" ,libxext)
+       ("xtst" ,libxtst)))
+    (propagated-inputs
+     `(("clutter" ,clutter)
+       ("clutter-gtk" ,clutter-gtk)
+       ("clutter-gst" ,clutter-gst)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
+       ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)
        ("gst-plugins-bad" ,gst-plugins-bad)
+       ("gst-plugins-good" ,gst-plugins-good)
        ("gtk+" ,gtk+)
-       ("libx11" ,libx11)
-       ("libxtst" ,libxtst)))
+       ("x11" ,libx11)))
+    (synopsis "Webcam application")
+    (description "Cheese is a program for the GNOME Desktop which allows you to
+take photos, videos, and anything else you can think of with your webcam.")
     (home-page "https://wiki.gnome.org/Apps/Cheese")
-    (synopsis "Webcam photo booth software for GNOME")
-    (description
-     "Cheese uses your webcam to take photos and videos.  Cheese can also
-apply fancy special effects and lets you share the fun with others.")
     (license license:gpl2+)))
 
 (define-public sound-juicer
