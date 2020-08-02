@@ -321,7 +321,8 @@ files from LOCATIONS with expected checksum HASH.  CODE is not currently in use.
    (arguments
     `(#:out-of-source? #t
       #:configure-flags
-       '("--disable-static"
+       '("CFLAGS=-fPIC"
+         "--disable-static"
          "--disable-native-texlive-build"
          "--with-system-cairo"
          "--with-system-freetype2"
