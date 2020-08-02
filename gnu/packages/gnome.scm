@@ -6935,64 +6935,102 @@ supports playlists, song ratings, and any codecs installed through gstreamer.")
    (license license:gpl2+)))
 
 (define-public eog
- (package
-   (name "eog")
-   (version "3.34.1")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "0b7ld4azs9xbdjsk9b91ywhdzvxgajhndiwiivxjzbr0hjgp7c7x"))))
-   (build-system meson-build-system)
-   (arguments
-    `(#:configure-flags
-      ;; Otherwise, the RUNPATH will lack the final 'eog' path component.
-      (list (string-append "-Dc_link_args=-Wl,-rpath="
-                           (assoc-ref %outputs "out") "/lib/eog"))
-      #:phases
-      (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
+  (package
+    (name "eog")
+    (version "3.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1p1lrnsgk5iyw7h02qzax4s74dqqsh5lk85b0qsj7hwx91qm61xp"))))
+    (build-system meson-build-system)
+    (outputs '("out" "help" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       ;; Otherwise, the RUNPATH will lack the final 'eog' path component.
+       (list
+        "-Dgtk_doc=true"
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/eog"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/reference"
+               (substitute* '("eog-docs.xml" "eog-docs.xml.in")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
            ;; Don't create 'icon-theme.cache'.
            (lambda _
              (substitute* "meson_post_install.py"
-               (("gtk-update-icon-cache") "true"))
+               (("gtk-update-icon-cache")
+                "true"))
              #t))
-        (add-after 'install 'wrap-eog
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((out               (assoc-ref outputs "out"))
-                  (gi-typelib-path   (getenv "GI_TYPELIB_PATH")))
-              (wrap-program (string-append out "/bin/eog")
-                `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))))
-            #t)))))
-   (propagated-inputs
-    `(("dconf" ,dconf)))
-   (native-inputs
-    `(("intltool" ,intltool)
-      ("itstool" ,itstool)
-      ("glib" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("pkg-config" ,pkg-config)
-      ("xmllint" ,libxml2)))
-   (inputs
-    `(("gnome-desktop" ,gnome-desktop)
-      ("shared-mime-info" ,shared-mime-info)
-      ("adwaita-icon-theme" ,adwaita-icon-theme)
-      ("exempi" ,exempi)
-      ("lcms" ,lcms)
-      ("libexif" ,libexif)
-      ("libpeas" ,libpeas)
-      ("libjpeg" ,libjpeg-turbo)
-      ("librsvg" ,librsvg-next)
-      ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-      ("gtk+" ,gtk+)))
-   (home-page "https://wiki.gnome.org/Apps/EyeOfGnome")
-   (synopsis "GNOME image viewer")
-   (description "Eye of GNOME is the GNOME image viewer.  It
-supports image conversion, rotation, and slideshows.")
-   (license license:gpl2+)))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t)))
+         (add-after 'move-help 'wrap-eog
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (gi-typelib-path (getenv "GI_TYPELIB_PATH")))
+               (wrap-program (string-append out "/bin/eog")
+                 `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))))
+             #t)))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
+    (inputs
+     `(("exempi" ,exempi)
+       ("gconf" ,gconf)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("lcms" ,lcms)
+       ("libart" ,libart-lgpl)
+       ("libexif" ,libexif)
+       ("libjpeg" ,libjpeg-turbo)
+       ("libpeas" ,libpeas)
+       ("librsvg" ,librsvg-next)
+       ("shared-mime-info" ,shared-mime-info)
+       ("x11" ,libx11)
+       ("zlib" ,zlib)))
+    (propagated-inputs
+     `(("gtk+" ,gtk+)))
+    (synopsis "Eye of GNOME")
+    (description "EoG is the GNOME image viewer.")
+    (home-page "https://wiki.gnome.org/Apps/EyeOfGnome")
+    (license license:gpl2+)))
 
 (define-public eog-plugins
   ;; Note: EOG looks for its plugins (via libpeas) in ~/.local as well as
