@@ -532,7 +532,7 @@ in JavaScript.")
     (description "Libdmapsharing is a library which allows programs to access,
 share and control the playback of media content using DMAP (DAAP, DPAP & DACP).
 It is written in C using GObject and libsoup.")
-    (home-page "https://launchpad.net/gtx")
+    (home-page "https://flyn.org/projects/libdmapsharing/")
     (license license:lgpl2.1+)))
 
 (define-public gtx
