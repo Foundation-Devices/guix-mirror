@@ -7345,28 +7345,35 @@ a secret password store, an adblocker, and a modern UI.")
 (define-public epiphany
   (package
     (name "epiphany")
-    (version "3.34.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/epiphany/"
-                                  (version-major+minor version) "/"
-                                  "epiphany-" version ".tar.xz"))
-              (sha256
-               (base32
-                "13ar3s40cds1rplwbzx0fzigf120w0rydiv05r3k6zpc0zy91qb0"))))
-
+    (version "3.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/epiphany/"
+                       (version-major+minor version) "/"
+                       "epiphany-" version ".tar.xz"))
+       (sha256
+        (base32 "0vz1j6yrjv0nmf5lk8prkkm10fbcmd35khy9zsd7d4a86wk5c6v2"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       ;; Otherwise, the RUNPATH will lack the final 'epiphany' path component.
+       (list
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/epiphany"))
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
            (lambda _
              (substitute* "post_install.py"
-               (("gtk-update-icon-cache") "true"))
+               (("gtk-update-icon-cache")
+                "true"))
              #t))
-         (add-after 'unpack 'disable-failing-tests
+         (add-before 'configure 'disable-failing-tests
            (lambda _
              (substitute* "tests/meson.build"
                ;; embed_shell fails, because webkitgtk apparently no longer supports
@@ -7378,45 +7385,54 @@ a secret password store, an adblocker, and a modern UI.")
          (add-before 'check 'pre-check
            (lambda _
              ;; Tests require a running X server.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
-             #t)))
-       #:configure-flags
-       ;; Otherwise, the RUNPATH will lack the final 'epiphany' path component.
-       (list (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out") "/lib/epiphany"))))
-    (propagated-inputs
-     `(("dconf" ,dconf)))
+             #t))
+       (add-after 'install 'move-help
+         (lambda* (#:key outputs #:allow-other-keys)
+           (let* ((out (assoc-ref outputs "out"))
+                  (help (assoc-ref outputs "help")))
+             (mkdir-p (string-append help "/share"))
+             (rename-file
+              (string-append out "/share/help")
+              (string-append help "/share/help"))
+             #t))))))
     (native-inputs
-     `(("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
-       ("glib:bin" ,glib "bin") ; for glib-mkenums
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
        ("pkg-config" ,pkg-config)
-       ("xmllint" ,libxml2)
-       ("xorg-server" ,xorg-server-for-tests)))
+       ("xorg-server" ,xorg-server-for-tests)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("avahi" ,avahi)
+     `(("appstream-util" ,appstream-glib)
+       ("avahi" ,avahi)
+       ("cairo" ,cairo)
        ("gcr" ,gcr)
-       ("gdk-pixbuf+svg" ,gdk-pixbuf+svg) ; for loading SVG files
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
        ("glib-networking" ,glib-networking)
        ("gnome-desktop" ,gnome-desktop)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk+" ,gtk+)
        ("json-glib" ,json-glib)
        ("iso-codes" ,iso-codes)
        ("libdazzle" ,libdazzle)
+       ("libhandy" ,libhandy)
        ("libnotify" ,libnotify)
        ("libsecret" ,libsecret)
-       ("libxslt" ,libxslt)
-       ("nettle" ,nettle) ; for hogweed
+       ("libsoup" ,libsoup)
+       ("libxml2" ,libxml2)
+       ("nettle" ,nettle)
        ("sqlite" ,sqlite)
        ("webkitgtk" ,webkitgtk)))
-    (home-page "https://wiki.gnome.org/Apps/Web")
     (synopsis "GNOME web browser")
-    (description
-     "Epiphany is a GNOME web browser targeted at non-technical users.  Its
-principles are simplicity and standards compliance.")
-    (license license:gpl2+)))
+    (description "Epiphany is a GNOME web browser based on the WebKit rendering
+engine.")
+    (home-page "https://wiki.gnome.org/Apps/Web")
+    (license license:gpl3+)))
 
 (define-public d-feet
   (package
