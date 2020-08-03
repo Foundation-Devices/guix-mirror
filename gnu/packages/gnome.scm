@@ -90,6 +90,7 @@
   #:use-module (gnu packages cmake)
   #:use-module (gnu packages code)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages cpio)
   #:use-module (gnu packages crates-io)
   #:use-module (gnu packages cups)
   #:use-module (gnu packages curl)
@@ -7809,37 +7810,72 @@ share them with others via social networking and more.")
 (define-public file-roller
   (package
     (name "file-roller")
-    (version "3.32.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/file-roller/"
-                                  (version-major+minor version) "/"
-                                  "file-roller-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0ap2hxvjljh4p6wsd9ikh2my3vsxp9r2nvjxxj3v87nwfyw1y4dy"))))
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/file-roller/"
+                       (version-major+minor version) "/"
+                       "file-roller-" version ".tar.xz"))
+       (sha256
+        (base32 "1lkb0m8ys13sy3b6c1kj3cqrqf5d1dqvhbp8spz8v9yjv3d7z3r6"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-nautilus-extension
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (substitute* "nautilus/meson.build"
+               (("libnautilus_extension_dep\\.get_pkgconfig_variable\\('extensiondir'\\)")
+                (string-append "'"
+                               (assoc-ref outputs "out")
+                               "/lib/nautilus/extensions-"
+                               ,(version-major (package-version nautilus))
+                               ".0" "'")))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "postinstall.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
        ("pkg-config" ,pkg-config)
-       ("gtk+" ,gtk+ "bin") ; gtk-update-icon-cache
-       ("glib:bin" ,glib "bin")))
-    ;; TODO: Add libnautilus.
+       ("vala" ,vala)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("gtk+" ,gtk+)
-       ("gdk-pixbuf" ,gdk-pixbuf)
+     `(("cpio" ,cpio)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)
        ("json-glib" ,json-glib)
        ("libarchive" ,libarchive)
+       ("libnautilus-extension" ,nautilus)
        ("libnotify" ,libnotify)
-       ("nettle" ,nettle)
-       ("libxml2" ,libxml2)))
-    (synopsis "Graphical archive manager for GNOME")
-    (description "File Roller is an archive manager for the GNOME desktop
-environment that allows users to view, unpack, and create compressed archives
-such as gzip tarballs.")
-    (home-page "http://fileroller.sourceforge.net/")
+       ("nettle" ,nettle)))
+    (synopsis "Archive management utility")
+    (description "File Roller is an archive manager for the GNOME environment.
+This means that you can create and modify archives; view the content of an
+archive; view and modify a file contained in the archive; extract files from
+the archive.")
+    (home-page "https://wiki.gnome.org/Apps/FileRoller")
     (license license:gpl2+)))
 
 (define-public gnome-session
