@@ -2733,71 +2733,108 @@ forgotten when the session ends.")
 (define-public evince
   (package
     (name "evince")
-    (version "3.36.5")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/evince/"
-                                 (version-major+minor version) "/"
-                                 "evince-" version ".tar.xz"))
-             (sha256
-              (base32
-               "0z79jl0j9xq9wgwkfr0d1w1qrdy4447y8shs407n5srr0vixc3bg"))))
-    (build-system glib-or-gtk-build-system)
+    (version "3.36.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/evince/"
+                       (version-major+minor version) "/"
+                       "evince-" version ".tar.xz"))
+       (sha256
+        (base32 "0clg9fhgjyj23mmcmw7dp512wzgv5m18fppn05qf1frz7r11mmk5"))))
+    (build-system meson-build-system)
+    (outputs '("out" "help" "doc"))
     (arguments
-     `(#:configure-flags '("--disable-nautilus" "--enable-introspection")
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dbrowser_plugin=true"
+        "-Dps=auto"
+        "-Dsystemduserunitdir=no")
        #:phases
        (modify-phases %standard-phases
-         (add-before 'install 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "help/reference"
+               (substitute* '("libdocument/libevdocument-docs.xml"
+                              "libview/libevview-docs.xml" "shell/evince-docs.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
            (lambda _
-             (substitute* "data/Makefile"
-               (("gtk-update-icon-cache") "true"))
-             #t)))))
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("dogtail" ,python-dogtail)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("intltool" ,intltool)
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("libarchive" ,libarchive)
-       ("libgxps" ,libgxps)
-       ("libspectre" ,libspectre)
+     `(("adwaita-icon-theme" ,adwaita-icon-theme)
+       ("atk" ,atk)
+       ("cairo" ,cairo)
+       ("dbus" ,dbus)
        ("djvulibre" ,djvulibre)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("ghostscript" ,ghostscript)
-       ("poppler" ,poppler)
-       ("libtiff" ,libtiff)
-       ;; TODO:
-       ;;   Build libkpathsea as a shared library for DVI support.
-       ;; ("libkpathsea" ,texlive-bin)
        ("gnome-desktop" ,gnome-desktop)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gspell" ,gspell)
-       ("libgnome-keyring" ,libgnome-keyring)
-       ("adwaita-icon-theme" ,adwaita-icon-theme)
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("atk" ,atk)
-       ("pango" ,pango)
-       ("gtk+" ,gtk+)
-       ("glib" ,glib)
-       ("libxml2" ,libxml2)
-       ("libsm" ,libsm)
-       ("libice" ,libice)
-       ("shared-mime-info" ,shared-mime-info)
-       ("dconf" ,dconf)
+       ("gstreamer" ,gstreamer)
+       ("gst-plugins-base" ,gst-plugins-base)
+       ("libarchive" ,libarchive)
        ("libcanberra" ,libcanberra)
+       ("libgnome-keyring" ,libgnome-keyring)
+       ("libgxps" ,libgxps)
+       ("libice" ,libice)
+       ("libnautilus-extension" ,nautilus)
        ("libsecret" ,libsecret)
-
-       ;; For tests.
-       ("dogtail" ,python2-dogtail)))
-    (native-inputs
-     `(("itstool" ,itstool)
-       ("intltool" ,intltool)
-       ("glib" ,glib "bin")
-       ("gobject-introspection" ,gobject-introspection)
-       ("pkg-config" ,pkg-config)
-       ("xmllint" ,libxml2)))
-    (home-page "https://www.gnome.org/projects/evince/")
-    (synopsis "GNOME's document viewer")
-    (description
-     "Evince is a document viewer for multiple document formats.  It
-currently supports PDF, PostScript, DjVu, TIFF and DVI.  The goal
-of Evince is to replace the multiple document viewers that exist
-on the GNOME Desktop with a single simple application.")
+       ("libsm" ,libsm)
+       ("libspectre" ,libspectre)
+       ("libtiff" ,libtiff)
+       ("libxml2" ,libxml2)
+       ("pango" ,pango)
+       ("poppler" ,poppler)
+       ("shared-mime-info" ,shared-mime-info)
+       ("t1lib" ,t1lib)
+       ("texlive-bin" ,texlive-bin)
+       ("zlib" ,zlib)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "Document viewer")
+    (description "Evince is a document viewer for multiple document formats.
+The goal of evince is to replace the multiple document viewers that exist on
+the GNOME Desktop with a single simple application.")
+    (home-page "https://wiki.gnome.org/Apps/Evince")
     (license license:gpl2+)))
 
 (define-public gsettings-desktop-schemas
