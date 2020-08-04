@@ -12616,47 +12616,73 @@ integrate seamlessly with the GNOME desktop.")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/gnome-boxes/"
-                           (version-major+minor version) "/"
-                           "gnome-boxes-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/gnome-boxes/"
+                       (version-major+minor version) "/"
+                       "gnome-boxes-" version ".tar.xz"))
        (sha256
         (base32 "0c3cw90xqqcpacc2z06ljs0gg8saxizfgjzg9alhpwgz3gl4c5pg"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:glib-or-gtk? #t
-       #:configure-flags (list "-Drdp=false"
-                               (string-append "-Dc_link_args=-Wl,-rpath="
-                                              (assoc-ref %outputs "out")
-                                              "/lib/gnome-boxes"))))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        ;; For run-path validation.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/gnome-boxes"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "build-aux/post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")             ; for glib-compile-resources
-       ("gtk+:bin" ,gtk+ "bin")             ; for gtk-update-icon-cache
-       ("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
-       ("itstool" ,itstool)
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
-       ("vala" ,vala)
-       ("pkg-config" ,pkg-config)))
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("vala" ,vala)))
     (inputs
-     `(("libarchive" ,libarchive)
-       ("glib-networking" ,glib-networking) ;for TLS support
+     `(("appstream-glib" ,appstream-glib)
+       ("libarchive" ,libarchive)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gtk" ,gtk+)
        ("gtk-vnc" ,gtk-vnc)
+       ("gudev" ,libgudev)
+       ("libarchive" ,libarchive)
        ("libosinfo" ,libosinfo)
        ("libsecret" ,libsecret)
        ("libsoup" ,libsoup)
        ("libusb" ,libusb)
        ("libvirt" ,libvirt)
        ("libvirt-glib" ,libvirt-glib)
-       ("libxml" ,libxml2)
-       ("spice-gtk" ,spice-gtk)
+       ("libxml2" ,libxml2)
        ("sparql-query" ,sparql-query)
+       ("spice-gtk" ,spice-gtk)
+       ("tracker" ,tracker)
        ("vte" ,vte)
        ("webkitgtk" ,webkitgtk)
-       ("tracker" ,tracker)
-       ("libgudev" ,libgudev)))
-    (home-page "https://wiki.gnome.org/Apps/Boxes")
-    (synopsis "View, access, and manage remote and virtual systems")
+       ("winpr" ,freerdp)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)))
+    (synopsis "Virtualization made simple")
     (description "GNOME Boxes is a simple application to view, access, and
 manage remote and virtual systems.  Note that this application requires the
 @code{libvirt} and @code{virtlog} daemons to run.  Use the command
@@ -12667,6 +12693,13 @@ these services on the Guix System.")
               license:cc-by2.0
               ;; For all others.
               license:lgpl2.0+))))
+    (home-page "https://wiki.gnome.org/Apps/Boxes")
+    (license
+     (list
+      ;; Icons
+      license:cc-by2.0
+      ;; Others.
+      license:lgpl2.0+))))
 
 (define-public geary
   (package
