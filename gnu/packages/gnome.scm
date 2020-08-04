@@ -10603,47 +10603,51 @@ desktop.  It supports world clock, stop watch, alarms, and count down timer.")
 (define-public gnome-calendar
   (package
     (name "gnome-calendar")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1bnmd191044zn2kr6f5vg7sm5q59qf7z652awll1f7s6ahijr8rw"))))
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "07sc1kn65dzxsxpv0vl5dj1a5awljjsfl9jldrg0hnjmq12m7c6h"))))
     (build-system meson-build-system)
     (arguments
-     '(#:glib-or-gtk? #t
-       ;; gnome-calendar has to be installed before the tests can be run
-       ;; https://bugzilla.gnome.org/show_bug.cgi?id=788224
-       #:tests? #f
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
            (lambda _
              (substitute* "build-aux/meson/meson_post_install.py"
-               (("gtk-update-icon-cache") "true"))
+               (("gtk-update-icon-cache")
+                "true"))
              #t)))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
-       ("glib-bin" ,glib "bin")         ; For glib-compile-schemas
+       ("glib-bin" ,glib "bin")
        ("pkg-config" ,pkg-config)))
     (inputs
-     `(("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
+     `(("evolution-data-server" ,evolution-data-server)
+       ("geocode-glib" ,geocode-glib)
+       ("glib" ,glib)
+       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk+" ,gtk+)
        ("libdazzle" ,libdazzle)
+       ("libgeoclue" ,geoclue)
+       ("libhandy" ,libhandy)
+       ("libical" ,libical)
+       ("libsoup", libsoup)
        ("libedataserverui" ,evolution-data-server)
-       ("libgweather" ,libgweather)
-       ("geoclue" ,geoclue)))
-    (propagated-inputs
-     `(("evolution-data-server" ,evolution-data-server)))
+       ("libgweather" ,libgweather)))
+    (synopsis "Calendar application for GNOME")
+    (description "GNOME Calendar is a simple and beautiful calendar application
+designed to perfectly fit the GNOME desktop.  By reusing the components which
+the GNOME desktop is build on, Calendar nicely integrates with the GNOME
+ecosystem.")
     (home-page "https://wiki.gnome.org/Apps/Calendar")
-    (synopsis "GNOME's calendar application")
-    (description
-     "GNOME Calendar is a simple calendar application designed to fit the GNOME
-desktop.  It supports multiple calendars, month, week and year view.")
     (license license:gpl3+)))
 
 (define-public gnome-todo
