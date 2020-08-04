@@ -9334,37 +9334,72 @@ providing graphical log-ins and managing local and remote displays.")
 (define-public gnome-bluetooth
   (package
     (name "gnome-bluetooth")
-    (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1bvbxcsjkyl0givy8nfm7112bq3c0vn1v89fdk2pip714dsfcrz8"))))
+    (version "3.34.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "11nk8nvz5yrbx7wp75vsiaf4rniv7ik2g3nwmgwx2b42q9v11j9y"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dicon_update=false"
+        "-Dgtk_doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference/libgnome-bluetooth"
+               (substitute* "gnome-bluetooth-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for gdbus-codegen, etc.
-       ("gtk+" ,gtk+ "bin") ; gtk-update-icon-cache
+     `(("docbook-xml" ,docbook-xml-4.3)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
        ("xmllint" ,libxml2)))
+    (inputs
+     `(("bluez" ,bluez)
+       ("dbus-glib" ,dbus-glib)
+       ("gconf" ,gconf)
+       ("libcanberra" ,libcanberra)
+       ("libnotify" ,libnotify)
+       ("libunique" ,libunique)
+       ("udev" ,eudev)))
     (propagated-inputs
-     ;; gnome-bluetooth-1.0.pc refers to all these.
      `(("glib" ,glib)
        ("gtk+" ,gtk+)))
-    (inputs
-     `(("eudev" ,eudev)
-       ("libcanberra" ,libcanberra)
-       ("libnotify" ,libnotify)))
-    (synopsis "GNOME Bluetooth subsystem")
+    (synopsis "GNOME Bluetooth")
+    (description "GNOME-Bluetooth is a fork of bluez-gnome focused on
+integration with the GNOME desktop environment.")
     (home-page "https://wiki.gnome.org/Projects/GnomeBluetooth")
-    (description
-     "This package contains tools for managing and manipulating Bluetooth
-devices using the GNOME desktop.")
-    (license license:lgpl2.1+)))
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Others
+      license:gpl2+))))
 
 (define-public gnome-control-center
   (package
