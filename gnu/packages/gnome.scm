@@ -1159,56 +1159,64 @@ documentation.")
 
 (define-public gnome-color-manager
   (package
-   (name "gnome-color-manager")
-   (version "3.32.0")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1vpxa2zjz3lkq9ldjg0fl65db9s6b4kcs8nyaqfz3jygma7ifg3w"))))
-   (build-system meson-build-system)
-   (arguments
-    `(#:glib-or-gtk? #t
-      #:phases
+    (name "gnome-color-manager")
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0fxdng74d8hwhfx1nwl1i4jx9h9f6c2hkyc12f01kqbjcimrxnwx"))))
+    (build-system meson-build-system)
+    (outputs '("out" "help"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
        (modify-phases %standard-phases
-        (add-before
-         'check 'pre-check
-         (lambda _
-           ;; Tests require a running X server.
-           (system "Xvfb :1 &")
-           (setenv "DISPLAY" ":1")
-           #t)))))
-   (native-inputs
-    `(("desktop-file-utils" ,desktop-file-utils)
-      ("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gtk+:bin" ,gtk+ "bin")
-      ("itstool" ,itstool)
-      ("pkg-config" ,pkg-config)
-      ("xorg-server" ,xorg-server-for-tests)))
-   (inputs
-    `(("adwaita-icon-theme" ,adwaita-icon-theme)
-      ("appstream-glib" ,appstream-glib)
-      ("colord-gtk" ,colord-gtk)
-      ("exiv2" ,exiv2)
-      ("gnome-desktop" ,gnome-desktop)
-      ("libcanberra" ,libcanberra)
-      ("libexif" ,libexif)
-      ("libtiff" ,libtiff)
-      ("libxrandr" ,libxrandr)
-      ("libxtst" ,libxtst)
-      ("libxxf86vm" ,libxxf86vm)
-      ("vte" ,vte)
-      ("xorgproto" ,xorgproto)))
-   (synopsis "Color profile manager for the GNOME desktop")
-   (description "GNOME Color Manager is a session framework that makes
-it easy to manage, install and generate color profiles
-in the GNOME desktop.")
-   (home-page "https://gitlab.gnome.org/GNOME/gnome-color-manager")
-   (license license:gpl2+)))
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.sh"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
+    (native-inputs
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ;; ("docbook2man" ,docbook-utils)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("colord" ,colord)
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("libcanberra" ,libcanberra)
+       ("lcms" ,lcms)))
+    (synopsis "Color profile manager for the GNOME desktop")
+    (description "GNOME Color Manager is a session framework that makes it easy
+to manage, install and generate color profiles in the GNOME desktop.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-color-manager")
+    (license license:gpl2+)))
 
 (define-public gnome-online-miners
   (package
