@@ -10049,30 +10049,29 @@ graphical representation.")
 (define-public gnome-backgrounds
   (package
     (name "gnome-backgrounds")
-    (version "3.34.0")
+    (version "3.36.0")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "0zxlwy55fz7i582hch2wnj8zy1kzikssgaix0l2y41ccp5nzpdy2"))))
+        (base32 "02xvfwfi3133mjljl731z2hj9hfmjas3a1jl4fxmy24xrzj83jxq"))))
     (build-system meson-build-system)
     (native-inputs
      `(("intltool" ,intltool)))
+    (synopsis "Default wallpaper set for GNOME")
+    (description "GNOME backgrounds package contains a set of backgrounds
+packaged with the GNOME desktop.")
     (home-page "https://gitlab.gnome.org/GNOME/gnome-backgrounds")
-    (synopsis "Background images for the GNOME desktop")
-    (description
-     "GNOME backgrounds package contains a collection of graphics files which
-can be used as backgrounds in the GNOME Desktop environment.  Additionally,
-the package creates the proper framework and directory structure so that you
-can add your own files to the collection.")
-    (license (list license:gpl2+
-                   license:cc-by2.0
-                   license:cc-by-sa2.0
-                   license:cc-by-sa3.0))))
+    (license
+     (list
+      license:gpl2+
+      license:cc-by2.0
+      license:cc-by-sa2.0
+      license:cc-by-sa3.0))))
 
 (define-public gnome-screenshot
   (package
