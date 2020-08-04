@@ -9438,32 +9438,43 @@ integration with the GNOME desktop environment.")
 (define-public gnome-control-center
   (package
     (name "gnome-control-center")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "054igagvmyzpaa5nwzz98gv7bk7l5dwp6g813707132si3szlpx8"))))
+    (version "3.36.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0m7pxjgymc7aqqz0vcmlq91nxnwzd1v7v1gdhrfam49krxmk80mc"))))
     (build-system meson-build-system)
     (arguments
-     '(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       (list "-Dcheese=false"
-             (string-append "-Dgnome_session_libexecdir="
-                            (assoc-ref %build-inputs "gnome-session")
-                            "/libexec"))
+       (list
+        "-Ddocumentation=true")
        #:phases
        (modify-phases %standard-phases
-         (add-before 'configure 'patch-paths
+         (add-after 'unpack 'patch-docbook
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((libc   (assoc-ref inputs "libc"))
-                   (tzdata (assoc-ref inputs "tzdata"))
-                   (libgnomekbd (assoc-ref inputs "libgnomekbd"))
-                   (nm-applet   (assoc-ref inputs "network-manager-applet"))
-                   (gnome-desktop (assoc-ref inputs "gnome-desktop")))
+             (with-directory-excursion "man"
+               (substitute* '("gnome-control-center.xml" "meson.build")
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))
+                 (("http://www.oasis-open.org/docbook/xml/4.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'patch-docbook 'patch-paths
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let* ((libc (assoc-ref inputs "libc"))
+                    (tzdata (assoc-ref inputs "tzdata"))
+                    (libgnomekbd (assoc-ref inputs "libgnomekbd"))
+                    (nm-applet (assoc-ref inputs "network-manager-applet"))
+                    (gnome-desktop (assoc-ref inputs "gnome-desktop")))
                (substitute* "panels/datetime/tz.h"
                  (("/usr/share/zoneinfo/zone.tab")
                   (string-append tzdata "/share/zoneinfo/zone.tab")))
@@ -9475,7 +9486,6 @@ integration with the GNOME desktop environment.")
                   (string-append "\"" libgnomekbd
                                  "/bin/gkbd-keyboard-display")))
                (substitute* '("panels/network/net-device-wifi.c"
-                              "panels/network/net-device.c"
                               "panels/network/connection-editor/net-connection-editor.c")
                  (("\"nm-connection-editor")
                   (string-append "\"" nm-applet
@@ -9483,70 +9493,72 @@ integration with the GNOME desktop environment.")
                (substitute* '("panels/user-accounts/run-passwd.c")
                  (("/usr/bin/passwd")
                   "/run/setuid-programs/passwd"))
-               (substitute* "panels/info/cc-info-overview-panel.c"
-                 (("DATADIR \"/gnome/gnome-version.xml\"")
-                  (string-append "\"" gnome-desktop
-                                 "/share/gnome/gnome-version.xml\"")))
                #t)))
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
+         (add-before 'configure 'skip-gtk-update-icon-cache
            (lambda _
              (substitute* "build-aux/meson/meson_post_install.py"
-               (("gtk-update-icon-cache") (which "true")))
+               (("gtk-update-icon-cache")
+                (which "true")))
              #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-mkenums, etc.
+     `(("docbook-xml" ,docbook-xml-4.2)
+       ("docbook-xsl" ,docbook-xsl)
+       ("hicolor-icon-theme" ,hicolor-icon-theme)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("xsltproc" ,libxslt)
-       ;; For tests
-       ("hicolor-icon-theme" ,hicolor-icon-theme)
+       ("python" ,python-wrapper)
        ("python-dbusmock" ,python-dbusmock)
-       ("xorg-server" ,xorg-server-for-tests)))
+       ("xorg-server" ,xorg-server-for-tests)
+       ("xsltproc" ,libxslt)))
     (inputs
      `(("accountsservice" ,accountsservice)
-       ("clutter-gtk" ,clutter-gtk)
+       ("cairo" ,cairo)
+       ("cheese" ,cheese)
+       ("colord" ,colord)
        ("colord-gtk" ,colord-gtk)
        ("cups" ,cups)
-       ("dconf" ,dconf)
-       ("docbook-xsl" ,docbook-xsl)
-       ("gdk-pixbuf" ,gdk-pixbuf) ; for loading SVG files
+       ("epoxy" ,libepoxy)
+       ("fontconfig" ,fontconfig)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
        ("gnome-bluetooth" ,gnome-bluetooth)
        ("gnome-desktop" ,gnome-desktop)
        ("gnome-online-accounts" ,gnome-online-accounts)
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
-       ("gnome-session" ,gnome-session)
        ("gnome-settings-daemon" ,gnome-settings-daemon)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("grilo" ,grilo)
        ("gsound" ,gsound)
+       ("gtk+" ,gtk+)
+       ("gudev" ,libgudev)
        ("ibus" ,ibus)
-       ("libcanberra" ,libcanberra)
+       ("krb5" ,mit-krb5)
        ("libgnomekbd" ,libgnomekbd)
-       ("libgudev" ,libgudev)
        ("libgtop" ,libgtop)
+       ("libhandy" ,libhandy)
+       ("libnm" ,network-manager)
        ("libnma" ,libnma)
+       ("libpulse" ,pulseaudio)
        ("libpwquality" ,libpwquality)
        ("libsecret" ,libsecret)
        ("libsoup" ,libsoup)
        ("libxml2" ,libxml2)
        ("libwacom" ,libwacom)
-       ("mesa" ,mesa)
-       ("mit-krb5" ,mit-krb5)
-       ("modem-manager" ,modem-manager)
+       ("mm-glib" ,modem-manager)
        ("network-manager-applet" ,network-manager-applet)
        ("polkit" ,polkit)
-       ("pulseaudio" ,pulseaudio)
        ("smbclient" ,samba)
        ("tzdata" ,tzdata)
        ("udisks" ,udisks)
-       ("upower" ,upower)))
-    (synopsis "Utilities to configure the GNOME desktop")
-    (home-page "https://www.gnome.org/")
-    (description
-     "This package contains configuration applets for the GNOME desktop,
-allowing to set accessibility configuration, desktop fonts, keyboard and mouse
-properties, sound setup, desktop theme and background, user interface
-properties, screen resolution, and other GNOME parameters.")
+       ("upower-glib" ,upower)
+       ("x11" ,libx11)
+       ("xi" ,libxi)))
+    (synopsis "GNOME Settings")
+    (description "GNOME-Control-Center is the GNOME's main interface for
+configuration of various aspects of your desktop.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-control-center/")
     (license license:gpl2+)))
 
 (define-public gnome-shell
