@@ -2163,46 +2163,62 @@ documents.")
 (define-public gnome-characters
   (package
     (name "gnome-characters")
-    (version "3.30.0")
+    (version "3.34.0")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/"
-                           "gnome-characters/" (version-major+minor version)
-                           "/gnome-characters-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/"
+                       "gnome-characters/" (version-major+minor version)
+                       "/gnome-characters-" version ".tar.xz"))
        (sha256
-        (base32
-         "08cwz39iwgsyyb2wqhb8vfbmh1cwfkgfiy7adp08w7rwqi99x3dp"))))
+        (base32 "0mqaxsa7hcmvid3zbzvxpfkp7s01ghiq6kaibmd3169axrr8ahql"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t
-       #:phases (modify-phases %standard-phases
-                  (add-after 'install 'wrap
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      ;; GNOME Characters needs Typelib files from GTK and
-                      ;; gnome-desktop.
-                      (wrap-program (string-append (assoc-ref outputs "out")
-                                                   "/bin/gnome-characters")
-                        `("GI_TYPELIB_PATH" ":" prefix
-                          (,(getenv "GI_TYPELIB_PATH"))))
-                      #t)))))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'wrap
+           (lambda* (#:key outputs #:allow-other-keys)
+             ;; GNOME Characters needs Typelib files from GTK and
+             ;; gnome-desktop.
+             (wrap-program
+                 (string-append (assoc-ref outputs "out")
+                                "/bin/gnome-characters")
+               `("GI_TYPELIB_PATH" ":" prefix (,(getenv "GI_TYPELIB_PATH"))))
+             #t)))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
-       ("gtk+:bin" ,gtk+ "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("pkg-config" ,pkg-config)
-       ("python" ,python-minimal)))
+       ("python" ,python-wrapper)
+       ("ruby" ,ruby)
+       ("xmllint" ,libxml2)))
     (inputs
      `(("gjs" ,gjs)
+       ("glib" ,glib)
+       ("gnome-desktop" ,gnome-desktop)
        ("gtk+" ,gtk+)
        ("libunistring" ,libunistring)
-       ("gnome-desktop" ,gnome-desktop)))
-    (home-page "https://wiki.gnome.org/Apps/CharacterMap")
-    (synopsis "Find and insert unusual characters")
-    (description "Characters is a simple utility application to find
-and insert unusual characters.  It allows you to quickly find the
-character you are looking for by searching for keywords.")
-    (license license:bsd-3)))
+       ("pango" ,pango)))
+    (synopsis "Browse and search for non-standard characters")
+    (description "GNOME-Characters is a simple utility application to find and
+insert unusual characters.  It allows you to quickly find the character you are
+looking for by searching for keywords.")
+    (home-page "https://wiki.gnome.org/Apps/Characters")
+    (license
+     (list
+      ;; GTK-JS-App
+      license:bsd-3
+      ;; Others
+      license:gpl2+))))
 
 (define-public gnome-common
   (package
