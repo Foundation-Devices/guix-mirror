@@ -8021,49 +8021,80 @@ spidermonkey javascript engine and the GObject introspection framework.")
 (define-public gedit
   (package
     (name "gedit")
-    (version "3.34.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1inm50sdfw63by1lf4f1swb59mpyxlly0g5rdg99j5l3357fzygb"))))
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "15s1almlhjlgl3m8lxg6jpzln8jhgdxxjr635a3b7cf58d35b1v8"))))
     (build-system meson-build-system)
+    (outputs '("out" "help" "doc"))
     (arguments
-     `(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       ;; Otherwise, the RUNPATH will lack the final path component.
-       (list (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out") "/lib/gedit"))
-
-       ;; XXX: Generated .h files are sometimes used before being built.
-       #:parallel-build? #f
-
+       (list
+        "-Dgtk_doc=true"
+        ;; Otherwise, the RUNPATH will lack the final path component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/gedit"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
-           (lambda _
-             (substitute* "build-aux/meson/post_install.py"
-               (("gtk-update-icon-cache") (which "true")))
-             #t))
          (add-after 'unpack 'patch-libgd-fetch
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((libgd (assoc-ref inputs "libgd")))
+             (let* ((libgd (assoc-ref inputs "libgd")))
                ;; Calling git is unnecessary because libgd is fetched as a
                ;; native input to this package.
                (substitute* "meson.build"
-                 ((".*git.*") ""))
+                 ((".*git.*")
+                  ""))
                (copy-recursively libgd "subprojects/libgd")
                #t)))
-         (add-after 'install 'wrap-gedit
+         (add-after 'patch-libgd-fetch 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* '("api-breaks.xml" "gedit-docs.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.3")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "build-aux/meson/post_install.py"
+               (("gtk-update-icon-cache")
+                (which "true")))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t)))
+         (add-after 'move-help 'wrap-gedit
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out               (assoc-ref outputs "out"))
-                   (gtksourceview     (assoc-ref inputs "gtksourceview"))
-                   (gi-typelib-path   (getenv "GI_TYPELIB_PATH"))
-                   (python-path       (getenv "PYTHONPATH")))
+             (let* ((out (assoc-ref outputs "out"))
+                    (gtksourceview (assoc-ref inputs "gtksourceview"))
+                    (gi-typelib-path (getenv "GI_TYPELIB_PATH"))
+                    (python-path (getenv "PYTHONPATH")))
                (wrap-program (string-append out "/bin/gedit")
                  ;; For plugins.
                  `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))
@@ -8072,44 +8103,49 @@ spidermonkey javascript engine and the GObject introspection framework.")
                  `("XDG_DATA_DIRS" ":" prefix (,(string-append gtksourceview
                                                                "/share")))))
              #t)))))
-    (propagated-inputs
-     `(("dconf" ,dconf)))
     (native-inputs
-     `(("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
-       ("glib:bin" ,glib "bin") ; for glib-mkenums, etc.
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("libgd"
         ,(origin
            (method git-fetch)
-           (uri (git-reference
-                 (url "https://gitlab.gnome.org/GNOME/libgd")
-                 (commit "c7c7ff4e05d3fe82854219091cf116cce6b19de0")))
+           (uri
+            (git-reference
+             (url "https://gitlab.gnome.org/GNOME/libgd")
+             (commit "c7c7ff4e05d3fe82854219091cf116cce6b19de0")))
            (file-name (git-file-name "libgd" version))
            (sha256
             (base32 "16yld0ap7qj1n96h4f2sqkjmibg7xx5xwkqxdfzam2nmyfdlrrrs"))))
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("glib" ,glib)
-       ("gspell" ,gspell)
-       ("gtk+" ,gtk+)
-       ("gtksourceview" ,gtksourceview)
-       ("libpeas" ,libpeas)
-       ("libxml2" ,libxml2)
-       ("iso-codes" ,iso-codes)
-       ("python-pygobject" ,python-pygobject)
-       ("python" ,python)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("libx11" ,libx11)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
        ("vala" ,vala)
-       ("adwaita-icon-theme" ,adwaita-icon-theme)
+       ("xmllint" ,libxml2)))
+    (inputs
+     `(("adwaita-icon-theme" ,adwaita-icon-theme)
+       ("appstream-util" ,appstream-glib)
+       ("glib" ,glib)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gspell" ,gspell)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk+" ,gtk+)
+       ("iso-codes" ,iso-codes)
        ("libsoup" ,libsoup)
-       ("gnome-desktop" ,gnome-desktop)))
-    (home-page "https://wiki.gnome.org/Apps/Gedit")
+       ("tepl" ,tepl)
+       ("x11" ,libx11)))
+    (propagated-inputs
+     `(("gtksourceview" ,gtksourceview)
+       ("libpeas" ,libpeas)))
     (synopsis "GNOME text editor")
-    (description "While aiming at simplicity and ease of use, gedit is a
-powerful general purpose text editor.")
+    (description "Gedit is the text editor of the GNOME desktop environment.
+The first goal of gedit is to be easy to use, with a simple interface by default.
+More advanced features are available by enabling plugins.")
+    (home-page "https://wiki.gnome.org/Apps/Gedit")
     (license license:gpl2+)))
 
 (define-public zenity
