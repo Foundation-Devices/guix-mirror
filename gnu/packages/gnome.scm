@@ -2253,60 +2253,70 @@ commonly used macros.")
 (define-public gnome-contacts
   (package
     (name "gnome-contacts")
-    (version "3.34")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/gnome-contacts/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "04igc9xvyc4kb5xf5g2missnvyvj9zv5cqxf5k4z7hb0sv42wq4r"))))
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gnome-contacts/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "048l07biy8xrfidfyzrjd5lrnfzqhb767ih2gl7w6c4mmhj4g2dy"))))
     (build-system meson-build-system)
     (arguments
-     `(#:configure-flags '("-Dcheese=false")
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        ;; To enabled after upstream fixes the bug,
+        ;; https://gitlab.gnome.org/GNOME/gnome-contacts/-/issues/176
+        ;; "-Dtelepathy=true"
+        "-Ddocs=true")
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'generate-vapis
+         (add-after 'unpack 'patch-docbook
            (lambda* (#:key inputs #:allow-other-keys)
-             ;; To generate goa's missing .vapi file
-             (define goa
-               (assoc-ref inputs "gnome-online-accounts:lib"))
-
-             (invoke "vapigen" "--directory=vapi" "--pkg=gio-2.0"
-                     "--library=goa-1.0"
-                     (string-append goa "/share/gir-1.0/Goa-1.0.gir"))
+             (with-directory-excursion "man"
+               (substitute* '("gnome-contacts.xml" "meson.build")
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))
+                 (("http://www.oasis-open.org/docbook/xml/4.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
              #t))
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
+         (add-before 'configure 'skip-gtk-update-icon-cache
            (lambda _
              (substitute* "build-aux/meson_post_install.py"
-               (("gtk-update-icon-cache") "true"))
+               (("gtk-update-icon-cache")
+                "true"))
              #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("docbook-xml" ,docbook-xml)
-       ("dockbook-xsl" ,docbook-xsl)
-       ("evolution-data-server" ,evolution-data-server)
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("docbook-xml" ,docbook-xml-4.2)
+       ("docbook-xsl" ,docbook-xsl)
        ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
+       ("xsltproc" ,libxslt)))
+    (inputs
+     `(("appstream-util" ,appstream-glib)
+       ("cheese" ,cheese)
+       ("evolution-data-server" ,evolution-data-server)
+       ("folks" ,folks)
+       ("gee" ,libgee)
+       ("glib" ,glib)
        ("gnome-desktop" ,gnome-desktop)
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
-       ("gobject-introspection" ,gobject-introspection)
-       ("gst-plugins-base" ,gst-plugins-base)
        ("gtk+" ,gtk+)
-       ("libgee" ,libgee)
-       ("libxslt" ,libxslt)
-       ("telepathy-glib" ,telepathy-glib)
-       ("vala" ,vala)))
-    (propagated-inputs
-     `(("folks", folks)
-       ("telepathy-mission-control" ,telepathy-mission-control)))
-    (synopsis "GNOME's integrated address book")
-    (description
-     "GNOME Contacts organizes your contact information from online and
-offline sources, providing a centralized place for managing your contacts.")
+       ("libhandy" ,libhandy)
+       ("telepathy-glib" ,telepathy-glib)))
+    (synopsis "Contact manager for GNOME")
+    (description "GNOME-Contacts organizes your contact information from online
+and offline sources, providing a centralized place for managing your contacts.")
     (home-page "https://wiki.gnome.org/Apps/Contacts")
     (license license:gpl2+)))
 
