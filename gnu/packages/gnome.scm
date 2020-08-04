@@ -10574,47 +10574,60 @@ Hotmail REST APIs.")
 (define-public gnome-clocks
   (package
     (name "gnome-clocks")
-    (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0g7hjk55smhkd09hwa9kag3h5a12l494wj89w9smpdk3ghsmy6b1"))))
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1rjicycgh9jvkqir2m8hx9m4jlaa3w5lqs43k185wa0zxhi1n6zi"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
            (lambda _
              (substitute* "build-aux/post-install.py"
-               (("gtk-update-icon-cache") "true"))
-             #t)))))
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("vala" ,vala)
-       ("pkg-config" ,pkg-config)
-       ("glib" ,glib "bin")             ; for glib-compile-resources
-       ("desktop-file-utils" ,desktop-file-utils)
+     `(("desktop-file-utils" ,desktop-file-utils)
        ("gettext" ,gettext-minimal)
-       ("itstool" ,itstool)))
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
     (inputs
-     `(("glib" ,glib)
+     `(("appstream-util" ,appstream-glib)
+       ("geocode-glib" ,geocode-glib)
+       ("glib" ,glib)
+       ("gnome-desktop" ,gnome-desktop)
        ("gtk+" ,gtk+)
        ("gsound" ,gsound)
-       ("geoclue" ,geoclue)
-       ("geocode-glib" ,geocode-glib)
+       ("libgeoclue" ,geoclue)
        ("libgweather" ,libgweather)
-       ("gnome-desktop" ,gnome-desktop)))
+       ("libhandy" ,libhandy)))
+    (synopsis "Time for Clocks")
+    (description "GNOME-Clocks is a simple clock application for GNOME.
+It includes world clocks, alarms, a stopwatch and a timer.")
     (home-page "https://wiki.gnome.org/Apps/Clocks")
-    (synopsis "GNOME's clock application")
-    (description
-     "GNOME Clocks is a simple clocks application designed to fit the GNOME
-desktop.  It supports world clock, stop watch, alarms, and count down timer.")
-    (license license:gpl3+)))
+    (license license:gpl2+)))
 
 (define-public gnome-calendar
   (package
