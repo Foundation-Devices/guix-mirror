@@ -11175,39 +11175,62 @@ handling the startup notification side.")
 (define-public gnome-calculator
   (package
     (name "gnome-calculator")
-    (version "3.34.1")
+    (version "3.36.0")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "0lbh87255zzggqzai6543qg920y52bl4vs5m5h5087ghzg14hlsd"))))
+        (base32 "1cqd4b25qp1i0p04m669jssg1l5sdapc1mniv9jssvw5r7wk1s52"))))
     (build-system meson-build-system)
-    (arguments '(#:glib-or-gtk? #t))
+    (outputs '("out" "help"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               (rename-file
+                (string-append out "/share/devhelp")
+                (string-append help "/share/devhelp"))
+               #t))))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
-       ("glib:bin" ,glib "bin") ; for glib-compile-schemas, gio-2.0.
-       ("gtk+:bin" ,gtk+ "bin") ; for gtk-update-icon-cache
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("itstool" ,itstool)
-       ("vala" ,vala)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
     (inputs
-     `(("glib" ,glib)
-       ("gtksourceview" ,gtksourceview)
-       ("libgee" ,libgee)
+     `(("gtksourceview" ,gtksourceview)
        ("libsoup" ,libsoup)
        ("libxml2" ,libxml2)
        ("mpc" ,mpc)
        ("mpfr" ,mpfr)))
+    (propagated-inputs
+     `(("gee" ,libgee)
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "GNOME Calculator")
+    (description "GNOME-Calculator is an application that solves mathematical
+equations and is suitable as a default application in a Desktop environment.")
     (home-page "https://wiki.gnome.org/Apps/Calculator")
-    (synopsis "Desktop calculator")
-    (description
-     "Calculator is an application that solves mathematical equations and
-is suitable as a default application in a Desktop environment.")
-    (license license:gpl3)))
+    (license license:gpl3+)))
 
 (define-public xpad
   (package
