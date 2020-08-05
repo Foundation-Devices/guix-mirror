@@ -2323,23 +2323,39 @@ and offline sources, providing a centralized place for managing your contacts.")
 (define-public gnome-desktop
   (package
     (name "gnome-desktop")
-    (version "3.34.2")
+    (version "3.36.4")
     (source
      (origin
-      (method url-fetch)
-      (uri (string-append "mirror://gnome/sources/" name "/"
-                          (version-major+minor version)  "/"
-                          name "-" version ".tar.xz"))
-      (sha256
-       (base32
-        "1v983xirwp1y6ggz97bh742ak6gff0hxb359dgn37nikjxhvm0a0"))))
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1ilv49qkppbbag5728iswg1jhhqx9hbj7j8k8wccnbyaq54bsyq0"))))
     (build-system meson-build-system)
+    (outputs '("out" "help" "doc"))
     (arguments
-     '(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dgnome_distributor=Guix"
+        "-Dudev=enabled"
+        "-Dsystemd=disabled"
+        "-Dgtk_doc=true")
+       #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference/gnome-desktop3"
+               (substitute* "gnome-desktop3-docs.sgml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
          (add-before 'configure 'patch-path
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((libc   (assoc-ref inputs "libc")))
+             (let* ((libc (assoc-ref inputs "libc")))
                (substitute* "libgnome-desktop/gnome-languages.c"
                  (("\"locale\"")
                   (string-append "\"" libc "/bin/locale\"")))
@@ -2355,53 +2371,75 @@ and offline sources, providing a centralized place for managing your contacts.")
                                "\", \""
                                (%store-directory)
                                "\","))
-               (("\"--ro-bind\", \"/etc/ld.so.cache\", \"/etc/ld.so.cache\",") ""))
+               (("\"--ro-bind\", \"/etc/ld.so.cache\", \"/etc/ld.so.cache\",")
+                ""))
              #t))
          (add-before 'check 'pre-check
            (lambda* (#:key inputs #:allow-other-keys)
              ;; Tests require a running X server and locales.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
              (setenv "GUIX_LOCPATH"
                      (string-append (assoc-ref inputs "glibc-locales")
                                     "/lib/locale"))
-             #t)))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for gdbus-codegen
-       ("glibc-locales" ,glibc-locales) ; for tests
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
+       ("glibc-locales" ,glibc-locales)
        ("gobject-introspection" ,gobject-introspection)
-       ("itstool" ,itstool)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
+       ("itstool" ,itstool)
        ("pkg-config" ,pkg-config)
        ("xmllint" ,libxml2)
        ("xorg-server" ,xorg-server-for-tests)))
+    (inputs
+     `(("fontconfig" ,fontconfig)
+       ("bubblewrap" ,bubblewrap)))
     (propagated-inputs
-     ;; Required by gnome-desktop-3.0.pc.
-     `(("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+     `(("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gtk+" ,gtk+)
        ("iso-codes" ,iso-codes)
        ("libseccomp" ,libseccomp)
-       ("libx11" ,libx11)
-       ("xkeyboard-config" ,xkeyboard-config)))
-    (inputs
-     `(("gdk-pixbuf" ,gdk-pixbuf)
-       ("glib" ,glib)
-       ("bubblewrap" ,bubblewrap)
-       ("libxext" ,libxext)
-       ("libxkbfile" ,libxkbfile)
-       ("libxrandr" ,libxrandr)))
-    (home-page "https://www.gnome.org/")
-    (synopsis
-     "Libgnome-desktop, gnome-about, and desktop-wide documents")
-    (description
-     "The libgnome-desktop library provides API shared by several applications
-on the desktop, but that cannot live in the platform for various reasons.
-There is no API or ABI guarantee, although we are doing our best to provide
-stability.  Documentation for the API is available with gtk-doc.
-
-The gnome-about program helps find which version of GNOME is installed.")
-    ; Some bits under the LGPL.
-    (license license:gpl2+)))
+       ("libudev" ,eudev)
+       ("xkeyboard-config" ,xkeyboard-config)
+       ("x11" ,libx11)))
+    (synopsis "Library for sharing code between GNOME desktop components")
+    (description "GNOME-Desktop contains the libgnome-desktop library as well as
+a data file that exports the GNOME version to the Settings Details panel.
+The libgnome-desktop library provides API shared by several applications on the
+desktop.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-desktop")
+    (license
+     (list
+      ;; Documentation
+      license:fdl1.1+
+      ;; Library
+      license:lgpl2.0+
+      ;; Others
+      license:gpl2+))))
 
 (define-public gnome-doc-utils
   (package
