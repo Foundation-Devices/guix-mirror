@@ -1948,31 +1948,28 @@ and system administrators.")
 
 (define-public gnome-getting-started-docs
   (package
-   (name "gnome-getting-started-docs")
-   (version "3.32.2")
-   (source
-    (origin
-      (method url-fetch)
-      (uri (string-append "mirror://gnome/sources/gnome-getting-started-docs/"
-                          (version-major+minor version)
-                          "/gnome-getting-started-docs-" version ".tar.xz"))
-      (sha256
-       (base32 "1v4k465mlzrhgcdddzs6bmm0yliyrfx6jg3gh0s17a08i0w5rbwq"))))
-   (build-system gnu-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("itstool" ,itstool)
-      ("pkg-config" ,pkg-config)
-      ("xmllint" ,libxml2)))
-   (synopsis "Help to get new users started with the GNOME desktop")
-   (description
-    "The GNOME Getting Started Documentation contains GNOME's intuitive
-\"Getting Started\" tour, with video guides, that can be viewed with Yelp.
-
-It is normally used together with @command{gnome-initial-setup}, but is also
-useful as a tutorial and users' guide for new or less experienced users.")
-   (home-page "https://live.gnome.org/DocumentationProject")
-   (license license:cc-by-sa3.0)))
+    (name "gnome-getting-started-docs")
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gnome-getting-started-docs/"
+                       (version-major+minor version)
+                       "/gnome-getting-started-docs-" version ".tar.xz"))
+       (sha256
+        (base32 "1ihxa9g687rbb4s2gxd2pf726adx98ahq4kfad868swl7a8vi504"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     `(("gettext" ,gettext-minimal)
+       ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
+    (synopsis "Help a new user get started in GNOME")
+    (description "GNOME-Getting-Started-Docs provides the Getting Started guide
+for GNOME Desktop.")
+    (home-page "https://live.gnome.org/DocumentationProject")
+    (license license:cc-by-sa3.0)))
 
 (define-public dia
   ;; This version from GNOME's repository includes fixes for compiling with
