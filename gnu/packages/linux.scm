@@ -2802,6 +2802,68 @@ reference implementation for communicating with the FUSE kernel module.")
       ;; Others.
       license:gpl2+))))
 
+(define-public fuse-legacy
+  (package
+    (name "fuse")
+    (version "2.9.9")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://github.com/libfuse/libfuse/releases/"
+                                  "download/fuse-" version
+                                  "/fuse-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1ddlq6kzxilccgbvxjfx80jx6kamgw4sv49phks2zhlcc1frvrnh"))
+              (patches (search-patches "fuse-overlapping-headers.patch"))))
+    (build-system gnu-build-system)
+    (inputs `(("util-linux" ,util-linux)))
+    (arguments
+     '(#:configure-flags (list (string-append "MOUNT_FUSE_PATH="
+                                              (assoc-ref %outputs "out")
+                                              "/sbin")
+                               (string-append "INIT_D_PATH="
+                                              (assoc-ref %outputs "out")
+                                              "/etc/init.d")
+
+                               ;; The rule makes /dev/fuse 666.
+                               (string-append "UDEV_RULES_PATH="
+                                              (assoc-ref %outputs "out")
+                                              "/lib/udev/rules.d"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'build 'set-file-names
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; libfuse calls out to mount(8) and umount(8).  Make sure
+             ;; it refers to the right ones.
+             (substitute* '("lib/mount_util.c" "util/mount_util.c")
+               (("/bin/(u?)mount" _ maybe-u)
+                (string-append (assoc-ref inputs "util-linux")
+                               "/bin/" maybe-u "mount")))
+             (substitute* '("util/mount.fuse.c")
+               (("/bin/sh")
+                (which "sh")))
+
+             ;; This hack leads libfuse to search for 'fusermount' in
+             ;; $PATH, where it may find a setuid-root binary, instead of
+             ;; trying solely $out/sbin/fusermount and failing because
+             ;; it's not setuid.
+             (substitute* "lib/Makefile"
+               (("-DFUSERMOUNT_DIR=[[:graph:]]+")
+                "-DFUSERMOUNT_DIR=\\\"/var/empty\\\""))
+             #t)))))
+    (supported-systems (delete "i586-gnu" %supported-systems))
+    (home-page "https://github.com/libfuse/libfuse")
+    (synopsis "Support file systems implemented in user space")
+    (description
+     "As a consequence of its monolithic design, file system code for Linux
+normally goes into the kernel itself---which is not only a robustness issue,
+but also an impediment to system extensibility.  FUSE, for \"file systems in
+user space\", is a kernel module and user-space library that tries to address
+part of this problem by allowing users to run file system implementations as
+user-space processes.")
+    (license (list license:lgpl2.1                ;library
+                   license:gpl2+))))              ;command-line utilities
+
 (define-public unionfs-fuse
   (package
     (name "unionfs-fuse")
