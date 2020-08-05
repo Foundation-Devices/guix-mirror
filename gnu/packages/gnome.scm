@@ -2475,49 +2475,62 @@ and keep up to date translations of documentation.")
 (define-public gnome-disk-utility
   (package
     (name "gnome-disk-utility")
-    (version "3.34.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1mb7q90lnlp97dhxhnadhjagcfd12dfqzp0vj9h6b1r61pzhy97y"))))
+    (version "3.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0yhnjmjzkixj29vcw6rzaijpg4mlwm2k1kqp4g3hn1xb6qzks0yx"))))
     (build-system meson-build-system)
     (arguments
-     '(#:configure-flags '("-Dlogind=libelogind")
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dlogind=libelogind")
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
+         (add-after 'unpack 'patch-docbook-xsl
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/man"
+               (substitute* "meson.build"
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
            (lambda _
              (substitute* "meson_post_install.py"
-               (("gtk-update-icon-cache") "true"))
+               (("gtk-update-icon-cache")
+                "true"))
              #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")
+     `(("docbook-xsl" ,docbook-xsl)
+       ("glib:bin" ,glib "bin")
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("docbook-xml" ,docbook-xml)
-       ("docbook-xsl" ,docbook-xsl)
-       ("libxml2" ,libxml2)
-       ("libxslt" ,libxslt)))
+       ("xmllint" ,libxml2)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("elogind" ,elogind)
+     `(("dvdread" ,libdvdread)
+       ("elogind" ,elogind)
        ("glib" ,glib)
-       ("appstream-glib" ,appstream-glib)
        ("gnome-settings-daemon" ,gnome-settings-daemon)
        ("gtk+" ,gtk+)
        ("libcanberra" ,libcanberra)
-       ("libdvdread" ,libdvdread)
+       ("liblzma" ,xz)
        ("libnotify" ,libnotify)
-       ("libpwquality" ,libpwquality)
        ("libsecret" ,libsecret)
+       ("pwquality" ,libpwquality)
        ("udisks" ,udisks)))
-    (home-page "https://git.gnome.org/browse/gnome-disk-utility")
-    (synopsis "Disk management utility for GNOME")
-    (description "Disk management utility for GNOME.")
+    (synopsis "View, modify and configure disks and media")
+    (description "GNOME-Disk-Utility provides libraries and applications for
+dealing with storage devices.")
+    (home-page "https://wiki.gnome.org/Apps/Disks")
     (license license:gpl2+)))
 
 (define-public gnome-font-viewer
