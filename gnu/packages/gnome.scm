@@ -2741,78 +2741,83 @@ GObject oriented way.")
 (define-public gnome-keyring
   (package
     (name "gnome-keyring")
-    (version "3.34.0")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://gnome/sources/" name "/"
-                                 (version-major+minor version)  "/"
-                                 name "-" version ".tar.xz"))
-             (sha256
-              (base32
-               "0hqrsh5g9q9lm190f0m85q4nki8k4ng7wphl6qbccdry59aakkg9"))))
-    (build-system gnu-build-system)
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "11sgffrrpss5cmv3b717pqlbhgq17l1xd33fsvqgsw8simxbar52"))))
+    (build-system glib-or-gtk-build-system)
     (arguments
-     `(#:tests? #f ;48 of 603 tests fail because /var/lib/dbus/machine-id does
-                   ;not exist
+     `(#:tests? #f                  ; Tests require missing machine-id
        #:configure-flags
        (list
+        "--enable-doc"
         (string-append "--with-pkcs11-config="
-                       (assoc-ref %outputs "out") "/share/p11-kit/modules/")
+                       (assoc-ref %outputs "out")
+                       "/share/p11-kit/modules")
         (string-append "--with-pkcs11-modules="
-                       (assoc-ref %outputs "out") "/share/p11-kit/modules/"))
+                       (assoc-ref %outputs "out")
+                       "/lib/pkcs11"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'fix-/bin/sh-reference
+         (add-after 'unpack 'trigger-bootstrap
            (lambda _
-             (substitute* "po/Makefile.in.in"
-               (("/bin/sh") (which "sh")))
+             (for-each delete-file
+                       (list
+                        "configure"
+                        "Makefile.in"))
              #t))
-         (add-after 'unpack 'fix-docbook
+         (add-before 'configure 'patch-docbook
            (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "docs/Makefile.am"
-               (("http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl")
-                (string-append (assoc-ref inputs "docbook-xsl")
-                               "/xml/xsl/docbook-xsl-"
-                               ,(package-version docbook-xsl)
-                               "/manpages/docbook.xsl")))
-             (setenv "XML_CATALOG_FILES"
-                     (string-append (assoc-ref inputs "docbook-xml")
-                                    "/xml/dtd/docbook/catalog.xml"))
-             ;; Rerun the whole thing to avoid version mismatch ("This is
-             ;; Automake 1.15.1, but the definition used by this
-             ;; AM_INIT_AUTOMAKE comes from Automake 1.15.").  Note: we don't
-             ;; use 'autoreconf' because it insists on running 'libtoolize'.
-             (invoke "autoconf")
-             (invoke "aclocal")
-             (invoke "automake" "-ac"))))))
-    (inputs
-     `(("libgcrypt" ,libgcrypt)
-       ("linux-pam" ,linux-pam)
-       ("openssh" ,openssh)
-       ("dbus" ,dbus)
-       ("gcr" ,gcr)))
+             (with-directory-excursion "docs"
+               (substitute* '("gnome-keyring-daemon.xml"
+                              "gnome-keyring.xml" "Makefile.am")
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("glib" ,glib "bin")
-       ("glib" ,glib) ; for m4 macros
-       ("python" ,python-2) ;for tests
-       ("intltool" ,intltool)
-       ("autoconf" ,autoconf)
+     `(("autoconf" ,autoconf)
        ("automake" ,automake)
-       ("libxslt" ,libxslt) ;for documentation
-       ("docbook-xml" ,docbook-xml-4.2)
-       ("docbook-xsl" ,docbook-xsl)))
-    (home-page "https://www.gnome.org")
-    (synopsis "Daemon to store passwords and encryption keys")
-    (description
-     "gnome-keyring is a program that keeps passwords and other secrets for
-users.  It is run as a daemon in the session, similar to ssh-agent, and other
-applications locate it via an environment variable or D-Bus.
-
-The program can manage several keyrings, each with its own master password,
-and there is also a session keyring which is never stored to disk, but
-forgotten when the session ends.")
-    (license license:lgpl2.1+)))
+       ("docbook-xml" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("glib" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("intltool" ,intltool)
+       ("libtool" ,libtool)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)
+       ("xsltproc" ,libxslt)))
+    (inputs
+     `(("gcr" ,gcr)
+       ("glib" ,glib)
+       ("libcap-ng" ,libcap-ng)
+       ("libgcrypt" ,libgcrypt)
+       ("linux-pam" ,linux-pam)
+       ("openssh" ,openssh)))
+    (synopsis "GNOME Key Manager")
+    (description "GNOME-Keyring is a collection of components in GNOME that
+store secrets, passwords, keys, certificates and make them available to
+applications.  It is integrated with the user's login, so that their secret
+storage can be unlocked when the user logins into their session.  It is based
+around a standard called PKCS#11, which is a standard way for applications to
+manage certificates and keys on smart cards or secure storage.")
+    (home-page "https://wiki.gnome.org/Projects/GnomeKeyring")
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Others
+      license:gpl2+))))
 
 (define-public evince
   (package
