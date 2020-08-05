@@ -154,6 +154,7 @@ tests.")
        (sha256
         (base32 "0vnf0pk516fwwh41v96c29l2i7h1pnwhivlkbf53kkx1q35g7lb3"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
      `(#:glib-or-gtk? #t
        #:phases
@@ -163,28 +164,42 @@ tests.")
            (lambda _
              (substitute* "libmalcontent/tests/app-filter.c"
                (("g_test_add_func \\(\"/app-filter/appinfo\", test_app_filter_appinfo\\);")
-                 ""))
-             #t)))))
+                ""))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "build-aux/meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
      `(("desktop-file-utils" ,desktop-file-utils)
        ("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk+:bin" ,gtk+ "bin")
        ("itstool" ,itstool)
        ("libglib-testing" ,libglib-testing)
-       ("libxml2" ,libxml2)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("accountsservice" ,accountsservice)
-       ("appstream-glib" ,appstream-glib)
+     `(("appstream-util" ,appstream-glib)
        ("dbus" ,dbus)
-       ("flatpak" ,flatpak)
-       ("glib" ,glib)
-       ("gtk+" ,gtk+)
-       ("libostree" ,libostree)
        ("linux-pam" ,linux-pam)
        ("polkit" ,polkit)))
+    (propagated-inputs
+     `(("accountsservice" ,accountsservice)
+       ("flatpak" ,flatpak)
+       ("glib" ,glib)
+       ("gtk+" ,gtk+)))
     (synopsis "Parental controls support")
     (description "MalContent implements parental controls support which can
 be used by applications to filter or limit the access of child accounts to
@@ -192,7 +207,11 @@ inappropriate content.")
     (home-page "https://gitlab.freedesktop.org/pwithnall/malcontent")
     (license
      (list
+      ;; Documentation
+      license:cc-by-sa3.0
+      ;; Application
       license:gpl2+
+      ;; Library
       license:lgpl2.1+))))
 
 (define-public xdg-utils
