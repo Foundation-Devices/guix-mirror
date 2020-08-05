@@ -1551,68 +1551,69 @@ and handling media art caches.")
 
 (define-public gnome-initial-setup
   (package
-   (name "gnome-initial-setup")
-   (version "3.32.1")
-   (source (origin
-            (method url-fetch)
-           (uri (string-append "mirror://gnome/sources/gnome-initial-setup/"
-                                (version-major+minor version)
-                                "/gnome-initial-setup-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1gwhp7dalyc8zsb2pa66cmpdrj2d6drbq5p331sq6zp8ds10k9ry"))))
-   (build-system meson-build-system)
-   (arguments
-    '(#:configure-flags '(;; Enable camera support for user selfie.
-                          "-Dcheese=auto"
-                          "-Dsystemd=false")
-      #:phases (modify-phases %standard-phases
-                 (add-after 'unpack 'set-gkbd-file-name
-                   (lambda* (#:key inputs #:allow-other-keys)
-                     ;; Allow the "Preview" button in the keyboard layout
-                     ;; selection dialog to display the layout.
-                     (let ((libgnomekbd (assoc-ref inputs "libgnomekbd")))
-                       (substitute* "gnome-initial-setup/pages/keyboard/cc-input-chooser.c"
-                         (("\"gkbd-keyboard-display")
-                          (string-append "\"" libgnomekbd
-                                         "/bin/gkbd-keyboard-display")))
-                       #t))))))
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk+:bin" ,gtk+ "bin")
-      ("pkg-config" ,pkg-config)))
-   (inputs
-    `(("accountsservice" ,accountsservice)
-      ;("adwaita-icon-theme" ,adwaita-icon-theme)
-      ("gdm" ,gdm)
-      ("geoclue" ,geoclue)
-      ("gnome-desktop" ,gnome-desktop)
-      ("gnome-getting-started-docs" ,gnome-getting-started-docs)
-      ("gnome-online-accounts" ,gnome-online-accounts)
-      ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
-      ("gstreamer" ,gstreamer)
-      ("ibus" ,ibus)
-      ("json-glib" ,json-glib)
-      ("krb5" ,mit-krb5)
-      ("libgweather" ,libgweather)
-      ("libnma" ,libnma)
-      ("libsecret" ,libsecret)
-      ("network-manager" ,network-manager)
-      ("packagekit" ,packagekit)
-      ("polkit" ,polkit)
-      ("pwquality" ,libpwquality)
-      ("rest" ,rest)
-      ("upower" ,upower)
-      ("webkitgtk" ,webkitgtk)
-      ("libgnomekbd" ,libgnomekbd)))
-   (synopsis "Initial setup wizard for GNOME desktop")
-   (description "This package provides a set-up wizard when a
-user logs into GNOME for the first time.  It typically provides a
-tour of all gnome components and allows the user to set them up.")
-   (home-page "https://gitlab.gnome.org/GNOME/gnome-initial-setup")
-   (license license:gpl2)))
+    (name "gnome-initial-setup")
+    (version "3.36.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gnome-initial-setup/"
+                       (version-major+minor version)
+                       "/gnome-initial-setup-" version ".tar.xz"))
+       (sha256
+        (base32 "17szzz2a5wpi7kwjnhimiwf8vg0bfliyk3k0adgv1pw2mcfpxp5s"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dsystemd=false")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'set-gkbd-file-name
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; Allow the "Preview" button in the keyboard layout
+             ;; selection dialog to display the layout.
+             (let* ((libgnomekbd (assoc-ref inputs "libgnomekbd")))
+               (substitute* "gnome-initial-setup/pages/keyboard/cc-input-chooser.c"
+                 (("\"gkbd-keyboard-display")
+                  (string-append "\"" libgnomekbd
+                                 "/bin/gkbd-keyboard-display")))
+               #t))))))
+    (native-inputs
+     `(("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("accountsservice" ,accountsservice)
+       ("cheese" ,cheese)
+       ("gdm" ,gdm)
+       ("geocode-glib" ,geocode-glib)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gnome-online-accounts" ,gnome-online-accounts)
+       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
+       ("gtk+" ,gtk+)
+       ("gweather" ,libgweather)
+       ("ibus" ,ibus)
+       ("json-glib" ,json-glib)
+       ("krb5" ,mit-krb5)
+       ("libgeoclue" ,geoclue)
+       ("libgnomekbd" ,libgnomekbd)
+       ("libnm" ,network-manager)
+       ("libnma" ,libnma)
+       ("libsecret" ,libsecret)
+       ("malcontent" ,malcontent)
+       ("pango" ,pango)
+       ("polkit" ,polkit)
+       ("pwquality" ,libpwquality)
+       ("rest" ,rest)
+       ("webkitgtk" ,webkitgtk)))
+    (synopsis "Initial setup wizard for GNOME desktop")
+    (description "GNOME-Initial-Setup aims to provide a simple, easy, and safe
+way to prepare a new system.")
+    (home-page "https://wiki.gnome.org/Design/OS/InitialSetup")
+    (license license:gpl2+)))
 
 (define-public gnome-user-share
   (package
