@@ -616,6 +616,7 @@ It adds a large amount of new and improved features to mutt.")
        ("zlib" ,zlib)))
     (propagated-inputs
      `(("glib" ,glib)))
+    (home-page "http://spruce.sourceforge.net/gmime/")
     (synopsis "MIME message parser and creator library")
     (description
      "GMime provides a core library and set of utilities which may be used for
