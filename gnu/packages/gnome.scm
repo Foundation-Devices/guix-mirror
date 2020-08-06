@@ -5985,72 +5985,83 @@ online services for numerous locations.")
 (define-public gnome-settings-daemon
   (package
     (name "gnome-settings-daemon")
-    (version "3.34.1")
+    (version "3.36.1")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "07y1gbicz0pbxmdgwrdzyc4byy30wfwpbqgvnx27gnpqmc5s50cr"))))
+        (base32 "0jzf2nznpcrjqq7fjwk66kw8a6x87kgbdjidc2msaqmm379xncry"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       (list (string-append "-Dudev_dir="
-                            (assoc-ref %outputs "out")
-                            "/lib/udev/rules.d/")
-             "-Dsystemd=false"
-             ;; Otherwise, the RUNPATH will lack the final path component.
-             (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out")
-                            "/lib/gnome-settings-daemon-3.0"))
-       ;; Color management test can't reach the colord system service.
-       #:tests? #f))
+       (list
+        (string-append "-Dudev_dir="
+                       (assoc-ref %outputs "out")
+                       "/lib/udev")
+        "-Dsystemd=false"
+        ;; Otherwise, the RUNPATH will lack the final path component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/gnome-settings-daemon-3.0"))))
     (native-inputs
-     `(("glib:bin" ,glib "bin")     ; for glib-mkenums
-       ("pkg-config" ,pkg-config)
+     `(("dbusmock" ,python-dbusmock)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
-       ("xsltproc" ,libxslt)
-       ("libxml2" ,libxml2)                       ;for XML_CATALOG_FILES
-       ("docbook-xml" ,docbook-xml-4.2)
-       ("docbook-xsl" ,docbook-xsl)))
+       ("pkg-config" ,pkg-config)
+       ("umockdev" ,umockdev)
+       ("which" ,which)
+       ("xmllint" ,libxml2)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("alsa-lib" ,alsa-lib)
+     `(("alsa" ,alsa-lib)
        ("colord" ,colord)
-       ("libgudev" ,libgudev)
-       ("upower" ,upower)
-       ("polkit" ,polkit)
-       ("pulseaudio" ,pulseaudio)
-       ("libcanberra" ,libcanberra)
-       ("libx11" ,libx11)
-       ("libxtst" ,libxtst)
-       ("lcms" ,lcms)
-       ("libnotify" ,libnotify)
-       ("geoclue" ,geoclue)
-       ("geocode-glib" ,geocode-glib)
-       ("libgweather" ,libgweather)
-       ("gnome-desktop" ,gnome-desktop)
-       ("nss" ,nss)
        ("cups" ,cups)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("libwacom" ,libwacom)
-       ("librsvg" ,librsvg)
-       ("xf86-input-wacom" ,xf86-input-wacom)
-       ("wayland" ,wayland)
-       ("network-manager" ,network-manager)
+       ("fontconfig" ,fontconfig)
        ("gcr" ,gcr)
-       ("modem-manager" ,modem-manager)))
-    (home-page "https://www.gnome.org")
+       ("geocode-glib" ,geocode-glib)
+       ("glib" ,glib)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk+" ,gtk+)
+       ("gudev" ,libgudev)
+       ("gweather" ,libgweather)
+       ("kbproto" ,xorgproto)
+       ("lcms" ,lcms)
+       ("libcanberra" ,libcanberra)
+       ("libgeoclue" ,geoclue)
+       ("libnm" ,network-manager)
+       ("libnotify" ,libnotify)
+       ("libpulse" ,pulseaudio)
+       ("librsvg" ,librsvg)
+       ("libwacom" ,libwacom)
+       ("mm-glib" ,modem-manager)
+       ("nss" ,nss)
+       ("pango" ,pango)
+       ("polkit" ,polkit)
+       ("udev" ,eudev)
+       ("upower-glib" ,upower)
+       ("wayland" ,wayland)
+       ("x11" ,libx11)
+       ("xext" ,libxext)
+       ("xf86-input-wacom" ,xf86-input-wacom)
+       ("xi" ,libxi)))
     (synopsis "GNOME settings daemon")
-    (description
-     "This package contains the daemon responsible for setting the various
-parameters of a GNOME session and the applications that run under it.  It
-handles settings such keyboard layout, shortcuts, and accessibility, clipboard
-settings, themes, mouse settings, and startup of other daemons.")
-    (license license:gpl2+)))
+    (description "GNOME-Settings-Daemon contains the daemon responsible for
+setting the various parameters of a GNOME session and the applications that run
+under it.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-settings-daemon")
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Others
+      license:gpl2+))))
 
 (define-public totem-pl-parser
   (package
