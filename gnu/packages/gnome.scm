@@ -10996,29 +10996,37 @@ GNOME Shell appearance and extension, etc.")
 (define-public gnome-shell-extensions
   (package
     (name "gnome-shell-extensions")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1f5l35l3kdkzrv49xmg1sh11vwmgjbg7hx3gb91i39bfl1snxqd1"))))
+    (version "3.36.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version)  "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0gq0z0k02b5cfaqrikk2hzbqzjkb6qwcanaqi2jh7nswa7g050lp"))))
     (build-system meson-build-system)
     (arguments
-     '(#:configure-flags '("-Dextension_set=all")))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dextension_set=all"
+        "-Dclassic_mode=true")))
     (native-inputs
      `(("glib:bin" ,glib "bin")
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("js60" ,mozjs-60)
+       ("sassc" ,sassc)))
     (propagated-inputs
      `(("glib" ,glib)))
     (synopsis "Extensions for GNOME Shell")
-    (description "GNOME Shell extensions modify and extend GNOME Shell
-functionality and behavior.")
+    (description "GNOME-Shell-Extensions is a collection of extensions providing
+additional and optional functionality to GNOME Shell.")
     (home-page "https://extensions.gnome.org/")
-    (license license:gpl3+)))
+    (license license:gpl2+)))
 
 (define-public arc-theme
   (package
