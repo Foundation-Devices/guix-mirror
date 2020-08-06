@@ -11570,43 +11570,62 @@ Bluefish supports many programming and markup languages.")
 (define-public gnome-system-monitor
   (package
     (name "gnome-system-monitor")
-    (version "3.32.1")
+    (version "3.36.1")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "1wd43qdgjav6xamq5z5cy8fri5zr01jga3plc9w95gcia0rk3ha8"))))
+        (base32 "18dwwwmw4m2kzvfmxyaxmnm66d1plwvh6c6naznb0xac1ymlfsw6"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:glib-or-gtk? #t
-       #:configure-flags '("-Dsystemd=false")))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dwnck=true"
+        "-Dsystemd=false")
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-mkenums.
-       ("gtk+" ,gtk+ "bin") ; gtk-update-icon-cache
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("glib:bin" ,glib "bin")
        ("intltool" ,intltool)
        ("itstool" ,itstool)
-       ("libgtop" ,libgtop)
-       ("polkit" ,polkit)
        ("pkg-config" ,pkg-config)))
     (inputs
-     `(("gdk-pixbuf" ,gdk-pixbuf) ; for loading SVG files.
+     `(("appstream-util" ,appstream-glib)
+       ("glib" ,glib)
+       ("glibmm" ,glibmm)
        ("gtk+" ,gtk+)
        ("gtkmm" ,gtkmm)
+       ("libgtop" ,libgtop)
        ("librsvg" ,librsvg)
+       ("libselinux" ,libselinux)
        ("libxml2" ,libxml2)
        ("libwnck" ,libwnck)))
+    (synopsis "View current processes and monitor system state")
+    (description "GNOME-System-Monitor is a tool to manage running processes
+and monitor system resources.")
     (home-page "https://wiki.gnome.org/Apps/SystemMonitor")
-    (synopsis "Process viewer and system resource monitor for GNOME")
-    (description
-     "GNOME System Monitor is a GNOME process viewer and system monitor with
-an attractive, easy-to-use interface.  It has features, such as a tree view
-for process dependencies, icons for processes, the ability to hide processes,
-graphical time histories of CPU/memory/swap usage and the ability to
-kill/reinice processes.")
     (license license:gpl2+)))
 
 (define-public python-pyatspi
