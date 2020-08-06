@@ -750,59 +750,73 @@ patterns.")
                        (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "06ml5sf8xhpan410msqz085hmfc7082d368pb82yq646y9pcfn9w"))))
+        (base32 "06ml5sf8xhpan410msqz085hmfc7082d368pb82yq646y9pcfn9w"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     `(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       (list "-Ddogtail=false"     ; Not available
-             ;; Required for RUNPATH validation.
-             (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out") "/lib/gnome-photos"))
+       (list
+        "-Ddogtail=false"
+        ;; Required for RUNPATH validation.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/gnome-photos"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'install 'wrap-gnome-photos
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let*
-                 ((out (assoc-ref outputs "out")))
-               (wrap-program (string-append out "/bin/gnome-photos")
-                 `("GRL_PLUGIN_PATH" = (,(getenv "GRL_PLUGIN_PATH")))))
-             #t)))))
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
-     `(("dbus" ,dbus)
-       ("desktop-file-utils" ,desktop-file-utils)
+     `(("desktop-file-utils" ,desktop-file-utils)
        ("gettext" ,gettext-minimal)
        ("git" ,git-minimal)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("gtk+:bin" ,gtk+ "bin")
        ("itstool" ,itstool)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("xorg-server" ,xorg-server-for-tests)))
     (inputs
      `(("babl" ,babl)
        ("cairo" ,cairo)
+       ("dbus" ,dbus)
        ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("gegl" ,gegl)
        ("geocode-glib" ,geocode-glib)
        ("gexiv2" ,gexiv2)
-       ("gnome-online-accounts" ,gnome-online-accounts)
-       ("gnome-online-miners" ,gnome-online-miners)
+       ("glib" ,glib)
+       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("grilo" ,grilo)
-       ("grilo-plugins" ,grilo-plugins)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gtk+" ,gtk+)
        ("libdazzle" ,libdazzle)
        ("libgdata" ,libgdata)
        ("libgfbgraph" ,gfbgraph)
        ("libjpeg" ,libjpeg-turbo)
        ("libpng" ,libpng)
-       ("librest" ,rest)
-       ("pygobject" ,python-pygobject)
-       ("tracker" ,tracker)
-       ("tracker-miners" ,tracker-miners)))
-    (synopsis "Access, organize and share your photos on GNOME desktop")
-    (description "GNOME Photos is a simple and elegant replacement for using a
+       ("tracker" ,tracker)))
+    (synopsis "Access, organize and share your photos")
+    (description "GNOME-Photos is a simple and elegant replacement for using a
 file manager to deal with photos.  Enhance, crop and edit in a snap.  Seamless
 cloud integration is offered through GNOME Online Accounts.")
     (home-page "https://wiki.gnome.org/Apps/Photos")
