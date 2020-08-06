@@ -12778,14 +12778,8 @@ these services on the Guix System.")
               ;; For data/icons/empty-boxes.png.
               license:cc-by2.0
               ;; For all others.
-              license:lgpl2.0+))))
-    (home-page "https://wiki.gnome.org/Apps/Boxes")
-    (license
-     (list
-      ;; Icons
-      license:cc-by2.0
-      ;; Others.
-      license:lgpl2.0+))))
+              license:lgpl2.0+))
+    (home-page "https://wiki.gnome.org/Apps/Boxes")))
 
 (define-public geary
   (package
