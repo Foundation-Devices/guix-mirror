@@ -8023,70 +8023,80 @@ the archive.")
 (define-public gnome-session
   (package
     (name "gnome-session")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1qgqp97f8k2zi2ydvhds14zsjzfj7cv521r6wx5sw0qacn0p7dwb"))))
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0ymvf1bap35348rpjqp63qwnwnnawdwi4snch95zc4n832w3hjym"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dsession_selector=true"
+        "-Dsystemd=false"
+        "-Dsystemd_session=disable"
+        "-Dsystemd_journal=false")
        #:phases
        (modify-phases %standard-phases
-         (add-before 'configure 'pre-configure
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Use elogind instead of systemd.
-             (substitute* "meson.build"
-               (("libsystemd-login") "libelogind")
-               (("and libsystemd_daemon_dep.found.*") ","))
-             (substitute* "gnome-session/gsm-systemd.c"
-               (("#include <systemd/sd-login.h>")
-                "#include <elogind/sd-login.h>"))
-             ;; Remove uses of the systemd daemon.
-             (substitute* "gnome-session/gsm-autostart-app.c"
-               (("#ifdef HAVE_SYSTEMD") "#if 0"))
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* '("dbus/gnome-session.xml.in" "man/meson.build")
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
              #t))
-         (add-after 'install 'wrap-gnome-session
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t)))
+         (add-after 'move-doc 'wrap-gnome-session
            (lambda* (#:key inputs outputs #:allow-other-keys)
              ;; Make sure 'gnome-session' finds the 'gsettings' program.
-             (let ((glib (assoc-ref inputs "glib:bin"))
-                   (out  (assoc-ref outputs "out")))
+             (let* ((glib (assoc-ref inputs "glib:bin"))
+                    (out  (assoc-ref outputs "out")))
                (wrap-program (string-append out "/bin/gnome-session")
                  `("PATH" ":" prefix (,(string-append glib "/bin"))))
-               #t))))
-
-       #:configure-flags
-       '("-Ddocbook=false" ; FIXME: disabled because of docbook validation error
-         "-Dman=false" ; FIXME: disabled because of docbook validation error
-         "-Dsystemd_journal=false")))
-    (build-system meson-build-system)
+               #t))))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-compile-schemas, etc.
-       ("pkg-config" ,pkg-config)
-       ("intltool" ,intltool)
-       ("xsltproc" ,libxslt)
-       ("libxml2" ,libxml2) ;for 'XML_CATALOG_FILES'
+     `(("docbook-xml" ,docbook-xml-4.1.2)
        ("docbook-xsl" ,docbook-xsl)
-       ("docbook-xml" ,docbook-xml)
-       ("xmlto" ,xmlto)))
+       ("glib:bin" ,glib "bin")
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)
+       ("xmlto" ,xmlto)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("elogind" ,elogind)
+     `(("epoxy" ,libepoxy)
+       ("glib" ,glib)
        ("gnome-desktop" ,gnome-desktop)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gtk+" ,gtk+)
+       ("ice" ,libice)
        ("json-glib" ,json-glib)
-       ("libsm" ,libsm)
-       ("libxcomposite" ,libxcomposite)
-       ("libxtst" ,libxtst)
        ("mesa" ,mesa)
-       ("upower" ,upower)
+       ("sm" ,libsm)
+       ("x11" ,libx11)
+       ("xcomposite" ,libxcomposite)
        ("xtrans" ,xtrans)))
     (synopsis "Session manager for GNOME")
-    (description
-     "This package contains the GNOME session manager, as well as a
+    (description "GNOME-Session contains the GNOME session manager, as well as a
 configuration program to choose applications starting on login.")
     (home-page "https://wiki.gnome.org/Projects/SessionManagement")
     (license license:gpl2+)))
