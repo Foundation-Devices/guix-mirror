@@ -10265,43 +10265,43 @@ packaged with the GNOME desktop.")
 (define-public gnome-screenshot
   (package
     (name "gnome-screenshot")
-    (version "3.34.0")
+    (version "3.36.0")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "1rmiq890j7gfn5mcz31xy6jfnnxgc17dq67bhn2k9m5ylbvza2n8"))))
+        (base32 "0rhj6fkpxfm26jv3vsn7yb2ybkc2k86ggy23nxa945q74y4msj9k"))))
     (build-system meson-build-system)
     (arguments
-     '(#:phases
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
            (lambda _
              (substitute* "build-aux/postinstall.py"
-               (("gtk-update-icon-cache") "true"))
+               (("gtk-update-icon-cache")
+                "true"))
              #t)))))
     (native-inputs
-     `(("glib:bin" ,glib "bin") ; for glib-compile-schemas, etc.
-       ("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
+     `(("glib:bin" ,glib "bin")
+       ("desktop-file-utils" ,desktop-file-utils)
        ("intltool" ,intltool)
-       ("appstream-glib" ,appstream-glib)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("gtk+" ,gtk+)
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
        ("libcanberra" ,libcanberra)
-       ("libx11" ,libx11)
-       ("libxext" ,libxext)))
-    (home-page "https://gitlab.gnome.org/GNOME/gnome-screenshot")
+       ("x11" ,libx11)
+       ("xext" ,libxext)))
     (synopsis "Take pictures of your screen")
-    (description
-     "GNOME Screenshot is a utility used for taking screenshots of the entire
-screen, a window or a user defined area of the screen, with optional
-beautifying border effects.")
+    (description "GNOME-Screenshot is a small utility that takes a screenshot of
+the whole desktop; the currently focused window; or an area of the screen.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-screenshot")
     (license license:gpl2+)))
 
 (define-public dconf-editor
