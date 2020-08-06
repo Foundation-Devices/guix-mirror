@@ -1825,25 +1825,50 @@ project.")
 (define-public gnome-menus
   (package
     (name "gnome-menus")
-    (version "3.32.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/gnome-menus/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0x2blzqrapmbsbfzxjcdcpa3vkw9hq5k96h9kvjmy9kl415wcl68"))))
-    (build-system gnu-build-system)
+    (version "3.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/gnome-menus/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "07xvaf8s0fiv0035nk8zpzymn5www76w2a1vflrgqmp9plw8yd6r"))))
+    (build-system glib-or-gtk-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static")
+       #:make-flags
+       (list
+        (string-append "INTROSPECTION_GIRDIR="
+                       (assoc-ref %outputs "out")
+                       "/share/gir-"
+                       ,(version-major (package-version gobject-introspection))
+                       ".0")
+        (string-append "INTROSPECTION_TYPELIBDIR="
+                       (assoc-ref %outputs "out")
+                       "/lib/girepository-"
+                       ,(version-major (package-version gobject-introspection))
+                       ".0"))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
-       ("glib" ,glib)
+       ("gjs" ,gjs)
+       ("gobject-introspection" ,gobject-introspection)
        ("pkg-config" ,pkg-config)))
-    (synopsis "Menu support for GNOME desktop")
-    (description "GNOME Menus contains the libgnome-menu library, the layout
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "GNOME Menu support")
+    (description "GNOME-Menus contains the libgnome-menu library, the layout
 configuration files for the GNOME menu, as well as a simple menu editor.")
     (home-page "https://gitlab.gnome.org/GNOME/gnome-menus")
-    (license license:lgpl2.0+)))
+    (license
+     (list
+      ;; Library
+      license:lgpl2.0+
+      ;; Others
+      license:gpl2+))))
 
 (define-public deja-dup
   (package
