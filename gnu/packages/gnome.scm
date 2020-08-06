@@ -811,7 +811,7 @@ cloud integration is offered through GNOME Online Accounts.")
 (define-public gnome-music
   (package
     (name "gnome-music")
-    (version "3.34.5")
+    (version "3.36.4.1")
     (source
      (origin
        (method url-fetch)
@@ -820,24 +820,38 @@ cloud integration is offered through GNOME Online Accounts.")
                        (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "1r5sfw5cbd6qqh27lzhblazir0bfi3k7nqppw66qw990isqm5psy"))))
+        (base32 "0zdpjgwf48bqb66wrl6k33pzcmc2g3m1046ma7z8xaj9idpi37jh"))))
     (build-system meson-build-system)
+    (outputs '("out" "help"))
     (arguments
-     `(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:tests? #f           ; Tests require networking
        #:phases
        (modify-phases %standard-phases
-         (add-after 'install 'wrap-gnome-music
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t)))
+         (add-after 'move-help 'wrap-gnome-music
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let*
-                 ((out (assoc-ref outputs "out"))
-                  (pylib (string-append out "/lib/python"
-                                        ,(version-major+minor
-                                          (package-version python))
-                                        "/site-packages")))
+             (let* ((out (assoc-ref outputs "out"))
+                    (pylib (string-append out "/lib/python"
+                                          ,(version-major+minor
+                                            (package-version python))
+                                          "/site-packages")))
                (wrap-program (string-append out "/bin/gnome-music")
                  `("GI_TYPELIB_PATH" = (,(getenv "GI_TYPELIB_PATH")))
-                 `("GST_PLUGIN_SYSTEM_PATH" = (,(getenv "GST_PLUGIN_SYSTEM_PATH")))
                  `("GRL_PLUGIN_PATH" = (,(getenv "GRL_PLUGIN_PATH")))
                  `("PYTHONPATH" = (,(getenv "PYTHONPATH") ,pylib))))
              #t)))))
@@ -846,28 +860,29 @@ cloud integration is offered through GNOME Online Accounts.")
        ("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk+:bin" ,gtk+ "bin")
        ("itstools" ,itstool)
        ("pkg-config" ,pkg-config)))
     (inputs
-     `(("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
+     `(("appstream-util" ,appstream-glib)
+       ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("grilo" ,grilo)
        ("grilo-plugins" ,grilo-plugins)
-       ("gst-plugins-base" ,gst-plugins-base)
-       ("gstreamer" ,gstreamer)
-       ("gvfs" ,gvfs)
+       ("gtk+" ,gtk+)
        ("libdazzle" ,libdazzle)
        ("libmediaart" ,libmediaart)
        ("libsoup" ,libsoup)
        ("pycairo" ,python-pycairo)
        ("pygobject" ,python-pygobject)
-       ("tracker" ,tracker)
-       ("tracker-miners" ,tracker-miners)))
-    (synopsis "Simple music player for GNOME desktop")
-    (description "GNOME Music is the new GNOME music playing application that
-aims to combine an elegant and immersive browsing experience with simple
-and straightforward controls.")
+       ("python" ,python)
+       ("tracker" ,tracker)))
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "Simple music player")
+    (description "GNOME-Music is the new GNOME music playing application.
+It aims to combine an elegant and immersive browsing experience with simple and
+straightforward controls.")
     (home-page "https://wiki.gnome.org/Apps/Music")
+    ;; With added exception clause.
     (license license:gpl2+)))
 
 (define-public portablexdr
