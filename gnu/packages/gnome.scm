@@ -10159,62 +10159,79 @@ filetypes.")
 (define-public nautilus
   (package
     (name "nautilus")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "19zqwq4qyyncc5wq3xls0f7rsavnw741k336p2h7kx35p4kf41mv"))))
+    (version "3.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1y0fsd7j48v4qkc051cg41mz7jycgw4vd4g37lw682p7n5xgrjmn"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     '(#:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Ddocs=true"
+        "-Dselinux=true")
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference/libnautilus-extension"
+               (substitute* "libnautilus-extension-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
            (lambda _
              (substitute* "build-aux/meson/postinstall.py"
-               (("gtk-update-icon-cache") "true"))
-             #t)))
-       ;; XXX: FAIL: check-nautilus
-       ;;   Settings schema 'org.gnome.nautilus.preferences' is not installed
-       #:tests? #f))
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
-       ("glib:bin" ,glib "bin")         ; for glib-mkenums, etc.
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
     (inputs
-     `(("dconf" ,dconf)
+     `(("appstream-util" ,appstream-glib)
        ("gexiv2" ,gexiv2)
-       ("gvfs" ,gvfs)
-       ("exempi" ,exempi)
-       ("gnome-desktop" ,gnome-desktop)
        ("gnome-autoar" ,gnome-autoar)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)
-       ("libseccomp" ,libseccomp)
        ("libselinux" ,libselinux)
+       ("libxml2" ,libxml2)
        ("tracker" ,tracker)
        ("tracker-miners" ,tracker-miners)
-       ;; XXX: gtk+ is required by libnautilus-extension.pc
-       ;;
-       ;; Don't propagate it to reduces "profile pollution" of the 'gnome' meta
-       ;; package.  See:
-       ;; <http://lists.gnu.org/archive/html/guix-devel/2016-03/msg00283.html>.
-       ("gtk+" ,gtk+)
-       ("libexif" ,libexif)
-       ("libxml2" ,libxml2)))
-    (synopsis "File manager for GNOME")
+       ("x11" ,libx11)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)))
+    (synopsis "Simple file manager for GNOME")
+    (description "Nautilus provides the user with a simple way to navigate and
+manage files.")
     (home-page "https://wiki.gnome.org/Apps/Nautilus")
-    (description
-     "Nautilus (Files) is a file manager designed to fit the GNOME desktop
-design and behaviour, giving the user a simple way to navigate and manage its
-files.")
-    (license license:gpl2+)))
+    (license license:gpl3+)))
 
 (define-public baobab
   (package
