@@ -12774,35 +12774,35 @@ and a high score table.")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/" name "-"
-                           version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/" name "-"
+                       version ".tar.xz"))
        (sha256
-        (base32
-         "06aqg9asq2vqi9wr29bs4v8z2bf4manhbhfghf4nvw01y2zs0jvw"))))
-    (build-system gnu-build-system)
+        (base32 "06aqg9asq2vqi9wr29bs4v8z2bf4manhbhfghf4nvw01y2zs0jvw"))))
+    (build-system glib-or-gtk-build-system)
     (arguments
-     '(#:configure-flags
-       ;; Don't create 'icon-theme.cache'.
+     `(#:configure-flags
        (let* ((coreutils (assoc-ref %build-inputs "coreutils"))
-              (true      (string-append coreutils "/bin/true")))
-         (list (string-append "GTK_UPDATE_ICON_CACHE=" true)))))
+              (true (string-append coreutils "/bin/true")))
+         (list
+          (string-append "GTK_UPDATE_ICON_CACHE=" true)))))
     (native-inputs
      `(("glib:bin" ,glib "bin")
        ("intltool" ,intltool)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("xmllint" ,libxml2)))
     (inputs
-     `(("glib" ,glib)
+     `(("cairo" ,cairo)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
        ("gtk+" ,gtk+)
        ("gtk+-2" ,gtk+-2)
-       ("librsvg" ,librsvg)
-       ("libxml2" ,libxml2)))
-    (home-page "https://gitlab.gnome.org/GNOME/gnome-themes-extra")
+       ("librsvg" ,librsvg)))
     (synopsis "GNOME Extra Themes")
-    (description "This package provides themes and related elements that don't
-really fit in other upstream packages.  It offers legacy support for GTK+ 2
-versions of Adwaita, Adwaita-dark and HighContrast themes.  It also provides
-index files needed for Adwaita to be used outside of GNOME.")
+    (description "GNOME-Themes-Extra houses themes and theme-y tidbits that
+don’t really fit in anywhere else, or deserve their own module.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-themes-extra")
     (license license:lgpl2.1+)))
 
 (define-public polari
