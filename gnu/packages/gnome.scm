@@ -5578,52 +5578,61 @@ more fun.")
 (define-public gnome-terminal
   (package
     (name "gnome-terminal")
-    (version "3.34.2")
+    (version "3.36.2")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/" name "/"
-                           (version-major+minor version) "/"
-                           name "-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
        (sha256
-        (base32
-         "0gc004f9b5k94gkdanmqjz3wqgnpny0l3nqm8zd19h4f0ps27mrv"))))
+        (base32 "0inzmkmxv8xw4px2zjfw7236d08yjcv7znxcjki6dh4pvjivdla1"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:configure-flags
-       (list "--disable-migration" "--disable-search-provider"
-             "--without-nautilus-extension")
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--disable-search-provider"     ; To be enabled
+        (string-append "--with-help-dir="
+                       (assoc-ref %outputs "help")
+                       "/share/help"))
        #:phases
        (modify-phases %standard-phases
-         (add-before 'configure 'patch-/bin/true
-                     (lambda _
-                       (substitute* "configure"
-                         (("/bin/true") (which "true"))))))))
+         (add-after 'install 'remove-systemd
+           (lambda* (#:key outputs #:allow-other-keys)
+             (delete-file-recursively
+              (string-append (assoc-ref outputs "out")
+                             "/lib/systemd"))
+             #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("desktop-file-utils" ,desktop-file-utils)
+     `(("desktop-file-utils" ,desktop-file-utils)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
        ("xmllint" ,libxml2)))
-    (propagated-inputs
-     `(("dconf" ,dconf)))
     (inputs
-     `(("gtk+" ,gtk+)
-       ("vte" ,vte)
-       ("gnutls" ,gnutls)
+     `(("dconf" ,dconf)
+       ("glib" ,glib)
+       ;; To be enabled.
+       ;; ("gnome-shell-search-provider" ,gnome-shell)
+       ("gtk+" ,gtk+)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("libnautilus-extension" ,nautilus)
+       ("libpcre2" ,pcre2)
        ("util-linux" ,util-linux "lib")
-       ("vala" ,vala)))
-    (home-page "https://wiki.gnome.org/Apps/Terminal")
+       ("vte" ,vte)))
     (synopsis "Terminal emulator")
-    (description
-     "GNOME Terminal is a terminal emulator application for accessing a
-UNIX shell environment which can be used to run programs available on
-your system.
-
-It supports several profiles, multiple tabs and implements several
-keyboard shortcuts.")
-    (license license:gpl3+)))
+    (description "GNOME-Terminal is a terminal emulator for GNOME.")
+    (home-page "https://wiki.gnome.org/Apps/Terminal")
+    (license
+     (list
+      ;; Documentation
+      license:fdl1.3+
+      ;; Others
+      license:gpl3+))))
 
 (define-public colord
   (package
