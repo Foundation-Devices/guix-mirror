@@ -10435,58 +10435,56 @@ associations for GNOME.")
 
 (define-public gnome-weather
   (package
-   (name "gnome-weather")
-   (version "3.34.0")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "1g63xzs17i36if923b36k9fwbk0nqa5vz6zh1k6q2axrzhhpx1i4"))))
-   (build-system meson-build-system)
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk+:bin" ,gtk+ "bin")
-      ("pkg-config" ,pkg-config)))
-   (inputs
-    `( ;("adwaita-icon-theme" ,adwaita-icon-theme)
-      ("appstream-glib" ,appstream-glib)
-      ("geoclue" ,geoclue)
-      ("gdk-pixbuf" ,gdk-pixbuf)
-      ("gjs" ,gjs)
-      ("gnome-desktop" ,gnome-desktop)
-      ("libgweather" ,libgweather)))
-   (arguments
-    `(#:glib-or-gtk? #t
-      #:phases
-      (modify-phases %standard-phases
-        (add-after 'install 'fix-desktop-file
-          ;; FIXME: "gapplication launch org.gnome.Weather" fails for some reason.
-          ;; See https://issues.guix.gnu.org/issue/39324.
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let* ((out (assoc-ref outputs "out"))
-                   (applications (string-append out "/share/applications")))
-              (substitute* (string-append applications "/org.gnome.Weather.desktop")
-                (("Exec=.*") "Exec=gnome-weather\n"))
-              #t)))
-        (add-after 'install 'wrap
-          (lambda* (#:key inputs outputs #:allow-other-keys)
-            (let ((out               (assoc-ref outputs "out"))
-                  (gi-typelib-path   (getenv "GI_TYPELIB_PATH")))
-              ;; GNOME Weather needs the typelib files of GTK+, Pango etc at runtime.
-              (wrap-program (string-append out "/bin/gnome-weather")
-                `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path)))
-              #t))))))
-   (synopsis "Weather monitoring for GNOME desktop")
-   (description "GNOME Weather is a small application that allows you to
-monitor the current weather conditions for your city, or anywhere in the
-world.")
-   (home-page "https://wiki.gnome.org/Apps/Weather")
-   (license license:gpl2+)))
+    (name "gnome-weather")
+    (version "3.36.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "11z75ky6xp9hx7lm24xng7ydr20bzh4d6p9sbi9c8ccz2m3fdrk8"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-after 'install 'wrap
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (gi-typelib-path   (getenv "GI_TYPELIB_PATH")))
+               (wrap-program (string-append out "/bin/gnome-weather")
+                 `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path)))
+               #t))))))
+    (native-inputs
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)
+       ("python" ,python-wrapper)))
+    (inputs
+     `(("appstream-util" ,appstream-glib)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("geoclue" ,geoclue)
+       ("gjs" ,gjs)
+       ("glib" ,glib)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gtk+" ,gtk+)
+       ("gweather" ,libgweather)))
+    (synopsis "Weather monitoring for GNOME desktop")
+    (description "GNOME-Weather is a small application that allows you to monitor
+the current weather conditions for your city, or anywhere in the world.")
+    (home-page "https://wiki.gnome.org/Apps/Weather")
+    (license license:gpl2+)))
 
 (define-public gnome
   (package
