@@ -1646,43 +1646,48 @@ way to prepare a new system.")
 
 (define-public gnome-user-share
   (package
-   (name "gnome-user-share")
-   (version "3.33.1")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnome/sources/" name "/"
-                                (version-major+minor version) "/"
-                                name "-" version ".tar.xz"))
-            (sha256
-             (base32
-              "0lf790pyamdyj7180ils8vizjl8brxcg7jsm1iavfp9ay4wa8mz7"))))
-   (build-system meson-build-system)
-   (arguments
-    `(#:glib-or-gtk? #t
-      #:configure-flags
-       `("-Dsystemd=false"
-         ;; Enable nautilus extension for file sharing.
-         "-Dnautilus_extension=true")))
-   (native-inputs
-    `(("gettext" ,gettext-minimal)
-      ("glib:bin" ,glib "bin")
-      ("gobject-introspection" ,gobject-introspection)
-      ("gtk+:bin" ,gtk+ "bin")
-      ("pkg-config" ,pkg-config)
-      ("yelp-tools" ,yelp-tools)))
-   (inputs
-    `(("glib" ,glib)
-      ("gnome-bluetooth" ,gnome-bluetooth)
-      ("gtk+" ,gtk+)
-      ("libcanberra" ,libcanberra)
-      ("libnotify" ,libnotify)
-      ("nautilus" ,nautilus)))      ; For nautilus extension.
-   (synopsis "File sharing for GNOME desktop")
-   (description "GNOME User Share is a small package that binds together
-various free software projects to bring easy to use user-level file
-sharing to the masses.")
-   (home-page "https://gitlab.gnome.org/GNOME/gnome-user-share")
-   (license license:gpl2+)))
+    (name "gnome-user-share")
+    (version "3.34.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "04r9ck9v4i0d31grbli1d4slw2d6dcsfkpaybkwbzi7wnj72l30x"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        (string-append "-Dsystemduserunitdir="
+                       (getcwd))
+        "-Dnautilus_extension=true"
+        (string-append "-Dhttpd="
+                       (assoc-ref %build-inputs "httpd")
+                       "/bin/httpd")
+        (string-append "-Dmodules_path="
+                       (assoc-ref %build-inputs "httpd")
+                       "/modules/"))))
+    (native-inputs
+     `(("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("httpd" ,httpd)
+       ("libnautilus-extension" ,nautilus)
+       ("libselinux" ,libselinux)))
+    (synopsis "File sharing for GNOME desktop")
+    (description "GNOME User Share is a small package that binds together various
+free software projects to bring easy to use user-level file sharing to the
+masses.")
+    (home-page "https://gitlab.gnome.org/GNOME/gnome-user-share")
+    (license license:gpl2+)))
 
 (define-public sushi
   (package
