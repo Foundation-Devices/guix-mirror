@@ -994,36 +994,63 @@ decoders, muxers, and demuxers provided by FFmpeg.")
   (package
     (name "gst-editing-services")
     (version "1.16.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://gstreamer.freedesktop.org/src/" name "/"
-                    "gstreamer-editing-services-" version ".tar.xz"))
-              (sha256
-               (base32
-                "05hcf3prna8ajjnqd53221gj9syarrrjbgvjcbhicv0c38csc1hf"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://gstreamer.freedesktop.org/src/" name "/"
+         "gstreamer-editing-services-" version ".tar.xz"))
+       (sha256
+        (base32 "05hcf3prna8ajjnqd53221gj9syarrrjbgvjcbhicv0c38csc1hf"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     ;; FIXME: 16/22 failing tests.
-     `(#:tests? #f
-       #:phases (modify-phases %standard-phases
-                  ,@%common-gstreamer-phases)))
-    (inputs
-     `(("gst-plugins-base" ,gst-plugins-base)
-       ("libxml2" ,libxml2)))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:tests? #f           ; FIXME
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/libs"
+               (substitute* '("architecture.xml" "ges-docs.sgml")
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.3")
+                                 "/xml/dtd/docbook/"))
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.1.2")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("flex" ,flex)
-       ("gst-plugins-bad" ,gst-plugins-bad)
-       ("gst-plugins-good" ,gst-plugins-good)
+     `(("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
+       ("flex" ,flex)
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
        ("perl" ,perl)
        ("pkg-config" ,pkg-config)
-       ("python" ,python)))
+       ("python" ,python-wrapper)))
+    (inputs
+     `(("glib" ,glib)
+       ("gstreamer" ,gstreamer)
+       ("gst-plugins-bad" ,gst-plugins-bad)
+       ("gst-plugins-base" ,gst-plugins-base)
+       ("gtk+" ,gtk+)
+       ("libxml2" ,libxml2)))
+    (synopsis "GStreamer Editing Services Library")
+    (description "Gst-Editing-services is a high-level library for facilitating
+the creation of audio/video non-linear editors.")
     (home-page "https://gstreamer.freedesktop.org/")
-    (synopsis "GStreamer library for non-linear editors")
-    (description
-     "This is a high-level library for facilitating the creation of audio/video
-non-linear editors.")
-    (license license:gpl2+)))
+    (license license:lgpl2.0+)))
 
 (define-public python-gst
   (package
