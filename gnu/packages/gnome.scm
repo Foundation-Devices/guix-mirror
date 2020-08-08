@@ -7507,41 +7507,54 @@ USB transfers with your high-level application or system daemon.")
 (define-public simple-scan
   (package
     (name "simple-scan")
-    (version "3.36.3")
+    (version "3.36.4")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/simple-scan/"
-                           (version-major+minor version) "/"
-                           "simple-scan-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/simple-scan/"
+                       (version-major+minor version) "/"
+                       "simple-scan-" version ".tar.xz"))
        (sha256
-        (base32 "0gsz7jqk0fdj0mama3cnss9i1adw18cpdnlcjcjh4r5qijmvx0vh"))))
+        (base32 "09gmzrlljdqkj3w6wa1c27wypy6j8z9dw3jzv9izfqvp38liibsn"))))
     (build-system meson-build-system)
-    ;; TODO: Fix icons in home screen, About dialogue, and scan menu.
+    (outputs '("out" "help"))
     (arguments
-     '(#:glib-or-gtk? #t))
-    (inputs
-     `(("gtk" ,gtk+)
-       ("zlib" ,zlib)
-       ("cairo" ,cairo)
-       ("colord" ,colord)
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("gusb" ,gusb)
-       ("libsane" ,sane-backends)))
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t))))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
+       ("glib" ,glib "bin")
        ("itstool" ,itstool)
-       ("glib" ,glib "bin")             ; glib-compile-schemas, etc.
        ("pkg-config" ,pkg-config)
        ("vala" ,vala)
        ("xmllint" ,libxml2)))
+    (inputs
+     `(("cairo" ,cairo)
+       ("colord" ,colord)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("glib" ,glib)
+       ("gtk" ,gtk+)
+       ("gusb" ,gusb)
+       ("libwebp" ,libwebp)
+       ("packagekit-glib" ,packagekit)
+       ("sane-backends" ,sane-backends)
+       ("zlib" ,zlib)))
+    (synopsis "Document scanner")
+    (description "Simple-Scan is a document scanning application for GNOME.  It
+allows you to capture images using image scanners that have suitable SANE
+drivers installed.")
     (home-page "https://gitlab.gnome.org/GNOME/simple-scan")
-    (synopsis "Document and image scanner")
-    (description
-     "Document Scanner is an easy-to-use application that lets you connect your
-scanner and quickly capture images and documents in an appropriate format.  It
-supports any scanner for which a suitable SANE driver is available, which is
-almost all of them.")
     (license license:gpl3+)))
 
 (define-public eolie
