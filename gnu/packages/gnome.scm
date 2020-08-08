@@ -73,6 +73,7 @@
 
 (define-module (gnu packages gnome)
   #:use-module (gnu packages)
+  #:use-module (gnu packages accessibility)
   #:use-module (gnu packages admin)
   #:use-module (gnu packages aspell)
   #:use-module (gnu packages autotools)
@@ -11709,27 +11710,27 @@ accessibility infrastructure.")
 (define-public orca
   (package
     (name "orca")
-    (version "3.34.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "mirror://gnome/sources/" name "/"
-                    (version-major+minor version) "/"
-                    name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1q38n7hyshkiszmn361skxjynxr31lcms7a1iny6d0zlpmh1vnk4"))))
+    (version "3.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "mirror://gnome/sources/" name "/"
+         (version-major+minor version) "/"
+         name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1x0xrcyxlvcjlqp6wcsx5d951i500079wqs04scssjzwqggy330n"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:phases
+     `(#:configure-flags
+       (list
+        (string-append "--with-help-dir="
+                       (assoc-ref %outputs "help")
+                       "/share/help"))
+       #:phases
        (modify-phases %standard-phases
-         (add-before 'configure 'qualify-xkbcomp
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((xkbcomp (string-append
-                             (assoc-ref inputs "xkbcomp") "/bin/xkbcomp")))
-               (substitute* "src/orca/orca.py"
-                 (("'xkbcomp'") (format #f "'~a'" xkbcomp))))
-             #t))
          (add-after 'install 'wrap-orca
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out  (assoc-ref outputs "out"))
@@ -11737,35 +11738,33 @@ accessibility infrastructure.")
                (wrap-program prog
                  `("GI_TYPELIB_PATH" ":" prefix
                    (,(getenv "GI_TYPELIB_PATH")))
-                 `("GST_PLUGIN_SYSTEM_PATH" ":" prefix
-                   (,(getenv "GST_PLUGIN_SYSTEM_PATH")))
                  `("PYTHONPATH" ":" prefix
                    (,(getenv "PYTHONPATH")))))
              #t)))))
     (native-inputs
-     `(("intltool" ,intltool)
+     `( ;; ("docbook-utils" ,docbook-utils)
+       ("intltool" ,intltool)
        ("itstool" ,itstool)
        ("pkg-config" ,pkg-config)
        ("xmllint" ,libxml2)))
     (inputs
-     `(("at-spi2-atk" ,at-spi2-atk)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+     `(("atk" ,atk)
+       ("at-spi2-atk" ,at-spi2-atk)
+       ("at-spi2-core" ,at-spi2-core)
        ("gstreamer" ,gstreamer)
-       ("gst-plugins-base" ,gst-plugins-base)
-       ("gst-plugins-good" ,gst-plugins-good)
        ("gtk+" ,gtk+)
+       ("liblouis" ,liblouis)
        ("python" ,python)
+       ("python-brlapi" ,brltty)
+       ("python-louis" ,liblouis "python")
        ("python-pygobject" ,python-pygobject)
        ("python-pyatspi" ,python-pyatspi)
-       ("python-speechd" ,speech-dispatcher)
-       ("xkbcomp" ,xkbcomp)))
-    (synopsis
-     "Screen reader for individuals who are blind or visually impaired")
+       ("python-setproctitle" ,python-setproctitle)
+       ("python-speechd" ,speech-dispatcher)))
+    (synopsis "Screen reader for GNOME")
+    (description "Orca is a flexible and extensible screen reader that provides
+access to the graphical desktop via speech and refreshable braille.")
     (home-page "https://wiki.gnome.org/Projects/Orca")
-    (description
-     "Orca is a screen reader that provides access to the graphical desktop
-via speech and refreshable braille.  Orca works with applications and toolkits
-that support the Assistive Technology Service Provider Interface (AT-SPI).")
     (license license:lgpl2.1+)))
 
 (define-public gspell
