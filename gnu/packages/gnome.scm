@@ -1747,52 +1747,116 @@ preview files on the GNOME desktop.")
 (define-public rygel
   (package
     (name "rygel")
-    (version "0.38.3")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "003xficqb08r1dgid20i7cn889lbfwrglpx78rjd5nkvgxbimhh8"))))
-    (build-system gnu-build-system)
+    (version "0.38.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0rm1m1z8rcvyj9873wqcz5i3qdg8j6gv6k1p01xifk0y9phg7rzc"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Dapi-docs=true"
+        (string-append "-Dsystemd-user-units-dir="
+                       (getcwd)))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc/reference"
+               (substitute* '("../man/meson.build"
+                              "../man/rygel.conf.xml" "../man/rygel.xml"
+                              "librygel-core/gtkdoc/librygel-core-docs.xml"
+                              "librygel-core/gtkdoc/overview.xml"
+                              "librygel-db/gtkdoc/librygel-db-docs.xml"
+                              "librygel-db/gtkdoc/overview.xml"
+                              "librygel-renderer-gst/gtkdoc/implementing-renderers-gst.xml"
+                              "librygel-renderer-gst/gtkdoc/librygel-renderer-gst-docs.xml"
+                              "librygel-renderer-gst/gtkdoc/overview.xml"
+                              "librygel-renderer/gtkdoc/implementing-renderer-plugins.xml"
+                              "librygel-renderer/gtkdoc/implementing-renderers.xml"
+                              "librygel-renderer/gtkdoc/librygel-renderer-docs.xml"
+                              "librygel-renderer/gtkdoc/overview.xml"
+                              "librygel-server/gtkdoc/implementing-media-engines.xml"
+                              "librygel-server/gtkdoc/implementing-server-plugins.xml"
+                              "librygel-server/gtkdoc/implementing-servers.xml"
+                              "librygel-server/gtkdoc/librygel-server-docs.xml"
+                              "librygel-server/gtkdoc/overview.xml")
+                 (("http://docbook.sourceforge.net/release/xsl/current")
+                  (string-append (assoc-ref inputs "docbook-xsl")
+                                 "/xml/xsl/docbook-xsl-"
+                                 ,(package-version docbook-xsl)))
+                 (("http://www.oasis-open.org/docbook/xml/4.3/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.3")
+                                 "/xml/dtd/docbook/"))
+                 (("http://www.oasis-open.org/docbook/xml/4.5/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
-     `(("gettext" ,gettext-minimal)
+     `(("docbook-xml" ,docbook-xml)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("gtk-doc" ,gtk-doc)
        ("pkg-config" ,pkg-config)
-       ("vala" ,vala)))
+       ("python" ,python-wrapper)
+       ("vala" ,vala)
+       ("xsltproc" ,libxslt)))
     (inputs
-     `(("gdk-pixbuf" ,gdk-pixbuf)
+     `(("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("gssdp" ,gssdp)
-       ("gstreamer" ,gstreamer)
+       ("gst-libav" ,gst-libav)
+       ("gst-plugins-bad" ,gst-plugins-bad)
        ("gst-plugins-base" ,gst-plugins-base)
+       ("gst-plugins-good" ,gst-plugins-good)
+       ("gst-plugins-ugly" ,gst-plugins-ugly)
        ("gtk+" ,gtk+)
        ("gupnp" ,gupnp)
-       ("gupnp-av" ,gupnp-av)
        ("gupnp-dlna" ,gupnp-dlna)
-       ("libgee" ,libgee)
        ("libmediaart" ,libmediaart)
        ("libsoup" ,libsoup)
-       ("libxslt" ,libxslt)
-       ("libunistring" ,libunistring)
-       ("tracker" ,tracker)))
-    (synopsis "Share audio, video, and pictures with other devices")
-    (description
-     "Rygel is a home media solution (@dfn{UPnP AV MediaServer and
-MediaRenderer}) for GNOME that allows you to easily share audio, video, and
-pictures, and to control a media player on your home network.
-
-Rygel achieves interoperability with other devices by trying to conform to the
-strict requirements of DLNA and by converting media on-the-fly to formats that
-client devices can handle.")
+       ("libxml2" ,libxml2)
+       ("shared-mime-info" ,shared-mime-info)
+       ("sqlite" ,sqlite)
+       ("tracker" ,tracker)
+       ("unistring" ,libunistring)))
+    (propagated-inputs
+     `(("gee" ,libgee)
+       ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gstreamer" ,gstreamer)
+       ("gupnp-av" ,gupnp-av)))
+    (synopsis "Home media solution")
+    (description "Rygel is a UPnP AV MediaServer that allows you to easily share
+audio, video and pictures to other devices.  Additionally, media player software
+may use Rygel to become a MediaRenderer that may be controlled remotely by a
+UPnP or DLNA Controller.")
     (home-page "https://wiki.gnome.org/Projects/Rygel")
-    (license (list
-              ;; For logo (data/icons/*).
-              license:cc-by-sa3.0
-              ;; For all others.
-              license:lgpl2.1+))))
+    (license
+     (list
+      ;; Logo
+      license:cc-by-sa3.0
+      ;; Others
+      license:lgpl2.1+))))
 
 (define-public libnma
   (package
