@@ -757,38 +757,75 @@ Python.")
 (define-public wayland
   (package
     (name "wayland")
-    (version "1.17.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://wayland.freedesktop.org/releases/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "194ibzwpdcn6fvk4xngr4bf5axpciwg2bj82fdvz88kfmjw13akj"))))
-    (build-system gnu-build-system)
+    (version "1.18.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://wayland.freedesktop.org/releases/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "0k995rn96xkplrapz5k648j651wc43kq817xk1x8280h16gsfxa6"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:parallel-tests? #f))
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* '("man/wl_display_connect.xml"
+                              "publican/sources/Architecture.xml"
+                              "publican/sources/Author_Group.xml"
+                              "publican/sources/Book_Info.xml"
+                              "publican/sources/Client.xml"
+                              "publican/sources/Compositors.xml"
+                              "publican/sources/Foreword.xml"
+                              "publican/sources/Introduction.xml"
+                              "publican/sources/Preface.xml"
+                              "publican/sources/Protocol.xml"
+                              "publican/sources/Server.xml"
+                              "publican/sources/Wayland.xml"
+                              "publican/sources/Xwayland.xml")
+                 (("http://www.oasis-open.org/docbook/xml/4.5/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))
+                 (("http://www.oasis-open.org/docbook/xml/4.2/")
+                  (string-append (assoc-ref inputs "docbook-xml-4.2")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/doc")
+                (string-append doc "/share/doc"))
+               #t))))))
     (native-inputs
-     `(("doxygen" ,doxygen)
-       ("graphviz" ,graphviz)
+     `(("docbook-xml-4.2" ,docbook-xml-4.2)
+       ("docbook-xml" ,docbook-xml)
+       ("docbook-xsl" ,docbook-xsl)
+       ("dot" ,graphviz)
+       ("doxygen" ,doxygen)
        ("pkg-config" ,pkg-config)
        ("xmlto" ,xmlto)
        ("xsltproc" ,libxslt)))
     (inputs
-     `(("docbook-xml" ,docbook-xml)
-       ("docbook-xsl" ,docbook-xsl)
-       ("expat" ,expat)
-       ("libffi" ,libffi)
-       ("libxml2" ,libxml2))) ; for XML_CATALOG_FILES
+     `(("expat" ,expat)
+       ("libxml2" ,libxml2)))
+    (propagated-inputs
+     `(("libffi" ,libffi)))
+    (synopsis "Core Wayland window system code and protocol")
+    (description "Wayland is a project to define a protocol for a compositor to
+talk to its clients as well as a library implementation of the protocol.  The
+compositor can be a standalone display server running on Linux kernel
+modesetting and evdev input devices, an X application, or a wayland client
+itself.  The clients can be traditional applications, X servers (rootless or
+fullscreen) or other display servers.")
     (home-page "https://wayland.freedesktop.org/")
-    (synopsis "Display server protocol")
-    (description
-     "Wayland is a protocol for a compositor to talk to its clients as well as
-a C library implementation of that protocol.  The compositor can be a standalone
-display server running on Linux kernel modesetting and evdev input devices, an X
-application, or a wayland client itself.  The clients can be traditional
-applications, X servers (rootless or fullscreen) or other display servers.")
-    (license license:x11)))
+    (license license:expat)))
 
 (define-public wayland-protocols
   (package
