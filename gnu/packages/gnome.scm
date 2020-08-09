@@ -7017,103 +7017,113 @@ Grilo's API for various multimedia content providers.")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://gnome/sources/totem/"
-                           (version-major+minor version) "/"
-                           "totem-" version ".tar.xz"))
+       (uri
+        (string-append "mirror://gnome/sources/totem/"
+                       (version-major+minor version) "/"
+                       "totem-" version ".tar.xz"))
        (sha256
-        (base32
-         "028sc6xbyi7rs884862d8f3di6zhcm0lhvlpc3r69ifzjsq9my3b"))))
+        (base32 "028sc6xbyi7rs884862d8f3di6zhcm0lhvlpc3r69ifzjsq9my3b"))))
     (build-system meson-build-system)
+    (outputs '("out" "help" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
+       (list
+        "-Denable-easy-codec-installation=no" ; Not required in Guix
+        "-Dwith-plugins=all"
+        "-Denable-gtk-doc=true")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "docs/reference"
+               (substitute* "totem-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.5/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson_post_install.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t)))
+         (add-after 'move-doc 'move-help
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (help (assoc-ref outputs "help")))
+               (mkdir-p (string-append help "/share"))
+               (rename-file
+                (string-append out "/share/help")
+                (string-append help "/share/help"))
+               #t)))
+         (add-after 'move-help 'wrap-totem
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (gst-plugin-path (getenv "GST_PLUGIN_SYSTEM_PATH"))
+                    (grl-plugin-path (getenv "GRL_PLUGIN_PATH")))
+               (wrap-program (string-append out "/bin/totem")
+                 `("GST_PLUGIN_SYSTEM_PATH" ":" prefix (,gst-plugin-path))
+                 `("GRL_PLUGIN_PATH" ":" prefix (,grl-plugin-path)))
+               (wrap-program (string-append out "/bin/totem-video-thumbnailer")
+                 `("GST_PLUGIN_SYSTEM_PATH" ":" prefix (,gst-plugin-path))))
+             #t)))))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("desktop-file-utils" ,desktop-file-utils)
+     `(("desktop-file-utils" ,desktop-file-utils)
+       ("docbook-xml" ,docbook-xml)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("glib:bin" ,glib "bin")                   ;for 'glib-mkenums'
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)
        ("xmllint" ,libxml2)
        ("xorg-server" ,xorg-server-for-tests)))
-    (propagated-inputs
-     `(("dconf" ,dconf)))
     (inputs
-     `(("gtk+" ,gtk+)
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("atk" ,atk)
-       ("cairo" ,cairo)
-       ("dbus-glib" ,dbus-glib)
+     `(("cairo" ,cairo)
        ("clutter" ,clutter)
        ("clutter-gtk" ,clutter-gtk)
        ("clutter-gst" ,clutter-gst)
-       ("xorgproto" ,xorgproto)
-       ("libxxf86vm" ,libxxf86vm)
-       ("libxtst" ,libxtst)
-       ("libxrandr" ,libxrandr)
-       ("libxml2" ,libxml2)
-       ("libsoup" ,libsoup)
-       ("libpeas" ,libpeas)
-       ("librsvg" ,librsvg)
-       ("lirc" ,lirc)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("gnome-desktop" ,gnome-desktop)
+       ("grilo" ,grilo)
+       ("grilo-plugins" ,grilo-plugins)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)
        ("gst-plugins-good" ,gst-plugins-good)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("adwaita-icon-theme" ,adwaita-icon-theme)
-       ("python" ,python)
-       ("python-pygobject" ,python-pygobject)
-       ("totem-pl-parser" ,totem-pl-parser)
-       ("grilo" ,grilo)
-       ("grilo-plugins" ,grilo-plugins)
-       ("vala" ,vala)))
-    (arguments
-     `(#:glib-or-gtk? #t
-
-       ;; Disable automatic GStreamer plugin installation via PackageKit and
-       ;; all that.
-       #:configure-flags '("-D" "enable-easy-codec-installation=no"
-
-                           ;; Do not build .a files for the plugins, it's
-                           ;; completely useless.  This saves 2 MiB.
-                           "--default-library" "shared")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'skip-gtk-update-icon-cache
-           ;; Don't create 'icon-theme.cache'.
-           (lambda _
-             (substitute* "meson_post_install.py"
-               (("gtk-update-icon-cache") "true"))
-             #t))
-         (add-before
-          'install 'disable-cache-generation
-          (lambda _
-            (setenv "DESTDIR" "/")
-            #t))
-         (add-before
-          'check 'pre-check
-          (lambda _
-            ;; Tests require a running X server.
-            (system "Xvfb :1 &")
-            (setenv "DISPLAY" ":1")
-            #t))
-         (add-after
-          'install 'wrap-totem
-          (lambda* (#:key inputs outputs #:allow-other-keys)
-            (let ((out             (assoc-ref outputs "out"))
-                  (gst-plugin-path (getenv "GST_PLUGIN_SYSTEM_PATH"))
-                  (grl-plugin-path (getenv "GRL_PLUGIN_PATH")))
-              (wrap-program (string-append out "/bin/totem")
-                `("GST_PLUGIN_SYSTEM_PATH" ":" prefix (,gst-plugin-path))
-                `("GRL_PLUGIN_PATH"        ":" prefix (,grl-plugin-path)))
-              (wrap-program (string-append out "/bin/totem-video-thumbnailer")
-                `("GST_PLUGIN_SYSTEM_PATH" ":" prefix (,gst-plugin-path))))
-            #t)))))
+       ("libpeas" ,libpeas)
+       ("pygobject" ,python-pygobject)
+       ("python" ,python)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+)
+       ("totem-pl-parser" ,totem-pl-parser)))
+    (synopsis "Movie player")
+    (description "Totem is movie player for the GNOME desktop based on
+GStreamer.  It features a playlist, a full-screen mode, seek and volume controls,
+as well as complete keyboard navigation.  Apart from a movie player, it also
+includes a video thumbnailer.")
     (home-page "https://wiki.gnome.org/Apps/Videos")
-    (synopsis "Simple media player for GNOME based on GStreamer")
-    (description "Totem is a simple yet featureful media player for GNOME
-which can read a large number of file formats.")
-    ;; GPL2+ with an exception clause for non-GPL compatible GStreamer plugins
-    ;; to be used and distributed together with GStreamer and Totem.  See
-    ;; file://COPYING in the source distribution for details.
+    ;; With added exception clause.
     (license license:gpl2+)))
 
 (define-public rhythmbox
