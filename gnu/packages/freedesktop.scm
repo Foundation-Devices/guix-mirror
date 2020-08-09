@@ -830,22 +830,26 @@ fullscreen) or other display servers.")
 (define-public wayland-protocols
   (package
     (name "wayland-protocols")
-    (version "1.18")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://wayland.freedesktop.org/releases/"
-                    "wayland-protocols-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1cvl93h83ymbfhb567jv5gzyq08181w7c46rsw4xqqqpcvkvfwrx"))))
+    (version "1.20")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://wayland.freedesktop.org/releases/"
+         "wayland-protocols-" version ".tar.xz"))
+       (sha256
+        (base32 "1rsdgvkkvxs3cjhpl6agvbkm53vm7k8rg127j9y2vn33m2hvg0lp"))))
     (build-system gnu-build-system)
-    (inputs
-     `(("wayland" ,wayland)))
     (native-inputs
      `(("pkg-config" ,pkg-config)))
+    (inputs
+     `(("wayland" ,wayland)))
     (synopsis "Wayland protocols")
-    (description "This package contains XML definitions of the Wayland protocols.")
+    (description "Wayland-Protocols contains Wayland protocols that add
+functionality not available in the Wayland core protocol.  Such protocols either
+add completely new functionality, or extend the functionality of some other
+protocol either in Wayland core, or some other protocol in wayland-protocols.")
     (home-page "https://wayland.freedesktop.org")
     (license license:expat)))
 
