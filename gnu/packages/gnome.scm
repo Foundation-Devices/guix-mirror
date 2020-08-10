@@ -119,6 +119,7 @@
   #:use-module (gnu packages gnuzilla)
   #:use-module (gnu packages geo)
   #:use-module (gnu packages gperf)
+  #:use-module (gnu packages graphics)
   #:use-module (gnu packages graphviz)
   #:use-module (gnu packages gsasl)
   #:use-module (gnu packages gstreamer)
@@ -8449,114 +8450,138 @@ in commandline and shell scripts.")
 (define-public mutter
   (package
     (name "mutter")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0b8bz5kvs7rlwvqsg87cf6jhrrj95vgd1l235mjx8rip35ipfvrd"))))
-    ;; NOTE: Since version 3.21.x, mutter now bundles and exports forked
-    ;; versions of cogl and clutter.  As a result, many of the inputs,
-    ;; propagated-inputs, and configure flags used in cogl and clutter are
-    ;; needed here as well.
+    (version "3.36.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1py7sqrpvg2qvswxclshysx7hd9jk65i6cwqsagd6rg6rnjhblp0"))))
     (build-system meson-build-system)
     (arguments
-     '(;; XXX: All mutter tests fail with the following error:
-       ;;   Settings schema 'org.gnome.mutter' is not installed
-       #:tests? #f
-       #:glib-or-gtk? #t
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       ;; TODO: Enable profiler when Sysprof is packaged.
-       (list "-Dprofiler=false"
-             ;; Otherwise, the RUNPATH will lack the final path component.
-             (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out") "/lib:"
-                            (assoc-ref %outputs "out") "/lib/mutter-5")
-
-             ;; The following flags are needed for the bundled clutter
-             (string-append "-Dxwayland_path="
-                            (assoc-ref %build-inputs "xorg-server-xwayland")
-                            "/bin/Xwayland")
-
-             ;; the remaining flags are needed for the bundled cogl
-             (string-append "-Dopengl_libname="
-                            (assoc-ref %build-inputs "mesa")
-                            "/lib/libGL.so"))
-       #:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'fix-build-with-mesa-20
-                    (lambda _
-                      ;; Mimic upstream commit a444a4c5f58ea516ad for
-                      ;; compatibility with Mesa 20.  Remove for 3.36.
-                      (substitute* '("src/backends/meta-egl-ext.h"
-                                     "src/backends/meta-egl.c"
-                                     "src/backends/meta-egl.h")
-                        (("#include <EGL/eglext\\.h>" all)
-                         (string-append all "\n#include <EGL/eglmesaext.h>")))
-                      (substitute* "cogl/cogl/meson.build"
-                        (("#include <EGL/eglext\\.h>" all)
-                         (string-append all "\\n#include <EGL/eglmesaext.h>")))
-                      #t)))))
+       (list
+        (string-append "-Dopengl_libname="
+                       (assoc-ref %build-inputs "mesa")
+                       "/lib/libGL.so")
+        (string-append "-Dgles2_libname="
+                       (assoc-ref %build-inputs "mesa")
+                       "/lib/libGLESv2.so")
+        "-Degl_device=true"
+        "-Dwayland_eglstream=true"
+        "-Dinstalled_tests=false"
+        (string-append "-Dxwayland_path="
+                       (assoc-ref %build-inputs "xorg-server-xwayland")
+                       "/bin/Xwayland")
+        "-Dxwayland_grab_default_access_rules=gnome-boxes"
+        ;; Otherwise, the RUNPATH will lack the final path component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib"
+                       ":"
+                       (assoc-ref %outputs "out")
+                       "/lib/mutter-6"))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'check)
+         (add-after 'install 'custom-check
+           (lambda _
+             ;; Tests require a running X server.
+             (system "Xvfb :1 +extension GLX &")
+             (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests look for $XDG_RUNTIME_DIR.
+             (setenv "XDG_RUNTIME_DIR" (getcwd))
+             ;; Tests look for $XDG_DATA_DIRS.
+             (setenv "XDG_DATA_DIRS"
+                     (string-append (getenv "XDG_DATA_DIRS")
+                                    ":"
+                                    (assoc-ref %outputs "out")
+                                    "/share"))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             ;; Tests look for cursors.
+             (setenv "XCURSOR_PATH"
+                     (string-append (assoc-ref %build-inputs "adwaita-icon-theme")
+                                    "/share/icons"))
+             (invoke "dbus-launch" "ninja" "test")
+             #t)))))
     (native-inputs
-     `(("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
-       ("glib:bin" ,glib "bin") ; for glib-compile-schemas, etc.
+     `(("adwaita-icon-theme" ,adwaita-icon-theme)
+       ("desktop-file-utils" ,desktop-file-utils)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("xorg-server" ,xorg-server-for-tests)
-       ;; For git build
-       ("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("libtool" ,libtool)))
-    (propagated-inputs
-     `(;; libmutter.pc refers to these:
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("gtk+" ,gtk+)
-       ;; mutter-clutter-1.0.pc and mutter-cogl-1.0.pc refer to these:
-       ("atk" ,atk)
-       ("cairo" ,cairo)
-       ("gdk-pixbuf" ,gdk-pixbuf)
-       ("glib" ,glib)
-       ("json-glib" ,json-glib)
-       ("libinput" ,libinput)
-       ("libx11" ,libx11)
-       ("libxcomposite" ,libxcomposite)
-       ("libxdamage" ,libxdamage)
-       ("libxext" ,libxext)
-       ("libxfixes" ,libxfixes)
-       ("libxkbcommon" ,libxkbcommon)
-       ("libxrandr" ,libxrandr)
-       ("mesa" ,mesa)
-       ("pango" ,pango)
-       ("udev" ,eudev)
-       ("xinput" ,xinput)))
+       ("python" ,python-wrapper)
+       ("ruby" ,ruby)
+       ("xorg-server" ,xorg-server-for-tests)))
     (inputs
-     `(("elogind" ,elogind)
+     `(("dbus" ,dbus)
+       ("freetype" ,freetype)
+       ("fribidi" ,fribidi)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("gnome-desktop" ,gnome-desktop)
        ("gnome-settings-daemon" ,gnome-settings-daemon)
-       ("libcanberra-gtk" ,libcanberra)
-       ("libgudev" ,libgudev)
-       ("libice" ,libice)
-       ("libsm" ,libsm)
+       ("gudev" ,libgudev)
+       ("ice" ,libice)
+       ("libcanberra" ,libcanberra)
+       ("libdrm" ,libdrm)
+       ("libelogind" ,elogind)
+       ("libinput" ,libinput)
+       ("libpipewire" ,pipewire)
+       ("libstartup-notification" ,startup-notification)
+       ("libudev" ,eudev)
        ("libwacom" ,libwacom)
-       ("libxkbfile" ,libxkbfile)
-       ("libxrandr" ,libxrandr)
-       ("libxtst" ,libxtst)
-       ("pipewire" ,pipewire)
-       ("startup-notification" ,startup-notification)
-       ("upower-glib" ,upower)
+       ("sm" ,libsm)
+       ("sysprof" ,sysprof)
+       ("upower" ,upower)
+       ("wayland-eglstream-protocols" ,egl-wayland)
+       ("wayland-protocols" ,wayland-protocols)
+       ("xau" ,libxau)
+       ("xcb" ,libxcb)
+       ("xcomposite" ,libxcomposite)
+       ("xcursor" ,libxcursor)
+       ("xdamage" ,libxdamage)
+       ("xext" ,libxext)
+       ("xinerama" ,libxinerama)
+       ("xkbcommon" ,libxkbcommon)
+       ("xkbfile" ,libxkbfile)
        ("xkeyboard-config" ,xkeyboard-config)
        ("xorg-server-xwayland" ,xorg-server-xwayland)
-       ("zenity" ,zenity)))
-    (synopsis "Window and compositing manager")
-    (home-page "https://www.gnome.org")
-    (description
-     "Mutter is a window and compositing manager that displays and manages your
-desktop via OpenGL.  Mutter combines a sophisticated display engine using the
-Clutter toolkit with solid window-management logic inherited from the Metacity
-window manager.")
+       ("xrandr" ,libxrandr)
+       ("xrender" ,libxrender)
+       ("xtst" ,libxtst)))
+    (propagated-inputs
+     `(("atk" ,atk)
+       ("cairo" ,cairo)
+       ("glib" ,glib)
+       ("graphene" ,graphene)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk+" ,gtk+)
+       ("json-glib" ,json-glib)
+       ("mesa" ,mesa)
+       ("pango" ,pango)
+       ("wayland" ,wayland)
+       ("x11" ,libx11)
+       ("xfixes" ,libxfixes)
+       ("xi" ,libxi)))
+    (synopsis "Wayland display server and X11 window manager and compositor library")
+    (description "Mutter, when used as a Wayland display server, it runs on top
+of KMS and libinput.  It implements the compositor side of the Wayland core
+protocol as well as various protocol extensions.  It also has functionality
+related to running X11 applications using Xwayland.
+Mutter, when used on top of Xorg, it acts as a X11 window manager and
+compositing manager.
+Mutter contains functionality related to, among other things, window management,
+window compositing, focus tracking, workspace management, keybindings and
+monitor configuration.")
+    (home-page "https://wiki.gnome.org/Projects/Mutter")
     (license license:gpl2+)))
 
 (define-public gnome-online-accounts
