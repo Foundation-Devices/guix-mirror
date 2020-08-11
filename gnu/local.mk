@@ -1010,7 +1010,6 @@ dist_patch_DATA =						\
   %D%/packages/patches/gd-fix-tests-on-i686.patch		\
   %D%/packages/patches/gd-brect-bounds.patch			\
   %D%/packages/patches/gdb-hurd.patch				\
-  %D%/packages/patches/gdm-default-session.patch		\
   %D%/packages/patches/gegl-mrg.patch			\
   %D%/packages/patches/geoclue-config.patch			\
   %D%/packages/patches/ghc-8.0-fall-back-to-madv_dontneed.patch	\

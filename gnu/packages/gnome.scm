@@ -93,6 +93,7 @@
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpio)
   #:use-module (gnu packages crates-io)
+  #:use-module (gnu packages crypto)
   #:use-module (gnu packages cups)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages cyrus-sasl)
@@ -9373,172 +9374,69 @@ libxml2.")
 (define-public gdm
   (package
     (name "gdm")
-    (version "3.34.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1lyqvcwxhwxklbxn4xjswjzr6fhjix6h28mi9ypn34wdm9bzcpg8"))
-              (patches (search-patches "gdm-default-session.patch"))))
+    (version "3.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "10byz8jwqv1qpvjj8wd36vfb8pbh9g7pchsc1gbwplf0rchbdyrv"))))
     (build-system glib-or-gtk-build-system)
+    (outputs '("out" "help"))
     (arguments
-     '(#:configure-flags
-       `("--without-plymouth"
-         "--disable-systemd-journal"
-
-         ;; Using --with-initial-vt=7 allows GDM to run alongside TTY 1,
-         ;; instead of having to replace it (i.e., stopping the mingetty
-         ;; service for TTY 1 before starting GDM).
-         "--with-initial-vt=7"
-
-         ;; Use '/etc/environment' for locale settings instead of the
-         ;; systemd-specific '/etc/locale.conf'.
-         "--with-lang-file=/etc/environment"
-
-         ,(string-append "--with-udevdir="
-                         (assoc-ref %outputs "out") "/lib/udev")
-
-         "--localstatedir=/var"
-         ,(string-append "--with-default-path="
-                         (string-join '("/run/setuid-programs"
-                                        "/run/current-system/profile/bin"
-                                        "/run/current-system/profile/sbin")
-                                      ":"))
-         ;; Put GDM in bindir so that glib-or-gtk-build-system wraps the
-         ;; XDG_DATA_DIRS so that it finds its schemas.
-         "--sbindir" ,(string-append (assoc-ref %outputs "out") "/bin"))
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-gdm-xsession"
+        "--disable-systemd-journal"
+        "--enable-ipv6"
+        (string-append "--with-help-dir="
+                       (assoc-ref %outputs "help")
+                       "/share/help")
+        (string-append "--with-udevdir="
+                       (assoc-ref %outputs "out")
+                       "/lib/udev")
+        (string-append "--with-systemdsystemunitdir="
+                       (getcwd))
+        (string-append "--with-default-path="
+                       "/run/setuid-programs"
+                       ":"
+                       "/run/current-system/profile/bin"
+                       ":"
+                       "/run/current-system/profile/sbin")
+        "--with-lang-file=/etc/environment"
+        "--with-xevie"
+        "--with-initial-vt=7")
        #:phases
        (modify-phases %standard-phases
-         (add-before
-          'configure 'pre-configure
-          (lambda* (#:key inputs outputs #:allow-other-keys)
-            ;; We don't have <systemd/sd-daemon.h>.
-            (substitute* '("common/gdm-log.c"
-                           "daemon/gdm-server.c"
-                           "daemon/gdm-session-worker.c"
-                           "daemon/gdm-session-worker-job.c")
-              (("#include <systemd/sd-daemon\\.h>") ""))
-            ;; Use elogind for sd-login.
-            (substitute* '("common/gdm-common.c"
-                           "daemon/gdm-local-display-factory.c"
-                           "daemon/gdm-manager.c"
-                           "libgdm/gdm-user-switching.c")
-              (("#include <systemd/sd-login\\.h>")
-               "#include <elogind/sd-login.h>"))
-            ;; Check for elogind.
-            (substitute* '("configure")
-              (("libsystemd")
-               "libelogind"))
-            ;; Look for system-installed sessions in
-            ;; /run/current-system/profile/share.
-            (substitute* '("libgdm/gdm-sessions.c"
-                           "daemon/gdm-session.c"
-                           "daemon/gdm-display.c"
-                           "daemon/gdm-launch-environment.c")
-              (("DATADIR \"/x")
-               "\"/run/current-system/profile/share/x")
-              (("DATADIR \"/wayland")
-               "\"/run/current-system/profile/share/wayland")
-              (("DATADIR \"/gnome")
-               "\"/run/current-system/profile/share/gnome"))
-            (let ((propagate '("GDM_CUSTOM_CONF"
-                               "GDM_DBUS_DAEMON"
-                               "GDM_X_SERVER"
-                               "GDM_X_SESSION"
-                               ;; XXX: Remove this once GNOME Shell is
-                               ;; a dependency of GDM.
-                               "XDG_DATA_DIRS")))
-              (substitute* "daemon/gdm-session.c"
-                (("set_up_session_environment \\(self\\);")
-                 (apply string-append
-                        "set_up_session_environment (self);\n"
-                        (map (lambda (name)
-                               (string-append
-                                "gdm_session_set_environment_variable "
-                                "(self, \"" name "\","
-                                "g_getenv (\"" name "\"));\n"))
-                             propagate)))))
-            ;; Find the configuration file using an environment variable.
-            (substitute* '("common/gdm-settings.c")
-              (("GDM_CUSTOM_CONF")
-               (string-append "(g_getenv(\"GDM_CUSTOM_CONF\") != NULL"
-                              " ? g_getenv(\"GDM_CUSTOM_CONF\")"
-                              " : GDM_CUSTOM_CONF)")))
-            ;; Use service-supplied path to X.
-            (substitute* '("daemon/gdm-server.c")
-              (("\\(X_SERVER X_SERVER_ARG_FORMAT")
-               "(\"%s\" X_SERVER_ARG_FORMAT, g_getenv (\"GDM_X_SERVER\")"))
-            (substitute* '("daemon/gdm-wayland-session.c"
-                           "daemon/gdm-x-session.c")
-              (("\"dbus-daemon\"")
-               "g_getenv (\"GDM_DBUS_DAEMON\")")
-              (("X_SERVER")
-               "g_getenv (\"GDM_X_SERVER\")")
-              (("GDMCONFDIR \"/Xsession\"")
-               "g_getenv (\"GDM_X_SESSION\")"))
-            ;; Use an absolute path for GNOME Session.
-            (substitute* "daemon/gdm-launch-environment.c"
-              (("\"gnome-session\"")
-               (string-append "\"" (assoc-ref inputs "gnome-session")
-                              "/bin/gnome-session\"")))
-            ;; Do not automatically select the placeholder session.
-            (substitute* "daemon/gdm-session.c"
-              (("!g_str_has_suffix [(]base_name, \"\\.desktop\"[)]")
-               (string-append "!g_str_has_suffix (base_name, \".desktop\") || "
-                              "(g_strcmp0(search_dirs[i], \""
-                              (assoc-ref outputs "out") "/share/gdm/BuiltInSessions/"
-                              "\") == 0 && "
-                              "g_strcmp0(base_name, \"fail.desktop\") == 0)"))
-              (("g_error [(]\"GdmSession: no session desktop files installed, aborting\\.\\.\\.\"[)];")
-               "{ self->fallback_session_name = g_strdup(\"fail\"); goto out; }"))
-            #t))
-         ;; GDM requires that there be at least one desktop entry
-         ;; file.  This phase installs a hidden one that simply
-         ;; fails.  This enables users to use GDM with a
-         ;; '~/.xsession' script with no other desktop entry files.
-         ;; See <https://bugs.gnu.org/35068>.
-         (add-after 'install 'install-placeholder-desktop-entry
+         (add-before 'configure 'pre-configure
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (sessions (string-append out "/share/gdm/BuiltInSessions"))
-                    (fail (string-append sessions "/fail.desktop")))
-               (mkdir-p sessions)
-               (with-output-to-file fail
-                 (lambda ()
-                   (for-each
-                    display
-                    '("[Desktop Entry]\n"
-                      "Encoding=UTF-8\n"
-                      "Type=Application\n"
-                      "Name=Fail\n"
-                      "Comment=This session fails immediately.\n"
-                      "NoDisplay=true\n"
-                      "Exec=false\n"))))
-               #t)))
-         ;; GDM needs GNOME Session to run these applications.  We link
-         ;; their autostart files in `share/gdm/greeter/autostart'
-         ;; because GDM explicitly tells GNOME Session to look there.
-         ;;
-         ;; XXX: GNOME Shell should be linked here too, but currently
-         ;; GNOME Shell depends on GDM.
-         (add-after 'install 'link-autostart-files
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (autostart (string-append out "/share/gdm/"
-                                              "greeter/autostart"))
-                    (settings (assoc-ref inputs "gnome-settings-daemon")))
-               (mkdir-p autostart)
-               (with-directory-excursion autostart
-                 (for-each (lambda (desktop)
-                             (symlink desktop (basename desktop)))
-                           (find-files (string-append settings "/etc/xdg"))))
-               #t))))))
+             ;; We don't have <systemd/sd-daemon.h>.
+             (substitute* '("common/gdm-log.c"
+                            "daemon/gdm-server.c"
+                            "daemon/gdm-session-worker.c"
+                            "daemon/gdm-session-worker-job.c")
+               (("#include <systemd/sd-daemon\\.h>")
+                ""))
+             ;; Use elogind for sd-login.
+             (substitute* '("common/gdm-common.c"
+                            "daemon/gdm-local-display-factory.c"
+                            "daemon/gdm-manager.c"
+                            "libgdm/gdm-user-switching.c")
+               (("#include <systemd/sd-login\\.h>")
+                "#include <elogind/sd-login.h>"))
+             ;; Check for elogind.
+             (substitute* '("configure")
+               (("libsystemd")
+                "libelogind"))
+             #t)))))
     (native-inputs
-     `(("dconf" ,dconf)
-       ("glib:bin" ,glib "bin") ; for glib-compile-schemas, etc.
+     `(("check" ,check)
+       ("dconf" ,dconf)
+       ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
        ("itstool" ,itstool)
@@ -9546,19 +9444,30 @@ libxml2.")
        ("xmllint" ,libxml2)))
     (inputs
      `(("accountsservice" ,accountsservice)
-       ("check" ,check) ; for testing
        ("elogind" ,elogind)
+       ("glib" ,glib)
        ("gnome-session" ,gnome-session)
        ("gnome-settings-daemon" ,gnome-settings-daemon)
        ("gtk+" ,gtk+)
+       ("ice" ,libice)
        ("iso-codes" ,iso-codes)
+       ("libaudit" ,audit)
        ("libcanberra" ,libcanberra)
-       ("linux-pam" ,linux-pam)))
-    (synopsis "Display manager for GNOME")
+       ("libkeyutils" ,keyutils)
+       ("libselinux" ,libselinux)
+       ("linux-pam" ,linux-pam)
+       ("plymouth" ,plymouth)
+       ("tcp-wrappers" ,tcp-wrappers)
+       ("x11" ,libx11)
+       ("xau" ,libxau)
+       ("xcb" ,libxcb)
+       ("xdmcp" ,libxdmcp)
+       ("xext" ,libxext)
+       ("xinerama" ,libxinerama)))
+    (synopsis "GNOME Display Manager")
+    (description "GDM is a program that manages graphical display servers and
+handles graphical user logins.")
     (home-page "https://wiki.gnome.org/Projects/GDM/")
-    (description
-     "GNOME Display Manager is a system service that is responsible for
-providing graphical log-ins and managing local and remote displays.")
     (license license:gpl2+)))
 
 (define-public libgtop
