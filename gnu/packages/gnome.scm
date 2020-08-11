@@ -9719,162 +9719,154 @@ configuration of various aspects of your desktop.")
 (define-public gnome-shell
   (package
     (name "gnome-shell")
-    (version "3.34.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version) "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "0k9vq2gh1nhdd6fpp7jnwx37qxaakawiqw1xnlfjvq5g5zdn8ckh"))
-              (patches (search-patches "gnome-shell-theme.patch"
-                                       "gnome-shell-disable-test.patch"))
-              (modules '((guix build utils)))
-              (snippet
-               #~(begin
-                   ;; Copy images for use on the GDM log-in screen.
-                   (copy-file #$(file-append %artwork-repository
-                                             "/slim/0.x/background.png")
-                              "data/theme/guix-background.png")
-                   (copy-file #$(file-append %artwork-repository
-                                             "/logo/Guix-horizontal-white.svg")
-                              "data/theme/guix-logo.svg")
-                   #t))))
+    (version "3.36.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://gnome/sources/" name "/"
+                       (version-major+minor version) "/"
+                       name "-" version ".tar.xz"))
+       (sha256
+        (base32 "1hj7gmjmy92xndlgw7pzk5m6j2fbzcgfd1pxc32k38gml8qg19d4"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
-     `(#:glib-or-gtk? #t
-       #:disallowed-references ((,glib "bin")
-                                ,inkscape ,libxslt
-                                ,ruby-sass)
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
        #:configure-flags
-       (list "-Dsystemd=false"
-             ;; Otherwise, the RUNPATH will lack the final path component.
-             (string-append "-Dc_link_args=-Wl,-rpath="
-                            (assoc-ref %outputs "out")
-                            "/lib/gnome-shell"))
-
-       #:modules ((guix build meson-build-system)
-                  (guix build utils)
-                  (srfi srfi-1))
-
+       (list
+        "-Dgtk_doc=true"
+        "-Dsystemd=false"
+        ;; Otherwise, the RUNPATH will lack the final path component.
+        (string-append "-Dc_link_args=-Wl,-rpath="
+                       (assoc-ref %outputs "out")
+                       "/lib/gnome-shell"))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'fix-keysdir
+         (add-after 'unpack 'patch-docbook
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* '("man/gnome-shell.xml" "man/meson.build"
+                            "docs/reference/shell/shell-docs.sgml"
+                            "docs/reference/st/st-docs.sgml")
+               (("http://docbook.sourceforge.net/release/xsl/current")
+                (string-append (assoc-ref inputs "docbook-xsl")
+                               "/xml/xsl/docbook-xsl-"
+                               ,(package-version docbook-xsl)))
+               (("http://www.oasis-open.org/docbook/xml/4.3/")
+                (string-append (assoc-ref inputs "docbook-xml-4.3")
+                               "/xml/dtd/docbook/"))
+               (("http://www.oasis-open.org/docbook/xml/4.2/")
+                (string-append (assoc-ref inputs "docbook-xml-4.2")
+                               "/xml/dtd/docbook/")))
+             #t))
+         (add-after 'patch-docbook 'patch-install-paths
            (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out     (assoc-ref outputs "out"))
-                    (keysdir (string-append
-                              out "/share/gnome-control-center/keybindings")))
-               (substitute* "meson.build"
-                 (("keysdir =.*")
-                  (string-append "keysdir = '" keysdir "'\n")))
-               #t)))
-         (add-before 'configure 'convert-logo-to-png
-           (lambda* (#:key inputs #:allow-other-keys)
-             ;; Convert the logo from SVG to PNG.
-             (invoke "inkscape" "--export-png=data/theme/guix-logo.png"
-                     "data/theme/guix-logo.svg")))
-         (add-before 'configure 'record-absolute-file-names
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "js/misc/ibusManager.js"
-               (("'ibus-daemon'")
-                (string-append "'" (assoc-ref inputs "ibus")
-                               "/bin/ibus-daemon'")))
-             (substitute* "js/ui/status/keyboard.js"
-               (("'gkbd-keyboard-display'")
-                (string-append "'" (assoc-ref inputs "libgnomekbd")
-                               "/bin/gkbd-keyboard-display'")))
+             (substitute* '("src/meson.build" "src/st/meson.build"
+                            "subprojects/gvc/meson.build")
+               (("install_dir_gir: pkgdatadir,")
+                "install_dir_gir: join_paths(pkgdatadir, 'gir-1.0'),")
+               (("install_dir_typelib: pkglibdir,")
+                "install_dir_typelib: join_paths(pkglibdir, 'girepository-1.0'),"))
+             (substitute* "subprojects/extensions-tool/meson.build"
+               (("bash_completion\\.get_pkgconfig_variable\\('completionsdir'\\)")
+                (string-append "'"
+                               (assoc-ref outputs "out")
+                               "/share/bash-completion/completions"
+                               "'")))
              #t))
-         (add-before 'check 'pre-check
-           (lambda* (#:key inputs #:allow-other-keys)
+         (add-before 'configure 'skip-gtk-update-icon-cache
+           (lambda _
+             (substitute* "meson/postinstall.py"
+               (("gtk-update-icon-cache")
+                "true"))
+             #t))
+         (replace 'check
+           (lambda _
              ;; Tests require a running X server.
-             (system "Xvfb :1 &")
+             (system "Xvfb :1 +extension GLX &")
              (setenv "DISPLAY" ":1")
+             ;; Tests write to $HOME.
+             (setenv "HOME" (getcwd))
+             ;; Tests look for $XDG_RUNTIME_DIR.
+             (setenv "XDG_RUNTIME_DIR" (getcwd))
+             ;; For missing '/etc/machine-id'.
+             (setenv "DBUS_FATAL_WARNINGS" "0")
+             (invoke "dbus-launch" "ninja" "test")
              #t))
-         (add-after 'install 'wrap-programs
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out              (assoc-ref outputs "out"))
-                   (gi-typelib-path  (getenv "GI_TYPELIB_PATH"))
-                   (python-path      (getenv "PYTHONPATH")))
-               (wrap-program (string-append out "/bin/gnome-shell")
-                 `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))
-                 ;; FIXME: gnome-shell loads these libraries with unqualified
-                 ;; names only, so they need to be on LD_LIBRARY_PATH.  The
-                 ;; alternative might be to patch gnome-shell.
-                 `("LD_LIBRARY_PATH" ":" prefix
-                   ,(map (lambda (pkg)
-                           (string-append (assoc-ref inputs pkg) "/lib"))
-                         '("gdk-pixbuf"
-                           "gnome-bluetooth" "librsvg" "libgweather"))))
-               (for-each
-                (lambda (prog)
-                  (wrap-program (string-append out "/bin/" prog)
-                    `("PYTHONPATH"      ":" prefix (,python-path))
-                    `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))))
-                '("gnome-shell-extension-tool" "gnome-shell-perf-tool"))
-               #t)))
-         (replace 'glib-or-gtk-wrap
-           (let ((wrap (assoc-ref %standard-phases 'glib-or-gtk-wrap)))
-             (lambda* (#:key inputs outputs #:allow-other-keys #:rest rest)
-               ;; By default Inkscape et al. would end up in the XDG_DATA_DIRS
-               ;; settings of the wrappers created by the 'glib-or-gtk-wrap'
-               ;; phase.  Fix that since we don't need these.
-               (wrap #:inputs (fold alist-delete inputs
-                                    '("inkscape" "intltool" "glib:bin"))
-                     #:outputs outputs)))))))
+         (add-before 'install 'no-meson-shenanigan
+           ;; Meson automagically invokes pkexec,
+           ;; which fails without setuid root.
+           (lambda _
+             (setenv "PKEXEC_UID" "whatever")
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
     (native-inputs
      `(("asciidoc" ,asciidoc)
-       ("glib:bin" ,glib "bin") ; for glib-compile-schemas, etc.
-       ("desktop-file-utils" ,desktop-file-utils) ; for update-desktop-database
+       ("dbus" ,dbus)
+       ("docbook-xml-4.2" ,docbook-xml-4.2)
+       ("docbook-xml-4.3" ,docbook-xml-4.3)
+       ("docbook-xsl" ,docbook-xsl)
+       ("glib:bin" ,glib "bin")
+       ("desktop-file-utils" ,desktop-file-utils)
        ("gobject-introspection" ,gobject-introspection)
-       ("inkscape" ,inkscape)
+       ("gtk-doc" ,gtk-doc)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
-       ("python" ,python)
-       ("ruby-sass" ,ruby-sass)
+       ("python" ,python-wrapper)
        ("sassc" ,sassc)
        ("xsltproc" ,libxslt)
-       ;; For tests
        ("xorg-server" ,xorg-server-for-tests)))
     (inputs
      `(("accountsservice" ,accountsservice)
-       ("caribou" ,caribou)
-       ("docbook-xsl" ,docbook-xsl)
+       ("appstream-util" ,appstream-glib)
+       ("atk-bridge" ,at-spi2-atk)
+       ("bash-completion" ,bash-completion)
+       ("clutter" ,clutter)
+       ("cogl" ,cogl)
        ("evolution-data-server" ,evolution-data-server)
        ("gcr" ,gcr)
        ("gdm" ,gdm)
        ("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("geoclue" ,geoclue)
        ("gjs" ,gjs)
+       ("glib" ,glib)
        ("gnome-autoar" ,gnome-autoar)
        ("gnome-bluetooth" ,gnome-bluetooth)
        ("gnome-desktop" ,gnome-desktop)
+       ("gnome-keybindings" ,gnome-control-center)
        ("gnome-settings-daemon" ,gnome-settings-daemon)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gstreamer" ,gstreamer)
        ("gst-plugins-base" ,gst-plugins-base)
+       ("gtk+" ,gtk+)
+       ("gweather" ,libgweather)
        ("ibus" ,ibus)
-       ("libcanberra" ,libcanberra)
-       ("libcroco" ,libcroco)
-       ("libgnomekbd" ,libgnomekbd)               ;for gkbd-keyboard-display
-       ("libgweather" ,libgweather)
-       ("libnma" ,libnma)
-       ("libsoup" ,libsoup)
-       ("mesa-headers" ,mesa-headers)
-       ("mutter" ,mutter)
-       ("network-manager-applet" ,network-manager-applet)
-       ("polkit" ,polkit)
-       ("pulseaudio" ,pulseaudio)
-       ("python-pygobject" ,python-pygobject)
-       ("startup-notification" ,startup-notification)
-       ("telepathy-logger" ,telepathy-logger)
-       ("upower" ,upower)
-       ;; XXX: These requirements were added in 3.24, but no mention in NEWS.
-       ;; Missing propagation? See also: <https://bugs.gnu.org/27264>
+       ("json-glib" ,json-glib)
+       ("libnm" ,network-manager)
+       ("libpulse" ,pulseaudio)
        ("librsvg" ,librsvg)
-       ("geoclue" ,geoclue)))
-    (synopsis "Desktop shell for GNOME")
+       ("libsecret" ,libsecret)
+       ("libstartup-notification" ,startup-notification)
+       ("libxml2" ,libxml2)
+       ("mutter" ,mutter)
+       ("pango" ,pango)
+       ("polkit-agent" ,polkit)
+       ("x11" ,libx11)))
+    (synopsis "Next generation desktop shell")
+    (description "GNOME-Shell provides core user interface functions for the
+GNOME desktop, like switching to windows and launching applications.  It takes
+advantage of the capabilities of modern graphics hardware and introduces
+innovative user interface concepts to provide a visually attractive and easy to
+use experience.")
     (home-page "https://wiki.gnome.org/Projects/GnomeShell")
-    (description
-     "GNOME Shell provides core user interface functions for the GNOME desktop,
-like switching to windows and launching applications.")
     (license license:gpl2+)))
 
 (define-public gtk-vnc
