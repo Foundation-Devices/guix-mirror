@@ -8216,7 +8216,7 @@ configuration program to choose applications starting on login.")
 (define-public gjs
   (package
     (name "gjs")
-    (version "1.58.8")
+    (version "1.64.4")
     (source
      (origin
        (method url-fetch)
@@ -8225,14 +8225,13 @@ configuration program to choose applications starting on login.")
                        (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32 "10gkmxbhwpnq27db0gkn25b0gw28n05msjkzwjg3sdhpdisfpcvz"))))
-    (build-system glib-or-gtk-build-system)
+        (base32 "0k6l2qc2vkws34zrgdhl57qxf0jjkar2iziz6qn4n1w7va73mk53"))))
+    (build-system meson-build-system)
     (arguments
-     '(#:configure-flags
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:configure-flags
        (list
-        "--enable-code-coverage"
-        "--enable-asan"
-        "--enable-ubsan")
+        "-Dinstalled_tests=false")
        #:phases
        (modify-phases %standard-phases
          (add-before
@@ -8243,17 +8242,9 @@ configuration program to choose applications starting on login.")
              (setenv "DISPLAY" ":1")
              ;; For the missing /etc/machine-id.
              (setenv "DBUS_FATAL_WARNINGS" "0")
-             ;; Our mozjs package does not compile the required Intl API
-             ;; support for these failing tests.
-             (substitute* "installed-tests/js/testLocale.js"
-               ((".*toBeDefined.*") "")
-               ((".*expect\\(datestr\\).*") ""))
-             (substitute* "installed-tests/scripts/testCommandLine.sh"
-               (("Valentín") "")
-               (("☭") ""))
              #t)))))
     (native-inputs
-     `(("dbus-launch" ,dbus)
+     `(("dbus" ,dbus)
        ("dconf" ,dconf)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
@@ -8271,7 +8262,7 @@ configuration program to choose applications starting on login.")
      `(("cairo" ,cairo)
        ("glib" ,glib)
        ("libffi" ,libffi)
-       ("mozjs" ,mozjs-60)))
+       ("mozjs" ,mozjs-68)))
     (synopsis "Javascript bindings for GNOME")
     (description "Gjs is a javascript binding for GNOME.  It's mainly based on
 spidermonkey javascript engine and the GObject introspection framework.")
