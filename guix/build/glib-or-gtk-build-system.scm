@@ -125,6 +125,21 @@ returns a list with all found directories."
 
   (fold gio-module-directory '() inputs))
 
+;; For wrapping GI_TYPELIB_PATH.
+(define (gi-typelib-directories inputs)
+  "Check for the existence of \"$libdir/girepository-1.0\" in the INPUTS and
+returns a list with all found directories."
+  (define (gi-typelib-directory input previous)
+    (let* ((in (match input
+                 ((_ . dir) dir)
+                 (_ "")))
+           (gi-typelib-dir (string-append in "/lib/girepository-1.0")))
+      (if (and (directory-exists? gi-typelib-dir)
+               (not (directory-included? gi-typelib-dir previous)))
+          (cons gi-typelib-dir previous)
+          previous)))
+  (fold gi-typelib-directory '() inputs))
+
 (define* (wrap-all-programs #:key inputs outputs
                             (glib-or-gtk-wrap-excluded-outputs '())
                             #:allow-other-keys)
@@ -150,6 +165,8 @@ add a dependency of that output on GLib and GTK+."
                               (alist-cons output directory inputs)))
                (gio-mod-dirs (gio-module-directories
                               (alist-cons output directory inputs)))
+               (gi-typelib-dirs (gi-typelib-directories
+                              (alist-cons output directory inputs)))
                (data-env-var
                 (if (not (null? datadirs))
                     `("XDG_DATA_DIRS" ":" prefix ,datadirs)
@@ -161,41 +178,20 @@ add a dependency of that output on GLib and GTK+."
                (gio-mod-env-var 
                 (if (not (null? gio-mod-dirs))
                     `("GIO_EXTRA_MODULES" ":" prefix ,gio-mod-dirs)
+                    #f))
+               (gi-typelib-env-var
+                (if (not (null? gi-typelib-dirs))
+                    `("GI_TYPELIB_PATH" ":" prefix ,gi-typelib-dirs)
                     #f)))
-          (cond
-           ((and data-env-var gtk-mod-env-var gio-mod-env-var)
-            (for-each (cut wrap-program <>
-                           data-env-var
-                           gtk-mod-env-var
-                           gio-mod-env-var)
-                      bin-list))
-           ((and data-env-var gtk-mod-env-var (not gio-mod-env-var))
-            (for-each (cut wrap-program <>
-                           data-env-var
-                           gtk-mod-env-var)
-                      bin-list))
-           ((and data-env-var (not gtk-mod-env-var) gio-mod-env-var)
-            (for-each (cut wrap-program <>
-                           data-env-var
-                           gio-mod-env-var)
-                      bin-list))
-           ((and (not data-env-var) gtk-mod-env-var gio-mod-env-var)
-            (for-each (cut wrap-program <>
-                           gio-mod-env-var
-                           gtk-mod-env-var)
-                      bin-list))
-           ((and data-env-var (not gtk-mod-env-var) (not gio-mod-env-var))
-            (for-each (cut wrap-program <>
-                           data-env-var)
-                      bin-list))
-           ((and (not data-env-var) gtk-mod-env-var (not gio-mod-env-var))
-            (for-each (cut wrap-program <>
-                           gtk-mod-env-var)
-                      bin-list))
-           ((and (not data-env-var) (not gtk-mod-env-var) gio-mod-env-var)
-            (for-each (cut wrap-program <>
-                           gio-mod-env-var)
-                      bin-list))))))))
+          (let ((specifications
+                 (filter identity
+                         (list data-env-var gtk-mod-env-var gio-mod-env-var
+                         gi-typelib-env-var))))
+            (if specifications
+                (for-each (lambda (original)
+                            (apply wrap-program original specifications))
+                          bin-list)
+                (error "refusing to wrap when not given environment variables to set"))))))))
 
   (for-each handle-output outputs)
   #t)
