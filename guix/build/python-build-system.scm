@@ -196,7 +196,8 @@ when running checks after installing the package."
     (append-map (match-lambda
                  ((_ . dir)
                   (list (string-append dir "/bin")
-                        (string-append dir "/sbin"))))
+                        (string-append dir "/sbin")
+                        (string-append dir "/libexec"))))
                 outputs))
 
   (let* ((out  (assoc-ref outputs "out"))
