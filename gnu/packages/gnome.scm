@@ -10515,15 +10515,13 @@ the current weather conditions for your city, or anywhere in the world.")
     (build-system trivial-build-system)
     (arguments '(#:builder (begin (mkdir %output) #t)))
     (propagated-inputs
-     ;; TODO: Add or remove packages according to:
-     ;;       <https://calc.disroot.org/2nu6mpf88ynq.html>.
-     `(
-     ;; GNOME-Core-OS-Services
+     ;; Keep the list updated with,
+     ;; <https://calc.disroot.org/2nu6mpf88ynq.html>.
+     `( ;; GNOME-Core-OS-Services
        ("accountsservice" ,accountsservice)
        ("network-manager" ,network-manager)
-       ("packagekit" ,packagekit)
        ("upower" ,upower)
-     ;; GNOME-Core-Shell
+       ;; GNOME-Core-Shell
        ("adwaita-icon-theme" ,adwaita-icon-theme)
        ("gdm" ,gdm)
        ("glib-networking" ,glib-networking)
@@ -10549,14 +10547,10 @@ the current weather conditions for your city, or anywhere in the world.")
        ("orca" ,orca)
        ("rygel" ,rygel)
        ("sushi" ,sushi)
-     ;; GNOME-Core-Utilities
+       ;; GNOME-Core-Utilities
        ("baobab" ,baobab)
        ("cheese" ,cheese)
-       ;; XXX: EoG requires librsvg-next, which depends on Rust, which currently
-       ;; only works on x86_64, so exclude it on other architectures.
-       ,@(if (string-prefix? "x86_64" (%current-system))
-             `(("eog" ,eog))
-             '())
+       ("eog" ,eog)
        ("epiphany" ,epiphany)
        ("evince" ,evince)
        ("file-roller" ,file-roller)
@@ -10569,48 +10563,23 @@ the current weather conditions for your city, or anywhere in the world.")
        ("gnome-contacts" ,gnome-contacts)
        ("gnome-disk-utility" ,gnome-disk-utility)
        ("gnome-font-viewer" ,gnome-font-viewer)
+       ;; ("gnome-logs" ,gnome-logs)
        ("gnome-maps" ,gnome-maps)
-       ; TODO: ("gnome-music" ,gnome-music)
-       ; TODO: ("gnome-photos" ,gnome-photos)
+       ("gnome-music" ,gnome-music)
+       ("gnome-photos" ,gnome-photos)
        ("gnome-screenshot" ,gnome-screenshot)
+       ;; ("gnome-software" ,gnome-software)
        ("gnome-system-monitor" ,gnome-system-monitor)
        ("gnome-terminal" ,gnome-terminal)
        ("gnome-weather" ,gnome-weather)
        ("nautilus" ,nautilus)
        ("simple-scan" ,simple-scan)
        ("totem" ,totem)
-       ("yelp" ,yelp)
-     ;; Others
-       ("hicolor-icon-theme" ,hicolor-icon-theme)
-       ("gnome-online-accounts" ,gnome-online-accounts)
-
-       ;; Packages not part of GNOME proper but that are needed for a good
-       ;; experience.  See <https://bugs.gnu.org/39646>.
-       ;; XXX: Find out exactly which ones are needed and why.
-       ("font-cantarell"            ,font-cantarell)
-       ("font-dejavu"               ,font-dejavu)
-       ("at-spi2-core"              ,at-spi2-core)
-       ("dbus"                      ,dbus)
-       ("dconf"                     ,dconf)
-       ("desktop-file-utils"        ,desktop-file-utils)
-       ("gnome-default-applications" ,gnome-default-applications)
-       ("gnome-themes-standard"     ,gnome-themes-standard)
-       ("gst-plugins-base"          ,gst-plugins-base)
-       ("gst-plugins-good"          ,gst-plugins-good)
-       ("gucharmap"                 ,gucharmap)
-       ("pinentry-gnome3"           ,pinentry-gnome3)
-       ("pulseaudio"                ,pulseaudio)
-       ("shared-mime-info"          ,shared-mime-info)
-       ("system-config-printer"     ,system-config-printer)
-       ("xdg-user-dirs"             ,xdg-user-dirs)
-       ("yelp"                      ,yelp)
-       ("zenity"                    ,zenity)))
-    (synopsis "The GNU desktop environment")
+       ("yelp" ,yelp)))
+    (synopsis "GNU Desktop Environment")
+    (description "GNOME is an easy and elegant desktop environment.  It is
+designed to put you in control and bring freedom to everybody.")
     (home-page "https://www.gnome.org/")
-    (description
-     "GNOME is the graphical desktop for GNU.  It includes a wide variety of
-applications for browsing the web, editing text and images, creating
-documents and diagrams, playing media, scanning, and much more.")
     (license license:gpl2+)))
 
 (define-public byzanz
