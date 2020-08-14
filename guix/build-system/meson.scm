@@ -25,6 +25,7 @@
   #:use-module (guix build-system)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system glib-or-gtk)
+  #:use-module (guix build-system python)
   #:use-module (guix packages)
   #:use-module (ice-9 match)
   #:export (%meson-build-system-modules
@@ -43,7 +44,8 @@
   `((guix build meson-build-system)
     ;; The modules from glib-or-gtk contains the modules from gnu-build-system,
     ;; so there is no need to import that too.
-    ,@%glib-or-gtk-build-system-modules))
+    ,@%glib-or-gtk-build-system-modules
+    ,@%python-build-system-modules))
 
 (define (default-ninja)
   "Return the default ninja package."
@@ -61,12 +63,11 @@
                 #:key source inputs native-inputs outputs system target
                 (meson (default-meson))
                 (ninja (default-ninja))
-                (glib-or-gtk? #f)
                 #:allow-other-keys
                 #:rest arguments)
   "Return a bag for NAME."
   (define private-keywords
-    `(#:source #:meson #:ninja #:inputs #:native-inputs #:outputs #:target))
+    `(#:source #:meson #:ninja #:inputs #:native-inputs #:outputs #:target #:glib-or-gtk? #:python?))
 
   (and (not target) ;; TODO: add support for cross-compilation.
        (bag
@@ -94,6 +95,7 @@
                       (tests? #t)
                       (test-target "test")
                       (glib-or-gtk? #f)
+                      (python? #f)
                       (parallel-build? #t)
                       (parallel-tests? #f)
                       (validate-runpath? #t)
@@ -129,11 +131,7 @@ has a 'meson.build' file."
       output)))
 
   (define builder
-    `(let ((build-phases (if ,glib-or-gtk?
-                             ,phases
-                             (modify-phases ,phases
-                               (delete 'glib-or-gtk-compile-schemas)
-                               (delete 'glib-or-gtk-wrap)))))
+    `(let ((build-phases ,phases))
        (use-modules ,@modules)
        (meson-build #:source ,(match (assoc-ref inputs "source")
                                 (((? derivation? source))
@@ -151,6 +149,8 @@ has a 'meson.build' file."
                     #:configure-flags ,configure-flags
                     #:build-type ,build-type
                     #:tests? ,tests?
+                    #:glib-or-gtk? ,glib-or-gtk?
+                    #:python? ,python?
                     #:test-target ,test-target
                     #:parallel-build? ,parallel-build?
                     #:parallel-tests? ,parallel-tests?

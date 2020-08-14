@@ -21,6 +21,7 @@
 (define-module (guix build meson-build-system)
   #:use-module ((guix build gnu-build-system) #:prefix gnu:)
   #:use-module ((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
+  #:use-module ((guix build python-build-system) #:prefix python:)
   #:use-module (guix build utils)
   #:use-module (guix build gremlin)
   #:use-module (guix elf)
@@ -77,6 +78,18 @@
 (define* (install #:rest args)
   (invoke "ninja" "install"))
 
+(define* (install-glib-or-gtk #:key glib-or-gtk? #:allow-other-keys #:rest rest)
+  (if glib-or-gtk?
+      (and
+       (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas) rest)
+       (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap) rest))
+      #t))
+
+(define* (install-python #:key python? #:allow-other-keys #:rest rest)
+  (if python?
+      (apply (assoc-ref python:%standard-phases 'wrap) rest)
+      #t))
+
 (define* (shrink-runpath #:key (elf-directories '("lib" "lib64" "libexec"
                                                   "bin" "sbin"))
                          outputs #:allow-other-keys)
@@ -104,15 +117,14 @@ for example libraries only needed for the tests."
   #t)
 
 (define %standard-phases
-  ;; The standard-phases of glib-or-gtk contains a superset of the phases
-  ;; from the gnu-build-system.  If the glib-or-gtk? key is #f (the default)
-  ;; then the extra phases will be removed again in (guix build-system meson).
-  (modify-phases glib-or-gtk:%standard-phases
+  (modify-phases gnu:%standard-phases
     (delete 'bootstrap)
     (replace 'configure configure)
     (replace 'build build)
     (replace 'check check)
     (replace 'install install)
+    (add-after 'install 'install-glib-or-gtk install-glib-or-gtk)
+    (add-after 'install 'install-python install-python)
     (add-after 'strip 'shrink-runpath shrink-runpath)))
 
 (define* (meson-build #:key inputs phases
