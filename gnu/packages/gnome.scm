@@ -10582,6 +10582,52 @@ designed to put you in control and bring freedom to everybody.")
     (home-page "https://www.gnome.org/")
     (license license:gpl2+)))
 
+(define-public gnome-minimal
+  (package
+    (name "gnome-minimal")
+    (version (package-version gnome-shell))
+    (source #f)
+    (build-system trivial-build-system)
+    (arguments '(#:builder (begin (mkdir %output) #t)))
+    ;; Keep the list updated with,
+    ;; <https://calc.disroot.org/2nu6mpf88ynq.html>.
+    (propagated-inputs
+     `( ;; GNOME-Core-OS-Services
+       ("accountsservice" ,accountsservice)
+       ("network-manager" ,network-manager)
+       ("upower" ,upower)
+       ;; GNOME-Core-Shell
+       ("adwaita-icon-theme" ,adwaita-icon-theme)
+       ("gdm" ,gdm)
+       ("glib-networking" ,glib-networking)
+       ("gnome-backgrounds" ,gnome-backgrounds)
+       ("gnome-bluetooth" ,gnome-bluetooth)
+       ("gnome-color-manager" ,gnome-color-manager)
+       ("gnome-control-center" ,gnome-control-center)
+       ("gnome-desktop" ,gnome-desktop)
+       ("gnome-getting-started-docs" ,gnome-getting-started-docs)
+       ("gnome-initial-setup" ,gnome-initial-setup)
+       ("gnome-keyring" ,gnome-keyring)
+       ("gnome-menus" ,gnome-menus)
+       ("gnome-session" ,gnome-session)
+       ("gnome-settings-daemon" ,gnome-settings-daemon)
+       ("gnome-shell-extensions" ,gnome-shell-extensions)
+       ("gnome-shell" ,gnome-shell)
+       ("gnome-themes-extra" ,gnome-themes-extra)
+       ("gnome-user-docs" ,gnome-user-docs)
+       ("gnome-user-share" ,gnome-user-share)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gvfs" ,gvfs)
+       ("mutter" ,mutter)
+       ("orca" ,orca)
+       ("rygel" ,rygel)
+       ("sushi" ,sushi)))
+    (synopsis "GNU Desktop Environment")
+    (description "GNOME is an easy and elegant desktop environment.  It is
+designed to put you in control and bring freedom to everybody.")
+    (home-page "https://www.gnome.org/")
+    (license license:gpl2+)))
+
 (define-public byzanz
   ;; The last stable release of Byzanz was in 2011, but there have been many
   ;; useful commits made to the Byzanz repository since then that it would be
