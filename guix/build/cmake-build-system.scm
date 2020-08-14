@@ -21,6 +21,8 @@
 
 (define-module (guix build cmake-build-system)
   #:use-module ((guix build gnu-build-system) #:prefix gnu:)
+  #:use-module ((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
+  #:use-module ((guix build python-build-system) #:prefix python:)
   #:use-module (guix build utils)
   #:use-module (ice-9 match)
   #:export (%standard-phases
@@ -84,13 +86,26 @@
     (gnu-check #:tests? tests? #:test-target test-target
               #:parallel-tests? parallel-tests?)))
 
+(define* (install-glib-or-gtk #:key glib-or-gtk? #:allow-other-keys #:rest rest)
+  (if glib-or-gtk?
+      (and (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas) rest)
+           (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap) rest))
+      #t))
+
+(define* (install-python #:key python? #:allow-other-keys #:rest rest)
+  (if python?
+      (apply (assoc-ref python:%standard-phases 'wrap) rest)
+      #t))
+
 (define %standard-phases
   ;; Everything is as with the GNU Build System except for the `configure'
   ;; and 'check' phases.
   (modify-phases gnu:%standard-phases
     (delete 'bootstrap)
     (replace 'check check)
-    (replace 'configure configure)))
+    (replace 'configure configure)
+    (add-after 'install 'install-glib-or-gtk install-glib-or-gtk)
+    (add-after 'install 'install-python install-python)))
 
 (define* (cmake-build #:key inputs (phases %standard-phases)
                       #:allow-other-keys #:rest args)

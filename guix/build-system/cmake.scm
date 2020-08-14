@@ -26,6 +26,8 @@
   #:use-module (guix search-paths)
   #:use-module (guix build-system)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system glib-or-gtk)
+  #:use-module (guix build-system python)
   #:use-module (guix packages)
   #:use-module (ice-9 match)
   #:export (%cmake-build-system-modules
@@ -42,7 +44,10 @@
 (define %cmake-build-system-modules
   ;; Build-side modules imported by default.
   `((guix build cmake-build-system)
-    ,@%gnu-build-system-modules))
+    ;; The modules from glib-or-gtk contains the modules from gnu-build-system,
+    ;; so there is no need to import that too.
+    ,@%glib-or-gtk-build-system-modules
+    ,@%python-build-system-modules))
 
 (define (default-cmake target)
   "Return the default CMake package."
@@ -61,7 +66,7 @@
                 #:rest arguments)
   "Return a bag for NAME."
   (define private-keywords
-    `(#:source #:cmake #:inputs #:native-inputs #:outputs
+    `(#:source #:cmake #:inputs #:native-inputs #:outputs #:glib-or-gtk? #:python?
       ,@(if target '() '(#:target))))
 
   (bag
@@ -104,6 +109,8 @@
                       (build-type "RelWithDebInfo")
                       (tests? #t)
                       (test-target "test")
+                      (glib-or-gtk? #f)
+                      (python? #f)
                       (parallel-build? #t) (parallel-tests? #t)
                       (validate-runpath? #t)
                       (patch-shebangs? #t)
@@ -141,6 +148,8 @@ provides a 'CMakeLists.txt' file as its build system."
                     #:out-of-source? ,out-of-source?
                     #:build-type ,build-type
                     #:tests? ,tests?
+                    #:glib-or-gtk? ,glib-or-gtk?
+                    #:python? ,python?
                     #:test-target ,test-target
                     #:parallel-build? ,parallel-build?
                     #:parallel-tests? ,parallel-tests?
