@@ -86,16 +86,11 @@
     (gnu-check #:tests? tests? #:test-target test-target
               #:parallel-tests? parallel-tests?)))
 
-(define* (install-glib-or-gtk #:key glib-or-gtk? #:allow-other-keys #:rest rest)
-  (if glib-or-gtk?
-      (and (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas) rest)
-           (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap) rest))
-      #t))
-
-(define* (install-python #:key python? #:allow-other-keys #:rest rest)
-  (if python?
-      (apply (assoc-ref python:%standard-phases 'wrap) rest)
-      #t))
+(define* (install-glib-or-gtk #:rest rest)
+  (and (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas) rest)
+       (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap) rest)))
+(define* (install-python #:rest rest)
+  (apply (assoc-ref python:%standard-phases 'wrap) rest))
 
 (define %standard-phases
   ;; Everything is as with the GNU Build System except for the `configure'

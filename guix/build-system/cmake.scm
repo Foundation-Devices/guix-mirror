@@ -62,11 +62,13 @@
 (define* (lower name
                 #:key source inputs native-inputs outputs system target
                 (cmake (default-cmake target))
+                glib-or-gtk?
+                python?
                 #:allow-other-keys
                 #:rest arguments)
   "Return a bag for NAME."
   (define private-keywords
-    `(#:source #:cmake #:inputs #:native-inputs #:outputs #:glib-or-gtk? #:python?
+    `(#:source #:cmake #:inputs #:native-inputs #:outputs
       ,@(if target '() '(#:target))))
 
   (bag
@@ -142,7 +144,19 @@ provides a 'CMakeLists.txt' file as its build system."
                     #:inputs %build-inputs
                     #:search-paths ',(map search-path-specification->sexp
                                           search-paths)
-                    #:phases ,phases
+                    #:phases ,(cond
+                               ((and glib-or-gtk? python?)
+                                phases)
+                               ((and glib-or-gtk? (not python?))
+                                `(modify-phases ,phases
+                                   (delete 'install-python)))
+                               ((and (not glib-or-gtk?) python?)
+                                `(modify-phases ,phases
+                                   (delete 'install-glib-or-gtk)))
+                               ((and (not glib-or-gtk?) (not python?))
+                                 `(modify-phases ,phases
+                                    (delete 'install-python)
+                                    (delete 'install-glib-or-gtk))))
                     #:configure-flags ,configure-flags
                     #:make-flags ,make-flags
                     #:out-of-source? ,out-of-source?
@@ -194,6 +208,8 @@ provides a 'CMakeLists.txt' file as its build system."
                             (build-type "RelWithDebInfo")
                             (tests? #f) ; nothing can be done
                             (test-target "test")
+                            (glib-or-gtk? #f)
+                            (python? #f)
                             (parallel-build? #t) (parallel-tests? #t)
                             (validate-runpath? #t)
                             (patch-shebangs? #t)
@@ -255,7 +271,19 @@ build system."
                       #:native-search-paths ',(map
                                                search-path-specification->sexp
                                                native-search-paths)
-                      #:phases ,phases
+                      #:phases ,(cond
+                                 ((and glib-or-gtk? python?)
+                                  phases)
+                                 ((and glib-or-gtk? (not python?))
+                                  `(modify-phases ,phases
+                                     (delete 'install-python)))
+                                 ((and (not glib-or-gtk?) python?)
+                                  `(modify-phases ,phases
+                                     (delete 'install-glib-or-gtk)))
+                                 ((and (not glib-or-gtk?) (not python?))
+                                   `(modify-phases ,phases
+                                      (delete 'install-python)
+                                      (delete 'install-glib-or-gtk))))
                       #:configure-flags ,configure-flags
                       #:make-flags ,make-flags
                       #:out-of-source? ,out-of-source?
