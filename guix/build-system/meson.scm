@@ -63,11 +63,13 @@
                 #:key source inputs native-inputs outputs system target
                 (meson (default-meson))
                 (ninja (default-ninja))
+                glib-or-gtk?
+                python?
                 #:allow-other-keys
                 #:rest arguments)
   "Return a bag for NAME."
   (define private-keywords
-    `(#:source #:meson #:ninja #:inputs #:native-inputs #:outputs #:target #:glib-or-gtk? #:python?))
+    `(#:source #:meson #:ninja #:inputs #:native-inputs #:outputs #:target))
 
   (and (not target) ;; TODO: add support for cross-compilation.
        (bag
@@ -131,7 +133,19 @@ has a 'meson.build' file."
       output)))
 
   (define builder
-    `(let ((build-phases ,phases))
+    `(let ((build-phases ,(cond
+                           ((and glib-or-gtk? python?)
+                            phases)
+                           ((and glib-or-gtk? (not python?))
+                            `(modify-phases ,phases
+                               (delete 'install-python)))
+                           ((and (not glib-or-gtk?) python?)
+                            `(modify-phases ,phases
+                               (delete 'install-glib-or-gtk)))
+                           ((and (not glib-or-gtk?) (not python?))
+                            `(modify-phases ,phases
+                               (delete 'install-python)
+                               (delete 'install-glib-or-gtk))))))
        (use-modules ,@modules)
        (meson-build #:source ,(match (assoc-ref inputs "source")
                                 (((? derivation? source))
@@ -149,8 +163,6 @@ has a 'meson.build' file."
                     #:configure-flags ,configure-flags
                     #:build-type ,build-type
                     #:tests? ,tests?
-                    #:glib-or-gtk? ,glib-or-gtk?
-                    #:python? ,python?
                     #:test-target ,test-target
                     #:parallel-build? ,parallel-build?
                     #:parallel-tests? ,parallel-tests?
