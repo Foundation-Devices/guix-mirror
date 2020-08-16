@@ -9414,21 +9414,18 @@ libxml2.")
        (modify-phases %standard-phases
          (add-before 'configure 'pre-configure
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; We don't have <systemd/sd-daemon.h>.
              (substitute* '("common/gdm-log.c"
                             "daemon/gdm-server.c"
                             "daemon/gdm-session-worker.c"
                             "daemon/gdm-session-worker-job.c")
                (("#include <systemd/sd-daemon\\.h>")
-                ""))
-             ;; Use elogind for sd-login.
+                "#include <elogind/sd-daemon.h>"))
              (substitute* '("common/gdm-common.c"
                             "daemon/gdm-local-display-factory.c"
                             "daemon/gdm-manager.c"
                             "libgdm/gdm-user-switching.c")
                (("#include <systemd/sd-login\\.h>")
                 "#include <elogind/sd-login.h>"))
-             ;; Check for elogind.
              (substitute* '("configure")
                (("libsystemd")
                 "libelogind"))
