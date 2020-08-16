@@ -895,23 +895,80 @@ rules.")
   gnome-desktop-configuration?
   (gnome gnome-package (default gnome)))
 
-(define (gnome-polkit-settings config)
+(define (gnome-polkit-packages config)
   "Return the list of GNOME dependencies that provide polkit actions and
 rules."
   (let ((gnome (gnome-package config)))
     (map (lambda (name)
            ((package-direct-input-selector name) gnome))
-         '("gnome-settings-daemon"
+         '("accountsservice"
+           "network-manager"
            "gnome-control-center"
-           "gnome-system-monitor"
-           "gvfs"))))
+           "gnome-initial-setup"
+           "gnome-settings-daemon"
+           "gvfs"
+           "gnome-system-monitor"))))
+
+(define (gnome-udev-packages config)
+  "Return the list of GNOME dependencies that provide udev actions and
+rules."
+  (let ((gnome (gnome-package config)))
+    (map (lambda (name)
+           ((package-direct-input-selector name) gnome))
+         '("network-manager"
+           "upower"
+           "gdm"
+           "gnome-settings-daemon"))))
+
+(define (gnome-dbus-packages config)
+  "Return the list of GNOME dependencies that provide dbus actions and
+rules."
+  (let ((gnome (gnome-package config)))
+    (map (lambda (name)
+           ((package-direct-input-selector name) gnome))
+         '("accountsservice"
+           "network-manager"
+           "upower"
+           "gdm"
+           "gnome-control-center"
+           "gnome-keyring"
+           "gnome-shell"
+           "gvfs"
+           "rygel"
+           "sushi"
+           "baobab"
+           "cheese"
+           "epiphany"
+           "evince"
+           "file-roller"
+           "gedit"
+           "gnome-boxes"
+           "gnome-calclulator"
+           "gnome-calendar"
+           "gnome-characters"
+           "gnome-clocks"
+           "gnome-contacts"
+           "gnome-disk-utility"
+           "gnome-font-viewer"
+           "gnome-maps"
+           "gnome-music"
+           "gnome-photos"
+           "gnome-screenshot"
+           "gnome-terminal"
+           "gnome-weather"
+           "nautilus"
+           "totem"))))
 
 (define gnome-desktop-service-type
   (service-type
    (name 'gnome-desktop)
    (extensions
     (list (service-extension polkit-service-type
-                             gnome-polkit-settings)
+                             gnome-polkit-packages)
+          (service-extension udev-service-type
+                             gnome-udev-packages)
+          (service-extension dbus-root-service-type
+                             gnome-udev-packages)
           (service-extension profile-service-type
                              (compose list
                                       gnome-package))))
