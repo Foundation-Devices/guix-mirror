@@ -10099,6 +10099,7 @@ search tool.  This package provides Tracker-Core, that contains the database
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dfunctional_tests=false"
