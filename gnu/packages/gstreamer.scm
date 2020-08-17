@@ -120,8 +120,8 @@
     (native-inputs
      `(("graphviz" ,graphviz)
        ("doxygen" ,doxygen)
-       ("openjdk" ,openjdk14)
-       ("openjdk:jdk" ,openjdk14 "jdk")
+       ("jdk" ,icedtea "jdk")
+       ("jre" ,icedtea)
        ("python" ,python-wrapper)))
     (inputs
      `(("freeglut3" ,freeglut)
