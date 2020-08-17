@@ -864,7 +864,7 @@ model to base your own plug-in on, here it is.")
        ("webrtcdsp" ,webrtc-audio-processing)
        ("wildmidi" ,wildmidi)
        ("wpebackend-fdo" ,wpebackend-fdo)
-       ;;("wpewebkit" ,wpewebkit)
+       ("wpewebkit" ,wpewebkit)
        ("zbar" ,zbar)
        ("zxing" ,zxing-cpp)))
     (propagated-inputs
