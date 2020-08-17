@@ -77,7 +77,8 @@
         (base32 "141w35b488jjhanl3nrm0awrbcy6hb579fk8n9vbpx07m2wcd1rm"))))
     (build-system cmake-build-system)
     (arguments
-     `(#:tests? #f))                    ;no tests
+     `(#:python? #t ; To wrap binaries
+       #:tests? #f))                    ;no tests
     (native-inputs
      `(("pkg-config" ,pkg-config)
        ("python" ,python-wrapper)))
