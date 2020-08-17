@@ -712,6 +712,7 @@ model to base your own plug-in on, here it is.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'fix-build-errors
