@@ -5320,6 +5320,7 @@ libxml to ease remote use of the RESTful API.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dgtk_doc=true")
@@ -5412,8 +5413,8 @@ GObjects and the GLib main loop, to integrate well with GNOME applications.")
     (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:glib-or-gtk? #t
-       #:python? #t
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-docbook-xml
