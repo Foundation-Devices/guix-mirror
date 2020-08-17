@@ -5671,8 +5671,7 @@ more fun.")
     (inputs
      `(("dconf" ,dconf)
        ("glib" ,glib)
-       ;; To be enabled.
-       ;; ("gnome-shell-search-provider" ,gnome-shell)
+       ("gnome-shell-search-provider" ,gnome-shell)
        ("gtk+" ,gtk+)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("libnautilus-extension" ,nautilus)
