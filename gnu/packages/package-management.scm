@@ -1255,6 +1255,8 @@ cp -r /tmp/locale/*/en_US.*")))
       ("socat" ,socat)
       ("which" ,which)))
    (propagated-inputs `(("glib-networking" ,glib-networking)
+                        ("glib" ,glib)
+                        ("libostree" ,libostree)
                         ("gnupg" ,gnupg)
                         ("gsettings-desktop-schemas"
                          ,gsettings-desktop-schemas)))
