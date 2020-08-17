@@ -842,6 +842,7 @@ cloud integration is offered through GNOME Online Accounts.")
     (outputs '("out" "help"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:tests? #f           ; Tests require networking
        #:phases
        (modify-phases %standard-phases
@@ -862,15 +863,9 @@ cloud integration is offered through GNOME Online Accounts.")
                #t)))
          (add-after 'move-help 'wrap-gnome-music
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (pylib (string-append out "/lib/python"
-                                          ,(version-major+minor
-                                            (package-version python))
-                                          "/site-packages")))
+             (let* ((out (assoc-ref outputs "out")))
                (wrap-program (string-append out "/bin/gnome-music")
-                 `("GI_TYPELIB_PATH" = (,(getenv "GI_TYPELIB_PATH")))
-                 `("GRL_PLUGIN_PATH" = (,(getenv "GRL_PLUGIN_PATH")))
-                 `("PYTHONPATH" = (,(getenv "PYTHONPATH") ,pylib))))
+                 `("GRL_PLUGIN_PATH" = (,(getenv "GRL_PLUGIN_PATH")))))
              #t)))))
     (native-inputs
      `(("desktop-file-utils" ,desktop-file-utils)
