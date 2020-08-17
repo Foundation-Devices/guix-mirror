@@ -352,7 +352,8 @@ threads, dynamic loading, and an object system.")
          "gobject-introspection-absolute-shlib-path.patch"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
+     `(#:glib-or-gtk? #t   ; To wrap binaries and/or compile schemas
+       #:python? #t)) ; To wrap binaries
     (native-inputs
      `(("bison" ,bison)
        ("flex" ,flex)
