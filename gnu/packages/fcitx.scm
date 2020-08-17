@@ -113,7 +113,9 @@ by the different predictive algorithms.")
     (build-system cmake-build-system)
     (outputs '("out" "gtk2" "gtk3"))
     (arguments
-     `(#:configure-flags
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
+       #:configure-flags
        (list
         "-DENABLE_GTK2_IM_MODULE=ON"
         "-DENABLE_GTK3_IM_MODULE=ON"
