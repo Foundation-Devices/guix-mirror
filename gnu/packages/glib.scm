@@ -203,7 +203,8 @@ shared NFS home directories.")
     (build-system meson-build-system)
     (outputs '("out" "bin"))
     (arguments
-     `(#:phases
+     `(#:python? #t ; To wrap binaries
+       #:phases
        (modify-phases %standard-phases
          ;; Python references are not being patched in patch-phase of build,
          ;; despite using python-wrapper as input. So we patch them manually.
