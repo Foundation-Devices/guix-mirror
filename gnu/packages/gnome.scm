@@ -417,7 +417,8 @@ bindings.")
     (build-system glib-or-gtk-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:configure-flags
+     `(#:tests? #f ; FIXME
+       #:configure-flags
        (list
         "--disable-static"
         "--enable-xorg-module"
