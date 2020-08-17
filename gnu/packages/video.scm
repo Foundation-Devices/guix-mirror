@@ -317,7 +317,8 @@ efficiency.")
         (base32 "0blwcxr5j8762nylx2cxrq0h53bpgnk859dbs6crq4wr9fcxlx9z"))))
     (build-system cmake-build-system)
     (arguments
-     `(#:configure-flags
+     `(#:python? #t
+       #:configure-flags
        (list
         "-DENABLE_X11=ON"
         "-DENABLE_X11_DRI3=ON"
