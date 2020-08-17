@@ -5013,6 +5013,7 @@ and RDP protocols.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t
+       #:python? #t
        #:configure-flags
        (list
         "-Dgtk_doc=true")
