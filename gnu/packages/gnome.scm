@@ -8478,6 +8478,7 @@ in commandline and shell scripts.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         (string-append "-Dopengl_libname="
