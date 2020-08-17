@@ -2198,6 +2198,7 @@ Parcellite and adds bugfixes and features.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dinstalled_tests=false")))
