@@ -10465,6 +10465,7 @@ associations for GNOME.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-before 'configure 'skip-gtk-update-icon-cache
@@ -10472,14 +10473,7 @@ associations for GNOME.")
              (substitute* "meson_post_install.py"
                (("gtk-update-icon-cache")
                 "true"))
-             #t))
-         (add-after 'install 'wrap
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (gi-typelib-path   (getenv "GI_TYPELIB_PATH")))
-               (wrap-program (string-append out "/bin/gnome-weather")
-                 `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path)))
-               #t))))))
+             #t)))))
     (native-inputs
      `(("desktop-file-utils" ,desktop-file-utils)
        ("gettext" ,gettext-minimal)
