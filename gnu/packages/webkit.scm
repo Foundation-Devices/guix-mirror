@@ -137,7 +137,9 @@ WebKit engine that uses Wayland for graphics output.")
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f                      ; XXX: To be enabled
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
+       #:tests? #f                      ; XXX: To be enabled
        #:configure-flags
        (list
         "-DPORT=WPE"
