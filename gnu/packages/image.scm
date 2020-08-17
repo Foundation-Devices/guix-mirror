@@ -820,7 +820,8 @@ test suite, including conformance tests (following Rec. ITU-T T.803 | ISO/IEC
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (arguments
-     '(#:configure-flags
+     `(#:python? #t ; To wrap binaries
+       #:configure-flags
        (list
         "-DBUILD_DOC=ON"
         "-DBUILD_STATIC_LIBS=OFF"
