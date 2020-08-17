@@ -3364,6 +3364,7 @@ configuring CUPS.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dman=false")                  ; XXX: docbook-xsl-ns not available
