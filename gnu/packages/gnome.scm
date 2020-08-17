@@ -6671,6 +6671,7 @@ implements the ClutterGstPlayer interface using playbin.")
     (outputs '("out" "demos" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dmemphis=true"
@@ -9891,7 +9892,8 @@ use experience.")
         (base32 "1060ws037v556rx1qhfrcg02859rscksrzr8fq11himdg4d1y6m8"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t))   ; To wrap binaries and/or compile schemas
+     `(#:glib-or-gtk? #t   ; To wrap binaries and/or compile schemas
+       #:python? #t)) ; To wrap binaries
     (native-inputs
      `(("gjs" ,gjs)
        ("glib:bin" ,glib "bin")
