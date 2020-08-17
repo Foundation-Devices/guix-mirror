@@ -6086,6 +6086,7 @@ online services for numerous locations.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         (string-append "-Dudev_dir="
