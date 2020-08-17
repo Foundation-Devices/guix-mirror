@@ -1708,18 +1708,7 @@ masses.")
         (base32 "1zcr8wi5bgvvpb5ha1v96aiaz4vqqrsn6cvvalwzah6am85k78m8"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'glib-or-gtk-wrap 'wrap-typelib
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((prog (string-append (assoc-ref outputs "out")
-                                         "/bin/sushi")))
-               ;; Put existing typelibs before sushi's deps, so as to correctly
-               ;; infer gdk-pixbuf
-               (wrap-program prog
-                 `("GI_TYPELIB_PATH" suffix (,(getenv "GI_TYPELIB_PATH"))))
-               #t))))))
+     `(#:glib-or-gtk? #t))     ; To wrap binaries and/or compile schemas
     (native-inputs
      `(("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
