@@ -1206,6 +1206,7 @@ documentation.")
     (outputs '("out" "help"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-before 'configure 'skip-gtk-update-icon-cache
