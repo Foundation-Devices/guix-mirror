@@ -159,10 +159,7 @@
              ;; GI_TYPELIB_PATH.
              (let* ((out (assoc-ref outputs "out")))
                (wrap-program (string-append out "/bin/ibus-setup")
-                 `("PYTHONPATH" ":" prefix (,(getenv "PYTHONPATH")))
-                 `("GI_TYPELIB_PATH" ":" prefix
-                   (,(getenv "GI_TYPELIB_PATH")
-                    ,(string-append out "/lib/girepository-1.0")))))
+                 `("PYTHONPATH" ":" prefix (,(getenv "PYTHONPATH")))))
              #t)))))
     (native-inputs
      `(("autoconf" ,autoconf)
