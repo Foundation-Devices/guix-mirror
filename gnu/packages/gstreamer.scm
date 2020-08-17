@@ -185,7 +185,8 @@ module for the DMA capture of the video flow.")
         (base32 "1sya45hvv4d46bk7541yimmafgvgyhkpsvwfz9kv6pm4yi1lz6nb"))))
     (build-system cmake-build-system)
     (arguments
-     `(#:tests? #f                      ; No target
+     `(#:python? #t ; To wrap binaries
+       #:tests? #f                      ; No target
        #:configure-flags
        (list
         "-DWITH_FFMPEG=ON"
