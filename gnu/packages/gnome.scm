@@ -5413,6 +5413,7 @@ GObjects and the GLib main loop, to integrate well with GNOME applications.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t
+       #:python? #t
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-docbook-xml
