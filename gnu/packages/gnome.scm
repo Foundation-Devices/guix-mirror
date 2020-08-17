@@ -6899,6 +6899,7 @@ as possible!")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-docbook-xml
