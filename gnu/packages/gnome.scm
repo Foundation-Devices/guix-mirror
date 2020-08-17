@@ -1747,6 +1747,7 @@ preview files on the GNOME desktop.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dapi-docs=true"
