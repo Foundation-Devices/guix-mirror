@@ -615,6 +615,7 @@ types of elements one would want to write for GStreamer.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-docbook-xml
