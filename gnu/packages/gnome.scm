@@ -9993,6 +9993,7 @@ directories over the internet.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t
+       #:python? #t
        #:configure-flags
        (list
         "-Ddocs=true"
