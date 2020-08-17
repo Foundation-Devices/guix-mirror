@@ -8702,14 +8702,8 @@ are exposed as GVolumes, and so on.")
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:imported-modules
-       (,@%cmake-build-system-modules
-        (guix build glib-or-gtk-build-system))
-       #:modules
-       ((guix build cmake-build-system)
-        ((guix build glib-or-gtk-build-system)
-         #:prefix glib-or-gtk:)
-        (guix build utils))
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         (string-append "-DSENDMAIL_PATH="
@@ -8780,11 +8774,7 @@ are exposed as GVolumes, and so on.")
                (rename-file
                 (string-append out "/share/gtk-doc")
                 (string-append doc "/share/gtk-doc"))
-               #t)))
-         (add-after 'move-doc 'glib-or-gtk-compile-schemas
-           (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas))
-         (add-after 'glib-or-gtk-compile-schemas 'glib-or-gtk-wrap
-           (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap)))))
+               #t))))))
     (native-inputs
      `(("docbook-xml" ,docbook-xml-4.1.2)
        ("glib:bin" ,glib "bin")
