@@ -10195,6 +10195,7 @@ filetypes.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Ddocs=true"
