@@ -7042,6 +7042,7 @@ Grilo's API for various multimedia content providers.")
     (outputs '("out" "help" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Denable-easy-codec-installation=no" ; Not required in Guix
