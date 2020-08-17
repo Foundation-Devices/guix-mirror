@@ -106,7 +106,8 @@ the WPE-flavored port of WebKit.")
         (base32 "1jdi43gciqjgvhnqxs160f3hmp1hkqhrllb0hhmldyxc4wryw3kl"))))
     (build-system cmake-build-system)
     (arguments
-     `(#:tests? #f))                    ;no tests
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:tests? #f))                    ;no tests
     (native-inputs
      `(("pkg-config" ,pkg-config)))
     (inputs
