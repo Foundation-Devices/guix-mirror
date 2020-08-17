@@ -241,7 +241,9 @@ specific code paths.")
     (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:configure-flags
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
+       #:configure-flags
        (list
         "-Ddocs=true"
         "-Dworkshop=true"
