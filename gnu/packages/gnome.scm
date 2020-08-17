@@ -11744,8 +11744,6 @@ accessibility infrastructure.")
              (let* ((out  (assoc-ref outputs "out"))
                     (prog (string-append out "/bin/orca")))
                (wrap-program prog
-                 `("GI_TYPELIB_PATH" ":" prefix
-                   (,(getenv "GI_TYPELIB_PATH")))
                  `("PYTHONPATH" ":" prefix
                    (,(getenv "PYTHONPATH")))))
              #t)))))
