@@ -194,7 +194,8 @@ of a larger interface.")
         (base32 "0fjjfb0pbgimlqi7rk8cqz8pq595b7gw8nrpkxfmixdz6cv4km8p"))))
     (build-system meson-build-system)
     (arguments
-     `(#:glib-or-gtk? #t))   ; To wrap binaires and/or compile schemas
+     `(#:glib-or-gtk? #t   ; To wrap binaires and/or compile schemas
+       #:python? #t)) ; To wrap binaries
     (native-inputs
      `(("gobject-introspection" ,gobject-introspection)
        ("pkg-config" ,pkg-config)
