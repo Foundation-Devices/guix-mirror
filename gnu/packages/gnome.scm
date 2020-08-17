@@ -9617,6 +9617,7 @@ integration with the GNOME desktop environment.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Ddocumentation=true")
