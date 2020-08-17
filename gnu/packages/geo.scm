@@ -226,13 +226,7 @@ topology functions.")
              (substitute* "meson_post_install.py"
                (("gtk-update-icon-cache")
                 "true"))
-             #t))
-         (add-after 'install 'wrap
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (gi-typelib-path (getenv "GI_TYPELIB_PATH")))
-               (wrap-program (string-append out "/bin/gnome-maps"))
-               #t))))))
+             #t)))))
     (native-inputs
      `(("desktop-file-utils" ,desktop-file-utils)
        ("gettext" ,gettext-minimal)
