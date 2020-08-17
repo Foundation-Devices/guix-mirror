@@ -9746,6 +9746,7 @@ configuration of various aspects of your desktop.")
     (outputs '("out" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dgtk_doc=true"
