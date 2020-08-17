@@ -7287,14 +7287,7 @@ supports playlists, song ratings, and any codecs installed through gstreamer.")
                (rename-file
                 (string-append out "/share/help")
                 (string-append help "/share/help"))
-               #t)))
-         (add-after 'move-help 'wrap-eog
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (gi-typelib-path (getenv "GI_TYPELIB_PATH")))
-               (wrap-program (string-append out "/bin/eog")
-                 `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))))
-             #t)))))
+               #t))))))
     (native-inputs
      `(("docbook-xml" ,docbook-xml-4.1.2)
        ("glib" ,glib "bin")
