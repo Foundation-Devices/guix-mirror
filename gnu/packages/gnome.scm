@@ -2308,6 +2308,7 @@ documents.")
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:phases
        (modify-phases %standard-phases
          (add-before 'configure 'skip-gtk-update-icon-cache
@@ -2315,15 +2316,6 @@ documents.")
              (substitute* "meson_post_install.py"
                (("gtk-update-icon-cache")
                 "true"))
-             #t))
-         (add-after 'install 'wrap
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; GNOME Characters needs Typelib files from GTK and
-             ;; gnome-desktop.
-             (wrap-program
-                 (string-append (assoc-ref outputs "out")
-                                "/bin/gnome-characters")
-               `("GI_TYPELIB_PATH" ":" prefix (,(getenv "GI_TYPELIB_PATH"))))
              #t)))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
