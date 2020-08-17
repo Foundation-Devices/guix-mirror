@@ -12928,6 +12928,7 @@ integrate seamlessly with the GNOME desktop.")
     (outputs '("out" "help"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         ;; For run-path validation.
