@@ -239,7 +239,9 @@ acceleration in mind, leveraging common 3D graphics APIs for best performance.")
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:tests? #f                      ; XXX: To be enabled
+     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
+       #:tests? #f                      ; XXX: To be enabled
        #:configure-flags
        (list
         "-DPORT=GTK"
