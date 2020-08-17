@@ -8281,6 +8281,7 @@ spidermonkey javascript engine and the GObject introspection framework.")
     (outputs '("out" "help" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dgtk_doc=true"
@@ -8338,13 +8339,8 @@ spidermonkey javascript engine and the GObject introspection framework.")
          (add-after 'move-help 'wrap-gedit
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
-                    (gtksourceview (assoc-ref inputs "gtksourceview"))
-                    (gi-typelib-path (getenv "GI_TYPELIB_PATH"))
-                    (python-path (getenv "PYTHONPATH")))
+                    (gtksourceview (assoc-ref inputs "gtksourceview")))
                (wrap-program (string-append out "/bin/gedit")
-                 ;; For plugins.
-                 `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path))
-                 `("PYTHONPATH" ":" prefix (,python-path))
                  ;; For language-specs.
                  `("XDG_DATA_DIRS" ":" prefix (,(string-append gtksourceview
                                                                "/share")))))
