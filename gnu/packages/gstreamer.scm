@@ -963,7 +963,8 @@ think twice about shipping them.")
            #t))))
     (build-system meson-build-system)
     (arguments
-     `(#:phases
+     `(#:python? #t
+       #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-docbook-xml
            (lambda* (#:key inputs #:allow-other-keys)
