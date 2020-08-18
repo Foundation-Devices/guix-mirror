@@ -3407,7 +3407,6 @@ form of information without getting in the user's way.")
     (outputs '("out" "demo" "doc"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
-       #:python? #t ; To wrap binaries
        #:configure-flags
        (list
         "-Dpython2=true"
