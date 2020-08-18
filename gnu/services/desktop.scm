@@ -895,6 +895,11 @@ rules.")
   gnome-desktop-configuration?
   (gnome gnome-package (default gnome)))
 
+(define-record-type* <gnome-minimal-desktop-configuration> gnome-minimal-desktop-configuration
+  make-gnome-minimal-desktop-configuration
+  gnome-minimal-desktop-configuration?
+  (gnome-minimal gnome-minimal-package (default gnome-minimal)))
+
 (define (gnome-polkit-packages config)
   "Return the list of GNOME dependencies that provide polkit actions and
 rules."
@@ -909,12 +914,36 @@ rules."
            "gvfs"
            "gnome-system-monitor"))))
 
+(define (gnome-minimal-polkit-packages config)
+  "Return the list of GNOME dependencies that provide polkit actions and
+rules."
+  (let ((gnome-minimal (gnome-minimal-package config)))
+    (map (lambda (name)
+           ((package-direct-input-selector name) gnome-minimal))
+         '("accountsservice"
+           "network-manager"
+           "gnome-control-center"
+           "gnome-initial-setup"
+           "gnome-settings-daemon"
+           "gvfs"))))
+
 (define (gnome-udev-packages config)
   "Return the list of GNOME dependencies that provide udev actions and
 rules."
   (let ((gnome (gnome-package config)))
     (map (lambda (name)
            ((package-direct-input-selector name) gnome))
+         '("network-manager"
+           "upower"
+           "gdm"
+           "gnome-settings-daemon"))))
+
+(define (gnome-minimal-udev-packages config)
+  "Return the list of GNOME dependencies that provide udev actions and
+rules."
+  (let ((gnome-minimal (gnome-minimal-package config)))
+    (map (lambda (name)
+           ((package-direct-input-selector name) gnome-minimal))
          '("network-manager"
            "upower"
            "gdm"
@@ -959,6 +988,23 @@ rules."
            "nautilus"
            "totem"))))
 
+(define (gnome-minimal-dbus-packages config)
+  "Return the list of GNOME dependencies that provide dbus actions and
+rules."
+  (let ((gnome-minimal (gnome-minimal-package config)))
+    (map (lambda (name)
+           ((package-direct-input-selector name) gnome-minimal))
+         '("accountsservice"
+           "network-manager"
+           "upower"
+           "gdm"
+           "gnome-control-center"
+           "gnome-keyring"
+           "gnome-shell"
+           "gvfs"
+           "rygel"
+           "sushi"))))
+
 (define gnome-desktop-service-type
   (service-type
    (name 'gnome-desktop)
@@ -973,6 +1019,22 @@ rules."
                              (compose list
                                       gnome-package))))
    (default-value (gnome-desktop-configuration))
+   (description "Run the GNOME desktop environment.")))
+
+(define gnome-minimal-desktop-service-type
+  (service-type
+   (name 'gnome-minimal-desktop)
+   (extensions
+    (list (service-extension polkit-service-type
+                             gnome-minimal-polkit-packages)
+          (service-extension udev-service-type
+                             gnome-minimal-udev-packages)
+          (service-extension dbus-root-service-type
+                             gnome-minimal-udev-packages)
+          (service-extension profile-service-type
+                             (compose list
+                                      gnome-minimal-package))))
+   (default-value (gnome-minimal-desktop-configuration))
    (description "Run the GNOME desktop environment.")))
 
 (define-deprecated (gnome-desktop-service #:key (config
@@ -1349,6 +1411,16 @@ or setting its password with passwd.")))
    (list
     (service gdm-service-type)
     (service gnome-desktop-service-type)
+    (service gnome-keyring-service-type))
+   (modify-services %generic-desktop-services
+     (delete slim-service-type))))
+
+(define %gnome-minimal-desktop-services
+  ;; Services for GNOME desktop environment.
+  (append
+   (list
+    (service gdm-service-type)
+    (service gnome-minimal-desktop-service-type)
     (service gnome-keyring-service-type))
    (modify-services %generic-desktop-services
      (delete slim-service-type))))
