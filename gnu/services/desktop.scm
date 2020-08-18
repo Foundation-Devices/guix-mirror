@@ -1293,4 +1293,54 @@ or setting its password with passwd.")))
 
          %base-services))
 
+(define %generic-desktop-services
+  ;; Services for generic desktop environment.
+  (append
+   (list
+    ;;; Authentication
+    (service accountsservice-service-type)
+    (service elogind-service-type)
+    (service polkit-service-type)
+    ;;; Device
+    (service udev-service-type)
+    (service udisks-service-type)
+    (service usb-modeswitch-service-type)
+    ;;; Display
+    (service colord-service-type)
+    (service slim-service-type)
+    ;;; Input
+    (service fprintd-service-type)
+    (service inputattach-service-type)
+    (service lirc-service-type)
+    (service pcscd-service-type)
+    (service sane-service-type)
+    ;;; Language
+    (service dicod-service-type)
+    (service localed-service-type)
+    ;;; Network
+    (service avahi-service-type)
+    (service bluetooth-service-type)
+    (service modem-manager-service-type)
+    (service network-manager-service-type)
+    (service tor-service-type)
+    (service wpa-supplicant-service-type)
+    ;;; Output
+    (service cups-service-type)
+    (service cups-pk-helper-service-type)
+    ;;; Power
+    (service thermald-service-type)
+    (service tlp-service-type)
+    (service upower-service-type)
+    ;;; Sound
+    (service alsa-service-type)
+    (service pulseaudio-service-type)
+    ;;; Space-Time
+    (service geoclue-service-type)
+    (service ntp-service-type)
+    ;;; System
+    (service dbus-root-service-type)
+    (service earlyoom-service-type)
+    (service libvirt-service-type))
+   %base-services))
+
 ;;; desktop.scm ends here
