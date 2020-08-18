@@ -1343,4 +1343,14 @@ or setting its password with passwd.")))
     (service libvirt-service-type))
    %base-services))
 
+(define %gnome-desktop-services
+  ;; Services for GNOME desktop environment.
+  (append
+   (list
+    (service gdm-service-type)
+    (service gnome-desktop-service-type)
+    (service gnome-keyring-service-type))
+   (modify-services %generic-desktop-services
+     (delete slim-service-type))))
+
 ;;; desktop.scm ends here
