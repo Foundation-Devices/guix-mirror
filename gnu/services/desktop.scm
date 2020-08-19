@@ -34,6 +34,7 @@
   #:use-module (gnu services base)
   #:use-module (gnu services dbus)
   #:use-module (gnu services avahi)
+  #:use-module (gnu services lirc)
   #:use-module (gnu services xorg)
   #:use-module (gnu services networking)
   #:use-module (gnu services sound)
