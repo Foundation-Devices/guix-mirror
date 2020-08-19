@@ -1383,7 +1383,9 @@ or setting its password with passwd.")))
     (service localed-service-type)
     ;;; Network
     (service avahi-service-type)
-    (service bluetooth-service-type)
+    (service bluetooth-service-type
+     (bluetooth-configuration
+      (auto-enable? #t)))
     (service modem-manager-service-type)
     (service network-manager-service-type)
     (service tor-service-type)
