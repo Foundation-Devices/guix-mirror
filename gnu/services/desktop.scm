@@ -38,6 +38,7 @@
   #:use-module (gnu services dict)
   #:use-module (gnu services avahi)
   #:use-module (gnu services lirc)
+  #:use-module (gnu services pm)
   #:use-module (gnu services xorg)
   #:use-module (gnu services networking)
   #:use-module (gnu services sound)
