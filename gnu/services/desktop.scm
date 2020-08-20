@@ -34,6 +34,7 @@
   #:use-module (gnu services security-token)
   #:use-module (gnu services base)
   #:use-module (gnu services dbus)
+  #:use-module (gnu services dict)
   #:use-module (gnu services avahi)
   #:use-module (gnu services lirc)
   #:use-module (gnu services xorg)
