@@ -40,6 +40,7 @@
   #:use-module (gnu services linux)
   #:use-module (gnu services lirc)
   #:use-module (gnu services pm)
+  #:use-module (gnu services virtualization)
   #:use-module (gnu services xorg)
   #:use-module (gnu services networking)
   #:use-module (gnu services sound)
