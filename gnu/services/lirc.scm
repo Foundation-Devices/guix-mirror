@@ -79,7 +79,8 @@
                  (list (service-extension shepherd-root-service-type
                                           lirc-shepherd-service)
                        (service-extension activation-service-type
-                                          (const %lirc-activation))))))
+                                          (const %lirc-activation))))
+   (default-value lirc)))
 
 (define* (lirc-service #:key (lirc lirc)
                        device driver config-file
