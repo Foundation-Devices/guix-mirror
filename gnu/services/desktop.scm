@@ -31,6 +31,7 @@
   #:use-module (gnu services)
   #:use-module (gnu services shepherd)
   #:use-module (gnu services authentication)
+  #:use-module (gnu services security-token)
   #:use-module (gnu services base)
   #:use-module (gnu services dbus)
   #:use-module (gnu services avahi)
@@ -1377,7 +1378,7 @@ or setting its password with passwd.")))
     ;;; Input
     (service fprintd-service-type)
     (service inputattach-service-type)
-    (service lirc-service-type)
+    ;(service lirc-service-type)
     (service pcscd-service-type)
     (service sane-service-type)
     ;;; Language
