@@ -37,6 +37,7 @@
   #:use-module (gnu services dbus)
   #:use-module (gnu services dict)
   #:use-module (gnu services avahi)
+  #:use-module (gnu services linux)
   #:use-module (gnu services lirc)
   #:use-module (gnu services pm)
   #:use-module (gnu services xorg)
