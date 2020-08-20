@@ -33,6 +33,7 @@
   #:use-module (gnu services authentication)
   #:use-module (gnu services security-token)
   #:use-module (gnu services base)
+  #:use-module (gnu services cups)
   #:use-module (gnu services dbus)
   #:use-module (gnu services dict)
   #:use-module (gnu services avahi)
