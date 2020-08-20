@@ -1379,7 +1379,6 @@ or setting its password with passwd.")))
     (service usb-modeswitch-service-type)
     ;;; Display
     (service colord-service-type)
-    (service slim-service-type)
     ;;; Input
     (service fprintd-service-type)
     (service inputattach-service-type)
@@ -1424,8 +1423,7 @@ or setting its password with passwd.")))
     (service gdm-service-type)
     (service gnome-desktop-service-type)
     (service gnome-keyring-service-type))
-   (modify-services %generic-desktop-services
-     (delete slim-service-type))))
+   %generic-desktop-services))
 
 (define %gnome-minimal-desktop-services
   ;; Services for GNOME desktop environment.
@@ -1434,7 +1432,6 @@ or setting its password with passwd.")))
     (service gdm-service-type)
     (service gnome-minimal-desktop-service-type)
     (service gnome-keyring-service-type))
-   (modify-services %generic-desktop-services
-     (delete slim-service-type))))
+   %generic-desktop-services))
 
 ;;; desktop.scm ends here
