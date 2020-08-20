@@ -9733,6 +9733,8 @@ configuration of various aspects of your desktop.")
            (lambda* (#:key outputs #:allow-other-keys)
              (substitute* '("src/meson.build" "src/st/meson.build"
                             "subprojects/gvc/meson.build")
+               (("join_paths\\(datadir, 'gnome-control-center', 'keybindings'\\)")
+                "keybindings_dep.get_pkgconfig_variable('keysdir', define_variable: ['datadir', datadir])")
                (("install_dir_gir: pkgdatadir,")
                 "install_dir_gir: join_paths(pkgdatadir, 'gir-1.0'),")
                (("install_dir_typelib: pkglibdir,")
