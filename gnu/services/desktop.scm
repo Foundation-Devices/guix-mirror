@@ -395,7 +395,8 @@ users are allowed."
                  (list (service-extension dbus-root-service-type
                                           geoclue-dbus-service)
                        (service-extension account-service-type
-                                          (const %geoclue-accounts))))))
+                                          (const %geoclue-accounts))))
+   (default-value geoclue)))
 
 (define* (geoclue-service #:key (geoclue geoclue)
                           (whitelist '())
