@@ -138,7 +138,7 @@ matches both \"/bin/foo\" and \"/usr/bin/foo\" but not \"barbin\"."
                          #:files (directory-files path)))))
          output-path-pairs)))
 
-(define (search-file-package pattern)
+(define (search-file-package pattern . more-patterns)
   "Return corresponding packages.
 Packages or ordered by most relevant last.
 Path is subject to SQLite \"full-text search\" pattern matching.
@@ -155,10 +155,14 @@ Example patterns:
         db
         ;; REVIEW: Is this inner join cheap?
         (string-append
-         "select subpath, name, version, output"
-         " from Files inner join Packages on Files.package = Packages.id"
-         (format #f " where Files.subpath match '~a' order by rank" pattern))
-      stmt
+         "SELECT subpath, name, version, output"
+         " FROM Files INNER JOIN Packages ON Files.package = Packages.id"
+         " WHERE Files.subpath MATCH :pattern ORDER BY RANK")
+        stmt
+      (sqlite-bind-arguments stmt #:pattern (string-concatenate
+                                             (map (lambda (s)
+                                                    (format #f "~s*" s))
+                                                  (cons pattern more-patterns))))
       (map vector->list
            (sqlite-fold cons '() stmt)))))
 
@@ -206,7 +210,7 @@ Example patterns:
 ;; with xdelta (probably not since it would send entries for Guix versions
 ;; that the user does not have).
 
-;; Statistics
+;; Measures
 ;;
 ;; Context:
 ;; - 14,000 packages
