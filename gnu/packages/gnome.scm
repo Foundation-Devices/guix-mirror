@@ -2318,6 +2318,8 @@ documents.")
        ("gtk+" ,gtk+)
        ("libunistring" ,libunistring)
        ("pango" ,pango)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Browse and search for non-standard characters")
     (description "GNOME-Characters is a simple utility application to find and
 insert unusual characters.  It allows you to quickly find the character you are
