@@ -8111,6 +8111,8 @@ share them with others via social networking and more.")
        ("libnautilus-extension" ,nautilus)
        ("libnotify" ,libnotify)
        ("nettle" ,nettle)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Archive management utility")
     (description "File Roller is an archive manager for the GNOME environment.
 This means that you can create and modify archives; view the content of an
