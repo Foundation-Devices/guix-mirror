@@ -2669,6 +2669,8 @@ dealing with storage devices.")
        ("gnome-desktop" ,gnome-desktop)
        ("gtk+" ,gtk+)
        ("harfbuzz" ,harfbuzz)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "View fonts on your system")
     (description "GNOME-Font-Viewer is an application to show you the fonts
 installed on your computer for your use as thumbnails.  Selecting any thumbnails
