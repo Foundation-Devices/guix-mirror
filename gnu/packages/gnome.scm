@@ -10253,6 +10253,8 @@ manage files.")
     (inputs
      `(("glib" ,glib)
        ("gtk+" ,gtk+)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Disk Usage Analyzer")
     (description "Baobab scans folders, devices or remote locations and reports
 on the disk space consumed by each element.  It provides both a tree-like and a
