@@ -8333,16 +8333,7 @@ spidermonkey javascript engine and the GObject introspection framework.")
                (rename-file
                 (string-append out "/share/help")
                 (string-append help "/share/help"))
-               #t)))
-         (add-after 'move-help 'wrap-gedit
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (gtksourceview (assoc-ref inputs "gtksourceview")))
-               (wrap-program (string-append out "/bin/gedit")
-                 ;; For language-specs.
-                 `("XDG_DATA_DIRS" ":" prefix (,(string-append gtksourceview
-                                                               "/share")))))
-             #t)))))
+               #t))))))
     (native-inputs
      `(("desktop-file-utils" ,desktop-file-utils)
        ("docbook-xml-4.1.2" ,docbook-xml-4.1.2)
@@ -8369,6 +8360,7 @@ spidermonkey javascript engine and the GObject introspection framework.")
     (inputs
      `(("adwaita-icon-theme" ,adwaita-icon-theme)
        ("appstream-util" ,appstream-glib)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("glib" ,glib)
        ("gnome-desktop" ,gnome-desktop)
        ("gspell" ,gspell)
