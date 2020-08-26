@@ -10798,6 +10798,8 @@ Hotmail REST APIs.")
        ("libgeoclue" ,geoclue)
        ("libgweather" ,libgweather)
        ("libhandy" ,libhandy)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Time for Clocks")
     (description "GNOME-Clocks is a simple clock application for GNOME.
 It includes world clocks, alarms, a stopwatch and a timer.")
