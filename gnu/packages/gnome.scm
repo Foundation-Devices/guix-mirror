@@ -7622,7 +7622,7 @@ a secret password store, an adblocker, and a modern UI.")
 (define-public epiphany
   (package
     (name "epiphany")
-    (version "3.36.3")
+    (version "3.36.4")
     (source
      (origin
        (method url-fetch)
@@ -7631,7 +7631,7 @@ a secret password store, an adblocker, and a modern UI.")
                        (version-major+minor version) "/"
                        "epiphany-" version ".tar.xz"))
        (sha256
-        (base32 "0vz1j6yrjv0nmf5lk8prkkm10fbcmd35khy9zsd7d4a86wk5c6v2"))))
+        (base32 "1gs2a94fzpciv58rljgbirsc2kqgiaiyc2yg6ff50nlgb2qpb2jq"))))
     (build-system meson-build-system)
     (outputs '("out" "help"))
     (arguments
@@ -7705,6 +7705,8 @@ a secret password store, an adblocker, and a modern UI.")
        ("nettle" ,nettle)
        ("sqlite" ,sqlite)
        ("webkitgtk" ,webkitgtk)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "GNOME web browser")
     (description "Epiphany is a GNOME web browser based on the WebKit rendering
 engine.")
