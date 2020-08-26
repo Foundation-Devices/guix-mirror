@@ -11650,6 +11650,7 @@ Bluefish supports many programming and markup languages.")
        ("pkg-config" ,pkg-config)))
     (inputs
      `(("appstream-util" ,appstream-glib)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("glib" ,glib)
        ("glibmm" ,glibmm)
        ("gtk+" ,gtk+)
@@ -11659,6 +11660,8 @@ Bluefish supports many programming and markup languages.")
        ("libselinux" ,libselinux)
        ("libxml2" ,libxml2)
        ("libwnck" ,libwnck)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "View current processes and monitor system state")
     (description "GNOME-System-Monitor is a tool to manage running processes
 and monitor system resources.")
