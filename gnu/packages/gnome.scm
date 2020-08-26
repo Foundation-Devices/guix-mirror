@@ -12023,14 +12023,7 @@ used in different GNOME Modules.")
                (rename-file
                 (string-append out "/share/help")
                 (string-append help "/share/help"))
-               #t)))
-         (add-after 'move-doc 'wrap-cheese
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (gst-plugin-path (getenv "GST_PLUGIN_SYSTEM_PATH")))
-               (wrap-program (string-append out "/bin/cheese")
-                 `("GST_PLUGIN_SYSTEM_PATH" ":" prefix (,gst-plugin-path))))
-             #t)))))
+               #t))))))
     (native-inputs
      `(("docbook-xml" ,docbook-xml-4.3)
        ("docbook-xsl" ,docbook-xsl)
