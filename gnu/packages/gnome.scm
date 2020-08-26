@@ -10484,6 +10484,8 @@ associations for GNOME.")
        ("gnome-desktop" ,gnome-desktop)
        ("gtk+" ,gtk+)
        ("gweather" ,libgweather)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Weather monitoring for GNOME desktop")
     (description "GNOME-Weather is a small application that allows you to monitor
 the current weather conditions for your city, or anywhere in the world.")
