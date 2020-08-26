@@ -10844,6 +10844,8 @@ It includes world clocks, alarms, a stopwatch and a timer.")
        ("libsoup", libsoup)
        ("libedataserverui" ,evolution-data-server)
        ("libgweather" ,libgweather)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Calendar application for GNOME")
     (description "GNOME Calendar is a simple and beautiful calendar application
 designed to perfectly fit the GNOME desktop.  By reusing the components which
