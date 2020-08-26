@@ -10205,6 +10205,7 @@ filetypes.")
        ("python" ,python-wrapper)))
     (inputs
      `(("appstream-util" ,appstream-glib)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("gexiv2" ,gexiv2)
        ("gnome-autoar" ,gnome-autoar)
        ("gnome-desktop" ,gnome-desktop)
