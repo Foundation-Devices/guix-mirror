@@ -12908,6 +12908,7 @@ integrate seamlessly with the GNOME desktop.")
     (inputs
      `(("appstream-glib" ,appstream-glib)
        ("libarchive" ,libarchive)
+       ("gdk-pixbuf" ,gdk-pixbuf+svg)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gtk" ,gtk+)
        ("gtk-vnc" ,gtk-vnc)
