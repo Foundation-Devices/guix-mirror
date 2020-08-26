@@ -2632,6 +2632,8 @@ and keep up to date translations of documentation.")
        ("libsecret" ,libsecret)
        ("pwquality" ,libpwquality)
        ("udisks" ,udisks)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "View, modify and configure disks and media")
     (description "GNOME-Disk-Utility provides libraries and applications for
 dealing with storage devices.")
