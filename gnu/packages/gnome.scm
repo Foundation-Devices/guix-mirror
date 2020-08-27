@@ -1650,6 +1650,8 @@ and handling media art caches.")
        ("pwquality" ,libpwquality)
        ("rest" ,rest)
        ("webkitgtk" ,webkitgtk)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Initial setup wizard for GNOME desktop")
     (description "GNOME-Initial-Setup aims to provide a simple, easy, and safe
 way to prepare a new system.")
