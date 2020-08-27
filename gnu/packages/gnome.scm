@@ -9700,6 +9700,8 @@ integration with the GNOME desktop environment.")
        ("upower-glib" ,upower)
        ("x11" ,libx11)
        ("xi" ,libxi)))
+    (propagated-inputs
+    `(("dconf" ,dconf)))
     (synopsis "GNOME Settings")
     (description "GNOME-Control-Center is the GNOME's main interface for
 configuration of various aspects of your desktop.")
