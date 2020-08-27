@@ -7561,6 +7561,8 @@ USB transfers with your high-level application or system daemon.")
        ("packagekit-glib" ,packagekit)
        ("sane-backends" ,sane-backends)
        ("zlib" ,zlib)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Document scanner")
     (description "Simple-Scan is a document scanning application for GNOME.  It
 allows you to capture images using image scanners that have suitable SANE
