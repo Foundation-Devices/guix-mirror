@@ -1251,6 +1251,8 @@ documentation.")
        ("gtk+" ,gtk+)
        ("libcanberra" ,libcanberra)
        ("lcms" ,lcms)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "Color profile manager for the GNOME desktop")
     (description "GNOME Color Manager is a session framework that makes it easy
 to manage, install and generate color profiles in the GNOME desktop.")
