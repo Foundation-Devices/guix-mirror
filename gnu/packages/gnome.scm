@@ -7884,6 +7884,8 @@ jQuery.Syntax JavaScript libraries.")
        ("sqlite" ,sqlite)
        ("webkitgtk" ,webkitgtk)
        ("yelp-xsl" ,yelp-xsl)))
+    (propagated-inputs
+     `(("dconf" ,dconf)))
     (synopsis "GNOME help browser")
     (description "Yelp is the help viewer in Gnome.  It natively views Mallard,
 DocBook, man, info, and HTML documents.  It can locate documents according to
