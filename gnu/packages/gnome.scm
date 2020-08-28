@@ -1810,7 +1810,13 @@ preview files on the GNOME desktop.")
                (rename-file
                 (string-append out "/share/gtk-doc")
                 (string-append doc "/share/gtk-doc"))
-               #t))))))
+               #t)))
+         (add-after 'move-help 'wrap-rygel
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out")))
+               (wrap-program (string-append out "/bin/rygel")
+                 `("GST_PLUGIN_SYSTEM_PATH" = (,(getenv "GST_PLUGIN_SYSTEM_PATH")))))
+             #t)))))
     (native-inputs
      `(("docbook-xml" ,docbook-xml)
        ("docbook-xml-4.3" ,docbook-xml-4.3)
@@ -1825,6 +1831,7 @@ preview files on the GNOME desktop.")
        ("xsltproc" ,libxslt)))
     (inputs
      `(("gdk-pixbuf" ,gdk-pixbuf+svg)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gssdp" ,gssdp)
        ("gst-libav" ,gst-libav)
        ("gst-plugins-bad" ,gst-plugins-bad)
