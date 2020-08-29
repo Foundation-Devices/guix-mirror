@@ -72,6 +72,17 @@
         "--enable-ucs4")
        #:phases
        (modify-phases %standard-phases
+         ;; To fix loading of LibLouis shared library
+         (add-after 'unpack 'patch-python-extension
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "python/louis/__init__.py.in"
+               (("liblouis = _loader\\[\"###LIBLOUIS_SONAME###\"\\]")
+                (string-append "liblouis = _loader"
+                               "[\""
+                               (assoc-ref outputs "out")
+                               "/lib/liblouis.so"
+                               "\"]")))
+             #t))
          ;; To install the sub-package "python".
          (add-after 'install 'install-python-extension
            (lambda* (#:key outputs #:allow-other-keys)
