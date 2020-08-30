@@ -265,6 +265,15 @@ acceleration in mind, leveraging common 3D graphics APIs for best performance.")
                                   "/xml/dtd/docbook/docbookx.dtd"))))
               (find-files "Source" "\\.sgml$"))
              #t))
+         (add-before 'configure 'configure-bubblewrap
+           (lambda _
+             ;; This phase is a corollary to 'webkitgtk-share-store.patch' to
+             ;; avoid hard coding /gnu/store, for users with other prefixes.
+             (let ((store-directory (%store-directory)))
+               (substitute*
+                   "Source/WebKit/UIProcess/Launcher/glib/BubblewrapLauncher.cpp"
+                 (("@storedir@") store-directory))
+               #t)))
          (add-after 'install 'move-doc-files
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
