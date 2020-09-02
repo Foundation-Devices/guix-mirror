@@ -1,0 +1,36 @@
+From 8e12c01e99fcc1bf706097ee64b2719fb2d87202 Mon Sep 17 00:00:00 2001
+From: Simon McVittie <smcv@debian.org>
+Date: Sun, 30 Aug 2020 15:17:33 +0100
+Subject: [PATCH] scrobbler: Don't crash if gnome-online-accounts is
+ unavailable
+
+goa_client_get_manager() can return NULL (in Python,
+GoaClient.get_manager() can return None) if the gnome-online-accounts
+D-Bus service is not available.
+
+Resolves: gnome-music#410
+Bug-Debian: https://bugs.debian.org/969271
+Signed-off-by: Simon McVittie <smcv@debian.org>
+---
+ gnomemusic/scrobbler.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/gnomemusic/scrobbler.py b/gnomemusic/scrobbler.py
+index 04888594..d133f2fa 100644
+--- a/gnomemusic/scrobbler.py
++++ b/gnomemusic/scrobbler.py
+@@ -76,6 +76,11 @@ class GoaLastFM(GObject.GObject):
+             return
+ 
+         manager = self._client.get_manager()
++
++        if manager is None:
++            self._log.info("GNOME Online Accounts is unavailable")
++            return
++
+         try:
+             manager.call_is_supported_provider(
+                 "lastfm", None, self._lastfm_is_supported_cb)
+-- 
+GitLab
+

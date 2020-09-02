@@ -842,12 +842,14 @@ cloud integration is offered through GNOME Online Accounts.")
                        (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32 "0zdpjgwf48bqb66wrl6k33pzcmc2g3m1046ma7z8xaj9idpi37jh"))))
+        (base32 "0zdpjgwf48bqb66wrl6k33pzcmc2g3m1046ma7z8xaj9idpi37jh"))
+       (patches
+        (search-patches "gnome-music-fix-crash.patch"))))
     (build-system meson-build-system)
     (outputs '("out" "help"))
     (arguments
      `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
-       #:python? #t ; To wrap binaries
+       #:python? #t          ; To wrap binaries
        #:tests? #f           ; Tests require networking
        #:phases
        (modify-phases %standard-phases

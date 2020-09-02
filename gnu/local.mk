@@ -1057,6 +1057,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/glibc-supported-locales.patch     	\
   %D%/packages/patches/gmp-arm-asm-nothumb.patch		\
   %D%/packages/patches/gmp-faulty-test.patch			\
+  %D%/packages/patches/gnome-music-fix-crash.patch		\
   %D%/packages/patches/gnome-todo-delete-esource-duplicate.patch \
   %D%/packages/patches/gnome-tweaks-search-paths.patch		\
   %D%/packages/patches/gnupg-default-pinentry.patch		\
