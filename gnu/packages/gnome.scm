@@ -887,6 +887,7 @@ cloud integration is offered through GNOME Online Accounts.")
        ("gnome-online-accounts:lib" ,gnome-online-accounts "lib")
        ("grilo" ,grilo)
        ("grilo-plugins" ,grilo-plugins)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("gstreamer" ,gstreamer)
        ("gst-plugins-bad" ,gst-plugins-bad)
        ("gst-plugins-base" ,gst-plugins-base)
@@ -901,7 +902,8 @@ cloud integration is offered through GNOME Online Accounts.")
        ("python" ,python)
        ("tracker" ,tracker)))
     (propagated-inputs
-     `(("glib" ,glib)))
+     `(("glib" ,glib)
+       ("dconf" ,dconf)))
     (synopsis "Simple music player")
     (description "GNOME-Music is the new GNOME music playing application.
 It aims to combine an elegant and immersive browsing experience with simple and
