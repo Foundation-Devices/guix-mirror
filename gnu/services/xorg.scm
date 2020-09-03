@@ -949,7 +949,7 @@ the GNOME desktop environment.")
          (start #~(lambda ()
                     (fork+exec-command
                      (list #$(file-append (gdm-configuration-gdm config)
-                                          "/bin/gdm"))
+                                          "/sbin/gdm"))
                      #:environment-variables
                      (list (string-append
                             "GDM_CUSTOM_CONF="
