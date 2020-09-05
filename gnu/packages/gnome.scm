@@ -9406,6 +9406,7 @@ libxml2.")
     (arguments
      `(#:configure-flags
        (list
+        "--localstatedir=/var"
         "--disable-static"
         "--enable-gdm-xsession"
         "--disable-systemd-journal"
