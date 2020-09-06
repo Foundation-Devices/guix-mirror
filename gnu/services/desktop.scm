@@ -124,9 +124,13 @@
             cups-pk-helper-service-type
             sane-service-type
 
+            gnome-minimal-desktop-configuration
             gnome-desktop-configuration
+            gnome-minimal-desktop-configuration?
             gnome-desktop-configuration?
+            gnome-minimal-desktop-service
             gnome-desktop-service
+            gnome-minimal-desktop-service-type
             gnome-desktop-service-type
 
             mate-desktop-configuration
@@ -155,7 +159,10 @@
             gnome-keyring-configuration?
             gnome-keyring-service-type
 
-            %desktop-services))
+            %desktop-services
+            %generic-desktop-services
+            %gnome-minimal-desktop-services
+            %gnome-desktop-services))
 
 ;;; Commentary:
 ;;;
