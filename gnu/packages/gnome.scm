@@ -9432,12 +9432,14 @@ libxml2.")
        (modify-phases %standard-phases
          (add-before 'configure 'pre-configure
            (lambda* (#:key inputs outputs #:allow-other-keys)
+             ;; Replace systemd with elogind.
              (substitute* '("common/gdm-log.c"
                             "daemon/gdm-server.c"
                             "daemon/gdm-session-worker.c"
                             "daemon/gdm-session-worker-job.c")
                (("#include <systemd/sd-daemon\\.h>")
                 "#include <elogind/sd-daemon.h>"))
+             ;; Replace systemd with elogind.
              (substitute* '("common/gdm-common.c"
                             "daemon/gdm-local-display-factory.c"
                             "daemon/gdm-manager.c"
@@ -9447,6 +9449,67 @@ libxml2.")
              (substitute* '("configure")
                (("libsystemd")
                 "libelogind"))
+            ;; Patch system-installed sessions.
+            (substitute* '("libgdm/gdm-sessions.c"
+                           "daemon/gdm-session.c"
+                           "daemon/gdm-display.c"
+                           "daemon/gdm-launch-environment.c")
+              (("DATADIR \"/xsessions")
+               "\"/run/current-system/profile/share/xsessions")
+              (("DATADIR \"/wayland-sessions")
+               "\"/run/current-system/profile/share/wayland-sessions")
+              (("DATADIR \"/gnome-session/sessions")
+               "\"/run/current-system/profile/share/gnome-session/sessions"))
+            ;; Patch session environment.
+            (let* ((propagate '("GDM_CUSTOM_CONF"
+                               "GDM_DBUS_DAEMON"
+                               "GDM_X_SERVER"
+                               "GDM_X_SESSION"
+                               "XDG_DATA_DIRS")))
+              (substitute* "daemon/gdm-session.c"
+                (("set_up_session_environment \\(self\\);")
+                 (apply string-append
+                        "set_up_session_environment (self);\n"
+                        (map (lambda (name)
+                               (string-append
+                                "gdm_session_set_environment_variable "
+                                "(self, \"" name "\","
+                                "g_getenv (\"" name "\"));\n"))
+                             propagate)))))
+            ;; Find the configuration file using an environment variable.
+            (substitute* '("common/gdm-settings.c")
+              (("GDM_CUSTOM_CONF")
+               (string-append "(g_getenv(\"GDM_CUSTOM_CONF\") != NULL"
+                              " ? g_getenv(\"GDM_CUSTOM_CONF\")"
+                              " : GDM_CUSTOM_CONF)")))
+            ;; Use service-supplied path to X.
+            (substitute* '("daemon/gdm-server.c")
+              (("\\(X_SERVER X_SERVER_ARG_FORMAT")
+               "(\"%s\" X_SERVER_ARG_FORMAT, g_getenv (\"GDM_X_SERVER\")"))
+            ;; Use server-supplied paths.
+            (substitute* '("daemon/gdm-wayland-session.c"
+                           "daemon/gdm-x-session.c")
+              (("\"dbus-daemon\"")
+               "g_getenv (\"GDM_DBUS_DAEMON\")")
+              (("X_SERVER")
+               "g_getenv (\"GDM_X_SERVER\")")
+              (("GDMCONFDIR \"/Xsession\"")
+               "g_getenv (\"GDM_X_SESSION\")"))
+            ;; Use an absolute path for GNOME Session.
+            (substitute* "daemon/gdm-launch-environment.c"
+              (("\"gnome-session\"")
+               (string-append "\"" (assoc-ref inputs "gnome-session")
+                              "/bin/gnome-session\"")))
+            ;; Do not automatically select the placeholder session.
+            (substitute* "daemon/gdm-session.c"
+              (("!g_str_has_suffix [(]base_name, \"\\.desktop\"[)]")
+               (string-append "!g_str_has_suffix (base_name, \".desktop\") || "
+                              "(g_strcmp0(search_dirs[i], \""
+                              (assoc-ref outputs "out") "/share/gdm/BuiltInSessions/"
+                              "\") == 0 && "
+                              "g_strcmp0(base_name, \"fail.desktop\") == 0)"))
+              (("g_error [(]\"GdmSession: no session desktop files installed, aborting\\.\\.\\.\"[)];")
+               "{ self->fallback_session_name = g_strdup(\"fail\"); goto out; }"))
              #t)))))
     (native-inputs
      `(("check" ,check)
