@@ -593,8 +593,7 @@ site} for more information."
 
                          ;; Profile 'udisksctl' & co. in the system profile.
                          (service-extension profile-service-type
-                                            udisks-package)))
-                (default-value udisks))))
+                                            udisks-package))))))
 
 (define* (udisks-service #:key (udisks udisks))
   "Return a service for @uref{http://udisks.freedesktop.org/docs/latest/,
