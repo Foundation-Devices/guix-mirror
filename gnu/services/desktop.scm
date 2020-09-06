@@ -1382,8 +1382,8 @@ or setting its password with passwd.")))
     (service elogind-service-type)
     (service polkit-service-type)
     ;;; Device
-    (service udev-service-type)
-    (service udisks-service-type)
+    ;(service udev-service-type)
+    ;(service udisks-service-type)
     (service usb-modeswitch-service-type)
     ;;; Display
     (service colord-service-type)
@@ -1416,7 +1416,7 @@ or setting its password with passwd.")))
     (service alsa-service-type)
     (service pulseaudio-service-type)
     ;;; Space-Time
-    (service geoclue-service-type)
+    ;(service geoclue-service-type)
     (service ntp-service-type)
     ;;; System
     (service dbus-root-service-type)
