@@ -1420,6 +1420,8 @@ or setting its password with passwd.")))
     (service dbus-root-service-type)
     (service earlyoom-service-type)
     (service libvirt-service-type)
+    (service virtlog-service-type)
+    (service zram-device-service-type)
     ;;; Misc
     polkit-wheel-service
     x11-socket-directory-service
