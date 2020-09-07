@@ -9500,7 +9500,48 @@ libxml2.")
                               "g_strcmp0(base_name, \"fail.desktop\") == 0)"))
               (("g_error [(]\"GdmSession: no session desktop files installed, aborting\\.\\.\\.\"[)];")
                "{ self->fallback_session_name = g_strdup(\"fail\"); goto out; }"))
-             #t)))))
+             #t))
+         ;; GDM requires that there be at least one desktop entry
+         ;; file.  This phase installs a hidden one that simply
+         ;; fails.  This enables users to use GDM with a
+         ;; '~/.xsession' script with no other desktop entry files.
+         ;; See <https://bugs.gnu.org/35068>.
+         (add-after 'install 'install-placeholder-desktop-entry
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (sessions (string-append out "/share/gdm/BuiltInSessions"))
+                    (fail (string-append sessions "/fail.desktop")))
+               (mkdir-p sessions)
+               (with-output-to-file fail
+                 (lambda ()
+                   (for-each
+                    display
+                    '("[Desktop Entry]\n"
+                      "Encoding=UTF-8\n"
+                      "Type=Application\n"
+                      "Name=Fail\n"
+                      "Comment=This session fails immediately.\n"
+                      "NoDisplay=true\n"
+                      "Exec=false\n"))))
+               #t)))
+         ;; GDM needs GNOME Session to run these applications.  We link
+         ;; their autostart files in `share/gdm/greeter/autostart'
+         ;; because GDM explicitly tells GNOME Session to look there.
+         ;;
+         ;; XXX: GNOME Shell should be linked here too, but currently
+         ;; GNOME Shell depends on GDM.
+         (add-after 'install 'link-autostart-files
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (autostart (string-append out "/share/gdm/"
+                                              "greeter/autostart"))
+                    (settings (assoc-ref inputs "gnome-settings-daemon")))
+               (mkdir-p autostart)
+               (with-directory-excursion autostart
+                 (for-each (lambda (desktop)
+                             (symlink desktop (basename desktop)))
+                           (find-files (string-append settings "/etc/xdg"))))
+               #t))))))
     (native-inputs
      `(("check" ,check)
        ("dconf" ,dconf)
