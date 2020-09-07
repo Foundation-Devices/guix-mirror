@@ -9436,19 +9436,6 @@ libxml2.")
          (add-before 'configure 'pre-configure
            (lambda* (#:key inputs outputs #:allow-other-keys)
              ;; Replace systemd with elogind.
-             (substitute* '("common/gdm-log.c"
-                            "daemon/gdm-server.c"
-                            "daemon/gdm-session-worker.c"
-                            "daemon/gdm-session-worker-job.c")
-               (("#include <systemd/sd-daemon\\.h>")
-                "#include <elogind/sd-daemon.h>"))
-             ;; Replace systemd with elogind.
-             (substitute* '("common/gdm-common.c"
-                            "daemon/gdm-local-display-factory.c"
-                            "daemon/gdm-manager.c"
-                            "libgdm/gdm-user-switching.c")
-               (("#include <systemd/sd-login\\.h>")
-                "#include <elogind/sd-login.h>"))
              (substitute* '("configure")
                (("libsystemd")
                 "libelogind"))
