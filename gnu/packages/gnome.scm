@@ -8183,7 +8183,9 @@ the archive.")
                        (version-major+minor version) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32 "0ymvf1bap35348rpjqp63qwnwnnawdwi4snch95zc4n832w3hjym"))))
+        (base32 "0ymvf1bap35348rpjqp63qwnwnnawdwi4snch95zc4n832w3hjym"))
+       (patches
+        (search-patches "gnome-session-elogind.patch"))))
     (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
@@ -8235,7 +8237,8 @@ the archive.")
        ("xmlto" ,xmlto)
        ("xsltproc" ,libxslt)))
     (inputs
-     `(("epoxy" ,libepoxy)
+     `(("elogind" ,elogind)
+       ("epoxy" ,libepoxy)
        ("glib" ,glib)
        ("gnome-desktop" ,gnome-desktop)
        ("gtk+" ,gtk+)
