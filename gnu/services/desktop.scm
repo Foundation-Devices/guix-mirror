@@ -923,7 +923,7 @@ rules."
     (map (lambda (name)
            ((package-direct-input-selector name) gnome))
          '("accountsservice"
-           "network-manager"
+           ;"network-manager"
            "gnome-control-center"
            "gnome-initial-setup"
            "gnome-settings-daemon"
@@ -937,7 +937,7 @@ rules."
     (map (lambda (name)
            ((package-direct-input-selector name) gnome-minimal))
          '("accountsservice"
-           "network-manager"
+           ;"network-manager"
            "gnome-control-center"
            "gnome-initial-setup"
            "gnome-settings-daemon"
@@ -949,8 +949,8 @@ rules."
   (let ((gnome (gnome-package config)))
     (map (lambda (name)
            ((package-direct-input-selector name) gnome))
-         '("network-manager"
-           "upower"
+         '(;"network-manager"
+           ;"upower"
            "gdm"
            "gnome-settings-daemon"))))
 
@@ -960,8 +960,8 @@ rules."
   (let ((gnome-minimal (gnome-minimal-package config)))
     (map (lambda (name)
            ((package-direct-input-selector name) gnome-minimal))
-         '("network-manager"
-           "upower"
+         '(;"network-manager"
+           ;"upower"
            "gdm"
            "gnome-settings-daemon"))))
 
@@ -972,8 +972,8 @@ rules."
     (map (lambda (name)
            ((package-direct-input-selector name) gnome))
          '("accountsservice"
-           "network-manager"
-           "upower"
+           ;"network-manager"
+           ;"upower"
            "gdm"
            "gnome-control-center"
            "gnome-keyring"
@@ -1011,8 +1011,8 @@ rules."
     (map (lambda (name)
            ((package-direct-input-selector name) gnome-minimal))
          '("accountsservice"
-           "network-manager"
-           "upower"
+           ;"network-manager"
+           ;"upower"
            "gdm"
            "gnome-control-center"
            "gnome-keyring"
