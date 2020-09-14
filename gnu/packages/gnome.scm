@@ -9880,7 +9880,7 @@ configuration of various aspects of your desktop.")
                (("install_dir_gir: pkgdatadir,")
                 "install_dir_gir: join_paths(pkgdatadir, 'gir-1.0'),")
                (("install_dir_typelib: pkglibdir,")
-                "install_dir_typelib: join_paths(pkglibdir, 'girepository-1.0'),"))
+                "install_dir_typelib: join_paths(get_option('libdir'), 'girepository-1.0'),"))
              (substitute* "subprojects/extensions-tool/meson.build"
                (("bash_completion\\.get_pkgconfig_variable\\('completionsdir'\\)")
                 (string-append "'"
@@ -9973,7 +9973,13 @@ configuration of various aspects of your desktop.")
        ("mutter" ,mutter)
        ("pango" ,pango)
        ("polkit-agent" ,polkit)
-       ("x11" ,libx11)))
+       ("x11" ,libx11)
+
+       ;;; TODO: Add ibus-daemon somehow.
+
+       ;; The Javascript files need those:
+       ("libnma" ,libnma)
+       ("upower" ,upower)))
     (synopsis "Next generation desktop shell")
     (description "GNOME-Shell provides core user interface functions for the
 GNOME desktop, like switching to windows and launching applications.  It takes
