@@ -8924,6 +8924,7 @@ users.")
        (list
         ;; System Paths
         "-Dsystemdsystemunitdir=no"
+        "-Dlocalstatedir=/var"
         (string-append "-Dsystem_ca_path="
                        (assoc-ref %build-inputs "nss-certs")
                        "/etc/ssl/certs")
