@@ -3462,7 +3462,73 @@ exec ~a/bin/~a-~a -B~a/lib -Wl,-dynamic-linker -Wl,~a/~a \"$@\"~%"
                ,hurd-headers-boot0)
              '())
        ,@(package-outputs glibc-final-with-bootstrap-bash))
-      ,@(package-arguments glibc-final-with-bootstrap-bash)))))
+      ,@(substitute-keyword-arguments
+         (package-arguments glibc-final-with-bootstrap-bash)
+         ((#:phases phases)
+          `(modify-phases ,phases
+             (add-after 'unpack 'patch-dirent
+               (lambda* (#:key outputs #:allow-other-keys)
+                 ;; Linux kernel file offsets are always 64 bits.
+                 ;; But userspace can be built to use 32 bit offsets.
+                 ;;
+                 ;; "struct dirent", returned by readdir, uses d_off to store
+                 ;; such an "offset" that it got from the Linux kernel.
+                 ;; In the case of ext4 that "offset" is actually a 64 bit
+                 ;; hash value.
+                 ;;
+                 ;; Therefore, there are cases where such an offset that it got
+                 ;; from the Linux kernel does not fit in the "struct dirent"
+                 ;; field "d_off".
+                 ;;
+                 ;; If the guest system's glibc is 32 bit AND uses 32 bit
+                 ;; file offsets it is going to be very confused.
+                 ;; It does check whether d_off fits into the structure
+                 ;; it gives back to the user--and it doesn't fit.  Hence readdir
+                 ;; fails, with errno == EOVERFLOW (which is undocumented and thus
+                 ;; an API error).
+                 ;; This manifests itself in simple directory reads not working
+                 ;; anymore in parts of cmake, for example.
+                 ;;
+                 ;; This manifested in Guix when building stuff for
+                 ;; ARMHF on a x86_64 build host using QEMU transparent emulation.
+                 ;;
+                 ;; There is a very simple and complete way to avoid this problem:
+                 ;; Just always use 64 bit offsets in user space programs (also
+                 ;; on 32 bit machines).  The Linux kernel does that already
+                 ;; anyway.
+                 ;;
+                 ;; Note: We might want to avoid using 64 bit when bootstrapping
+                 ;; using mescc (since mescc doesn't directly support 64 bit
+                 ;; values)--but then bootstrapping has to be done on a
+                 ;; file system other than ext4, or on ext4 with the feature
+                 ;; "dir_index" disabled.
+                 ;;
+                 ;; The change below does not affect 64 bit users.
+                 ;;
+                 ;; See <https://issues.guix.gnu.org/43513>.
+                 (let ((port (open-file "dirent/dirent.h" "a")))
+                   (display "
+#ifndef _LIBC
+#if __SIZEOF_LONG__ < 8
+#ifndef __USE_FILE_OFFSET64
+#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 32
+#warning \"Using -D_FILE_OFFSET_BITS=32 and using readdir is a bad idea, see <https://bugzilla.kernel.org/show_bug.cgi?id=205957>\"
+#else
+#undef readdir
+#define readdir @READDIR_WITHOUT_FILE_OFFSET64_IS_A_REALLY_BAD_IDEA@
+#endif
+#endif
+#endif
+#endif
+" port)
+                   (close-port port))
+                 ;; This file includes <dirent.h> and thus checks sanity already.
+                 ;; TODO: Check dirent/scandir-tail.c, dirent/scandir64-tail.c.
+                 (substitute* "posix/glob.c"
+                  (("(#[ ]*define[ ][ ]*readdir)") "
+#undef readdir
+#define readdir"))
+                 #t)))))))))
 
 (define/system-dependent gcc-boot0-wrapped
   ;; Make the cross-tools GCC-BOOT0 and BINUTILS-BOOT0 available under the
