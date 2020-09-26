@@ -59,17 +59,37 @@ string SQL for DB."
                     (path (error "Missing argument"))
                     (files (error "Missing argument"))
                     (version (error "Missing argument"))
+                    (synopsis (error "Missing argument"))
+                    (description (error "Missing argument"))
                     (guix-version (error "Missing argument")))
   "FILES is a list of path underneath PATH."
-  (sqlite-exec
-   db
-   (string-append "insert into Packages (name, system, output, path, version, guix)"
-                  ;; "insert or replace into Packages (name, system, output, path, version, guix)"
-                  (format #f " values (~s, ~s, ~s, ~s, ~s, ~s)"
-                          name system output path version guix-version)
-                  ;; " on conflict (path) do nothing"
-                  ))
+  (with-statement
+      db
+      (string-append "insert into Packages (name, system, output, version, path, guix)"
+                     " values (:name, :system, :output, :version, :path, :guix)")
+      stmt
+    (sqlite-bind-arguments stmt
+                           #:name name
+                           #:system system
+                           #:output output
+                           #:path path
+                           #:version version
+                           #:guix guix-version)
+    (map vector->list
+         (sqlite-fold cons '() stmt)))
   (let ((id ((@@ (guix store database) last-insert-row-id) db))) ; TODO: Export?
+    (with-statement
+        db
+        (string-append "insert into Info (name, synopsis, description, package)"
+                       " values (:name, :synopsis, :description, :id)")
+        stmt
+      (sqlite-bind-arguments stmt
+                             #:name name
+                             #:synopsis synopsis
+                             #:description description
+                             #:id id)
+      (map vector->list
+           (sqlite-fold cons '() stmt)))
     (for-each
      (lambda (file)
        (sqlite-exec
@@ -134,6 +154,8 @@ matches both \"/bin/foo\" and \"/usr/bin/foo\" but not \"barbin\"."
                          #:output output
                          #:path path ; Storing /gnu/store for all packages has no significant size cost.
                          #:version (package-version package)
+                         #:synopsis (package-synopsis package)
+                         #:description (package-description package)
                          #:guix-version %guix-version
                          #:files (directory-files path)))))
          output-path-pairs)))
@@ -165,6 +187,29 @@ Example patterns:
                                                   (cons pattern more-patterns))))
       (map vector->list
            (sqlite-fold cons '() stmt)))))
+
+(define (search-package pattern . more-patterns)
+  "Return corresponding packages.
+Search is performed over name, synopsis, description.
+Packages or ordered by most relevant last.
+Search is subject to SQLite \"full-text search\" pattern matching.
+See https://www.sqlite.org/fts5.html."
+  (let ((pattern (string-concatenate
+                  (map (lambda (s)
+                         (format #f "~s*" s))
+                       (cons pattern more-patterns)))))
+    (with-database %db db
+      (with-statement
+          db
+          (string-append
+           "SELECT name FROM Info WHERE Info MATCH :pattern ORDER BY RANK")
+          stmt
+        (sqlite-bind-arguments
+         stmt
+         #:pattern (format #f "name:~a OR synopsis:~a OR description:~a"
+                           pattern pattern pattern))
+        (map vector->list
+             (sqlite-fold cons '() stmt))))))
 
 (define (format-search search-result)
   (for-each
@@ -213,14 +258,21 @@ Example patterns:
 ;; Measures
 ;;
 ;; Context:
-;; - 14,000 packages
-;; - 1700 store items
+;; - 15005 packages
+;; - 1796 store items
 ;; - CPU 3.5 GHz
 ;; - SSD
 ;;
-;; Results:
+;; Data with synopsis and description:
 ;; - Database generation time: 30 seconds.
-;; - Database size: 31 MiB.
-;; - Database Zstd-compressed size: 6.1 MiB.
+;; - Database size: 37 MiB.
+;; - Database Zstd-compressed size: 6.4 MiB.
+;; - Zstd-compression time: 0.13 seconds.
+;; - FTS queries: < 0.01 seconds.
+;;
+;; Data without synopsis and description:
+;; - Database generation time: 30 seconds.
+;; - Database size: 36 MiB.
+;; - Database Zstd-compressed size: 6.0 MiB.
 ;; - Zstd-compression time: 0.13 seconds.
 ;; - FTS queries: < 0.01 seconds.

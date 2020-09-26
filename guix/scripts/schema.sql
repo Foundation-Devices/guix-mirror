@@ -9,6 +9,14 @@ create table if not exists Packages (
     guix        text not null
 );
 
+
+create virtual table if not exists Info using fts5(
+    name,
+    synopsis,
+    description,
+    package
+);
+
 create virtual table if not exists Files using fts5(
     subpath,
     package
