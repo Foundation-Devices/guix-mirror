@@ -57,7 +57,7 @@ string SQL for DB."
                     (system (error "Missing argument"))
                     (output "out")
                     (path (error "Missing argument"))
-                    (files (error "Missing argument"))
+                    files
                     (version (error "Missing argument"))
                     (synopsis (error "Missing argument"))
                     (description (error "Missing argument"))
@@ -147,17 +147,17 @@ matches both \"/bin/foo\" and \"/usr/bin/foo\" but not \"barbin\"."
            ((output . path)
             ;; TODO: Don't list files if entry is already in database.
             ;; TODO: Try fetching info from remote substitute server database.
-            (when (file-exists? path)
-              (add-files db         ; TODO: Merge this function and add-files?
-                         #:name (package-name package)
-                         #:system system
-                         #:output output
-                         #:path path ; Storing /gnu/store for all packages has no significant size cost.
-                         #:version (package-version package)
-                         #:synopsis (package-synopsis package)
-                         #:description (package-description package)
-                         #:guix-version %guix-version
-                         #:files (directory-files path)))))
+            ;; (when (file-exists? path))
+            (add-files db ; TODO: Merge this function and add-files?
+                       #:name (package-name package)
+                       #:system system
+                       #:output output
+                       #:path path ; Storing /gnu/store for all packages has no significant size cost.
+                       #:version (package-version package)
+                       #:synopsis (package-synopsis package)
+                       #:description (package-description package)
+                       #:guix-version %guix-version
+                       #:files (directory-files path))))
          output-path-pairs)))
 
 (define (search-file-package pattern . more-patterns)
