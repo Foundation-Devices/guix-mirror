@@ -536,7 +536,8 @@ Go.  It also includes runtime support libraries for these languages.")
                 "0qg6kqc5l72hpnj4vr6l0p69qav0rh4anlkk3y55540zy3klc6dq"))
               (patches (search-patches "gcc-strmov-store-file-names.patch"
                                        "gcc-7-libsanitizer-mode-size.patch"
-                                       "gcc-5.0-libvtv-runpath.patch"))))
+                                       "gcc-5.0-libvtv-runpath.patch"
+                                       "gcc-7-dir-file-offsets64.patch"))))
     (description
      "GCC is the GNU Compiler Collection.  It provides compiler front-ends
 for several languages, including C, C++, Objective-C, Fortran, Ada, and Go.
