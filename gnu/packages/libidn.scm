@@ -74,7 +74,13 @@ Java libraries.")
      `(("libunistring" ,libunistring)))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags '("--disable-static")))
+     `(#:configure-flags '("--disable-static")
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'ensure-file-offset-bits-64
+           (lambda _
+             (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+             #t)))))
     (synopsis "Internationalized domain name library for IDNA2008")
     (description "Libidn2 is an internationalized domain library implementing
 the IDNA2008 specifications.   Libidn2 is believed to be a complete IDNA2008
