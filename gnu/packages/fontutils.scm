@@ -352,6 +352,10 @@ Font Format (WOFF).")
             "PYTHON=false")
       #:phases
       (modify-phases %standard-phases
+        (add-before 'configure 'ensure-file-offset-bits-64
+          (lambda _
+            (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+            #t))
         (replace 'install
                  (lambda _
                    ;; Don't try to create /var/cache/fontconfig.
