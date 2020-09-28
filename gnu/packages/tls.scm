@@ -86,7 +86,14 @@
         "179jskl7dmfp1rd2khkzmlibzgki4wi6hvmmwfv7q49r728b03qf"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags '("--disable-static")))
+     `(#:configure-flags '("--disable-static")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'ensure-file-offset-bits-64
+           ;; Note: lib/gl/sys/types.h has off_t, but only for Windows.
+           (lambda _
+             (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+             #t)))))
     (native-inputs `(("perl" ,perl)))
     (home-page "https://www.gnu.org/software/libtasn1/")
     (synopsis "ASN.1 library")
