@@ -354,6 +354,11 @@ required structures.")
 			      "linux-aarch64")))
 		    #t)))
 	      '())
+        (add-before 'configure 'ensure-file-offset-bits-64
+          ;; Note: lib/gl/sys/types.h has off_t, but only for Windows.
+          (lambda _
+            (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+            #t))
         (replace 'configure
           (lambda* (#:key outputs #:allow-other-keys)
             (let* ((out (assoc-ref outputs "out"))
