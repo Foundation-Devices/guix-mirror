@@ -431,6 +431,16 @@ Makefile, simplifying the entire process for the developer.")
 
        #:phases
        (modify-phases %standard-phases
+         (add-before 'configure 'ensure-file-offset-bits-64
+           (lambda _
+             (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+             (substitute* "libltdl/libltdl/lt__dirent.h"
+              (("#define LT__DIRENT_H 1") "#define LT__DIRENT_H 1
+#if !defined(_FILE_OFFSET_BITS) || _FILE_OFFSET_BITS != 64
+#error \"libltdl was compiled with _FILE_OFFSET_BITS == 64, so you have to be, too (since it exports readdir)\"
+#endif
+"))
+             #t))
          (add-before 'check 'pre-check
            (lambda* (#:key inputs native-inputs #:allow-other-keys)
              ;; Run the test suite in parallel, if possible.
