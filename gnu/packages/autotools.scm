@@ -487,6 +487,16 @@ complexity of working with shared libraries across platforms.")
     (arguments
      '(#:configure-flags '("--enable-ltdl-install") ;really install it
        #:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'ensure-file-offset-bits-64
+                    (lambda _
+                      (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+                      (substitute* "libltdl/libltdl/lt__dirent.h"
+                       (("#define LT__DIRENT_H 1") "#define LT__DIRENT_H 1
+#if !defined(_FILE_OFFSET_BITS) || _FILE_OFFSET_BITS != 64
+#error \"libltdl was compiled with _FILE_OFFSET_BITS == 64, so you have to be, too (since it exports readdir)\"
+#endif
+"))
+                      #t))
                   (add-before 'configure 'change-directory
                     (lambda _ (chdir "libltdl") #t)))))
 
