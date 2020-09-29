@@ -782,6 +782,8 @@ the store.")
 
       #:tests? #f                                 ; XXX
       #:phases (modify-phases %standard-phases
+                 ;; glibc itself should support both--so don't choose here.
+                 (delete 'set-FILE-OFFSET-BITS)
                  (add-before
                   'configure 'pre-configure
                   (lambda* (#:key inputs native-inputs outputs
