@@ -854,7 +854,9 @@ BLAKE.")
            ;; ./configure is not GNU autotools' and doesn't gracefully handle
            ;; unrecognized options, so we must call it manually.
            (lambda* (#:key configure-flags #:allow-other-keys)
-             (apply invoke "./configure" configure-flags)))
+             (apply invoke "./configure"
+                           (string-append "--extra-cflags=" (getenv "CFLAGS"))
+                           configure-flags)))
          (add-before 'check 'patch-/bin/sh
            (lambda _
              (substitute* "Makefile"
