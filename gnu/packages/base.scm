@@ -782,6 +782,8 @@ the store.")
 
       #:tests? #f                                 ; XXX
       #:phases (modify-phases %standard-phases
+                 ;; glibc itself should support both--so don't choose here.
+                 (delete 'set-FILE-OFFSET-BITS)
                  (add-after 'unpack 'patch-dirent
                    (lambda* (#:key outputs #:allow-other-keys)
                      ;; Linux kernel file offsets are always 64 bits.
