@@ -1398,6 +1398,8 @@ ac_cv_c_float_format='IEEE (little-endian)'
            ,(string-append "--prefix=" out)))
        #:phases
        (modify-phases %standard-phases
+         ;; glibc itself should support both--so don't choose here.
+         (delete 'set-FILE-OFFSET-BITS)
          (add-after 'unpack 'patch-dirent
            (lambda _
              ;; See package "glibc" for why this is necessary.
