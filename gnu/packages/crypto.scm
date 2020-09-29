@@ -845,8 +845,13 @@ BLAKE.")
                                       "/bin/" ,target "-gcc"))
                      '())))
        #:make-flags
-       ;; The binaries in /bin need some help finding librhash.so.0.
-       (list (string-append "LDFLAGS=-Wl,-rpath=" %output "/lib"))
+       (list ;; This package uses a configure script that is not from GNU
+             ;; autotools; it doesn't handle the environment variable
+             ;; CFLAGS (or for that matter the configure option).
+             ;; Therefore, directly pass it to make.
+             "CFLAGS=-D_FILE_OFFSET_BITS=64"
+             ;; The binaries in /bin need some help finding librhash.so.0.
+             (string-append "LDFLAGS=-Wl,-rpath=" %output "/lib"))
        #:test-target "test"             ; ‘make check’ just checks the sources
        #:phases
        (modify-phases %standard-phases
