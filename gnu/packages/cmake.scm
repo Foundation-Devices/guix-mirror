@@ -190,6 +190,13 @@
        #:phases
        (modify-phases %standard-phases
          ,@%common-build-phases
+         (add-before 'configure 'ensure-file-offset-bits-64
+           (lambda _
+             ;; See <https://gitlab.kitware.com/cmake/cmake/-/commit/627fb15eaac5bc02c9bddfb0be85d4b4f38d4a3a>
+             ;; for justification.
+             (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+             (setenv "CXXFLAGS" "-D_FILE_OFFSET_BITS=64")
+             #t))
          (add-before 'configure 'set-paths
            (lambda _
              ;; Help cmake's bootstrap process to find system libraries
