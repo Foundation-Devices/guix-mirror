@@ -1398,6 +1398,8 @@ ac_cv_c_float_format='IEEE (little-endian)'
            ,(string-append "--prefix=" out)))
        #:phases
        (modify-phases %standard-phases
+         ;; glibc itself should support both--so don't choose here.
+         (delete 'set-FILE-OFFSET-BITS)
          (add-after 'unpack 'apply-boot-patch
            (lambda* (#:key inputs #:allow-other-keys)
              (and (let ((patch (assoc-ref inputs "boot-patch")))
