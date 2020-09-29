@@ -256,6 +256,8 @@ and workspaces that can be used in the compiler environment of your choice.")
     (name "cmake-minimal")
     (source (origin
               (inherit (package-source cmake-bootstrap))
+              (patches (search-patches "cmake-curl-certificates.patch"
+                                       "cmake-file-offset-bits-64.patch"))
               (snippet
                (match (origin-snippet (package-source cmake-bootstrap))
                  ((_ _ exp ...)

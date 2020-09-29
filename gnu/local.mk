@@ -871,6 +871,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/clisp-remove-failing-test.patch		\
   %D%/packages/patches/clucene-pkgconfig.patch			\
   %D%/packages/patches/cmake-curl-certificates.patch		\
+  %D%/packages/patches/cmake-file-offset-bits-64.patch		\
   %D%/packages/patches/coda-use-system-libs.patch		\
   %D%/packages/patches/collectd-5.11.0-noinstallvar.patch		\
   %D%/packages/patches/combinatorial-blas-awpm.patch		\
