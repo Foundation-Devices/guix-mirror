@@ -60,6 +60,17 @@ See https://reproducible-builds.org/specs/source-date-epoch/."
   (setenv "SOURCE_DATE_EPOCH" "1")
   #t)
 
+(define* (set-FILE-OFFSET-BITS #:rest _)
+  "Define '_FILE_OFFSET_BITS' using the C preprocessor.
+This ensures that 32 bit and 64 bit user space both can handle results
+returned from a 64 bit kernel.
+See https://bugzilla.kernel.org/show_bug.cgi?id=205957."
+  ;; Setting CFLAGS here makes packages not default CFLAGS.
+  ;; Since glibc (and probably other packages) don't like being built without optimization, enable optimization here.
+  (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64 -g -O2")
+  (setenv "CXXFLAGS" "-D_FILE_OFFSET_BITS=64 -g -O2")
+  #t)
+
 (define (first-subdirectory directory)
   "Return the file name of the first sub-directory of DIRECTORY."
   (match (scandir directory
@@ -803,7 +814,7 @@ which cannot be found~%"
   ;; Standard build phases, as a list of symbol/procedure pairs.
   (let-syntax ((phases (syntax-rules ()
                          ((_ p ...) `((p . ,p) ...)))))
-    (phases set-SOURCE-DATE-EPOCH set-paths install-locale unpack
+    (phases set-SOURCE-DATE-EPOCH set-FILE-OFFSET-BITS set-paths install-locale unpack
             bootstrap
             patch-usr-bin-file
             patch-source-shebangs configure patch-generated-file-shebangs
