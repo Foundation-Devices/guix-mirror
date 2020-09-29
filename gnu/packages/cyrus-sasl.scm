@@ -68,6 +68,11 @@
 
       #:phases
       (modify-phases %standard-phases
+        (add-before 'configure 'ensure-file-offset-bits-64
+          (lambda _
+            (setenv "CFLAGS" "-D_FILE_OFFSET_BITS=64")
+            (setenv "CXXFLAGS" "-D_FILE_OFFSET_BITS=64")
+            #t))
         (add-after 'unpack 'autogen
           (lambda _
             (invoke "autoreconf" "-vif"))))))
