@@ -804,6 +804,8 @@ decompression of some loosely related file formats used by Microsoft.")
     (arguments
      `(#:test-target "test"
        #:make-flags (list "CC=gcc"
+                          "CFLAGS=-g -O2 -D_FILE_OFFSET_BITS=64"
+                          "CXXFLAGS=-g -O2 -D_FILE_OFFSET_BITS=64"
                           (string-append "prefix=" (assoc-ref %outputs "out")))
        #:phases (modify-phases %standard-phases
                   (delete 'configure)            ;no configure script
