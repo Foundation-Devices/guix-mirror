@@ -1398,6 +1398,26 @@ ac_cv_c_float_format='IEEE (little-endian)'
            ,(string-append "--prefix=" out)))
        #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-dirent
+           (lambda _
+             ;; See package "glibc" for why this is necessary.
+             (let ((port (open-file "dirent/dirent.h" "a")))
+               (display "
+#ifndef _LIBC
+#if __SIZEOF_LONG__ < 8
+#ifndef __USE_FILE_OFFSET64
+#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 32
+#warning \"Using -D_FILE_OFFSET_BITS=32 and using readdir is a bad idea, see <https://bugzilla.kernel.org/show_bug.cgi?id=205957>\"
+#else
+#undef readdir
+#define readdir @READDIR_WITHOUT_FILE_OFFSET64_IS_A_REALLY_BAD_IDEA@
+#endif
+#endif
+#endif
+#endif
+" port)
+               (close-port port))
+               #t))
          (add-after 'unpack 'apply-boot-patch
            (lambda* (#:key inputs #:allow-other-keys)
              (and (let ((patch (assoc-ref inputs "boot-patch")))
