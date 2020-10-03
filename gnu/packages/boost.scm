@@ -148,6 +148,8 @@
            (lambda* (#:key make-flags #:allow-other-keys)
              (apply invoke "./b2"
                     (format #f "-j~a" (parallel-job-count))
+                    (string-append "cflags=" (getenv "CFLAGS"))
+                    (string-append "cxxflags=" (getenv "CXXFLAGS"))
                     make-flags)))
          (replace 'install
            (lambda* (#:key make-flags #:allow-other-keys)
