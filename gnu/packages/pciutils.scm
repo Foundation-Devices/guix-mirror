@@ -87,7 +87,10 @@
 
                (("^IDSDIR=.*$")
                 ;; Installation directory of 'pci.ids.gz'.
-                "IDSDIR = $(SHAREDIR)/hwdata\n"))
+                "IDSDIR = $(SHAREDIR)/hwdata\n")
+               (("^OPT=")
+                "OPT?="))
+             (setenv "OPT" (getenv "CFLAGS"))
              #t))
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
