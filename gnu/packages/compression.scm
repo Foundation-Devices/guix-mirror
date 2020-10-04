@@ -806,6 +806,15 @@ decompression of some loosely related file formats used by Microsoft.")
        #:make-flags (list "CC=gcc"
                           (string-append "prefix=" (assoc-ref %outputs "out")))
        #:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'fix-testing
+                    (lambda _
+                      ;; Setting variables in target "clangtest" influences
+                      ;; the target "test".
+                      ;; That is probably a bug in GNU Make.
+                      ;; Work around it.
+                      (substitute* "Makefile"
+                       (("clangtest: CFLAGS \\?= .*") "\n"))
+                      #t))
                   (delete 'configure)            ;no configure script
                   (add-before 'check 'disable-broken-test
                     (lambda _
