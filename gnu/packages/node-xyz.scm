@@ -38,6 +38,11 @@
          (base32
           "09rbmj16nfwcwkhrybqxyy66bkrs50vpw6hkdqqb14l3gsyxpr74"))))
     (build-system node-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases
+           %standard-phases
+         (delete 'build))))
     (home-page "https://github.com/colorjs/color-name")
     (synopsis "JSON with CSS color names")
     (description
@@ -59,7 +64,11 @@
          (base32
           "0nnpxjxfhy4na7fixb7p3ww6ard5xgggfm83b78i333867r4gmsq"))))
     (build-system node-build-system)
-    (arguments '(#:tests? #f)) ; No tests.
+    (arguments '(#:tests? #f ; No tests.
+                 #:phases
+                 (modify-phases
+                     %standard-phases
+                   (delete 'build))))
     (home-page "https://github.com/bigpipe/env-variable")
     (synopsis "Environment variables for Node with fallbacks")
     (description "This package provides environment variables with
@@ -85,6 +94,7 @@
     (arguments
      '(#:phases
        (modify-phases %standard-phases
+         (delete 'build)
          (replace 'check
            (lambda _
              ;; We skip the two tests which are supposed to fail.
@@ -113,7 +123,10 @@ codes.")
          (base32
           "0famwsyc6xawi30v25zi65d8fhbvlvh976bqydf1dqn5gz200cl3"))))
     (build-system node-build-system)
-    (arguments '(#:tests? #f)) ; No tests.
+    (arguments '(#:tests? #f ; No tests.
+                 #:phases
+                 (modify-phases %standard-phases
+                   (delete 'build))))
     (home-page "https://github.com/tlrobinson/long-stack-traces")
     (synopsis "Long stacktraces implemented in user-land JavaScript")
     (description "This package provides long stacktraces for V8 implemented in
@@ -136,7 +149,10 @@ user-land JavaScript.")
          (base32
           "034iaiq2pdqn342p2404cpz364g282d2hkp9375hysnh9i968wbb"))))
     (build-system node-build-system)
-    (arguments '(#:tests? #f)) ; No tests.
+    (arguments '(#:tests? #f ; No tests.
+                 #:phases
+                 (modify-phases %standard-phases
+                   (delete 'build))))
     (home-page "http://www.enchantedage.com/node-mersenne")
     (synopsis "Node.js module for generating Mersenne Twister random numbers")
     (description "Thix package provides a node.js port of the Mersenne Twister
@@ -161,7 +177,11 @@ random number generator.")
            (base32
             "0mqrcf0xi2jbwffwkk00cljpqfsri1jk8s6kz8jny45apn7zjds1"))))
       (build-system node-build-system)
-      (arguments '(#:tests? #f)) ; Tests run during build phase.
+      (arguments '(#:tests? #f ; Tests run during build phase.
+                   #:phases
+                   (modify-phases
+                       %standard-phases
+                     (delete 'build))))
       (home-page "https://github.com/felixge/node-oop")
       (synopsis "Simple, light-weight oop module for Node")
       (description "This library tries to bring basic oop features to JavaScript
@@ -189,11 +209,12 @@ while being as light-weight and simple as possible.")
       (arguments
        '(#:phases
          (modify-phases %standard-phases
-         (add-before 'check 'skip-intentionally-failing-test
-           (lambda _
-             (substitute* "test/run.js"
-               (("far.include") "far.exclude(/test-parse.js/)\nfar.include"))
-             #t)))))
+           (delete 'build)
+           (add-before 'check 'skip-intentionally-failing-test
+             (lambda _
+               (substitute* "test/run.js"
+                 (("far.include") "far.exclude(/test-parse.js/)\nfar.include"))
+               #t)))))
       (native-inputs
        `(("node-far" ,node-far)
          ("node-long-stack-traces" ,node-long-stack-traces)))
@@ -207,17 +228,20 @@ while being as light-weight and simple as possible.")
     (name "node-statsd-parser")
     (version "0.0.4")
     (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/dscape/statsd-parser")
-               (commit version)))
-        (file-name (git-file-name name version))
-        (sha256
-         (base32
-          "049rnczsd6pv6bk282q4w72bhqc5cs562djgr7yncy7lk0wzq5j3"))))
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dscape/statsd-parser")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "049rnczsd6pv6bk282q4w72bhqc5cs562djgr7yncy7lk0wzq5j3"))))
     (build-system node-build-system)
-    (arguments '(#:tests? #f)) ; No tests.
+    (arguments '(#:tests? #f            ; No tests.
+                 #:phases
+                 (modify-phases %standard-phases
+                   (delete 'build))))
     (home-page "https://github.com/dscape/statsd-parser")
     (synopsis "Streaming parser for the statsd protocol")
     (description "This package provides a streaming parser for the statsd
@@ -239,7 +263,10 @@ protocol used in @code{node-lynx}.")
          (base32
           "1rk94nl3qc7znsk8400bnga30v0m7j2mmvz9ldwjinxv1d3n11xc"))))
     (build-system node-build-system)
-    (arguments '(#:tests? #f)) ; No test suite.
+    (arguments '(#:tests? #f            ; No tests.
+                 #:phases
+                 (modify-phases %standard-phases
+                   (delete 'build))))
     (home-page "https://github.com/TooTallNate/util-deprecate")
     (synopsis "Node.js `util.deprecate()` function with browser support")
     (description "This package provides the Node.js @code{util.deprecate()}
@@ -261,7 +288,12 @@ function with browser support.")
                 "06biknqb05r9xsmcflm3ygh50pjvdk84x6r79w43kmck4fn3qn5p"))))
     (build-system node-build-system)
     (arguments
-     `(#:tests? #f)) ;; FIXME: Tests depend on node-tap
+     '(#:tests? #f
+       #:phases
+       (modify-phases
+           %standard-phases
+         (delete 'configure)
+         (delete 'build)))) ;; FIXME: Tests depend on node-tap
     (home-page "https://github.com/npm/node-semver")
     (synopsis "Parses semantic versions strings")
     (description
