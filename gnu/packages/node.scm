@@ -489,6 +489,70 @@ modelled after @code{Node.js} core's debugging technique.  It works in
 compiler.")
     (license license:expat)))
 
+(define-public node-llparse-bootstrap
+  (package
+    (name "node-llparse")
+    (version "7.1.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/indutny/llparse.git")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "10da273iy2if88hp79cwms6c8qpsl1fkgzll6gmqyx5yxv5mkyp6"))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin
+           ;; Fix incorrect import semantics
+           ;; https://github.com/evanw/esbuild/issues/477
+           (substitute* (list "src/compiler/index.ts"
+                              "src/implementation/c/node/base.ts"
+                              "src/implementation/c/node/table-lookup.ts"
+                              "src/implementation/c/compilation.ts"
+                              "src/implementation/c/helpers/match-sequence.ts"
+                              "src/implementation/c/code/mul-add.ts")
+             (("\\* as assert") "assert")
+             (("\\* as debugAPI") "debugAPI"))
+           #t))))
+    (build-system node-build-system)
+    (arguments
+     `(#:node ,node-bootstrap
+       #:tests? #f
+       #:phases
+       (modify-phases
+           %standard-phases
+         (delete 'configure)
+         (replace 'build
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((esbuild (string-append
+                             (assoc-ref inputs "esbuild")
+                             "/bin/esbuild")))
+               (invoke esbuild
+                       "--platform=node"
+                       "--external:debug"
+                       "--external:llparse-frontend"
+                       "--outfile=lib/api.js"
+                       "--bundle"
+                       "src/api.ts")))))))
+    (inputs
+     `(("node-debug" ,node-debug-bootstrap)
+       ("node-llparse-frontend"
+        ,node-llparse-frontend-bootstrap)))
+    (native-inputs
+     `(("esbuild" ,esbuild)))
+    (home-page
+     "https://github.com/nodejs/llparse#readme")
+    (properties '((hidden? . #t)))
+    (synopsis
+     "Compile incremental parsers to C code")
+    (description
+     "This package offers an API for compiling an incremental parser
+definition into a C output.")
+    (license license:expat)))
+
 (define-public libnode
   (package
     (inherit node)
