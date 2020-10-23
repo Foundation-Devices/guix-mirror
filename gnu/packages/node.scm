@@ -553,6 +553,75 @@ compiler.")
 definition into a C output.")
     (license license:expat)))
 
+(define-public llhttp-bootstrap
+  (package
+    (name "llhttp")
+    (version "2.1.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/nodejs/llhttp.git")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "08ylnirqrk63h0ww1m79p0bh6rwayrhd4v28p353qlp3qcffwwb0"))
+              (modules '((guix build utils)))
+              (snippet
+               '(begin
+                  ;; Fix incorrect import semantics
+                  ;; https://github.com/evanw/esbuild/issues/477
+                  (substitute* "src/llhttp/http.ts"
+                    (("\\* as assert")
+                     "assert"))
+                  (substitute* "Makefile"
+                    (("npx ts-node bin/generate.ts")
+                     "node bin/generate.js"))
+                  #t))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f                      ; no tests
+       #:make-flags (list "CLANG=gcc"
+                          (string-append "DESTDIR=" (assoc-ref %outputs "out"))
+                          "PREFIX=")
+       #:phases (modify-phases %standard-phases
+                  (replace 'configure
+                    (lambda* (#:key inputs #:allow-other-keys)
+                      (let ((esbuild (string-append
+                                      (assoc-ref inputs "esbuild")
+                                      "/bin/esbuild")))
+                        (invoke esbuild
+                                "--platform=node"
+                                "--external:semver"
+                                "--external:llparse"
+                                "--outfile=bin/generate.js"
+                                "--bundle" "bin/generate.ts"))))
+                  (add-before 'install 'create-install-directories
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((out (assoc-ref outputs "out")))
+                        (for-each (lambda (dir)
+                                    (mkdir-p (string-append out dir)))
+                                  (list "/lib" "/include" "/src"))
+                        #t)))
+                  (add-after 'install 'install-src
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out"))
+                             (src-dir (string-append out "/src")))
+                        (install-file "build/c/llhttp.c" src-dir)
+                        #t))))))
+    (native-inputs
+     `(("esbuild" ,esbuild)
+       ("node" ,node-bootstrap)
+       ("node-semver" ,node-semver-bootstrap)
+       ("node-llparse-bootstrap" ,node-llparse-bootstrap)))
+    (home-page "https://github.com/nodejs/llhttp")
+    (properties '((hidden? . #t)))
+    (synopsis "Port of @code{http_parser} to @code{llparse}")
+    (description "@code{llhttp} is a port of @code{http_parser} to TypeScript.
+@code{llparse} is used to generate the output C source file, which can be
+compiled and linked with the embedder's program (like @code{Node.js}).")
+    (license license:expat)))
+
 (define-public libnode
   (package
     (inherit node)
