@@ -219,6 +219,11 @@ devices.")
      (alist-replace "nghttp2" (list nghttp2-1.41 "lib")
                     (package-inputs node)))))
 
+;; This should be the latest version of node that still builds without
+;; depending on lltthp.
+(define-public node-bootstrap
+  (hidden-package node-10.22))
+
 (define-public libnode
   (package
     (inherit node)
