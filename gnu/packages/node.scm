@@ -24,7 +24,7 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (gnu packages node)
-  #:use-module ((guix licenses) #:select (expat))
+  #:use-module ((guix licenses) #:prefix license:)
   #:use-module ((guix build utils) #:select (alist-replace))
   #:use-module (guix packages)
   #:use-module (guix derivations)
@@ -197,7 +197,7 @@ event-driven, non-blocking I/O model that makes it lightweight and efficient,
 perfect for data-intensive real-time applications that run across distributed
 devices.")
     (home-page "https://nodejs.org/")
-    (license expat)
+    (license license:expat)
     (properties '((max-silent-time . 7200)     ;2h, needed on ARM
                   (timeout . 21600)))))        ;6h
 
