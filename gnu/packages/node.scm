@@ -427,6 +427,68 @@ modelled after @code{Node.js} core's debugging technique.  It works in
      "This package builds graphs for consumption by @code{llparse}.")
     (license license:expat)))
 
+(define-public node-llparse-frontend-bootstrap
+  (package
+    (name "node-llparse-frontend")
+    (version "3.0.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/indutny/llparse-frontend.git")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1rm9g4ifyip30svm5cgnf0gx7d45jgh4mpf2hkd092xhngmfvicc"))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin
+           ;; Fix incorrect import semantics
+           ;; https://github.com/evanw/esbuild/issues/477
+           (substitute* (list "src/frontend.ts"
+                              "src/code/field-value.ts"
+                              "src/container/index.ts"
+                              "src/container/wrap.ts"
+                              "src/node/sequence.ts"
+                              "src/node/single.ts"
+                              "src/node/table-lookup.ts"
+                              "src/trie/index.ts")
+             (("\\* as assert") "assert")
+             (("\\* as debugAPI") "debugAPI"))
+           #t))))
+    (build-system node-build-system)
+    (arguments
+     `(#:node ,node-bootstrap
+       #:tests? #f
+       #:phases
+       (modify-phases
+           %standard-phases
+         (delete 'configure)
+         (replace 'build
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((esbuild (string-append
+                             (assoc-ref inputs "esbuild")
+                             "/bin/esbuild")))
+               (invoke esbuild
+                       "--platform=node"
+                       "--external:debug"
+                       "--external:llparse-builder"
+                       "--outfile=lib/frontend.js"
+                       "--bundle"
+                       "src/frontend.ts")))))))
+    (inputs
+     `(("node-debug" ,node-debug-bootstrap)
+       ("node-llparse-builder" ,node-llparse-builder-bootstrap)))
+    (native-inputs
+     `(("esbuild" ,esbuild)))
+    (home-page
+     "https://github.com/indutny/llparse-frontend#readme")
+    (properties '((hidden? . #t)))
+    (synopsis "Frontend for @code{llparse} compiler")
+    (description "This package is a frontend for the @code{llparse}
+compiler.")
+    (license license:expat)))
+
 (define-public libnode
   (package
     (inherit node)
