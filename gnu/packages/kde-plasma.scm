@@ -295,6 +295,47 @@ NetBSD, OpenBSD, Solaris and Tru64 with varying degrees of completion.")
 Wayland")
     (license license:lgpl3+))) ; KDE e.V.
 
+(define-public kwayland-server
+  (package
+    (name "kwayland-server")
+    (version "5.19.5")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append "mirror://kde/stable/plasma/" version
+                          "/kwayland-server-" version ".tar.xz"))
+      (sha256
+       (base32 "06jlr24f3vhla8rjyygd7r51byksfv46apnh3bylslgxd2grrzah"))))
+    (build-system qt-build-system)
+    (arguments
+     `(#:tests? #f  ;; TODO: seem to require a running wayland server
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'workaround-https://bugs.kde.org/428295
+           (lambda _
+             (mkdir-p (string-append %output "/include/KF5")))))))
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)
+       ("qtwayland" ,qtwayland)
+       ("wayland" ,wayland))) ;; required for the tests
+    (inputs
+     `(("kwayland" ,kwayland)
+       ("kwindowsystem" ,kwindowsystem)
+       ("plasma-wayland-protocols" ,plasma-wayland-protocols)
+       ("qtbase" ,qtbase)
+       ("wayland-protocols" ,wayland-protocols)))
+    (home-page "https://invent.kde.org/plasma/kwayland-server")
+    (synopsis "Wayland Server Components built on KDE Frameworks")
+    (description "This package provides two libraries: KWayland::Client and
+KWaylandServer.  As the names suggest they implement a Client respectively a
+Server API for the Wayland protocol.  The API is Qt-styled removing the needs
+to interact with a for a Qt developer uncomfortable low-level C-API. For
+example the callback mechanism from the Wayland API is replaced by signals;
+data types are adjusted to be what a Qt developer expects, e.g.  two arguments
+of int are represented by a QPoint or a QSize.")
+    (license license:lgpl2.1))) ; KDE e.V.
+
 (define-public libkscreen
   (package
     (name "libkscreen")
