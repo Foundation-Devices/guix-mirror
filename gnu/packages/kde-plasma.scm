@@ -385,3 +385,25 @@ manage running processes.  It obtains this information by interacting
 with a ksysguardd daemon, which may also run on a remote system.")
     (license license:gpl3+)))
 
+(define-public plasma-wayland-protocols
+  (package
+    (name "plasma-wayland-protocols")
+    (version "1.1.1")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append
+            "mirror://kde/stable/plasma-wayland-protocols/"
+            version "/plasma-wayland-protocols-" version ".tar.xz"))
+      (sha256
+       (base32 "0f0xllv092aliyngyi25hhm66q38jsrj36pa6ls1q5qms61k6jf5"))))
+    (build-system cmake-build-system)
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (arguments
+     `(#:tests? #f)) ;; package has no tests
+    (home-page "https://invent.kde.org/libraries/plasma-wayland-protocols")
+    (synopsis "Plasma-specific protocols for Wayland")
+    (description "This project should be installing only the xml files of the
+non-standard wayland protocols we use in Plasma..")
+    (license license:gpl2+)))
