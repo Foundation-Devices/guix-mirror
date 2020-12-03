@@ -248,6 +248,7 @@ MODULES =					\
   guix/import/json.scm				\
   guix/import/kde.scm				\
   guix/import/launchpad.scm   			\
+  guix/import/npm-binary.scm			\
   guix/import/opam.scm				\
   guix/import/print.scm				\
   guix/import/pypi.scm				\
@@ -290,6 +291,7 @@ MODULES =					\
   guix/scripts/import/hackage.scm		\
   guix/scripts/import/json.scm  		\
   guix/scripts/import/nix.scm			\
+  guix/scripts/import/npm-binary.scm		\
   guix/scripts/import/opam.scm			\
   guix/scripts/import/pypi.scm			\
   guix/scripts/import/stackage.scm		\
