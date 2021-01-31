@@ -1,0 +1,8 @@
+#!/bin/sh
+
+VTNR=$XDG_VTNR
+((VTNR++)) # overwrite use next VT
+
+# Use the X server provided by the foreign system (host OS)
+PATH=/usr/local/bin:/usr/bin
+exec /usr/bin/Xorg -novtswitch -nolisten tcp "$@" vt$VTNR
