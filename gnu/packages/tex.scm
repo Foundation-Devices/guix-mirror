@@ -2643,17 +2643,24 @@ formats.")
                  ;; takes long and TeX Live isn't designed to be modular like
                  ;; that.  Everything operates on a shared directory, which we
                  ;; would only have at profile generation time.
-                 (let ((disabled-formats
-                        '("aleph aleph" "lamed aleph" "uptex uptex" "euptex euptex"
-                          "eptex eptex" "ptex ptex" "pdfxmltex pdftex" "platex eptex"
-                          "csplain pdftex" "mf mf-nowin" "mex pdftex" "pdfmex pdftex"
-                          "luacsplain luatex"
-                          "cont-en xetex" "cont-en pdftex" "pdfcsplain xetex"
-                          "pdfcsplain pdftex" "pdfcsplain luatex" "cslatex pdftex"
-                          "mptopdf pdftex" "uplatex euptex" "jadetex pdftex"
-                          "amstex pdftex" "pdfcslatex pdftex" "lollipop tex"
-                          "xmltex pdftex" "pdfjadetex pdftex" "eplain pdftex"
-                          "texsis pdftex" "mltex pdftex" "utf8mex pdftex")))
+                 (let* ((powerpc64le?
+                         ,(string-prefix? "powerpc64le"
+                                          (or (%current-target-system)
+                                              (%current-system))))
+                        (disabled-formats
+                         `("aleph aleph" "lamed aleph" "uptex uptex"
+                           "euptex euptex" "eptex eptex" "ptex ptex"
+                           "pdfxmltex pdftex" "platex eptex" "csplain pdftex"
+                           "mf mf-nowin" "mex pdftex" "pdfmex pdftex"
+                           "luacsplain luatex"
+                           ,@(if powerpc64le? '("luajittex") '())
+                           "cont-en xetex" "cont-en pdftex" "pdfcsplain xetex"
+                           "pdfcsplain pdftex" "pdfcsplain luatex"
+                           "cslatex pdftex" "mptopdf pdftex" "uplatex euptex"
+                           "jadetex pdftex" "amstex pdftex"
+                           "pdfcslatex pdftex" "lollipop tex" "xmltex pdftex"
+                           "pdfjadetex pdftex" "eplain pdftex" "texsis pdftex"
+                           "mltex pdftex" "utf8mex pdftex")))
                    (mkdir "web2c")
                    (install-file (string-append
                                   (assoc-ref inputs "texlive-kpathsea")
