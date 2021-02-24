@@ -2512,6 +2512,9 @@ exec " gcc "/bin/" program
               ,flags))
            ((#:phases phases '%standard-phases)
             `(modify-phases ,phases
+               ;; XXX On architectures that do not build this package using
+               ;; glibc-mesboot, this phase is not needed, so we we
+               ;; immediately delete it below.
                (add-before 'check 'skip-fnmatch-test
                  (lambda _
                    ;; 'test-fnmatch' fails when using glibc-mesboot@2.16, due
@@ -2519,7 +2522,11 @@ exec " gcc "/bin/" program
                    ;; class.  Ignore it.
                    (substitute* "gnulib-tests/Makefile"
                      (("^XFAIL_TESTS =")
-                      "XFAIL_TESTS = test-fnmatch ")))))))))))
+                      "XFAIL_TESTS = test-fnmatch "))))
+               ,@(match (%current-system)
+                   ((or "x86_64-linux" "i686-linux")
+                    '())
+                   (_ '((delete 'skip-fnmatch-test)))))))))))
 
 (define file
   (package
