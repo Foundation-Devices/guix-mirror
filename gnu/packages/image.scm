@@ -846,6 +846,8 @@ test suite, including conformance tests (following Rec. ITU-T T.803 | ISO/IEC
            (lambda _
              (substitute* "tests/CMakeLists.txt"
                (("add_subdirectory\\(nonregression\\)")
+                "")
+               (("add_subdirectory\\(conformance\\)")
                 ""))
              #t)))))
     (native-inputs
