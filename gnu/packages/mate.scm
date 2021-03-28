@@ -8,6 +8,7 @@
 ;;; Copyright © 2020 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2021 Guillaume Le Vaillant <glv@posteo.net>
+;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -238,7 +239,7 @@ themes for both gtk+-2 and gtk+-3.")
            `(,glib "bin")
            gobject-introspection
            yelp-tools
-           gtk-doc))
+           gtk-doc/stable))
     (inputs
      (list gtk+ libxrandr iso-codes startup-notification))
     (propagated-inputs
@@ -733,7 +734,7 @@ infamous 'Wanda the Fish'.")
        ("yelp-tools" ,yelp-tools)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk-doc" ,gtk-doc)
+       ("gtk-doc" ,gtk-doc/stable)
        ("texlive-bin" ,texlive-bin) ;synctex
        ("xmllint" ,libxml2)
        ("zlib" ,zlib)))
@@ -869,7 +870,7 @@ icons on the MATE desktop.  It works on local and remote file systems.")
        ("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")
        ("gobject-introspection" ,gobject-introspection)
-       ("gtk-doc" ,gtk-doc)
+       ("gtk-doc" ,gtk-doc/stable)
        ("libxml2" ,libxml2)
        ("pkg-config" ,pkg-config)))
     (inputs
@@ -1228,7 +1229,7 @@ can be used as backgrounds in the MATE Desktop environment.")
     (build-system glib-or-gtk-build-system)
     (native-inputs
      (list gettext-minimal
-           gtk-doc
+           gtk-doc/stable
            intltool
            libice
            libsm
@@ -1280,7 +1281,7 @@ can be used as backgrounds in the MATE Desktop environment.")
     (build-system glib-or-gtk-build-system)
     (native-inputs
      (list gettext-minimal
-           gtk-doc
+           gtk-doc/stable
            gobject-introspection
            intltool
            pkg-config
@@ -1344,7 +1345,7 @@ can be used as backgrounds in the MATE Desktop environment.")
              #t)))))
     (native-inputs
      `(("gettext" ,gettext-minimal)
-       ("gtk-doc" ,gtk-doc)
+       ("gtk-doc" ,gtk-doc/stable)
        ("intltool" ,intltool)
        ("pkg-config" ,pkg-config)
        ("yelp-tools" ,yelp-tools)))
@@ -1384,7 +1385,7 @@ can be used as backgrounds in the MATE Desktop environment.")
        #:tests? #f))
     (native-inputs
      `(("gettext" ,gettext-minimal)
-       ("gtk-doc" ,gtk-doc)
+       ("gtk-doc" ,gtk-doc/stable)
        ("gobject-introspection" ,gobject-introspection)
        ("intltool" ,intltool)
        ("libtool" ,libtool)
@@ -1464,7 +1465,7 @@ MATE Desktop to monitor your system resources and usage.")
          "0mq3a9ab4fxpkah6c5p7a0zsy8cixfc5j9030k204cy5vysv1dzm"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
-     (list gettext-minimal gtk-doc intltool libtool pkg-config))
+     (list gettext-minimal gtk-doc/stable intltool libtool pkg-config))
     (inputs
      (list accountsservice
            glib

@@ -572,7 +572,7 @@ functions for strings and common data structures.")
        (prepend docbook-xml-4.2
                 docbook-xml
                 docbook-xsl
-                gtk-doc
+                gtk-doc/stable
                 libxml2
                 libxslt)))
     (arguments
