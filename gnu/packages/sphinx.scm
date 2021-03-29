@@ -18,6 +18,7 @@
 ;;; Copyright © 2021, 2022 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Hugo Lecomte <hugo.lecomte@inria.fr>
 ;;; Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -74,7 +75,10 @@
          "12cdy3m5c09lpf2bbxzbhm5v5y9fk7jgm94qrzggpq86waj28cms"))))
     (build-system python-build-system)
     (arguments
-     '(#:phases
+     `(;; Make sure it is safe to use 'imagemagick' instead of
+       ;; 'imagemagick/stable' (see the comment for the "imagemagick" input).
+       #:disallowed-references (,imagemagick/stable)
+       #:phases
        (modify-phases %standard-phases
          (replace 'check
            (lambda* (#:key tests? #:allow-other-keys)
@@ -134,7 +138,11 @@
            texlive-wrapfig
            texlive-xcolor))
     (native-inputs
-     (list imagemagick                  ;for "convert"
+     ;; imagemagick is added for "convert".  The store item does not retain a
+     ;; reference to imagemagick, so it should be safe to use
+     ;; 'imagemagick/stable' instead of 'imagemagick'.  This is enforced by
+     ;; the '#:disallowed-references' above.
+     (list imagemagick/stable
            python-cython
            python-html5lib
            python-pytest))
