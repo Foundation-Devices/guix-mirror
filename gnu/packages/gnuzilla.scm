@@ -721,6 +721,7 @@ variable defined below.  It requires guile-json to be installed."
     (build-system mozilla-build-system)
     (inputs
      (list alsa-lib
+           bash-minimal
            bzip2
            cups
            dbus-glib
