@@ -34,6 +34,7 @@
 
 (define-module (gnu packages rust)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages bootstrap)
   #:use-module (gnu packages cmake)
@@ -178,7 +179,8 @@
                   (max-silent-time . 18000))) ;5 hours (for armel)
     (build-system gnu-build-system)
     (inputs
-     `(("libcurl" ,curl)
+     `(("bash-minimal" ,bash-minimal)
+       ("libcurl" ,curl)
        ("llvm" ,llvm-13)
        ("openssl" ,openssl-1.1)
        ("zlib" ,zlib)))
@@ -526,7 +528,8 @@ ar = \"" binutils "/bin/ar" "\"
        ("cargo-bootstrap" ,rust-bootstrap "cargo")
        ("which" ,which)))
     (inputs
-     `(("jemalloc" ,jemalloc)
+     `(("bash" ,bash-minimal)           ; For wrap-program
+       ("jemalloc" ,jemalloc)
        ("llvm" ,llvm-13)
        ("openssl" ,openssl)
        ("libssh2" ,libssh2)             ; For "cargo"
