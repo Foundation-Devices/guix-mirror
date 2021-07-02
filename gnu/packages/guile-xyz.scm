@@ -181,7 +181,7 @@
                   #t))))
     (build-system gnu-build-system)
     (inputs
-     (list guile-3.0 nspr nss))
+     (list bash-minimal guile-3.0 nspr nss))
     ;; FIXME the bundled csv contains one more exported procedure
     ;; (sxml->csv-string) than guile-csv. The author is maintainer of both
     ;; projects.
@@ -2024,13 +2024,10 @@ above command-line parameters.")
                                 "GUILE_LOAD_COMPILED_PATH"
                                 (compiled-dir out version)
                                 (compiled-dir "" version))))
-                          ,''("hall"))
-                        #t))))))))
-    (native-inputs
-      (list autoconf automake pkg-config texinfo))
-    (inputs (list guile-3.0))
-    (propagated-inputs
-     (list guile-config))
+                          ,''("hall"))))))))))
+    (native-inputs (list autoconf automake pkg-config texinfo))
+    (inputs (list bash-minimal guile-3.0))
+    (propagated-inputs (list guile-config))
     (synopsis "Guile project tooling")
     (description
      "Hall is a command-line application and a set of Guile libraries that
@@ -2849,14 +2846,13 @@ inspired by the SCSH regular expression system.")
                                            (string-append dep "/lib/guile/"
                                                           version
                                                           "/site-ccache"))
-                                         deps))))
-                             #t)))))))))
+                                         deps)))))))))))))
     (native-inputs
      (list pkg-config texinfo))
     (inputs
      ;; Depend on the latest Guile to avoid bytecode compatibility issues when
      ;; using modules built against the latest version.
-     (list guile-3.0-latest))
+     (list bash-minimal guile-3.0-latest))
     (propagated-inputs
      (list guile-reader guile-commonmark))
     (synopsis "Functional static site generator")
@@ -3257,8 +3253,7 @@ serializing continuations or delimited continuations.")
              ;; TODO: It would be better to patch the Makefile.
              (setenv "GUILE_LOAD_PATH"
                      (string-append ".:"
-                                    (getenv "GUILE_LOAD_PATH")))
-             #t))
+                                    (getenv "GUILE_LOAD_PATH")))))
          (add-after 'install 'wrap
            (lambda* (#:key outputs #:allow-other-keys)
              ;; Wrap the 'python' executable so it can find its
@@ -3283,10 +3278,9 @@ serializing continuations or delimited continuations.")
                  `("GUILE_LOAD_PATH" ":" prefix
                    (,load-path))
                  `("GUILE_LOAD_COMPILED_PATH" ":" prefix
-                   (,compiled-path)))
-               #t))))))
+                   (,compiled-path)))))))))
     (inputs
-     (list guile-3.0 guile-persist guile-readline guile-stis-parser))
+     (list bash-minimal guile-3.0 guile-persist guile-readline guile-stis-parser))
     (native-inputs
      (list autoconf automake libtool pkg-config))
     (synopsis "Python implementation in Guile")
@@ -3710,7 +3704,8 @@ or errors (Left).")
        ("texinfo" ,texinfo)
        ("texlive" ,(texlive-updmap.cfg (list texlive-epsf)))))
     (inputs
-     (list dbus-glib
+     (list bash-minimal
+           dbus-glib
            guile-3.0
            guile-lib
            guile-readline
@@ -3920,7 +3915,8 @@ processing filters.")
        ("gettext" ,gettext-minimal)
        ("perl" ,perl)))
     (inputs
-     `(;; Guile
+     `(("bash" ,bash-minimal) ; for wrap-program
+       ;; Guile
        ("guile" ,guile-2.2)
        ("guile-lib" ,guile2.2-lib)
        ("guile-readline" ,guile2.2-readline)
