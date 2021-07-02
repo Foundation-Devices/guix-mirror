@@ -184,6 +184,7 @@ This package contains GUI widgets for baloo.")
      (list akonadi
            akonadi-contacts
            akonadi-mime
+           bash-minimal
            boost
            breeze-icons
            gpgme
@@ -725,7 +726,8 @@ painting, image manipulating and icon editing.")
            qwt
            vc))
     (inputs
-     (list boost
+     (list bash-minimal
+           boost
            exiv2
            fftw
            giflib
