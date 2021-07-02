@@ -58,6 +58,7 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages crypto)
@@ -891,7 +892,7 @@ NTFS volumes using @code{ntfs-3g}, preserving NTFS-specific attributes.")
                ;; Write out man pages
                (for-each write-man man-pages)))))))
     (inputs
-     (list perl rsync perl-libtime-period perl-libtime-parsedate))
+     (list bash-minimal perl rsync perl-libtime-period perl-libtime-parsedate))
     (home-page "http://dirvish.org/")
     (synopsis "Fast, disk based, rotating network backup system")
     (description
