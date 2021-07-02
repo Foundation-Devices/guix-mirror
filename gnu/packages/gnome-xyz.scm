@@ -823,6 +823,7 @@ faster window switching.")
                #t))))))
     (inputs
      `(("at-spi2-core" ,at-spi2-core)
+       ("bash" ,bash-minimal) ; for wrap-program
        ("caribou" ,caribou)
        ("evolution-data-server" ,evolution-data-server)
        ("gjs" ,gjs)
