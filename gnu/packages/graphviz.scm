@@ -40,6 +40,7 @@
   #:use-module (guix gexp)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
@@ -306,6 +307,7 @@ Graphviz and LaTeX.")
                  (,(dirname (search-input-file inputs "bin/dot"))))))))))
     (inputs
      (list at-spi2-core
+           bash-minimal
            (librsvg-for-system)
            harfbuzz
            graphviz
