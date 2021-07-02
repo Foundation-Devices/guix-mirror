@@ -412,7 +412,8 @@ the Net to search for documents which are not on the local system.")
       (native-inputs
        (list extra-cmake-modules pkg-config))
       (inputs
-       `(("libarchive" ,libarchive)
+       `(("bash" ,bash-minimal) ; for wrap-program
+         ("libarchive" ,libarchive)
          ("sqlite" ,sqlite)
          ("qtbase" ,qtbase-5)
          ("qtdeclarative-5" ,qtdeclarative-5)
