@@ -2194,7 +2194,8 @@ information.")
            pkg-config
            python-wrapper))
     (inputs
-     (list bc
+     (list bash-minimal
+           bc
            dblatex
            docbook-xml-4.3
            docbook-xsl
