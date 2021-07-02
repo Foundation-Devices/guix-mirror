@@ -198,15 +198,13 @@
              (substitute* "librecad/src/lib/math/rs_math.cpp"
                (("#include <boost/numeric/ublas/matrix.hpp>" line)
                 (string-append "#include <boost/serialization/array_wrapper.hpp>\n"
-                               line)))
-             #t))
+                               line)))))
          ;; Fix build against Qt 5.11.
          (add-after 'unpack 'add-missing-headers
            (lambda _
              (substitute* "librecad/src/ui/generic/widgetcreator.cpp"
                (("#include <QPushButton>") "#include <QPushButton>
-#include <QActionGroup>"))
-             #t))
+#include <QActionGroup>"))))
          (add-after 'unpack 'patch-paths
            (lambda* (#:key outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out")))
@@ -224,10 +222,9 @@
                (mkdir-p bin)
                (install-file "unix/librecad" bin)
                (mkdir-p share)
-               (copy-recursively "unix/resources" share))
-             #t)))))
+               (copy-recursively "unix/resources" share)))))))
     (inputs
-     (list boost muparser freetype qtbase-5 qtsvg-5))
+     (list bash-minimal boost muparser freetype qtbase-5 qtsvg-5))
     (native-inputs
      (list pkg-config which))
     (home-page "https://librecad.org/")
@@ -1441,9 +1438,10 @@ WiFi signal strength maps.  It visualizes them using a Voronoi diagram.")
                  `("PATH" ":" prefix
                    (,(string-append python "/bin:"))))))))))
     (inputs
-     `(("boost" ,boost)
-       ("python" ,python-wrapper)
-       ("python-mako" ,python-mako)))
+     (list bash-minimal                 ;for wrap-program
+           boost
+           python-wrapper
+           python-mako))
     (home-page "https://www.libvolk.org/")
     (synopsis "Vector-Optimized Library of Kernels")
     (description
@@ -2256,8 +2254,7 @@ parallel computing platforms.  It also supports serial execution.")
            (lambda _
              (substitute* "v2cc/gvhdl.in"
                (("--mode=link") "--mode=link --tag=CXX")
-               (("-lm") "-lm FREEHDL/lib/freehdl/libieee.la"))
-             #t))
+               (("-lm") "-lm FREEHDL/lib/freehdl/libieee.la"))))
          (add-after 'patch-gvhdl 'patch-freehdl-gennodes
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "freehdl/freehdl-gennodes.in"
@@ -2265,8 +2262,7 @@ parallel computing platforms.  It also supports serial execution.")
                 (search-input-file inputs "/bin/guile"))
                (("\\(debug") ";(debug")
                (("\\(@ ") "(apply-emit")
-               (("\\(@@ ") "(apply-mini-format"))
-             #t))
+               (("\\(@@ ") "(apply-mini-format"))))
          (add-after 'configure 'patch-freehdl-pc
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "freehdl.pc"
@@ -2275,8 +2271,7 @@ parallel computing platforms.  It also supports serial execution.")
                                "/bin/g++"))
                (("=libtool")
                 (string-append "=" (assoc-ref inputs "libtool")
-                               "/bin/libtool")))
-             #t))
+                               "/bin/libtool")))))
          (add-after 'install-scripts 'make-wrapper
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out")))
@@ -2295,10 +2290,11 @@ parallel computing platforms.  It also supports serial execution.")
                     ,(string-append (assoc-ref inputs "coreutils")
                                     "/bin"))))
                (wrap-program (string-append out "/bin/freehdl-config")
-                 `("PKG_CONFIG_PATH" ":" prefix (,(string-append out "/lib/pkgconfig")))))
-             #t)))))
+                 `("PKG_CONFIG_PATH" ":" prefix
+                   (,(string-append out "/lib/pkgconfig"))))))))))
     (inputs
-     (list coreutils
+     (list bash-minimal
+           coreutils
 
            ;; Lazily resolve the gcc-toolchain to avoid a circular dependency.
            (module-ref (resolve-interface '(gnu packages commencement))
@@ -2768,7 +2764,8 @@ comments.")))
            python-pyside-2-tools
            swig))
     (inputs
-     (list boost
+     (list bash-minimal
+           boost
            coin3D
            double-conversion
            eigen
@@ -3318,16 +3315,18 @@ dynamic calibration of the milling depth.")
                            `("GSETTINGS_SCHEMA_DIR" =
                              (,(string-append (assoc-ref inputs "gtk+")
                                               "/share/glib-2.0/schemas")))))))))
-      (inputs (list cairo
-                    eigen
-                    freetype
-                    gtkmm-3
-                    json-c
-                    libpng
-                    libspnav            ;spaceware
-                    mimalloc
-                    mesa
-                    zlib))
+      (inputs
+       (list bash-minimal
+             cairo
+             eigen
+             freetype
+             gtkmm-3
+             json-c
+             libpng
+             libspnav            ;spaceware
+             mimalloc
+             mesa
+             zlib))
       (synopsis
        "Parametric 2D/3D @acronym{CAD, computer-aided design} software")
       (description
@@ -4086,7 +4085,8 @@ python bindings.  It belongs to the Cura project from Ultimaker.")
            python-pytest
            python-requests))
     (inputs
-     (list cura-engine
+     (list bash-minimal
+           cura-engine
            libcharon
            libsavitar
            python
