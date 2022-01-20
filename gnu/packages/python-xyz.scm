@@ -25576,6 +25576,31 @@ without help can be a pain because you have to handle the no-parenthesis usage
 decorators is simple and straightforward.")
     (license license:bsd-3)))
 
+(define python-pytest-harvest-minimal
+  (package
+    (name "python-pytest-harvest-minimal")
+    (version "1.10.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-harvest" version))
+       (sha256
+        (base32
+         "092drlh96rhikwqqyfpwqhkzfzd7z8m5gbmjgky8npm81849jbsk"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f))
+    (propagated-inputs (list python-decopatch-minimal python-makefun
+                             python-six))
+    (native-inputs (list python-pytest python-pytest-runner
+                         python-setuptools-scm))
+    (home-page "https://github.com/smarie/python-pytest-harvest")
+    (synopsis "Store data created during your @samp{pytest} tests execution")
+    (description
+     "Store data created during your pytest tests execution, and retrieve it
+at the end of the session, e.g. for applicative benchmarking purposes.")
+    (license license:bsd-3)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
