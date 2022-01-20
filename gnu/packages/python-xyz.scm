@@ -25687,6 +25687,25 @@ function.")
     ;; Propagate the tested decopatch instead of decopatch-minimal
     (propagated-inputs (list python-decopatch python-makefun))))
 
+(define-public python-pytest-harvest
+  (package
+    (inherit python-pytest-harvest-minimal)
+    (name "python-pytest-harvest")
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'move-pytests-plugins
+           (lambda _
+             (rename-file "pytest_harvest/tests/conftest.py"
+                          "conftest.py"))))))
+    (native-inputs (list python-pytest
+                         python-pytest-runner
+                         python-setuptools-scm
+                         python-pytest-cases
+                         python-tabulate
+                         python-pandas))
+    (propagated-inputs (list python-decopatch python-makefun python-six))))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
