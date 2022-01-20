@@ -25601,6 +25601,30 @@ decorators is simple and straightforward.")
 at the end of the session, e.g. for applicative benchmarking purposes.")
     (license license:bsd-3)))
 
+(define python-pytest-steps-minimal
+  (package
+    (name "python-pytest-steps-minimal")
+    (version "1.8.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-steps" version))
+       (sha256
+        (base32
+         "05r2ch7191saj7sw6d47bfa5vnyyj157dl8hvlcc78xx6jyxy46j"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f))
+    (propagated-inputs (list python-makefun python-wrapt python-tabulate
+                             python-pandas))
+    (native-inputs (list python-pytest python-pytest-runner
+                         python-setuptools-scm))
+    (home-page "https://github.com/smarie/python-pytest-steps")
+    (synopsis "Create step-wise / incremental tests in pytest")
+    (description "This package provides support for step-wise / incremental
+tests in pytest.")
+    (license license:bsd-3)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
