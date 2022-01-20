@@ -25679,6 +25679,14 @@ function.")
                          python-pytest-cases-minimal python-setuptools-scm
                          python-pytest-logging))))
 
+(define-public python-pytest-cases
+  (package
+    (inherit python-pytest-cases-minimal)
+    (name "python-pytest-cases")
+    (arguments '())
+    ;; Propagate the tested decopatch instead of decopatch-minimal
+    (propagated-inputs (list python-decopatch python-makefun))))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
