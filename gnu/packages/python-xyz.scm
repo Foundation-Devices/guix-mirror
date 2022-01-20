@@ -22290,18 +22290,44 @@ inferring type information using compile-time introspection.")
 (define-public python-pooch
   (package
     (name "python-pooch")
-    (version "1.3.0")
+    (version "1.6.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pooch" version))
        (sha256
-        (base32 "1618adsg9r8fsv422sv35z1i723q3a1iir5v7dv2sklh4pl4im1h"))))
+        (base32 "0i1zmd0v7n3yx167j18ldidfiih9n734pdjvn3999mhdn720xljp"))))
     (build-system python-build-system)
     (arguments
-     `(#:tests? #f)) ;requires online data
+     (list
+      #:tests? #f ;requires online data
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; XXX: PEP 517 manual build copied from python-isort.
+          (replace 'build
+            (lambda _
+              (setenv "SOURCE_DATE_EPOCH" "315532800")
+              (invoke "python"
+                      "-m"
+                      "build"
+                      "--wheel"
+                      "--no-isolation"
+                      ".")))
+          (replace 'install
+            (lambda _
+              (let ((whl (car (find-files "dist" "\\.whl$"))))
+                (invoke "pip"
+                        "--no-cache-dir"
+                        "--no-input"
+                        "install"
+                        "--no-deps"
+                        "--prefix"
+                        #$output
+                        whl)))))))
     (propagated-inputs
      (list python-appdirs python-packaging python-requests))
+    (native-inputs
+     (list python-pypa-build python-setuptools-scm))
     (home-page "https://github.com/fatiando/pooch")
     (synopsis "Manage your Python library's sample data files")
     (description
