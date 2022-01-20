@@ -15,6 +15,7 @@
 ;;; Copyright © 2021 Paul Garlick <pgarlick@tourbillion-technology.com>
 ;;; Copyright © 2021 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
+;;; Copyright © 2022 Vivien Kraus <viven@planete-kraus.eu>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -61,7 +62,8 @@
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix utils)
-  #:use-module (guix build-system python))
+  #:use-module (guix build-system python)
+  #:use-module (guix gexp))
 
 (define-public python-scipy
   (package
@@ -1017,3 +1019,64 @@ pandas notebooks, scripts, and libraries.  Unlike other distributed DataFrame
 libraries, Modin provides seamless integration and compatibility with existing
 pandas code.")
     (license license:asl2.0)))
+
+(define-public python-edflib
+  (package
+    (name "python-edflib")
+    (version "1.0.6")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.com/Teuniz/EDFlib-Python.git")
+             (commit "417fc8cc7c47a9b0e39189b34de1fc50be65b72d")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0h3v5kb4yn1ahb7gxb8qrh1m50w1ykb4px4yvvq64kbckn0qrd22"))))
+    (build-system python-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-tests
+            (lambda _
+              (substitute* "tests/edf_unit_test.py"
+                (("from edfreader") "from EDFlib.edfreader")
+                (("from edfwriter") "from EDFlib.edfwriter"))))
+          ;; XXX: PEP 517 manual build copied from python-isort.
+          (replace 'build
+            (lambda _
+              (setenv "SOURCE_DATE_EPOCH" "315532800")
+              (invoke "python"
+                      "-m"
+                      "build"
+                      "--wheel"
+                      "--no-isolation"
+                      ".")))
+          (replace 'install
+            (lambda _
+              (let ((whl (car (find-files "dist" "\\.whl$"))))
+                (invoke "pip"
+                        "--no-cache-dir"
+                        "--no-input"
+                        "install"
+                        "--no-deps"
+                        "--prefix"
+                        #$output
+                        whl))))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (invoke "python" "tests/edf_unit_test.py")))))))
+    (propagated-inputs (list python-numpy python-pypa-build))
+    (home-page "https://www.teuniz.net/edflib_python/")
+    (synopsis "Read and write EDF+/BDF+ files")
+    (description
+     "EDFlib for Python is a programming library to read and write EDF+ and
+BDF+ files.  It also reads old-type EDF/BDF files.  @dfn{EDF} means
+@url{https://www.teuniz.net/edfbrowser/edf%20format%20description.html,
+European Data Format}.  @dfn{BDF} is the
+@url{https://www.teuniz.net/edfbrowser/bdfplus%20format%20description.html,
+24-bit version} of EDF.")
+    (license license:bsd-3)))
