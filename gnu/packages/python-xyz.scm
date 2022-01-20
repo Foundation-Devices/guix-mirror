@@ -25546,6 +25546,36 @@ signature of your choice.  It was largely inspired by @samp{decorator} and
 @samp{functools}, and created mainly to cover some of their limitations.")
     (license license:bsd-3)))
 
+;; decopatch requires the next pytest modules if tests are enabled. The pytest
+;; modules require each other for tests.
+
+(define python-decopatch-minimal
+  (package
+    (name "python-decopatch-minimal")
+    (version "1.4.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "decopatch" version))
+       (sha256
+        (base32
+         "0i6i811s2j1z0cl6y177dwsbfxib8dvb5c2jpgklvc2xy4ahhsy6"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f))
+    (propagated-inputs (list python-makefun))
+    (native-inputs (list python-pytest python-pytest-runner
+                         python-setuptools-scm))
+    (home-page "https://github.com/smarie/python-decopatch")
+    (synopsis "Python decorators made easy")
+    (description
+     "Because of a tiny oddity in the python language, writing decorators
+without help can be a pain because you have to handle the no-parenthesis usage
+@url{https://smarie.github.io/python-decopatch/motivation, explicitly}.
+@samp{decopatch} provides a simple way to solve this issue so that writing
+decorators is simple and straightforward.")
+    (license license:bsd-3)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
