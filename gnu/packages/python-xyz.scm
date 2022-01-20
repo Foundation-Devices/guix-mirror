@@ -25524,6 +25524,28 @@ for working with video files.")
 array-like variables.")
     (license license:bsd-3)))
 
+(define-public python-makefun
+  (package
+    (name "python-makefun")
+    (version "1.13.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "makefun" version))
+       (sha256
+        (base32
+         "1gqnqvwzig9ym4nyzwy6dzra7sg6339rdaca59fvkfzzf2vbhnwq"))))
+    (build-system python-build-system)
+    (native-inputs (list python-pytest python-pytest-runner
+                         python-setuptools-scm))
+    (home-page "https://github.com/smarie/python-makefun")
+    (synopsis "Small library to dynamically create python functions")
+    (description
+     "@samp{makefun} helps you create functions dynamically, with the
+signature of your choice.  It was largely inspired by @samp{decorator} and
+@samp{functools}, and created mainly to cover some of their limitations.")
+    (license license:bsd-3)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
