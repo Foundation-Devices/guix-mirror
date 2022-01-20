@@ -25625,6 +25625,38 @@ at the end of the session, e.g. for applicative benchmarking purposes.")
 tests in pytest.")
     (license license:bsd-3)))
 
+(define python-pytest-cases-minimal
+  (package
+    (name "python-pytest-cases-minimal")
+    (version "3.6.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-cases" version))
+       (sha256
+        (base32
+         "1g3lp4m19fk83kl2b4akwg7wqqaqlfzp4v6qcb0hq27161xyh8yl"))))
+    (build-system python-build-system)
+    (propagated-inputs (list python-decopatch-minimal python-makefun))
+    (native-inputs (list python-pytest
+                         python-pytest-runner
+                         python-setuptools-scm
+                         python-pytest-asyncio
+                         python-pytest-harvest-minimal
+                         python-pytest-steps-minimal))
+    (home-page "https://github.com/smarie/python-pytest-cases")
+    (synopsis "Separate test code from test cases in @samp{pytest}")
+    (description
+     "@samp{pytest-cases} leverages @samp{pytest} and its great
+@samp{@@pytest.mark.parametrize decorator}, so that you can @strong{separate
+your test cases from your test functions}.  In addition, @samp{pytest-cases}
+provides several useful goodies to empower @samp{pytest}.  In particular it
+improves the fixture mechanism to support \"fixture unions\".  This is a
+@strong{major change} in the internal @samp{pytest} engine, unlocking many
+possibilities such as using fixture references as parameter values in a test
+function.")
+    (license license:bsd-3)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
