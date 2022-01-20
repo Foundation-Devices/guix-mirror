@@ -25657,6 +25657,28 @@ possibilities such as using fixture references as parameter values in a test
 function.")
     (license license:bsd-3)))
 
+(define-public python-decopatch
+  (package
+    (inherit python-decopatch-minimal)
+    (name "python-decopatch")
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'disable-failing-tests
+           (lambda _
+             (delete-file "decopatch/tests/test_main2.py")
+             (delete-file
+              "decopatch/tests/test_main2_parametrizers.py")
+             (delete-file "decopatch/tests/test_introspection.py")
+             (delete-file
+              "decopatch/tests/test_introspection_base.py")
+             (substitute* "decopatch/tests/test_doc_advanced.py"
+               (("'uses_introspection', \\[True, False\\]")
+                "'uses_introspection', [False]")))))))
+    (native-inputs (list python-pytest python-pytest-runner
+                         python-pytest-cases-minimal python-setuptools-scm
+                         python-pytest-logging))))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
