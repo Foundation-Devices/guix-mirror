@@ -40,6 +40,7 @@
   #:use-module (gnu packages databases)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages image-processing)
+  #:use-module (gnu packages jupyter)
   #:use-module (gnu packages machine-learning)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages mpi)
@@ -51,6 +52,7 @@
   #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages qt)
   #:use-module (gnu packages simulation)
   #:use-module (gnu packages sphinx)
   #:use-module (gnu packages statistics)
@@ -1461,3 +1463,66 @@ can be quite useful when you desire to update your plot in real-time.")
 files are directories containing several files of mostly xml files, but also
 binary files.")
     (license license:asl2.0)))
+
+(define-public python-mne
+  (package
+    (name "python-mne")
+    (version "0.24.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "mne" version))
+       (sha256
+        (base32
+         "039h0pwcvl4ywfa4ij7w6x61czd322csqr59yhzfil3a7b8gzjrq"))))
+    (build-system python-build-system)
+    (arguments
+     ;; The test data is distributed in a separate repository without a
+     ;; license, https://github.com/mne-tools/mne-testing-data
+     `(#:tests? #f))
+    (propagated-inputs (list python-numpy python-scipy
+                             python-matplotlib
+                             python-tqdm
+                             python-pooch
+                             python-decorator
+                             python-h5io
+                             python-packaging
+                             python-pymatreader
+                             python-pyqt
+                             python-pyqt5-sip
+                             python-sip
+                             python-scikit-learn
+                             python-nibabel
+                             python-numba
+                             python-h5py
+                             python-jinja2
+                             python-pandas
+                             python-numexpr
+                             jupyter
+                             python-picard
+                             python-statsmodels
+                             python-joblib
+                             python-psutil
+                             python-dipy
+                             vtk
+                             python-nilearn
+                             python-xlrd
+                             python-imageio
+                             python-imageio-ffmpeg
+                             python-traitlets
+                             python-pyvista
+                             python-pyvistaqt
+                             python-mffpy
+                             python-ipywidgets
+                             ;; FIXME: add the following dependencies:
+                             ;; python-ipyvtklink requires NPM to build
+                             ;; mne-qt-browser is not included, because it
+                             ;; depends on MNE.
+                             ))
+    (home-page "https://mne.tools/dev/")
+    (synopsis "MNE-Python project for MEG and EEG data analysis")
+    (description
+     "Open-source Python package for exploring, visualizing, and
+analyzing human neurophysiological data: MEG, EEG, sEEG, ECoG, NIRS, and
+more.")
+    (license license:bsd-3)))
