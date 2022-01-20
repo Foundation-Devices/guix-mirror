@@ -1080,3 +1080,27 @@ European Data Format}.  @dfn{BDF} is the
 @url{https://www.teuniz.net/edfbrowser/bdfplus%20format%20description.html,
 24-bit version} of EDF.")
     (license license:bsd-3)))
+
+(define-public python-eeglabio
+  (package
+    (name "python-eeglabio")
+    (version "0.0.1.post6")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/jackz314/eeglabio")
+             (commit "5416e8f2bc82da60ee729458cf325bec66d9774a")))
+       (sha256
+        (base32
+         "0zpb1xcvm4wzli2gfly7hr0486cnr8pl7f70dh58jmh4nj87z6i7"))))
+    (build-system python-build-system)
+    (arguments
+     `(;; Tests require MNE
+       #:tests? #f))
+    (propagated-inputs (list python-numpy python-scipy))
+    (native-inputs (list python-pytest))
+    (home-page "https://github.com/jackz314/eeglabio")
+    (synopsis "I/O support for EEGLAB files in Python")
+    (description "This project provides I/O support for EEGLAB files in Python.")
+    (license license:bsd-3)))
