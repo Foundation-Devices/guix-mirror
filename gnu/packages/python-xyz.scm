@@ -25498,6 +25498,32 @@ dumping of JSON5 data structures.")
 for working with video files.")
     (license license:bsd-2)))
 
+(define-public python-flake8-array-spacing
+  (package
+    (name "python-flake8-array-spacing")
+    (version "0.2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "flake8_array_spacing" version))
+       (sha256
+        (base32 "0nyp2x45hg5dkdrn0j2wcd336dnx6csizpfq5fwbk774wrb0lh6d"))))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest")))))))
+    (native-inputs (list python-pytest))
+    (build-system python-build-system)
+    (propagated-inputs (list python-flake8 python-pycodestyle))
+    (home-page "https://github.com/larsoner/flake8-array-spacing")
+    (synopsis "flake8 plugin to make exceptions for array-like variables")
+    (description "Recast some E2XX errors as A2XX with exceptions for
+array-like variables.")
+    (license license:bsd-3)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
