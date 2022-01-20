@@ -1155,3 +1155,37 @@ FreeSurfer} geometry, annotation and morphometry files.  There is some very
 limited support for @url{http://medical.nema.org/, DICOM}.  NiBabel is the
 successor of @url{http://niftilib.sourceforge.net/pynifti/, PyNIfTI}.")
     (license license:expat)))
+
+(define-public python-nitime
+  (package
+    (name "python-nitime")
+    (version "0.9")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "nitime" version))
+       (sha256
+        (base32
+         "0x1q6ka8i330yhp5h0h6igfs2gp5dndiybyfkdi45a8zpfnr0zbf"))))
+    (build-system python-build-system)
+    (propagated-inputs (list python-matplotlib python-networkx python-nibabel
+                             python-numpy python-scipy))
+    (native-inputs (list python-cython python-pytest))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'delete-generated-cython
+           (lambda _
+             (delete-file "nitime/_utils.c")))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "-vv" "nitime")))))))
+    (home-page "http://nipy.org/nitime/")
+    (synopsis "Nitime: timeseries analysis for neuroscience data")
+    (description
+     "Nitime contains a core of numerical algorithms for time-series analysis
+both in the time and spectral domains, a set of container objects to represent
+time-series, and auxiliary objects that expose a high level interface to the
+numerical machinery.")
+    (license license:bsd-3)))
