@@ -55,6 +55,7 @@
   #:use-module (gnu packages sphinx)
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages time)
+  #:use-module (gnu packages version-control)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages xorg)
@@ -1104,3 +1105,53 @@ European Data Format}.  @dfn{BDF} is the
     (synopsis "I/O support for EEGLAB files in Python")
     (description "This project provides I/O support for EEGLAB files in Python.")
     (license license:bsd-3)))
+
+(define-public python-nibabel
+  (package
+    (name "python-nibabel")
+    (version "3.2.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "nibabel" version))
+       (sha256
+        (base32
+         "17n23w7y0hiz2vma5si7wy184d59bp14zd8nr6hi203ldd1gjbsd"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest" "--pyargs" "nibabel")))))))
+    (propagated-inputs (list python-numpy python-packaging))
+    (native-inputs (list python-coverage
+                         python-gitpython
+                         python-pytest
+                         python-pytest-cov
+                         python-pytest-doctestplus
+                         python-twine))
+    (home-page "https://nipy.org/nibabel/")
+    (synopsis "Access a multitude of neuroimaging data formats")
+    (description
+     "This package provides read +/- write access to some common
+medical and neuroimaging file formats, including:
+@url{http://www.grahamwideman.com/gw/brain/analyze/formatdoc.htm,
+ANALYZE} (plain, SPM99, SPM2 and later),
+@url{https://www.nitrc.org/projects/gifti, GIFTI},
+@url{http://nifti.nimh.nih.gov/nifti-1/, NIfTI1},
+@url{http://nifti.nimh.nih.gov/nifti-2/, NIfTI2},
+@url{https://www.nitrc.org/projects/cifti/, CIFTI-2},
+@url{https://en.wikibooks.org/wiki/MINC/Reference/MINC1_File_Format_Reference,
+MINC1},
+@url{https://en.wikibooks.org/wiki/MINC/Reference/MINC2.0_File_Format_Reference,
+MINC2}, @url{https://afni.nimh.nih.gov/pub/dist/src/README.attributes, AFNI
+BRIK/HEAD},
+@url{https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat, MGH} and
+@url{http://xmedcon.sourceforge.net/Docs/Ecat, ECAT} as well as Philips
+PAR/REC.  We can read and write @url{https://surfer.nmr.mgh.harvard.edu/,
+FreeSurfer} geometry, annotation and morphometry files.  There is some very
+limited support for @url{http://medical.nema.org/, DICOM}.  NiBabel is the
+successor of @url{http://niftilib.sourceforge.net/pynifti/, PyNIfTI}.")
+    (license license:expat)))
