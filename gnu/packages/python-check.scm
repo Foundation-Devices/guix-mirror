@@ -1978,6 +1978,31 @@ HTTP requests.")
 eliminate flaky failures.")
     (license license:mpl2.0)))
 
+(define-public python-pytest-logging
+  (package
+    (name "python-pytest-logging")
+    (version "2015.11.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-logging" version))
+       (sha256
+        (base32
+         "15n8fyxvvwmk982vj0m9yl76hn7pp4qqljfmxarbgahqrxgciiff"))))
+    (build-system python-build-system)
+    (arguments
+     `(;; The tests are not present in the pypi source, and they all fail if
+       ;; building from git
+       #:tests? #f))
+    (propagated-inputs (list python-pytest))
+    (home-page "https://github.com/saltstack/pytest-logging")
+    (synopsis
+     "Logging with a @code{py.test} flag")
+    (description
+     "This package configures logging and allows tweaking the log level with a
+@code{py.test} flag.")
+    (license license:asl2.0)))
+
 (define-public python-xunitparser
   (package
     (name "python-xunitparser")
