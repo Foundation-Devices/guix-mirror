@@ -25466,6 +25466,38 @@ usable as a configuration language.  This Python package implements parsing and
 dumping of JSON5 data structures.")
     (license license:asl2.0)))
 
+(define-public python-imageio-ffmpeg
+  (package
+    (name "python-imageio-ffmpeg")
+    (version "0.4.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "imageio-ffmpeg" version))
+       (sha256
+        (base32 "0ff14079izsyxwf6ki68k9a7w5krjlal7lwqvzg2bbddl92l5spj"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f ;; Most tests download data (use the git url)
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'set-ffmpeg-exe
+           (lambda* (#:key inputs #:allow-other-keys)
+             ;; There are different strategies to find ffmpeg, we
+             ;; only fix the last resort, "system ffmpeg command"
+             (substitute* "imageio_ffmpeg/_utils.py"
+               (("exe = \"ffmpeg\"")
+                (format #f "exe = ~s"
+                        (search-input-file
+                         inputs "/bin/ffmpeg")))))))))
+    (inputs (list ffmpeg))
+    (home-page "https://github.com/imageio/imageio-ffmpeg")
+    (synopsis "@samp{ffmpeg} wrapper for Python")
+    (description
+     "The purpose of this project is to wrap the @command{ffmpeg} executable
+for working with video files.")
+    (license license:bsd-2)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
