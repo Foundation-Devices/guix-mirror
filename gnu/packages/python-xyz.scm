@@ -25706,6 +25706,21 @@ function.")
                          python-pandas))
     (propagated-inputs (list python-decopatch python-makefun python-six))))
 
+(define-public python-pytest-steps
+  (package
+    (inherit python-pytest-steps-minimal)
+    (name "python-pytest-steps")
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'move-pytests-plugins
+           (lambda _
+             (rename-file "pytest_steps/tests/conftest.py"
+                          "conftest.py"))))))
+    (native-inputs (list python-pytest python-pytest-runner
+                         python-setuptools-scm python-pytest-cases
+                         python-pytest-harvest))))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
