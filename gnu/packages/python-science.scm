@@ -1252,3 +1252,48 @@ learning, statistical analysis and visualization of medical images.
 Additionally, it contains specialized methods for computational anatomy
 including diffusion, perfusion and structural imaging.")
     (license license:bsd-3)))
+
+(define-public python-scooby
+  (package
+    ;; Because of its dependencies, it must be in this module.
+    (name "python-scooby")
+    (version "0.5.11")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/banesullivan/scooby")
+             (commit (string-append "v" version))))
+       (sha256
+        (base32
+         "13kzhh90wcrfg771s1x88smq3752i1r68jd514scdr7q3fy9ac5m"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'fix-import-test
+           (lambda _
+             ;; This package has a test named test_import_error. This test is
+             ;; supposed to require a random complex package to ensure that an
+             ;; error is raised. If pyvips ends up in the dependency graph,
+             ;; pick another one.
+             (substitute* "tests/test_scooby.py"
+               (("with pytest.raises\\(OSError\\):")
+                "with pytest.raises(ModuleNotFoundError):"))))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest")))))))
+    (propagated-inputs (list python-psutil))
+    (native-inputs (list python-pytest python-pytest-cov python-codecov
+                         python-beautifulsoup4 python-psutil python-numpy
+                         python-scipy python-no-version
+                         ;; python-pyvips is an example package that should
+                         ;; NOT be available
+                         ))
+    (home-page "https://github.com/banesullivan/scooby")
+    (synopsis "Report your python environment’s package versions and hardware resources")
+    (description
+     "This package reports your python environment’s package versions and
+hardware resources.")
+    (license license:expat)))
