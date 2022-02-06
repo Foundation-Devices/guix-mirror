@@ -1156,6 +1156,42 @@ limited support for @url{http://medical.nema.org/, DICOM}.  NiBabel is the
 successor of @url{http://niftilib.sourceforge.net/pynifti/, PyNIfTI}.")
     (license license:expat)))
 
+(define-public python-nilearn
+  (package
+    (name "python-nilearn")
+    (version "0.9.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "nilearn" version))
+        (sha256
+          (base32 "0xpy479kvcnrv9rkirisgm17iqcxd6sj8xzc1a8qj57mvq5f7j7r"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest" "--pyargs" "nilearn")))))))
+    (propagated-inputs
+      (list python-joblib
+            python-nibabel
+            python-numpy
+            python-pandas
+            python-requests
+            python-scikit-learn
+            python-scipy))
+    (native-inputs
+     (list python-pytest python-pytest-cov python-codecov python-lxml))
+    (home-page "https://nilearn.github.io")
+    (synopsis "Statistical learning for neuroimaging in Python")
+    (description "Nilearn supports general linear model (GLM) based analysis
+and leverages the scikit-learn Python toolbox for multivariate statistics with
+applications such as predictive modelling, classification, decoding, or
+connectivity analysis. It includes the functionality of nistats.")
+    (license license:bsd-3)))
+
 (define-public python-nitime
   (package
     (name "python-nitime")
