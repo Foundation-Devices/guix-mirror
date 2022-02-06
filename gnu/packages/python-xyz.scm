@@ -1372,6 +1372,36 @@ concepts.")
 (define-public python2-h5py
   (package-with-python2 python-h5py))
 
+(define-public python-h5io
+  (package
+    (name "python-h5io")
+    (version "0.1.7")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/h5io/h5io")
+             (commit (string-append "h5io-" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0mxsai8i7br20cqnydagng814g2hwhaq4aprsq2d4kmvff45s3az"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "-vv" "h5io")))))))
+    (propagated-inputs (list python-h5py python-numpy python-scipy))
+    (native-inputs (list python-pytest python-pytest-cov))
+    (home-page "http://h5io.github.io")
+    (synopsis "Python Objects Onto HDF5")
+    (description "h5io is a package designed to facilitate saving some
+standard Python objects into the forward-compatible HDF5 format. It is a
+higher-level package than h5py.")
+    (license license:bsd-3)))
+
 (define-public python-hnswlib
   (package
     (name "python-hnswlib")
