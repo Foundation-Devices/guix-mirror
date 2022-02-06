@@ -1189,3 +1189,32 @@ both in the time and spectral domains, a set of container objects to represent
 time-series, and auxiliary objects that expose a high level interface to the
 numerical machinery.")
     (license license:bsd-3)))
+
+(define-public python-picard
+  (package
+    (name "python-picard")
+    (version "0.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "python-picard" version))
+       (sha256
+        (base32 "19w5s77jfyy6h4h7iv639blfdil40ayz1whpfrdq0336qkqa2qc0"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "-vv" "picard")))))))
+    (propagated-inputs
+     (list python-numexpr python-numpy python-scikit-learn python-scipy
+           python-matplotlib))
+    (native-inputs
+     (list python-pytest))
+    (home-page "https://pierreablin.github.io/picard")
+    (synopsis "Preconditoned ICA for Real Data")
+    (description "This package provides Python code of the Preconditioned ICA
+for Real Data (Picard) and Picard-O algorithms.")
+    (license license:bsd-3)))
