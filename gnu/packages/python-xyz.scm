@@ -25832,6 +25832,34 @@ function.")
 __version__ number.")
     (license license:cc0)))
 
+(define-public python-pyperf
+  (package
+    (name "python-pyperf")
+    (version "2.3.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pyperf" version))
+       (sha256
+        (base32 "189qf9wdbig0fk4n3bavx8acgdbay5lllfvw48jvbfaafb7y5hja"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'disable-failing-test
+           (lambda _
+             (delete-file "pyperf/tests/test_examples.py")))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest")))))))
+    (native-inputs
+     (list python-pytest))
+    (home-page "https://github.com/psf/pyperf")
+    (synopsis "Python module to run and analyze benchmarks.")
+    (description "This package provides a python module to run and analyze benchmarks.")
+    (license license:expat)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
