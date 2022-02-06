@@ -1402,6 +1402,44 @@ standard Python objects into the forward-compatible HDF5 format. It is a
 higher-level package than h5py.")
     (license license:bsd-3)))
 
+(define-public python-pymatreader
+  (package
+    (name "python-pymatreader")
+    (version "0.0.29")
+    (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.com/obob/pymatreader.git/")
+             (commit "9ba9ddf53e367a86e14011553e949b666c564272")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0r98907c2qfaqqh7cn200s5hqblvmpdbr3wbq1jasbm9nkzlligm"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "-vv")))))))
+    (propagated-inputs
+      (list python-future
+            python-h5py
+            python-numpy
+            python-scipy
+            python-xmltodict))
+    (native-inputs
+     (list python-pytest python-pytest-cov python-sphinx
+           python-sphinx-autobuild python-tox python-wheel
+           python-coverage python-flake8 python-codecov))
+    (home-page "https://gitlab.com/obob/pymatreader")
+    (synopsis "Convenient reader for Matlab mat files")
+    (description "This is a Python module to read Matlab files. It works with
+both the old (< 7.3) and the new (>= 7.3) HDF5 based format. The output should
+be the same for both kinds of files.")
+    (license license:bsd-2)))
+
 (define-public python-hnswlib
   (package
     (name "python-hnswlib")
