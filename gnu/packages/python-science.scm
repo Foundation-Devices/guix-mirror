@@ -1218,3 +1218,37 @@ numerical machinery.")
     (description "This package provides Python code of the Preconditioned ICA
 for Real Data (Picard) and Picard-O algorithms.")
     (license license:bsd-3)))
+
+(define-public python-dipy
+  (package
+    (name "python-dipy")
+    (version "1.4.1")
+    (source
+     (origin
+       ;; Use git to avoid cythonized files
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dipy/dipy")
+             (commit version)))
+       (sha256
+        (base32
+         "031fpl1r035pm9bxi5yr87nmwj5vaj6a983d6sibz0v95hxvnv02"))))
+    (build-system python-build-system)
+    (arguments
+     ;; FIXME: Tests won’t run with error messages like this:
+     ;; E ImportError: cannot import name 'vector_fields' from partially
+     ;; initialized module 'dipy.align' (most likely due to a circular import)
+     `(#:tests? #f))
+    (propagated-inputs
+     (list python-numpy python-scipy python-nibabel python-h5py
+           python-packaging python-tqdm))
+    (native-inputs
+     (list python-pytest python-cython))
+    (home-page "https://dipy.org")
+    (synopsis "Diffusion MRI utilities in python")
+    (description "DIPY is a 3D/4D+ imaging library in Python. It contains
+generic methods for spatial normalization, signal processing, machine
+learning, statistical analysis and visualization of medical images.
+Additionally, it contains specialized methods for computational anatomy
+including diffusion, perfusion and structural imaging.")
+    (license license:bsd-3)))
