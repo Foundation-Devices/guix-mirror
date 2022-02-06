@@ -1333,3 +1333,59 @@ including diffusion, perfusion and structural imaging.")
      "This package reports your python environment’s package versions and
 hardware resources.")
     (license license:expat)))
+
+(define-public python-pyvista
+  (package
+    (name "python-pyvista")
+    (version "0.33.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pyvista/pyvista")
+             (commit (string-append "v" version))))
+       (sha256
+        (base32 "1kvv996jm56a169gjvhqym1zxpk75hxm6mrx85jb783qi0g627ar"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'prepare-x
+           (lambda _
+             (system "Xvfb &")
+             (setenv "DISPLAY" ":0")
+             (setenv "HOME" "/tmp")))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               ;; We don’t have either trimesh nor pythreejs
+               (substitute* "tests/test_helpers.py"
+                 (("import trimesh") ""))
+               (delete-file "tests/jupyter/test_pythreejs.py")
+               ;; This test downloads data
+               (delete-file "tests/utilities/test_reader.py")
+               (invoke "python" "-m" "pytest" "--pyargs" "-k"
+                       ;; test_ensight_multi_block_io downloads data,
+                       ;; test_load_theme requires ipyvtklink, and
+                       ;; test_tinypages fails to run sphinx
+                       "not test_ensight_multi_block_io \
+                        and not test_wrap_trimesh \
+                        and not test_load_theme \
+                        and not test_tinypages")))))))
+    (propagated-inputs
+     (list python-appdirs
+           python-imageio
+           python-numpy
+           python-pillow
+           python-scooby
+           vtk))
+    (native-inputs
+     (list python-pytest python-matplotlib python-hypothesis
+           python-ipython python-meshio python-tqdm python-sphinx
+           xorg-server-for-tests))
+    (home-page "https://github.com/pyvista/pyvista")
+    (synopsis "Higher-level interface to VTK")
+    (description "PyVista is a helper module for the Visualization
+Toolkit (VTK) that wraps the VTK library through NumPy and direct array access
+through a variety of methods and classes.")
+    (license license:expat)))
