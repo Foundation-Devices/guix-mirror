@@ -19,6 +19,7 @@
 ;;; Copyright © 2021 Paul Garlick <pgarlick@tourbillion-technology.com>
 ;;; Copyright © 2021 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2021 Ivan Gankevich <i.gankevich@spbu.ru>
+;;; Copyright © 2022 Vivien Kraus <vivien@planete-kraus.eu>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -69,6 +70,7 @@
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
   #:use-module (gnu packages imagemagick)
+  #:use-module (gnu packages libffi)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages pdf)
   #:use-module (gnu packages perl)
@@ -632,6 +634,52 @@ Compared to most image processing libraries VIPS needs little RAM and runs
 quickly, especially on machines with more than one CPU core.  This is primarily
 due to its architecture which automatically parallelises the image workflows.")
     (license license:lgpl2.1+)))
+
+(define-public python-pyvips
+  (package
+    (name "python-pyvips")
+    (version "2.1.16")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pyvips" version))
+       (sha256
+        (base32 "1vc1k8adldwf5is5gj6ihg4gxa15ypkfr8h7d1w4dy0m980h6k35"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'set-pkgconfigpath
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((path
+                    (list->search-path-as-string
+                     (search-path-as-list
+                      '("lib/pkgconfig" "share/pkgconfig")
+                      (map cdr inputs))
+                     ":")))
+               (substitute* "pyvips/pyvips_build.py"
+                 (("import pkgconfig")
+                  (format #f
+                          "\
+import os
+os.environ['PKG_CONFIG_PATH'] = '~a'
+import pkgconfig"
+                          path)))))))))
+    (propagated-inputs
+     (list python-cffi python-pkgconfig))
+    (inputs (list vips expat glib libgsf fftw imagemagick orc lcms openexr
+                  imath poppler cairo librsvg matio libwebp pango libtiff
+                  libjpeg-turbo libexif))
+    (native-inputs
+     (list python-cffi
+           python-pyperf
+           python-pytest
+           python-pytest-flake8
+           python-pytest-runner))
+    (home-page "https://github.com/libvips/pyvips")
+    (synopsis "Binding for the libvips image processing library using cffi.")
+    (description "This package provides python bindings to libvips.")
+    (license license:expat)))
 
 (define-public gmic
   (package
