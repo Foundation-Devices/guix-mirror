@@ -25815,6 +25815,23 @@ function.")
                          python-setuptools-scm python-pytest-cases
                          python-pytest-harvest))))
 
+(define-public python-no-version
+  (package
+    (name "python-no-version")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "no_version" version))
+       (sha256
+        (base32 "1y58fkwg4s96hbz3hnqj2nd8a0pimrmpk4ry1z5pwzxlyx0k66rf"))))
+    (build-system python-build-system)
+    (home-page "https://github.com/prisae/no_version")
+    (synopsis "Package without __version__ number.")
+    (description "This package demonstrates an example of a package without a
+__version__ number.")
+    (license license:cc0)))
+
 (define-public python-frozendict
   (package
     (name "python-frozendict")
