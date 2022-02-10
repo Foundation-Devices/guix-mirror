@@ -1430,3 +1430,34 @@ through a variety of methods and classes.")
 you to plot using pyqt by placing a vtk-widget into a background render.  This
 can be quite useful when you desire to update your plot in real-time.")
     (license license:expat)))
+
+(define-public python-mffpy
+  (package
+    (name "python-mffpy")
+    (version "0.7.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/BEL-Public/mffpy")
+             (commit (string-append "v" version))))
+       (sha256
+        (base32 "0mi2walqdwf9gxnw7bb3bqrrshm3xz4vss65npdq8iyynhxzf66n"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest" "--pyargs" "mffpy")))))))
+    (propagated-inputs (list python-deprecated python-numpy python-pytz))
+    (native-inputs
+     (list python-mypy python-pytest python-pytest-cov pre-commit
+           python-flake8))
+    (home-page "https://github.com/BEL-Public/mffpy")
+    (synopsis "Reader and Writer for Philips' MFF file format.")
+    (description "@code{mffpy} is a reader for EGI's MFF file format. These
+files are directories containing several files of mostly xml files, but also
+binary files.")
+    (license license:asl2.0)))
