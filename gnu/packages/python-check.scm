@@ -2029,3 +2029,23 @@ eliminate flaky failures.")
 Python objects.  It tries to use the objects available in the standard
 @code{unittest} module.")
     (license license:expat)))
+
+(define-public python-pytest-memprof
+  (package
+    (name "python-pytest-memprof")
+    (version "0.2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-memprof" version))
+       (sha256
+        (base32 "0rxg0q3bwlc9iax0skpia3a5x7xijz9i5110qk50vf9avwg9zg69"))))
+    (build-system python-build-system)
+    (arguments '(#:tests? #f)) ;; No tests, no git repository
+    (propagated-inputs (list python-psutil python-pytest))
+    ;; The gitlab repository is private, so the home page is not accessible.
+    (home-page "https://pypi.org/project/pytest-memprof/")
+    (synopsis "Estimate memory consumption of test functions")
+    (description "This pytest plugin estimates memory consumption of test
+functions.")
+    (license license:bsd-3)))
