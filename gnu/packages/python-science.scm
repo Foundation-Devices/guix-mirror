@@ -1389,3 +1389,44 @@ hardware resources.")
 Toolkit (VTK) that wraps the VTK library through NumPy and direct array access
 through a variety of methods and classes.")
     (license license:expat)))
+
+(define-public python-pyvistaqt
+  (package
+    (name "python-pyvistaqt")
+    (version "0.7.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pyvista/pyvistaqt")
+             (commit version)))
+       (sha256
+        (base32 "19vm0kwxnn5dyiw1byi896spfzxaw39lk5bw7ff536qq1qqg3vnd"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'fix-skipping-tests
+           (lambda _
+             (substitute* "tests/conftest.py"
+               (("NO_PLOTTING, reason=") ""))))
+         (add-before 'check 'prepare-x
+           (lambda _
+             (system "Xvfb &")
+             (setenv "DISPLAY" ":0")
+             (setenv "HOME" "/tmp")))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "-m" "pytest")))))))
+    (propagated-inputs (list python-pyvista python-qtpy))
+    (native-inputs (list python-pytest python-codecov python-ipython
+                         python-numpy python-pytest-cov python-pytest-memprof
+                         python-pytest-qt python-pyvista python-qtpy
+                         python-scooby vtk xorg-server-for-tests))
+    (home-page "https://github.com/pyvista/pyvistaqt")
+    (synopsis "@code{pyvista} qt plotter")
+    (description "@code{pyvistaqt} is a helper module for pyvista to enable
+you to plot using pyqt by placing a vtk-widget into a background render.  This
+can be quite useful when you desire to update your plot in real-time.")
+    (license license:expat)))
