@@ -279,7 +279,7 @@ many popular formats.")
     (properties `((release-monitoring-url . "https://vtk.org/download/")))
     (build-system cmake-build-system)
     (arguments
-     '(#:build-type "Release"           ;Build without '-g' to save space.
+     `(#:build-type "Release"           ;Build without '-g' to save space.
        #:configure-flags '(;"-DBUILD_TESTING:BOOL=TRUE"
                            ;    ; not honored
                            "-DVTK_USE_EXTERNAL=OFF" ;; default
@@ -313,7 +313,32 @@ many popular formats.")
                (substitute* "Common/Core/vtkFloatingPointExceptions.cxx"
                  (("<fenv.h>") "<cfenv>"))
                (substitute* "Common/Core/CMakeLists.txt"
-                 (("fenv.h") "cfenv")))))
+                 (("fenv.h") "cfenv"))))
+           (add-after 'install 'install-egg-info
+             (lambda* (#:key outputs #:allow-other-keys)
+               (use-modules (ice-9 rdelim) (guix build utils))
+               (call-with-output-file "get-python-version.py"
+                 (lambda (port)
+                   (format port "import sys
+v = sys.version_info
+with open('path', 'w') as f:
+    f.write('{0}.{1}'.format(v.major, v.minor))
+" port)))
+               (invoke "python3" "get-python-version.py")
+               (let* ((python-version
+                       (call-with-input-file "path" read-line))
+                      (egg-info
+                       (format #f "~a/lib/python~a/site-packages/vtk-~a-py~a.egg-info"
+                               (assoc-ref outputs "out")
+                               python-version ,version python-version)))
+                 (mkdir-p egg-info)
+                 (call-with-output-file (string-append egg-info "/PKG-INFO")
+                   (lambda (port)
+                     (format port "Metadata-Version: 2.1
+Name: vtk
+Version: ~a
+"
+                             ,version)))))))
        #:tests? #f))        ;XXX: test data not included
     (inputs
      `(("double-conversion" ,double-conversion)
@@ -345,6 +370,7 @@ many popular formats.")
      ;; VTK's 'VTK-vtk-module-find-packages.cmake' calls
      ;; 'find_package(THEORA)', which in turns looks for libogg.
      (list libogg))
+    (native-inputs (list python))
     (home-page "https://vtk.org/")
     (synopsis "Libraries for 3D computer graphics")
     (description
