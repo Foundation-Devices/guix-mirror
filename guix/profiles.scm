@@ -7,7 +7,7 @@
 ;;; Copyright © 2016, 2017, 2018, 2019, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2017 Huang Ying <huang.ying.caritas@gmail.com>
-;;; Copyright © 2017, 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2017, 2021, 2024 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019 Kyle Meyer <kyle@kyleam.com>
 ;;; Copyright © 2019 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Danny Milosavljevic <dannym@scratchpost.org>
@@ -1701,6 +1701,9 @@ the entries in MANIFEST."
   (define guile-zlib
     (module-ref (resolve-interface '(gnu packages guile)) 'guile-zlib))
 
+  (define guile-zstd
+    (module-ref (resolve-interface '(gnu packages guile)) 'guile-zstd))
+
   (define modules
     (delete '(guix config)
             (source-module-closure `((guix build utils)
@@ -1709,7 +1712,8 @@ the entries in MANIFEST."
   (define build
     (with-imported-modules modules
       (with-extensions (list gdbm-ffi           ;for (guix man-db)
-                             guile-zlib)
+                             guile-zlib
+                             guile-zstd)
         #~(begin
             (use-modules (guix man-db)
                          (guix build utils)
