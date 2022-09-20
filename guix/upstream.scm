@@ -504,11 +504,15 @@ values: 'always', 'never', and 'interactive' (default)."
     ((? upstream-source? source)
      (if (version>? (upstream-source-version source)
                     (package-version package))
-         (let ((method (match (package-source package)
-                         ((? origin? origin)
-                          (origin-method origin))
+         (let ((method (match (upstream-source-urls source)
+                         ((? git-reference? ref)
+                          git-fetch)
                          (_
-                          #f))))
+                          (match (package-source package)
+                            ((? origin? origin)
+                             (origin-method origin))
+                            (_
+                             #f))))))
            (match (assq method %method-updates)
              (#f
               (raise (make-compound-condition

@@ -32,6 +32,7 @@
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
+  #:use-module (srfi srfi-71)
   #:use-module (ice-9 receive)
   #:use-module (web uri)
   #:use-module (guix memoization)
@@ -49,6 +50,7 @@
                           with-directory-excursion))
   #:use-module (guix utils)
   #:use-module (guix git)
+  #:use-module (guix git-download)
   #:use-module ((guix build-system r) #:select (cran-uri bioconductor-uri))
   #:use-module (guix ui)
   #:use-module (guix upstream)
@@ -187,10 +189,17 @@ package definition."
 (define %cran-url "https://cran.r-project.org/web/packages/")
 (define %cran-canonical-url "https://cran.r-project.org/package=")
 (define %bioconductor-url "https://bioconductor.org/packages/")
+(define (bioconductor-git-url name)
+  (string-append "https://git.bioconductor.org/packages/" name))
 
 ;; The latest Bioconductor release is 3.16.  Bioconductor packages should be
 ;; updated together.
 (define %bioconductor-version "3.16")
+(define %bioconductor-release-branch
+  (string-append "RELEASE_"
+                 (string-map (match-lambda
+                               (#\. #\_)
+                               (chr chr)) %bioconductor-version)))
 
 (define* (bioconductor-packages-list-url #:optional type)
   (string-append "https://bioconductor.org/packages/"
@@ -315,12 +324,26 @@ from ~a: ~a (~a)~%")
                           (and (latest-bioconductor-package-version name 'annotation) 'annotation)
                           (and (latest-bioconductor-package-version name 'experiment) 'experiment)))
                 ;; TODO: Honor VERSION.
-                (version (latest-bioconductor-package-version name type))
-                (url     (car (bioconductor-uri name version type)))
-                (meta    (fetch-description-from-tarball url)))
-       (if (boolean? type)
-           meta
-           (cons `(bioconductor-type . ,type) meta))))
+                (version (latest-bioconductor-package-version name type)))
+       (cond
+        ((member type '(annotation experiment))
+         ;; Download tarball
+         (and-let* ((url (car (bioconductor-uri name version type)))
+                    (meta (fetch-description-from-tarball url)))
+           (cons `(bioconductor-type . ,type) meta)))
+        (else
+         (let ((url (bioconductor-git-url name)))
+           (call-with-values
+               (lambda () (download url
+                               #:method 'git
+                               #:ref (cons 'branch %bioconductor-release-branch)))
+             (lambda (dir commit)
+               (and=> (description->alist (with-input-from-file
+                                              (string-append dir "/DESCRIPTION") read-string))
+                      (lambda (meta)
+                        (cons* `(git . ,url)
+                               `(git-commit . ,commit)
+                               meta))))))))))
     ((git)
      (and (string-prefix? "http" name)
           ;; Download the git repository at "NAME"
@@ -538,21 +561,28 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
          (source-url (case repository
                        ((git) (assoc-ref meta 'git))
                        ((hg)  (assoc-ref meta 'hg))
+                       ((bioconductor)
+                        (or (assoc-ref meta 'git)
+                            (match (apply uri-helper name version
+                                          (list (assoc-ref meta 'bioconductor-type)))
+                              ((urls ...) urls)
+                              ((? string? url) url)
+                              (_ #f))))
                        (else
-                        (match (apply uri-helper name version
-                                      (case repository
-                                        ((bioconductor)
-                                         (list (assoc-ref meta 'bioconductor-type)))
-                                        (else '())))
+                        (match (uri-helper name version)
                           ((urls ...) urls)
                           ((? string? url) url)
                           (_ #f)))))
          (git?       (if (assoc-ref meta 'git) #true #false))
          (hg?        (if (assoc-ref meta 'hg) #true #false))
-         (source     (download source-url #:method (cond
-                                                    (git? 'git)
-                                                    (hg? 'hg)
-                                                    (else #f))))
+         (source     (download source-url
+                               #:method (cond
+                                         (git? 'git)
+                                         (hg? 'hg)
+                                         (else #f))
+                               #:ref (and=> (assoc-ref meta 'git-commit)
+                                            (lambda (commit)
+                                              `(commit . ,commit)))))
          (sysdepends (append
                       (if (needs-zlib? source (not (or git? hg?))) '("zlib") '())
                       (filter (lambda (name)
@@ -571,7 +601,14 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
               (name ,(cran-guix-name name))
               (version ,(cond
                          (git?
-                          `(git-version ,version revision commit))
+                          (case repository
+                            ((bioconductor)
+                             ;; Generate literal string for bioconductor git
+                             ;; packages to allow the use of the automatic
+                             ;; updater.
+                             (git-version version "0" (assoc-ref meta 'git-commit)))
+                            (else
+                             `(git-version ,version revision commit))))
                          (hg?
                           `(string-append ,version "-" revision "." changeset))
                          (else version)))
@@ -605,11 +642,10 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
                          (base32
                           ,(bytevector->nix-base32-string
                             (file-hash* source #:recursive? (or git? hg?)))))))
-              ,@(if (not (and git? hg?
-                              (equal? (string-append "r-" name)
-                                      (cran-guix-name name))))
-                    `((properties ,`(,'quasiquote ((,'upstream-name . ,name)))))
-                    '())
+              ,@(if (string=? (string-append "r-" name)
+                              (cran-guix-name name))
+                    '()
+                    `((properties ,`(,'quasiquote ((,'upstream-name . ,name))))))
               (build-system r-build-system)
               ,@(maybe-inputs (map transform-sysname sysdepends))
               ,@(maybe-inputs (map cran-guix-name propagate) 'propagated-inputs)
@@ -630,7 +666,7 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
               (license ,license))))
     (values
      (cond
-      (git?
+      ((and git? (not (eq? repository 'bioconductor)))
        `(let ((commit ,(assoc-ref meta 'git-commit))
               (revision "1"))
           ,package))
@@ -690,6 +726,9 @@ s-expression corresponding to that package, or #f on failure."
                 ;; The URL ends on
                 ;; (string-append "/" name "_" version ".tar.gz")
                 (and start end (substring url (+ start 1) end))))
+             ((? git-reference? uri)
+              (let ((url (git-reference-url uri)))
+                (last (string-split url #\/))))
              (_ #f)))
           (_ #f)))))
 
@@ -723,15 +762,53 @@ s-expression corresponding to that package, or #f on failure."
     (latest-bioconductor-package-version upstream-name))
 
   (and version
-       ;; Bioconductor does not provide signatures.
-       (upstream-source
-        (package (package-name pkg))
-        (version version)
-        (urls (bioconductor-uri upstream-name version))
-        (input-changes
-         (changed-inputs
-          pkg
-          (cran->guix-package upstream-name #:repo 'bioconductor))))))
+       ;; Data and experiment packages are not available through git.
+       (if (or (bioconductor-data-package? pkg)
+               (bioconductor-experiment-package? pkg))
+           ;; Bioconductor does not provide signatures.
+           (upstream-source
+            (package (package-name pkg))
+            (version version)
+            (urls (bioconductor-uri upstream-name version))
+            (input-changes
+             (changed-inputs
+              pkg
+              (cran->guix-package upstream-name #:repo 'bioconductor))))
+
+           ;; Fetch from git.
+           (let* ((url (bioconductor-git-url upstream-name))
+                  (old-reference (origin-uri (package-source pkg)))
+                  (old-commit (and (git-reference? old-reference)
+                                   (git-reference-commit old-reference)))
+                  (directory new-commit
+                             (download url
+                                       #:method 'git
+                                       #:ref (cons 'branch %bioconductor-release-branch)))
+                  (revision (cond
+                             ;; Do not upgrade
+                             ((and old-commit
+                                   (string=? old-commit new-commit))
+                              #false)
+                             ;; Increase revision number for same version
+                             ((string-prefix? version (package-version pkg))
+                              (match (string-split (string-drop (package-version pkg)
+                                                                (string-length version))
+                                                   (char-set #\- #\.))
+                                (("" old-revision commit-stub)
+                                 (number->string (1+ (string->number old-revision))))
+                                (_ "0")))
+                             ;; Reset revision on new version
+                             (else "0")))
+                  (new-version
+                   (if revision
+                       (git-version version revision new-commit)
+                       (package-version pkg))))
+             (upstream-source
+              (package (package-name pkg))
+              (version new-version)
+              (urls (git-reference
+                     (url url)
+                     (commit new-commit))))))))
 
 (define (cran-package? package)
   "Return true if PACKAGE is an R package from CRAN."
@@ -753,7 +830,14 @@ s-expression corresponding to that package, or #f on failure."
                           ;; Experiment packages are in a separate repository.
                           (not (string-contains uri "/data/experiment/"))))))
     (and (string-prefix? "r-" (package-name package))
-         ((url-predicate predicate) package))))
+         (or (match (package-source package)
+               ((? origin? origin)
+                (and (eq? (origin-method origin) git-fetch)
+                     (git-reference? (origin-uri origin))
+                     (string-prefix? "https://git.bioconductor.org"
+                                     (git-reference-url (origin-uri origin)))))
+               (_ #f))
+             ((url-predicate predicate) package)))))
 
 (define (bioconductor-data-package? package)
   "Return true if PACKAGE is an R data package from Bioconductor."
