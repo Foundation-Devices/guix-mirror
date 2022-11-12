@@ -487,6 +487,16 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
     (sha256
      (base32 "1ifnfhpakzffn4b8n7x7w5cps9mzjxlkcfz9zqak2vaw8nzvl39f"))))
 
+(define %mnt-reform-patches
+  (search-patches
+   "linux-libre-mnt-reform-0001-nwl-dsi-fixup-mode-only-for-LCDIF-input-not-DCSS.patch"
+   "linux-libre-mnt-reform-0002-pci-imx6-add-support-for-internal-refclk-imx8mq.patch"
+   "linux-libre-mnt-reform-0003-lcdif-fix-pcie-interference.patch"
+   "linux-libre-mnt-reform-0004-mnt4002-imx-gpcv2-wake-smccc.patch.patch"
+   "linux-libre-mnt-reform-0006-drm-bridge-ti-sn65dsi86-fetch-bpc-using-drm_atomic_s.patch"
+   "linux-libre-mnt-reform-0007-drm-bridge-ti-sn65dsi86-support-DRM_BRIDGE_ATTACH_NO.patch"
+   ))
+
 (define (source-with-patches source patches)
   (origin
     (inherit source)
@@ -1160,6 +1170,118 @@ Linux kernel.  It has been modified to remove all non-free binary blobs.")
                         ("CONFIG_BATTERY_CW2015" . m)
                         ("CONFIG_CHARGER_GPIO" . m)
                         ("CONFIG_SND_SOC_ES8316" . m))
+                      %default-extra-linux-options)))
+
+(define-public linux-libre-mnt-reform
+  (make-linux-libre* linux-libre-6.0-version
+                     linux-libre-6.0-gnu-revision
+                     (source-with-patches linux-libre-6.0-pristine-source
+                                          (append
+                                           %mnt-reform-patches
+                                           (list %boot-logo-patch
+                                                 %linux-libre-arm-export-__sync_icache_dcache-patch
+                                                 (search-patch "linux-libre-infodocs-target.patch"))))
+                     '("aarch64-linux")
+                     #:defconfig "defconfig"
+                     #:extra-version "mnt-reform"
+                     #:extra-options
+                     (append
+                      `(;; options for MNT/Reform
+                        ;; see https://source.mnt.re/reform/reform-debian-packages/-/blob/main/linux/config
+                        ("CONFIG_DRM_LVDS_CODEC" . m)
+                        ("CONFIG_DRM_SIMPLE_BRIDGE" . m)
+                        ("CONFIG_DRM_TI_SN65DSI86" . m)
+                        ("CONFIG_DRM_CDNS_MHDP8546" . m)
+                        ("CONFIG_DRM_CDNS_HDMI_CEC" . m)
+                        ("CONFIG_DRM_IMX_CDNS_MHDP" . m)
+                        ("CONFIG_DRM_IMX_DCSS" . m)
+                        ("CONFIG_DRM_PANEL_LVDS" . m)
+                        ("CONFIG_I2C_IMX_LPI2C" . m)
+                        ("CONFIG_I2C_MUX_REG" . m)
+                        ("CONFIG_INTERCONNECT_IMX" . m)
+                        ("CONFIG_INTERCONNECT_IMX8MQ" . m)
+                        ("CONFIG_MFD_WM8994" . m)
+                        ("CONFIG_MUX_GPIO" . m)
+                        ("CONFIG_MUX_MMIO" . m)
+                        ("CONFIG_RTC_DRV_PCF8523" . m)
+                        ("CONFIG_USB_EHCI_FSL" . m)
+                        ("CONFIG_BACKLIGHT_GPIO" . m)
+                        ("CONFIG_BACKLIGHT_LED" . m)
+                        ("CONFIG_NO_HZ_IDLE" . #t)
+                        ("CONFIG_SND_SOC_WM8960" . m)
+                        ("CONFIG_SND_SOC_FSL_MICFIL" . m)
+                        ("CONFIG_SND_IMX_SOC" . m)
+                        ("CONFIG_SND_SOC_FSL_ASOC_CARD" . m)
+                        ("CONFIG_SND_SOC_IMX_AUDMIX" . m)
+                        ("CONFIG_SND_SOC_IMX_HDMI" . m)
+                        ;; And more
+                        ;; https://salsa.debian.org/kernel-team/linux/-/commit/aa9f2cfbd99e598ad02043d9238bf7886fc21d1a
+                        ;; https://bugs.debian.org/1009858
+                        ("CONFIG_DRM_LVDS_CODEC" . m)
+                        ("CONFIG_DRM_SIMPLE_BRIDGE" . m)
+                        ("CONFIG_DRM_TI_SN65DSI86" . m)
+                        ("CONFIG_DRM_CDNS_MHDP8546" . m)
+                        ("CONFIG_DRM_IMX_DCSS" . m)
+                        ("CONFIG_DRM_PANEL_LVDS" . m)
+                        ("CONFIG_I2C_IMX_LPI2C" . m)
+                        ("CONFIG_I2C_MUX_REG" . m)
+                        ("CONFIG_INTERCONNECT_IMX" . m)
+                        ("CONFIG_INTERCONNECT_IMX8MQ" . m)
+                        ("CONFIG_MFD_WM8994" . m)
+                        ("CONFIG_MUX_GPIO" . m)
+                        ("CONFIG_MUX_MMIO" . m)
+                        ("CONFIG_RTC_DRV_PCF8523" . m)
+                        ("CONFIG_USB_EHCI_FSL" . m)
+                        ("CONFIG_BACKLIGHT_GPIO" . m)
+                        ("CONFIG_BACKLIGHT_LED" . m)
+                        ("CONFIG_SND_SOC_WM8960" . m)
+                        ("CONFIG_SND_SOC_FSL_MICFIL" . m)
+                        ("CONFIG_SND_IMX_SOC" . m)
+                        ("CONFIG_SND_SOC_FSL_ASOC_CARD" . m)
+                        ("CONFIG_SND_SOC_IMX_AUDMIX" . m)
+                        ("CONFIG_SND_SOC_IMX_HDMI" . m)
+                        ;; Enable freescale SOCs
+                        ("CONFIG_ARCH_MXC" . #t)
+                        ;; Disable other SOCs
+                        ("CONFIG_ARCH_ACTIONS" . #f)
+                        ("CONFIG_ARCH_SUNXI" . #f)
+                        ("CONFIG_ARCH_ALPINE" . #f)
+                        ("CONFIG_ARCH_APPLE" . #f)
+                        ("CONFIG_ARCH_BCM2835" . #f)
+                        ("CONFIG_ARCH_BCM4908" . #f)
+                        ("CONFIG_ARCH_BCMBCA" . #f)
+                        ("CONFIG_ARCH_BCM_IPROC" . #f)
+                        ("CONFIG_ARCH_BCMBCA" . #f)
+                        ("CONFIG_ARCH_BERLIN" . #f)
+                        ("CONFIG_ARCH_BRCMSTB" . #f)
+                        ("CONFIG_ARCH_EXYNOS" . #f)
+                        ("CONFIG_ARCH_K3" . #f)
+                        ("CONFIG_ARCH_LAYERSCAPE" . #f)
+                        ("CONFIG_ARCH_LG1K" . #f)
+                        ("CONFIG_ARCH_HISI" . #f)
+                        ("CONFIG_ARCH_KEEMBAY" . #f)
+                        ("CONFIG_ARCH_MEDIATEK" . #f)
+                        ("CONFIG_ARCH_MESON" . #f)
+                        ("CONFIG_ARCH_MVEBU" . #f)
+                        ("CONFIG_ARCH_NPCM" . #f)
+                        ("CONFIG_ARCH_QCOM" . #f)
+                        ("CONFIG_ARCH_RENESAS" . #f)
+                        ("CONFIG_ARCH_ROCKCHIP" . #f)
+                        ("CONFIG_ARCH_S32" . #f)
+                        ("CONFIG_ARCH_SEATTLE" . #f)
+                        ("CONFIG_ARCH_INTEL_SOCFPGA" . #f)
+                        ("CONFIG_ARCH_SYNQUACER" . #f)
+                        ("CONFIG_ARCH_TEGRA" . #f)
+                        ("CONFIG_ARCH_TESLA_FSD" . #f)
+                        ("CONFIG_ARCH_SPRD" . #f)
+                        ("CONFIG_ARCH_THUNDER" . #f)
+                        ("CONFIG_ARCH_THUNDER2" . #f)
+                        ("CONFIG_ARCH_UNIPHIER" . #f)
+                        ("CONFIG_ARCH_VEXPRESS" . #f)
+                        ("CONFIG_ARCH_VISCONTI" . #f)
+                        ("CONFIG_ARCH_XGENE" . #f)
+                        ("CONFIG_ARCH_ZYNQMP" . #f)
+                        )
                       %default-extra-linux-options)))
 
 (define-public linux-libre-arm64-generic-5.10
