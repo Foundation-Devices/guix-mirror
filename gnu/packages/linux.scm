@@ -489,6 +489,7 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
 
 (define %mnt-reform-patches
   (search-patches
+   "linux-libre-mnt-reform-dts.patch"
    "linux-libre-mnt-reform-0001-nwl-dsi-fixup-mode-only-for-LCDIF-input-not-DCSS.patch"
    "linux-libre-mnt-reform-0002-pci-imx6-add-support-for-internal-refclk-imx8mq.patch"
    "linux-libre-mnt-reform-0003-lcdif-fix-pcie-interference.patch"
