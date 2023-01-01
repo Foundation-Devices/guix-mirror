@@ -45,6 +45,7 @@
   #:use-module ((guix build utils) #:select (alist-replace))
   #:use-module (guix utils)
   #:use-module (guix gexp)
+  #:use-module (guix build-system)
   #:use-module (guix build-system ant)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
