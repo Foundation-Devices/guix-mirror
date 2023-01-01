@@ -1529,7 +1529,15 @@ new Date();"))
                   (for-each delete-file
                             (find-files "." ".*.(bin|exe|jar)$"))
                   #t))))
-    (build-system gnu-build-system)
+    (build-system
+      (if (string-prefix? "aarch64" (or (%current-system)
+                                        (%current-target-system)))
+          ;; On aarch64 OpenJDK 9 only builds with an older version of GCC.
+          ;; See https://bugs.openjdk.org/browse/JDK-8224851 for details
+          ;; and changes that could be backported.
+          (build-system-with-c-toolchain
+           gnu-build-system `(("gcc" ,gcc-7)))
+          gnu-build-system))
     (outputs '("out" "jdk" "doc"))
     (arguments
      `(#:tests? #f; require jtreg
@@ -1688,14 +1696,7 @@ new Date();"))
        ("make@4.2" ,gnu-make-4.2)
        ("unzip" ,unzip)
        ("which" ,which)
-       ("zip" ,zip)
-       ,@(if (string-prefix? "aarch64" (or (%current-system)
-                                           (%current-target-system)))
-             ;; On aarch64 OpenJDK 9 only builds with an older version of GCC.
-             ;; See https://bugs.openjdk.org/browse/JDK-8224851 for details
-             ;; and changes that could be backported.
-             `(("gcc" ,gcc-7))
-             '())))
+       ("zip" ,zip)))
     (home-page "https://openjdk.java.net/projects/jdk9/")
     (synopsis "Java development kit")
     (description
