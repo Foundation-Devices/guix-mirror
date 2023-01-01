@@ -1688,7 +1688,14 @@ new Date();"))
        ("make@4.2" ,gnu-make-4.2)
        ("unzip" ,unzip)
        ("which" ,which)
-       ("zip" ,zip)))
+       ("zip" ,zip)
+       ,@(if (string-prefix? "aarch64" (or (%current-system)
+                                           (%current-target-system)))
+             ;; On aarch64 OpenJDK 9 only builds with an older version of GCC.
+             ;; See https://bugs.openjdk.org/browse/JDK-8224851 for details
+             ;; and changes that could be backported.
+             `(("gcc" ,gcc-7))
+             '())))
     (home-page "https://openjdk.java.net/projects/jdk9/")
     (synopsis "Java development kit")
     (description
