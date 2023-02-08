@@ -147,14 +147,14 @@ resolution, asynchronous file system operations, and threading primitives.")
   (package
     (inherit libuv)
     (name "libuv")
-    (version "1.42.0")
+    (version "1.44.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://dist.libuv.org/dist/v" version
                                   "/libuv-v" version ".tar.gz"))
               (sha256
                (base32
-                "0wpb9pz3r8nksnrf4zbixj2kk9whr7abi45ydrwyv2js2ljrc4j3"))))
+                "1d1wy1061cf2mfygr2j6jbm0da2mhsf0l9yq4rjkqrsmijbdrz6c"))))
     (properties '((hidden? . #t)))))
 
 (define-public libuv-julia
