@@ -111,6 +111,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
@@ -251,8 +252,8 @@ managers.")
                    (substitute* "tests/pty_test.py"
                      (("python3") (search-input-file inputs "/bin/python3"))))))))
     (native-inputs
-     ;; For tests.
-     (list python-pytest))
+     (list python-pytest ; For tests.
+           python-setuptools python-wheel))
     (home-page "https://asciinema.org")
     (synopsis "Terminal session recorder")
     (description

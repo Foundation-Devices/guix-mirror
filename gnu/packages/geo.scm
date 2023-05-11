@@ -354,7 +354,9 @@ subdivisions.")
            python-numpy
            python-pytest
            python-scikit-build
-           python-setuptools-scm))
+           python-setuptools-scm
+           python-setuptools
+           python-wheel))
     (inputs (list h3))
     (home-page "https://uber.github.io/h3-py")
     (synopsis "Python bindings for H3")
@@ -973,7 +975,7 @@ pyproj, Rtree, and Shapely.")
       (list python-fiona python-packaging python-pandas python-pyproj
             python-shapely))
     (native-inputs
-      (list python-pytest))
+      (list python-pytest python-setuptools python-wheel))
     (home-page "https://geopandas.org")
     (synopsis "Geographic pandas extensions")
     (description "The goal of GeoPandas is to make working with
@@ -1078,7 +1080,7 @@ during conversion.")
                              python-pandas
                              python-requests
                              python-shapely))
-    (native-inputs (list python-hatchling python-pytest))
+    (native-inputs (list python-hatchling python-pytest python-setuptools python-wheel))
     (home-page "https://github.com/gboeing/osmnx")
     (synopsis
      "Retrieve, model, analyze, and visualize OpenStreetMap street networks")
@@ -1933,7 +1935,7 @@ persisted.
                   (string-append  "\"" libspatialindex
                                   "/lib/libspatialindex_c.so\"")))))))))
     (native-inputs
-     (list python-numpy python-pytest python-wheel))
+     (list python-numpy python-pytest python-setuptools python-wheel))
     (inputs
      (list libspatialindex))
     (home-page "https://github.com/Toblerity/rtree")
