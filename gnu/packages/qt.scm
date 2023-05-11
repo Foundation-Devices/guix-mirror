@@ -3850,7 +3850,9 @@ Python.")
      (list python-wrapper))
     (propagated-inputs
      (list python-tomli
-           python-packaging))
+           python-packaging
+           python-setuptools
+           python-wheel))
     (home-page "https://www.riverbankcomputing.com/software/sip/intro")
     (synopsis "Python binding creator for C and C++ libraries")
     (description

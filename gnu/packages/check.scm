@@ -885,7 +885,7 @@ has been designed to be fast, light and unintrusive.")
                  (base32
                   "0gymjcnvjx9snyrzdbmjnk93ibb161q72xam29vnl3yyac4r1330"))))
       (build-system pyproject-build-system)
-      (native-inputs (list python-nose))
+      (native-inputs (list python-nose python-setuptools python-wheel))
       (propagated-inputs
        (list python-cached-property python-configargparse
              python-jinja2 python-six
@@ -1861,7 +1861,8 @@ timeout has been exceeded.")
      ;; 'hypothesis' plugin is not in the environment (due to
      ;; <http://issues.guix.gnu.org/25235>), which would cause the test suite
      ;; to fail (see: https://github.com/pytest-dev/pytest-forked/issues/54).
-     (list python-pytest-bootstrap python-setuptools-scm))
+     (list python-pytest-bootstrap python-setuptools
+           python-setuptools-scm python-wheel))
     (home-page "https://github.com/pytest-dev/pytest-forked")
     (synopsis "Pytest plugin to run tests in isolated forked subprocesses")
     (description "This package provides a Pytest plugin which enables running
@@ -2186,7 +2187,7 @@ executed.")
                  (lambda _
                    (setenv "SETUPTOOLS_SCM_PRETEND_VERSION"
                            #$(package-version this-package)))))))
-    (native-inputs (list python-setuptools-scm))
+    (native-inputs (list python-setuptools-scm python-setuptools python-wheel))
     (propagated-inputs (list python-pytest))
     (home-page "https://github.com/pytest-dev/pytest-asyncio")
     (synopsis "Pytest support for asyncio")
@@ -2623,7 +2624,9 @@ a Pytest test execution.")
                              python-mypy
                              python-pytest
                              python-pyyaml
+                             python-setuptools
                              python-regex))
+    (native-inputs (list python-wheel))
     (home-page "https://github.com/TypedDjango/pytest-mypy-plugins")
     (synopsis "Pytest plugin for writing tests for mypy plugins")
     (description "This package provides a pytest plugin for writing tests for

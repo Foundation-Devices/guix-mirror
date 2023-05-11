@@ -4985,7 +4985,7 @@ elogind's uaccess feature.")
                  (lambda _
                    (substitute* (find-files "tests" "^test.*\\.py$")
                      (("America/Los_Angeles") "PST8PDT")))))))
-    (native-inputs (list python-pytest))
+    (native-inputs (list python-pytest python-setuptools python-wheel))
     (propagated-inputs
      (list python-pygments python-ruamel.yaml python-xmltodict))
     (home-page "https://github.com/kellyjonbrazil/jc")

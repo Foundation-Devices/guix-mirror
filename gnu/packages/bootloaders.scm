@@ -72,6 +72,7 @@
   #:use-module (gnu packages valgrind)
   #:use-module (gnu packages virtualization)
   #:use-module (gnu packages xorg)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (guix build-system gnu)
@@ -751,6 +752,8 @@ tree binary files.  These are board description files used by Linux and BSD.")
            pkg-config                   ;for 'make menuconfig'
            python
            python-pyelftools
+           python-setuptools
+           python-wheel
            swig
            (list util-linux "lib")))
     (home-page "https://www.denx.de/wiki/U-Boot/")
