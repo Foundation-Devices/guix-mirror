@@ -2639,7 +2639,7 @@ specification can be downloaded at @url{http://3mf.io/specification/}.")
                             (substitute* "pyvisa/shell.py"
                               (("from .thirdparty import prettytable")
                                "import prettytable")))))))
-    (native-inputs (list python-pytest))
+    (native-inputs (list python-pytest python-setuptools python-wheel))
     (propagated-inputs (list python-dataclasses python-prettytable
                              python-typing-extensions))
     (home-page "https://pyvisa.readthedocs.io/en/latest/")
