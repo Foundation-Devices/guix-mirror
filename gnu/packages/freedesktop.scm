@@ -590,14 +590,15 @@ freedesktop.org project.")
   ;; Updating this will rebuild over 700 packages through libinput-minimal.
   (package
     (name "libinput")
-    (version "1.19.4")
+    (version "1.23.0")
     (source (origin
-              (method url-fetch)
-              (uri (string-append "https://freedesktop.org/software/libinput/"
-                                  "libinput-" version ".tar.xz"))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://gitlab.freedesktop.org/libinput/libinput.git")
+                    (commit version)))
               (sha256
                (base32
-                "0h5lz54rrl48bhi3vki6s08m6rn2h62rlf08dhgchdm9nmqaaczz"))))
+                "0wnqfnxxvf9jclh64hrb0scn3s1dmwdkmqf7hp0cfmjz5n5nnv7d"))))
     (build-system meson-build-system)
     (arguments
      `(#:configure-flags '("-Ddocumentation=false")
@@ -607,7 +608,7 @@ freedesktop.org project.")
        ;; Meson target anyway.
        #:build-type "release"))
     (native-inputs
-     (list check pkg-config))
+     (list check pkg-config python-minimal-wrapper python-pytest))
     (inputs
      (list cairo
            glib
