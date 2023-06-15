@@ -799,32 +799,33 @@ bookkeeping."
   (let ((host-name    (operating-system-host-name os))
         (hosts-file   (%operating-system-hosts-file os))
         (entries      (operating-system-directory-base-entries os)))
-    (list (service system-service-type entries)
-          %boot-service
-          %hurd-startup-service
-          %activation-service
-          (service shepherd-root-service-type)
+    (cons* (service system-service-type entries)
+           %boot-service
+           %hurd-startup-service
+           %activation-service
+           (service shepherd-root-service-type)
 
-          (service user-processes-service-type)
-          (account-service (append (operating-system-accounts os)
-                                   (operating-system-groups os))
-                           (operating-system-skeletons os))
-          (root-file-system-service)
-          (service file-system-service-type '())
-          (service fstab-service-type
-                   (filter file-system-needed-for-boot?
-                           (operating-system-file-systems os)))
-          (pam-root-service (operating-system-pam-services os))
-          (operating-system-etc-service os)
-          ;; XXX: hosts-file is deprecated
-          (if hosts-file
-              (simple-service 'deprecated-hosts-file etc-service-type
-                              (list `("hosts" ,hosts-file)))
-              (service hosts-service-type
-                       (local-host-entries host-name)))
-          (service setuid-program-service-type
-                   (operating-system-setuid-programs os))
-          (service profile-service-type (operating-system-packages os)))))
+           (service user-processes-service-type)
+           (account-service (append (operating-system-accounts os)
+                                    (operating-system-groups os))
+                            (operating-system-skeletons os))
+           (root-file-system-service)
+           (service file-system-service-type '())
+           (service fstab-service-type
+                    (filter file-system-needed-for-boot?
+                            (operating-system-file-systems os)))
+           (pam-root-service (operating-system-pam-services os))
+           (operating-system-etc-service os)
+           ;; XXX: hosts-file is deprecated
+           (if hosts-file
+               (simple-service 'deprecated-hosts-file etc-service-type
+                               (list `("hosts" ,hosts-file)))
+               (service hosts-service-type
+                        (local-host-entries host-name)))
+           (service setuid-program-service-type
+                    (operating-system-setuid-programs os))
+           (service profile-service-type (operating-system-packages os))
+           (swap-services os))))
 
 (define* (operating-system-services os)
   "Return all the services of OS, including \"essential\" services."
