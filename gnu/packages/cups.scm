@@ -209,27 +209,27 @@ driver is known to work with these printers:
                     (find-files (string-append #$output
                                                "/lib/cups/filter"))))))))
     (native-inputs
-     (list `(,glib "bin")               ; for gdbus-codegen
+     (list `(,glib "bin")               ;for gdbus-codegen
            pkg-config))
     (inputs
      (list avahi
            coreutils
+           cups-minimal
+           dbus
+           font-dejavu                  ;also needed by test suite
            fontconfig
            freetype
-           font-dejavu                  ; also needed by test suite
            ghostscript/cups
+           glib
            grep
            ijs
-           dbus
            lcms
            libjpeg-turbo
            libpng
            libtiff
-           glib
-           qpdf
            poppler
-           sed
-           cups-minimal))
+           qpdf
+           sed))
     (home-page "https://wiki.linuxfoundation.org/openprinting/cups-filters")
     (synopsis "OpenPrinting CUPS filters and backends")
     (description
