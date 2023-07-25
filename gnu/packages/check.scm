@@ -1748,7 +1748,10 @@ same arguments.")
            (lambda* (#:key tests? #:allow-other-keys)
              (when tests?
                (invoke "pytest" "-vv"
-                       "-n" (number->string (parallel-job-count)))))))))
+                       "-n" (number->string (parallel-job-count))
+                       ;; Fails with OSError: cannot send to <Channel id=1 closed>
+                       ;; on foreign distribution.
+                       "-k" "not test_internal_errors_propagate_to_controller")))))))
     (native-inputs (list python-setuptools-scm python-filelock python-pytest))
     (propagated-inputs (list python-execnet python-pytest-forked))
     (home-page "https://github.com/pytest-dev/pytest-xdist")
