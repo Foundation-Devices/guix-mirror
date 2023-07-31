@@ -29,8 +29,6 @@
   #:use-module (guix base16)
   #:use-module (guix records)
   #:use-module (guix gexp)
-  #:use-module (guix modules)
-  #:use-module (guix discovery)
   #:use-module (guix monads)
   #:use-module (guix profiles)
   #:use-module (guix packages)
@@ -55,8 +53,6 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)
-  #:use-module ((ice-9 rdelim) #:select (read-string))
-  #:use-module ((rnrs bytevectors) #:select (bytevector=?))
   #:export (channel
             channel?
             channel-name
@@ -256,7 +252,14 @@ could be found at DIRECTORY or one of its ancestors."
                             ('commit commit) ('signer signer)
                             _ ...)
      (make-channel-introduction commit (openpgp-fingerprint signer)))
-    (x #f)))
+    (x (raise (condition
+               (&message
+                (message (format #f (G_ "channel dependency has an invalid\
+ introduction field"))))
+               (&error-location
+                (location
+                 (source-properties->location
+                  (source-properties x)))))))))
 
 (define (read-channel-metadata port)
   "Read from PORT channel metadata in the format expected for the

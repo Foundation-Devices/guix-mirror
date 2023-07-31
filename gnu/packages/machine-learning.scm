@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015-2023 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2016, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2020-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016, 2017, 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -16,7 +16,11 @@
 ;;; Copyright © 2020 Konrad Hinsen <konrad.hinsen@fastmail.net>
 ;;; Copyright © 2020 Edouard Klein <edk@beaver-labs.com>
 ;;; Copyright © 2020, 2021, 2022, 2023 Vinicius Monego <monego@posteo.net>
-;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2023 zamfofex <zamfofex@twdb.moe>
+;;; Copyright © 2023 Navid Afkhami <navid.afkhami@mdc-berlin.de>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -45,6 +49,7 @@
   #:use-module (guix build-system ocaml)
   #:use-module (guix build-system pyproject)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system r)
   #:use-module (guix build-system trivial)
   #:use-module (guix git-download)
   #:use-module (gnu packages)
@@ -63,6 +68,7 @@
   #:use-module (gnu packages cran)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages dejagnu)
+  #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages gl)
@@ -100,6 +106,7 @@
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages swig)
+  #:use-module (gnu packages time)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages video)
   #:use-module (gnu packages web)
@@ -233,7 +240,7 @@ classification.")
                 (file-name (string-append name "-" version "-checkout"))
                 (sha256
                  (base32
-                  "0qbq1rqp94l530f043qzp8aw5lj7dng9wq0miffd7spd1ff638wq"))))
+                  "07kdsngvr4n1qxpqzv1nlay7g41d6jzjppa8vzmrg220s8ing87z"))))
       (build-system gnu-build-system)
       (arguments
        `(#:imported-modules (,@%gnu-build-system-modules
@@ -297,36 +304,19 @@ training, HMM clustering, HMM mixtures.")
 (define-public guile-aiscm
   (package
     (name "guile-aiscm")
-    (version "0.24.2")
+    (version "0.25.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                     (url "https://github.com/wedesoft/aiscm")
-                    (commit "2e16e38391bf1638f1dd9a1cf4b25a25f6626078")))
+                    (commit "v0.25.2")))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1gwqpzl6irpaszkpxaf5wliwq19280632hlgxs3ikjkfg8mkqql0"))))
+                "1sagpxwrqxkn5b9zqzd07c9r7swmw45q672pa8fy6s71iw6a0x77"))))
     (build-system gnu-build-system)
     (arguments
      (list
-      #:configure-flags
-      #~(list (string-append "OPENCV_CFLAGS=-I" #$(this-package-input "opencv")
-                             "/include/opencv4")
-              (let ((modules
-                     (list "aruco" "barcode" "bgsegm" "bioinspired"
-                           "calib3d" "ccalib" "core" "datasets" "dnn"
-                           "dnn_objdetect" "dnn_superres" "dpm" "face"
-                           "features2d" "flann" "freetype" "fuzzy" "hdf"
-                           "hfs" "highgui" "img_hash" "imgcodecs" "imgproc"
-                           "intensity_transform" "line_descriptor" "mcc"
-                           "ml" "objdetect" "optflow" "phase_unwrapping"
-                           "photo" "plot" "quality" "rapid" "reg" "rgbd"
-                           "saliency" "shape" "stereo" "stitching"
-                           "structured_light" "superres" "surface_matching"
-                           "text" "tracking" "video" "videoio" "videostab"
-                           "wechat_qrcode" "ximgproc" "xobjdetect" "xphoto")))
-                (format #false "OPENCV_LIBS=~{-lopencv_~a~^ ~}" modules)))
       #:make-flags
       #~(list (string-append "GUILE_CACHE=" #$output "/lib/guile/3.0/site-ccache")
               (string-append "GUILE_EXT=" #$output "/lib/guile/3.0/extensions")
@@ -395,13 +385,12 @@ training, HMM clustering, HMM mixtures.")
            libxv
            mesa
            mjpegtools
-           opencv
            pandoc
            pulseaudio
            tensorflow))
     (native-inputs
-     (list clang-11
-           llvm-11
+     (list clang-13
+           llvm-13
            pkg-config
            protobuf-c-for-aiscm
            autoconf
@@ -417,6 +406,70 @@ Performance is achieved by using the LLVM JIT compiler.")
 
 (define-public guile-aiscm-next
   (deprecated-package "guile-aiscm-next" guile-aiscm))
+
+(define-public llama-cpp
+  (let ((commit "3cd8dde0d1357b7f11bdd25c45d5bf5e97e284a0")
+        (revision "0"))
+    (package
+      (name "llama-cpp")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/ggerganov/llama.cpp")
+               (commit (string-append "master-" (string-take commit 7)))))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0i7c92cxqs31xklrn688978kk29agivgxjgvsb45wzm65gc6hm5c"))))
+      (build-system cmake-build-system)
+      (arguments
+       (list
+        #:modules '((ice-9 textual-ports)
+                    (guix build utils)
+                    ((guix build python-build-system) #:prefix python:)
+                    (guix build cmake-build-system))
+        #:imported-modules `(,@%cmake-build-system-modules
+                             (guix build python-build-system))
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-before 'install 'install-python-scripts
+              (lambda _
+                (let ((bin (string-append #$output "/bin/")))
+                  (define (make-script script)
+                    (let ((suffix (if (string-suffix? ".py" script) "" ".py")))
+                      (call-with-input-file
+                          (string-append "../source/" script suffix)
+                        (lambda (input)
+                          (call-with-output-file (string-append bin script)
+                            (lambda (output)
+                              (format output "#!~a/bin/python3\n~a"
+                                      #$(this-package-input "python")
+                                      (get-string-all input))))))
+                      (chmod (string-append bin script) #o555)))
+                  (mkdir-p bin)
+                  (make-script "convert-pth-to-ggml")
+                  (make-script "convert-gptq-to-ggml")
+                  (make-script "quantize.py")
+                  (substitute* (string-append bin "quantize.py")
+                    (("os\\.getcwd\\(\\), quantize_script_binary")
+                     (string-append "\"" bin "\", quantize_script_binary"))))))
+            (add-after 'install-python-scripts 'wrap-python-scripts
+              (assoc-ref python:%standard-phases 'wrap))
+            (replace 'install
+              (lambda _
+                (let ((bin (string-append #$output "/bin/")))
+                  (install-file "bin/quantize" bin)
+                  (copy-file "bin/main" (string-append bin "llama"))))))))
+      (inputs (list python))
+      (propagated-inputs
+       (list python-numpy python-pytorch python-sentencepiece))
+      (home-page "https://github.com/ggerganov/llama.cpp")
+      (synopsis "Port of Facebook's LLaMA model in C/C++")
+      (description "This package provides a port to Facebook's LLaMA collection
+of foundation language models.  It requires models parameters to be downloaded
+independently to be able to run a LLaMA model.")
+      (license license:expat))))
 
 (define-public mcl
   (package
@@ -551,6 +604,33 @@ value imputation, classifier creation, generalization error estimation and
 sample proximities between pairs of cases.")
     (license license:gpl3+)))
 
+(define-public r-rcppml/devel
+  (let ((commit "e685b3bd7909d3ae74c98f85f81bc0bb679bce23")
+        (revision "1"))
+    (package
+      (name "r-rcppml-devel")
+      (version (git-version "0.5.6" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/zdebruine/RcppML")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "18ykh9s9h3x79az7qm3pg48iqm0nmkh2wkppc9wx0lq7kjfqm67a"))))
+      (properties `((upstream-name . "RcppML")))
+      (build-system r-build-system)
+      (propagated-inputs (list r-matrix r-rcpp))
+      (native-inputs (list r-knitr))
+      (home-page "https://github.com/zdebruine/RcppML")
+      (synopsis "Rcpp machine learning Library")
+      (description
+       "This package provides fast machine learning algorithms including
+matrix factorization and divisive clustering for large sparse and dense
+matrices.")
+      (license license:gpl3+))))
+
 (define-public openfst
   (package
     (name "openfst")
@@ -600,6 +680,204 @@ optimizing, and searching weighted finite-state transducers (FSTs).")
      '(#:configure-flags
        '("--enable-shared" "--enable-far" "--enable-ngram-fsts"
          "--enable-lookahead-fsts" "--with-pic" "--disable-bin")))))
+
+(define-public sentencepiece
+  (package
+    (name "sentencepiece")
+    (version "0.1.97")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/google/sentencepiece")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1kzfkp2pk0vabyw3wmkh16h11chzq63mzc20ddhsag5fp6s91ajg"))))
+    (build-system cmake-build-system)
+    (arguments (list #:tests? #f))      ;no tests
+    (native-inputs (list gperftools))
+    (home-page "https://github.com/google/sentencepiece")
+    (synopsis "Unsupervised tokenizer for Neural Network-based text generation")
+    (description
+     "SentencePiece is an unsupervised text tokenizer and detokenizer mainly
+for Neural Network-based text generation systems where the vocabulary size is
+predetermined prior to the neural model training.  SentencePiece implements
+subword units---e.g., byte-pair-encoding (BPE) and unigram language
+model---with the extension of direct training from raw sentences.
+SentencePiece allows us to make a purely end-to-end system that does not
+depend on language-specific pre- or post-processing.")
+    (license license:asl2.0)))
+
+(define-public python-sacrebleu
+  (package
+    (name "python-sacrebleu")
+    (version "2.3.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/mjpost/sacrebleu")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1al4qf9wsq5l453qqb6clims62ns0s07wb9rfbf4hbpr1f2iv7zv"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      ;; These all need internet access.
+      '(list "-k" "not test_api_get_source \
+and not test_api_get_reference \
+and not test_maybe_download \
+and not test_process_to_text \
+and not test_get_files_and_fieldnames \
+and not test_source_and_references \
+and not test_wmt22_references")
+      #:phases
+      '(modify-phases %standard-phases
+         ;; Needed for tests.
+         (add-before 'check 'set-HOME
+           (lambda _ (setenv "HOME" "/tmp"))))))
+    (propagated-inputs (list python-colorama
+                             python-lxml
+                             python-numpy
+                             python-portalocker
+                             python-regex
+                             python-tabulate))
+    (native-inputs (list python-pytest))
+    (home-page "https://github.com/mjpost/sacrebleu")
+    (synopsis
+     "Compute shareable, comparable, and reproducible BLEU, chrF, and TER scores")
+    (description
+     "This is a package for hassle-free computation of shareable, comparable,
+and reproducible BLEU, chrF, and TER scores for natural language processing.")
+    (license license:asl2.0)))
+
+(define-public python-sentencepiece
+  (package
+    (name "python-sentencepiece")
+    (version "0.1.97")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "sentencepiece" version))
+       (sha256
+        (base32 "0v0z9ryl66432zajp099bcbnwkkldzlpjvgnjv9bq2vi19g300f9"))))
+    (build-system python-build-system)
+    (native-inputs (list pkg-config))
+    (propagated-inputs (list sentencepiece))
+    (home-page "https://github.com/google/sentencepiece")
+    (synopsis "SentencePiece python wrapper")
+    (description "This package provides a Python wrapper for the SentencePiece
+unsupervised text tokenizer.")
+    (license license:asl2.0)))
+
+(define-public python-spacy-legacy
+  (package
+    (name "python-spacy-legacy")
+    (version "3.0.12")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "spacy-legacy" version))
+              (sha256
+               (base32
+                "0x57aw1qgjrzgapsv1cwymqlck2anqm1bisvryhpq7bfkc66wzdk"))))
+    (build-system pyproject-build-system)
+    ;; This package depends on spacy, which depends on this package.
+    (arguments (list #:tests? #false))
+    (native-inputs (list python-pytest))
+    (home-page "https://spacy.io")
+    (synopsis "Legacy registered functions for spaCy backwards compatibility")
+    (description
+     "This package contains legacy registered functions for spaCy backwards
+compatibility.")
+    (license license:expat)))
+
+(define-public python-spacy-loggers
+  (package
+    (name "python-spacy-loggers")
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "spacy-loggers" version))
+              (sha256
+               (base32
+                "0a5zjfxd0mci7pwda24ihg55whalpmjby4bvpgar2013f6zq7yg6"))))
+    (build-system pyproject-build-system)
+    ;; This package depends on spacy, which depends on this package.
+    (arguments (list #:tests? #false))
+    (native-inputs (list python-pytest))
+    (home-page "https://github.com/explosion/spacy-loggers")
+    (synopsis "Logging utilities for SpaCy")
+    (description "This package provides logging utilities for the SpaCy
+natural language processing framework.")
+    (license license:expat)))
+
+(define-public python-spacy
+  (package
+    (name "python-spacy")
+    (version "3.5.3")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "spacy" version))
+              (sha256
+               (base32
+                "13141hc966d8nxbnlwj01vhndgq0rq4nmii3qkb3hrap45kiv5rm"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      '(list "-k"
+             (string-append
+              ;; We don't do that around here.
+              "not test_download_compatibility"
+              ;; This needs to download a model.
+              " and not test_validate_compatibility_table"
+              ;; This tries to run the application with typer, which fails
+              ;; with an unspecified error, possibly because the build
+              ;; container doesn't have /bin/sh.
+              " and not test_project_assets"))
+      #:phases
+      '(modify-phases %standard-phases
+         (add-after 'build 'build-ext
+           (lambda _
+             (invoke "python" "setup.py" "build_ext" "--inplace"
+                     "-j" (number->string (parallel-job-count))))))))
+    (propagated-inputs (list python-catalogue
+                             python-cymem
+                             python-jinja2
+                             python-langcodes
+                             python-murmurhash
+                             python-numpy
+                             python-packaging
+                             python-pathy
+                             python-preshed
+                             python-pydantic
+                             python-requests
+                             python-setuptools
+                             python-smart-open
+                             python-spacy-legacy
+                             python-spacy-loggers
+                             python-srsly
+                             python-thinc
+                             python-tqdm
+                             python-typer
+                             python-typing-extensions
+                             python-wasabi))
+    (native-inputs
+     (list python-cython python-pytest python-mock))
+    (home-page "https://spacy.io")
+    (synopsis "Natural Language Processing (NLP) in Python")
+    (description
+     "SpaCy is a library for advanced Natural Language Processing in Python
+and Cython.  It comes with pretrained pipelines and currently supports
+tokenization and training for 70+ languages. It features state-of-the-art
+speed and neural network models for tagging, parsing, named entity
+recognition, text classification and more, multi-task learning with pretrained
+transformers like BERT, as well as a production-ready training system and easy
+model packaging, deployment and workflow management.")
+    (license license:expat)))
 
 (define-public shogun
   (package
@@ -881,7 +1159,7 @@ with a single function call.")
 (define-public rxcpp
   (package
     (name "rxcpp")
-    (version "4.1.0")
+    (version "4.1.1")
     (source
      (origin
        (method git-fetch)
@@ -889,7 +1167,7 @@ with a single function call.")
              (url "https://github.com/ReactiveX/RxCpp")
              (commit (string-append "v" version))))
        (sha256
-        (base32 "1rdpa3jlc181jd08nk437aar085h28i45s6nzrv65apb3xyyz0ij"))
+        (base32 "1blyjjw6szd74pckdc15ham9i48xf0vwwz5nhl9vyjfq8z7w3piy"))
        (file-name (git-file-name name version))))
     (build-system cmake-build-system)
     (arguments
@@ -1096,7 +1374,7 @@ computing environments.")
 (define-public python-scikit-learn
   (package
     (name "python-scikit-learn")
-    (version "1.1.2")
+    (version "1.2.2")
     (source
      (origin
        (method git-fetch)
@@ -1106,7 +1384,7 @@ computing environments.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0wcngyfm2fl3vgyi2aq6j5fvky5185xjzgip64968wqj1hmir5nv"))))
+         "0x7gfzvcdadf8jnvpz8m373bi37bc6sndfbjh9lzmn3p39pwm2hl"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1150,35 +1428,133 @@ computing environments.")
 data analysis.")
     (license license:bsd-3)))
 
+(define-public python-thinc
+  (package
+    (name "python-thinc")
+    (version "8.1.10")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "thinc" version))
+              (sha256
+               (base32
+                "14drmwa2sh8fqszv1fm2jl4lky1j5yrbkjv89bl49q07vbblhjkc"))))
+    (build-system pyproject-build-system)
+    (arguments
+     '(#:phases
+       (modify-phases %standard-phases
+         (add-after 'build 'build-ext
+           (lambda _
+             (invoke "python" "setup.py" "build_ext" "--inplace"
+                     "-j" (number->string (parallel-job-count))))))))
+    (propagated-inputs (list python-blis-for-thinc
+                             python-catalogue
+                             python-confection
+                             python-contextvars
+                             python-cymem
+                             python-dataclasses
+                             python-murmurhash
+                             python-numpy
+                             python-packaging
+                             python-preshed
+                             python-pydantic
+                             python-srsly
+                             python-typing-extensions
+                             python-wasabi))
+    (native-inputs (list python-cython python-mock python-pytest))
+    (home-page "https://github.com/explosion/thinc")
+    (synopsis "Functional take on deep learning")
+    (description
+     "This package provides a functional take on deep learning, compatible
+with your favorite libraries.")
+    (license license:expat)))
+
 (define-public python-threadpoolctl
   (package
     (name "python-threadpoolctl")
-    (version "2.1.0")
+    (version "3.1.0")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "threadpoolctl" version))
         (sha256
          (base32
-          "0szsxcm2fbxrn83iynn42bnvrdh7mfsmkhfn8pdn7swblfb7rifx"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? inputs outputs #:allow-other-keys)
-             (when tests?
-               (add-installed-pythonpath inputs outputs)
-               (invoke "pytest"))
-             #t)))))
+          "100k76nmajf408lbn5ipis1gilklcs6sbqyqy3hhlh54zanbldd3"))))
+    (build-system pyproject-build-system)
     (native-inputs
-     (list python-pytest))
+     (list python-flit-core python-pytest))
     (home-page "https://github.com/joblib/threadpoolctl")
     (synopsis "Python helpers for common threading libraries")
     (description "Thread-pool Controls provides Python helpers to limit the
 number of threads used in the threadpool-backed of common native libraries used
 for scientific computing and data science (e.g. BLAS and OpenMP).")
     (license license:bsd-3)))
+
+(define-public python-tslearn
+  (package
+    (name "python-tslearn")
+    (version "0.6.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/tslearn-team/tslearn")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1fhs8c28hdqsyj8kdhzrmrxrh4w92x6nf3gm026xapp9divvljd6"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      '(list "-k"
+             (string-append
+              ;; This one fails because of a difference in accuracy.
+              "not test_all_estimators[LearningShapelets-LearningShapelets]"
+              ;; XXX: It's embarrassing to disable these two, but the truth is
+              ;; that there's only so much we can do to force this package to
+              ;; work with Tensorflow 1.9.  It's still worth having this
+              ;; package, because it can be used without the Tensorflow
+              ;; backend.
+              ;; TypeError: cannot pickle '_thread.RLock' object
+              " and not test_shapelets"
+              ;; TypeError: Expected binary or unicode string, got 2
+              " and not test_serialize_shapelets"))
+      #:phases
+      '(modify-phases %standard-phases
+         (add-after 'unpack 'compatibility
+           (lambda _
+             (substitute* "tslearn/tests/sklearn_patches.py"
+               (("_pairwise_estimator_convert_X")
+                "_enforce_estimator_tags_X")
+               (("pairwise_estimator_convert_X\\(([^,]+), ([^,\\)]+)" _ a b)
+                (string-append "pairwise_estimator_convert_X(" b ", " a)))
+             (substitute* "tslearn/tests/test_shapelets.py"
+               (("tf.optimizers.Adam")
+                "tf.keras.optimizers.Adam"))
+             (substitute* "tslearn/shapelets/shapelets.py"
+               (("tf.keras.utils.set_random_seed")
+                "tf.set_random_seed")
+               (("def __call__\\(self, shape, dtype=None\\):")
+                "def __call__(self, shape, dtype=None, partition_info=None):")
+               (("tf.math.is_finite")
+                "tf.is_finite")))))))
+    (propagated-inputs (list python-cesium
+                             python-h5py
+                             python-joblib
+                             python-numba
+                             python-numpy
+                             python-pandas
+                             python-scipy
+                             python-scikit-learn
+                             tensorflow
+                             python-wheel))
+    (native-inputs (list python-pytest))
+    (home-page "https://github.com/tslearn-team/tslearn")
+    (synopsis "Machine learning toolkit for time series data")
+    (description "This is a Python library for time series data mining.
+It provides tools for time series classification, clustering
+and forecasting.")
+    (license license:bsd-2)))
 
 (define-public python-imbalanced-learn
   (package
@@ -1229,13 +1605,13 @@ It is compatible with @code{scikit-learn}.")
 (define-public python-pynndescent
   (package
     (name "python-pynndescent")
-    (version "0.5.6")
+    (version "0.5.10")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pynndescent" version))
        (sha256
-        (base32 "0p3jsdcprjfzz7qf5674dsqfpvdn6p4wgqikg7b6ki5abf433yv1"))))
+        (base32 "1bc8aa6jfw28y6sb0nvfdrfgh66a42bqb4znvpimzx9yq21wcpax"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1264,7 +1640,7 @@ for k-neighbor-graph construction and approximate nearest neighbor search.")
 (define-public python-opentsne
   (package
     (name "python-opentsne")
-    (version "0.6.1")
+    (version "0.7.1")
     (source
      (origin
        (method git-fetch) ; no tests in PyPI release
@@ -1273,27 +1649,23 @@ for k-neighbor-graph construction and approximate nearest neighbor search.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "124nid27lfq1ipfjd2gkynqcmb4khisjb4r05jv42ckfkk4dbsxs"))))
+        (base32 "12wp98mh67v6v683yi7wbv8zhpafrfz21z349bww4wgi2q7bl3il"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
          ;; Benchmarks require the 'macosko2015' data files.
          (add-after 'unpack 'delete-benchmark
-           (lambda _
-             (delete-file-recursively "benchmarks")))
+           (lambda _ (delete-file-recursively "benchmarks")))
          (add-after 'unpack 'skip-test
            (lambda _ ;; TODO: figure out why this test fails.
              (substitute* "tests/test_correctness.py"
                (("def test_iris\\(self\\)") "def _test_iris(self)"))))
          ;; Numba needs a writable dir to cache functions.
          (add-before 'check 'set-numba-cache-dir
-           (lambda _
-             (setenv "NUMBA_CACHE_DIR" "/tmp"))))))
-    (native-inputs
-     (list python-cython))
-    (inputs
-     (list fftw))
+           (lambda _ (setenv "NUMBA_CACHE_DIR" "/tmp"))))))
+    (native-inputs (list python-cython))
+    (inputs (list fftw))
     (propagated-inputs
      (list python-numpy python-pynndescent python-scikit-learn
            python-scipy))
@@ -1427,23 +1799,20 @@ and a few related numerical optimization tools.")
 (define-public python-cmaes
   (package
     (name "python-cmaes")
-    (version "0.8.2")
+    (version "0.9.1")
     (source
      (origin
        (method git-fetch) ;no tests in PyPI
        (uri (git-reference
-             (url "https://github.com/CyberAgent/cmaes")
+             (url "https://github.com/CyberAgentAILab/cmaes")
              (commit (string-append "v" version))))
        (sha256
-        (base32 "1jyckaifir528dz6m95nvky8hvqmz5gz6dlp65baahhbca0danzb"))
+        (base32 "1f3143w8ii6i93bdh65iazrq1lryccd805ndnqww5l8h7qnnzpkm"))
        (file-name (git-file-name name version))))
-    (build-system python-build-system)
-    (native-inputs
-     (list python-setuptools ;build fails without this
-           python-wheel))
-    (propagated-inputs
-     (list python-numpy))
-    (home-page "https://github.com/CyberAgent/cmaes")
+    (build-system pyproject-build-system)
+    (native-inputs (list python-hypothesis))
+    (propagated-inputs (list python-numpy))
+    (home-page "https://github.com/CyberAgentAILab/cmaes")
     (synopsis "CMA-ES implementation for Python")
     (description "This package provides provides an implementation of the
 Covariance Matrix Adaptation Evolution Strategy (CMA-ES) for Python.")
@@ -1626,6 +1995,39 @@ optimization over awkward search spaces, which may include real-valued,
 discrete, and conditional dimensions.")
     (license license:bsd-3)))
 
+(define-public python-deepxde
+  (package
+    (name "python-deepxde")
+    (version "1.9.2")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "DeepXDE" version))
+              (sha256
+               (base32
+                "07bz3d7d698l0fhznw5l8p16b22d4ly7xq99vrgv48c722qr2r5b"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list #:tests? #f                  ; there are no tests
+           #:phases #~(modify-phases %standard-phases
+                        (add-before 'sanity-check 'writable-home
+                          ;; sanity-check writes ~/.deepxde/config.json to set
+                          ;; the default backend.
+                          (lambda _
+                            (setenv "HOME" "/tmp"))))))
+    ;; DeepXDE supported backends are TensorFlow (v1 and v2), PyTorch, JAX and
+    ;; PaddlePaddle.  We test with PyTorch because we have it up to date.
+    (native-inputs (list python-pytorch python-setuptools-scm))
+    (propagated-inputs (list python-matplotlib python-numpy
+                             python-scikit-learn python-scikit-optimize
+                             python-scipy))
+    (home-page "https://deepxde.readthedocs.io/en/latest/")
+    (synopsis "Library for scientific machine learning")
+    (description "DeepXDE is a library for scientific machine learning and
+physics-informed learning.  It includes implementations for the PINN
+(physics-informed neural networks), DeepONet (deep operator network) and
+MFNN (multifidelity neural network) algorithms.")
+    (license license:lgpl2.1+)))
+
 ;; There have been no proper releases yet.
 (define-public kaldi
   (let ((commit "be22248e3a166d9ec52c78dac945f471e7c3a8aa")
@@ -1740,7 +2142,7 @@ written in C++.")
       (license license:asl2.0))))
 
 (define kaldi-for-vosk
-  (let* ((commit "6417ac1dece94783e80dfbac0148604685d27579")
+  (let* ((commit "a25f216f5ce4eec5e45a6ab7651e20c9840a05cd")
          (revision "0")
          (openfst openfst-for-vosk))
     (package
@@ -1755,13 +2157,13 @@ written in C++.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "04xw2dpfvpla8skpk08azmgr9k97cd8hn83lj4l85q165gbzql4s"))))
+          (base32 "16w90za8narkfi590cxj4p7vc1f5sdxc927g5hk6kh4l3mf6iisl"))))
       (inputs
        (list alsa-lib
-             lapack ;; compared to base kaldi, replacing `(,gfortran "lib")
+             lapack ;compared to base kaldi, replacing `(,gfortran "lib")
              glib
              gstreamer
-             jack-1
+             jack-2
              openblas
              openfst
              portaudio
@@ -1769,17 +2171,17 @@ written in C++.")
       (arguments
        (list
         #:test-target "test"
-        #:make-flags ''("online2" "lm" "rnnlm")
+        #:make-flags '(list "online2" "lm" "rnnlm")
         #:phases
         #~(modify-phases %standard-phases
             (add-after 'unpack 'chdir
               (lambda _ (chdir "src")))
             (replace 'configure
               (lambda _
-                (let* ((portaudio #$(this-package-input "portaudio"))
-                       (lapack    #$(this-package-input "lapack"))
-                       (openfst   #$(this-package-input "openfst"))
-                       (openblas  #$(this-package-input "openblas")))
+                (let ((portaudio #$(this-package-input "portaudio"))
+                      (lapack    #$(this-package-input "lapack"))
+                      (openfst   #$(this-package-input "openfst"))
+                      (openblas  #$(this-package-input "openblas")))
                   #$@(if (target-x86?)
                          '()
                          #~((substitute* "makefiles/linux_openblas.mk"
@@ -1796,6 +2198,8 @@ written in C++.")
                      portaudio))
                   (substitute* "matrix/Makefile"     ;temporary test bypass
                     (("matrix-lib-test sparse-matrix-test") ""))
+                  (substitute* "cudamatrix/Makefile"
+                    ((" cu-array-test") ""))
 
                   ;; This `configure' script doesn't support variables passed as
                   ;; arguments, nor does it support "prefix".
@@ -1819,11 +2223,11 @@ written in C++.")
                           "--shared"
                           (string-append "--fst-root=" openfst)))))
             (add-after 'configure 'optimize-build
-                       (lambda _ (substitute* "kaldi.mk" ((" -O1") " -O3"))))
+              (lambda _ (substitute* "kaldi.mk" ((" -O1") " -O3"))))
             (replace 'install
               (lambda _
-                (let* ((inc (string-append #$output "/include"))
-                       (lib (string-append #$output "/lib")))
+                (let ((inc (string-append #$output "/include"))
+                      (lib (string-append #$output "/lib")))
                   ;; The build phase installed symlinks to the actual
                   ;; libraries.  Install the actual targets.
                   (for-each (lambda (file)
@@ -2082,8 +2486,8 @@ Python.")
            ;; "ZIP does not support timestamps before 1980".  Luckily,
            ;; SOURCE_DATE_EPOCH is respected, which we set to some time in
            ;; 1980.
-           (lambda _ (setenv "SOURCE_DATE_EPOCH" "315532800") #t))
-         (add-after 'unpack 'python3.9-compatibility
+           (lambda _ (setenv "SOURCE_DATE_EPOCH" "315532800")))
+         (add-after 'unpack 'python3.10-compatibility
            (lambda _
              ;; See https://github.com/tensorflow/tensorflow/issues/20517#issuecomment-406373913
              (substitute* '("tensorflow/python/eager/pywrap_tfe_src.cc"
@@ -2105,14 +2509,56 @@ Python.")
                (("(nullptr,)(\\ +/. tp_print)" _ _ tp_print)
                 (string-append "NULL,   " tp_print)))
 
+             ;; Many collections classes have been moved to collections.abc
+             (substitute* '("tensorflow/python/framework/ops.py"
+                            "tensorflow/python/ops/clip_ops.py"
+                            "tensorflow/python/ops/data_flow_ops.py"
+                            "tensorflow/python/ops/gradients_impl.py"
+                            "tensorflow/python/training/input.py"
+                            "tensorflow/python/training/checkpointable/data_structures.py"
+                            "tensorflow/python/util/nest.py"
+                            "tensorflow/python/util/protobuf/compare.py")
+               (("collections.Mapping") "collections.abc.Mapping")
+               (("collections.Sequence") "collections.abc.Sequence"))
+             (substitute* "tensorflow/python/feature_column/feature_column.py"
+               (("collections.Iterator") "collections.abc.Iterator"))
+             (substitute* "tensorflow/python/ops/sparse_ops.py"
+               (("collections.Iterable") "collections.abc.Iterable"))
+             (substitute* "tensorflow/python/keras/callbacks.py"
+               (("from collections import Iterable")
+                "from collections.abc import Iterable"))
+             (substitute* "tensorflow/python/ops/variable_scope.py"
+               (("collections_lib.Sequence") "collections_lib.abc.Sequence"))
+
+             ;; XXX: it is not clear if this is a good idea, but the build
+             ;; system tries to overwrite the __or__ and __ror__ methods of
+             ;; the Tensor class.
+             (substitute* "tensorflow/python/framework/ops.py"
+               (("if not isinstance\\(existing, type\\(object.__lt__\\)\\)" m)
+                (string-append m
+                               " and not isinstance(existing, type(object.__or__))")))
+
              ;; Fix the build with numpy >= 1.19.
              ;; Suggested in https://github.com/tensorflow/tensorflow/issues/41086#issuecomment-656833081
              (substitute* "tensorflow/python/lib/core/bfloat16.cc"
                (("void BinaryUFunc\\(char\\*\\* args, npy_intp\\* dimensions, npy_intp\\* steps,")
                 "void BinaryUFunc(char** args, npy_intp const* dimensions, npy_intp const* steps,")
                (("void CompareUFunc\\(char\\*\\* args, npy_intp\\* dimensions, npy_intp\\* steps,")
-                "void CompareUFunc(char** args, npy_intp const* dimensions, npy_intp const* steps,"))))
-         (add-after 'python3.9-compatibility 'chdir
+                "void CompareUFunc(char** args, npy_intp const* dimensions, npy_intp const* steps,"))
+
+             ;; ...and for numpy >= 1.23
+             (substitute* "tensorflow/python/framework/tensor_util.py"
+               (("np.asscalar\\(x\\[0\\]\\)") "x[0].item()")
+               (("np.asscalar\\(x\\)") "x.item()")
+               (("np.asscalar\\(v\\)") "np.ndarray.item(v)")
+               (("return np.asscalar") "return np.ndarray.item"))
+             (substitute* "tensorflow/python/kernel_tests/cwise_ops_test.py"
+               (("np.asscalar\\(np.random.rand\\(1\\) \\* 100.\\)")
+                "(np.random.rand(1) * 100.).item()"))
+             (substitute* '("tensorflow/python/framework/fast_tensor_util.pyx"
+                            "tensorflow/python/estimator/canned/linear_testing_utils.py")
+               (("np.asscalar") "np.ndarray.item"))))
+         (add-after 'python3.10-compatibility 'chdir
            (lambda _ (chdir "tensorflow/contrib/cmake")))
          (add-after 'chdir 'disable-downloads
            (lambda* (#:key inputs #:allow-other-keys)
@@ -2243,6 +2689,12 @@ set(eigen_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/external/eigen_archive "
                     "nsync"
                     "re2"))
 
+             ;; https://github.com/google/farmhash/issues/24
+             (substitute* "../build/farmhash/src/farmhash/src/farmhash.cc"
+               (("using namespace std;") "")
+               (("make_pair") "std::make_pair")
+               (("pair<") "std::pair<"))
+
              (rename-file "../build/cub/src/cub/cub-1.8.0/"
                           "../build/cub/src/cub/cub/")
 
@@ -2256,6 +2708,12 @@ set(eigen_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/external/eigen_archive "
                      "-C" "protobuf-src" "--strip-components=1")
              (mkdir-p "eigen-src")
              (copy-recursively (assoc-ref inputs "eigen:src") "eigen-src")
+
+             ;; distutils.sysconfig is deprecated and prints a deprecation
+             ;; warning that breaks the generated CXX_INCLUDES line.
+             (substitute* "tensorflow/contrib/cmake/tf_python.cmake"
+               (("import distutils.sysconfig; print\\(distutils.sysconfig.get_python_inc\\(\\)\\)")
+                "import sysconfig; print(sysconfig.get_path('include'))"))
 
              (substitute* "tensorflow/contrib/cmake/tf_python.cmake"
                ;; Take protobuf source files from our source package.
@@ -2443,15 +2901,15 @@ DESTINATION include/tensorflow/c FILES_MATCHING PATTERN \"*.h\")\n" m)))))
        ("swig" ,swig)
        ("unzip" ,unzip)))
     (propagated-inputs
-     `(("python-absl-py" ,python-absl-py)
-       ("python-astor" ,python-astor)
-       ("python-gast" ,python-gast)
-       ("python-grpcio" ,python-grpcio)
-       ("python-numpy" ,python-numpy)
-       ("python-protobuf" ,python-protobuf-3.6)
-       ("python-six" ,python-six)
-       ("python-termcolo" ,python-termcolor)
-       ("python-wheel" ,python-wheel)))
+     (list python-absl-py
+           python-astor
+           python-gast
+           python-grpcio
+           python-numpy
+           python-protobuf-3.6
+           python-six
+           python-termcolor
+           python-wheel))
     (inputs
      `(("c-ares" ,c-ares)
        ("eigen" ,eigen-for-tensorflow)
@@ -2855,46 +3313,115 @@ with image data, text data, and sequence data.")
 (define-public python-keras
   (package
     (name "python-keras")
-    (version "2.2.4")
+    (version "2.3.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "Keras" version))
-       (patches (search-patches "python-keras-integration-test.patch"))
        (sha256
         (base32
-         "1j8bsqzh49vjdxy6l1k4iwax5vpjzniynyd041xjavdzvfii1dlh"))))
+         "1k68xd8n2y9ldijggjc8nn4d6d1axw0p98gfb0fmm8h641vl679j"))
+       (modules '((guix build utils)))
+       (snippet
+        '(substitute* '("keras/callbacks/callbacks.py"
+                        "keras/engine/training_utils.py"
+                        "keras/engine/training.py"
+                        "keras/engine/training_generator.py"
+                        "keras/utils/generic_utils.py")
+           (("from collections import Iterable")
+            "from collections.abc import Iterable")
+           (("collections.Container")
+            "collections.abc.Container")
+           (("collections.Mapping")
+            "collections.abc.Mapping")
+           (("collections.Sequence")
+            "collections.abc.Sequence")))))
     (build-system python-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'remove-tests-for-unavailable-features
+         (add-after 'unpack 'tf-compatibility
+           (lambda _
+             (substitute* "keras/backend/tensorflow_backend.py"
+               (("^get_graph = .*")
+                "get_graph = tf.get_default_graph")
+               (("tf.compat.v1.nn.fused_batch_norm")
+                "tf.nn.fused_batch_norm")
+               ;; categorical_crossentropy does not support axis
+               (("from_logits=from_logits, axis=axis")
+                "from_logits=from_logits")
+               ;; dropout accepts a level number, not a named rate argument.
+               (("dropout\\(x, rate=level,")
+                "dropout(x, level,")
+               (("return x.shape.rank")
+                "return len(x.shape)"))))
+         (add-after 'unpack 'hdf5-compatibility
+           (lambda _
+             ;; The truth value of an array with more than one element is ambiguous.
+             (substitute* "tests/keras/utils/io_utils_test.py"
+               ((" *assert .* == \\[b'(asd|efg).*") ""))
+             (substitute* "tests/test_model_saving.py"
+               (("h5py.File\\('does not matter',")
+                "h5py.File('does not matter', 'w',"))
+             (substitute* "keras/utils/io_utils.py"
+               (("h5py.File\\('in-memory-h5py', driver='core', backing_store=False\\)")
+                "h5py.File('in-memory-h5py', 'w', driver='core', backing_store=False)")
+               (("h5file.fid.get_file_image")
+                "h5file.id.get_file_image"))
+             (substitute* "keras/engine/saving.py"
+               (("\\.decode\\('utf-?8'\\)") ""))))
+         (add-after 'unpack 'delete-unavailable-backends
            (lambda _
              (delete-file "keras/backend/theano_backend.py")
-             (delete-file "keras/backend/cntk_backend.py")
-             (delete-file "tests/keras/backend/backend_test.py")
-             ;; FIXME: This doesn't work because Tensorflow is missing the
-             ;; coder ops library.
-             (delete-file "tests/keras/test_callbacks.py")))
+             (delete-file "keras/backend/cntk_backend.py")))
          (replace 'check
            (lambda* (#:key tests? #:allow-other-keys)
              (when tests?
                ;; These tests attempt to download data files from the internet.
                (delete-file "tests/integration_tests/test_datasets.py")
                (delete-file "tests/integration_tests/imagenet_utils_test.py")
-               ;; Backport https://github.com/keras-team/keras/pull/12479.
-               (substitute* "tests/keras/engine/test_topology.py"
-                 (("np.ones\\(\\(3, 2\\)\\)")
-                  "1."))
                (invoke "python" "-m" "pytest" "tests"
                        "-p" "no:pep8"
                        ;; FIXME: python-build-system lacks PARALLEL-TESTS?
                        "-n" (number->string (parallel-job-count))
+                       ;; This one uses the theano backend that we don't have.
+                       "--ignore=tests/test_api.py"
+                       "--ignore=tests/keras/backend/backend_test.py"
+                       ;; Our Tensorflow version does not have the coder ops library.
+                       "--ignore=tests/keras/callbacks/callbacks_test.py"
+                       ;; ...nor do we have tensorboard
+                       "--ignore=tests/keras/callbacks/tensorboard_test.py"
                        "-k"
                        (string-append
+                        ;; See https://github.com/keras-team/keras/pull/7033
+                        "not test_TimeDistributed_learning_phase "
+                        ;; XXX fails because no closure is provided
+                        "and not test_func_dump_and_load_backwards_compat "
+                        ;; XXX real bug?  These are all tests that fail due to
+                        ;; shape mismatch, e.g. "got logits shape [12,3] and
+                        ;; labels shape [9]"
+                        "and not test_model_with_crossentropy_losses_channels_first "
+                        "and not test_masking_correctness_output_size_not_equal_to_first_state_size "
+                        "and not test_convolutional_recurrent "
+                        "and not test_axis "
+
+                        ;; XXX fails because of 3/15 values have unexpected differences.
+                        "and not test_masking_correctness_output_not_equal_to_first_state "
+                        ;; XXX fails because of a difference of about 0.1
+                        "and not test_sample_weighted "
+                        ;; XXX fails because of a difference of about 0.3
+                        "and not test_scalar_weighted "
+                        ;; XXX fails because of a difference of about 0.2
+                        "and not test_unweighted "
+
+                        ;; XXX I cannot reproduce this in an interactive
+                        ;; Python session, because l2_norm works just fine.
+                        "and not test_weighted " ;TestCosineSimilarity
+                        "and not test_config "   ;TestCosineSimilarity
+
                         ;; The following test fails only in the build
                         ;; container; skip it.
-                        "not test_selu "
+                        "and not test_selu "
                         ;; The following test was found flaky and removed in
                         ;; recent versions.
                         "and not test_stateful_metrics"))))))))
@@ -2910,12 +3437,15 @@ with image data, text data, and sequence data.")
            tensorflow
            graphviz))
     (native-inputs
-     (list python-pandas
+     (list python-flaky
+           python-markdown
+           python-pandas
            python-pytest
            python-pytest-cov
            python-pytest-pep8
            python-pytest-timeout
            python-pytest-xdist
+           python-pyux
            python-sphinx
            python-requests))
     (home-page "https://github.com/keras-team/keras")
@@ -2954,7 +3484,7 @@ that:
       (native-inputs
        (list googletest))
       (inputs
-       (append (list openssl)
+       (append (list openssl-1.1)
                (if (supported-package? rdma-core)
                    (list rdma-core)
                    '())))
@@ -2978,6 +3508,46 @@ These include a barrier, broadcast, and allreduce.")
       (home-page "https://github.com/facebookincubator/gloo")
       (license license:bsd-3))))
 
+(define-public python-tensorly
+  (package
+    (name "python-tensorly")
+    (version "0.8.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/tensorly/tensorly")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "184mvs1gwycsh2f8jgdyc3jyhiylbn4xw2srpjd264dz2l9ms2l7"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      '(list
+        ;; These tests fail due to missing example, documentation, or tutorial files.
+        "--ignore=doc/sphinx_ext/sphinx_gallery/tests/test_gen_rst.py"
+        ;; XXX There is no "get_marker" method.
+        "--ignore=doc/sphinx_ext/sphinx_gallery/tests/test_gen_gallery.py"
+        "-k"
+        (string-append
+         ;; tutorials/plot_parse.py is not included
+         "not test_jupyter_notebook"
+         ;; nor is examples/plot_quantum.py
+         " and not test_file_is_generated"))))
+    (propagated-inputs (list python-jsmin python-numpy python-scipy))
+    (native-inputs (list python-pytest python-pytest-cov python-sphinx))
+    (home-page "https://github.com/tensorly/tensorly")
+    (synopsis "Tensor learning in Python")
+    (description
+     "This is a Python library that aims at making tensor learning simple and
+accessible.  It allows performing tensor decomposition, tensor learning and
+tensor algebra easily.  Its backend system allows seamlessly perform
+computation with NumPy, PyTorch, JAX, MXNet, TensorFlow or CuPy and run
+methodxs at scale on CPU or GPU.")
+    (license license:bsd-3)))
+
 (define-public python-umap-learn
   (package
     (name "python-umap-learn")
@@ -2997,6 +3567,18 @@ These include a barrier, broadcast, and allreduce.")
      (list
       #:phases
       #~(modify-phases %standard-phases
+          (add-after 'unpack 'numpy-compatibility
+            (lambda _
+              (substitute* "umap/tests/test_umap_metrics.py"
+                ;; See commit a714b59bd9e2ca2e63312bc3491b2b037a42f2f2
+                (("sparse_binary_data.todense\\(\\),")
+                 "np.asarray(sparse_binary_data.todense()),")
+                ;; See commit c7d05683325589ad432a55e109cacb9d631cfaa9
+                (("sparse_spatial_data.todense\\(\\),")
+                 "np.asarray(sparse_spatial_data.todense()),"))
+              ;; See commit 949abd082524fce8c45dfb147bcd8e8ef49eade3
+              (substitute* "umap/tests/test_umap_ops.py"
+                (("np.random,") "None,"))))
           ;; Numba needs a writable dir to cache functions.
           (add-before 'check 'set-numba-cache-dir
             (lambda _
@@ -3125,7 +3707,7 @@ TensorFlow.js, PyTorch, and MediaPipe.")
 (define-public python-pytorch
   (package
     (name "python-pytorch")
-    (version "1.12.0")
+    (version "1.13.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3135,7 +3717,7 @@ TensorFlow.js, PyTorch, and MediaPipe.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0pdqi91qzgyx947zv4pw2fdj9vpqvdhfzw1ydjd4mpqm8g5njgnz"))
+                "17yxjzwp4zp75fz7czgz9acijzw7dpyqcza50v8y1x7hfg2gw369"))
               (patches (search-patches "python-pytorch-system-libraries.patch"
                                        "python-pytorch-runpath.patch"))
               (modules '((guix build utils)))
@@ -3155,7 +3737,10 @@ TensorFlow.js, PyTorch, and MediaPipe.")
                               "gloo" "googletest" "ios-cmake" "NNPACK"
                               "onnx" "protobuf" "pthreadpool"
                               "pybind11" "python-enum" "python-peachpy"
-                              "python-six" "tbb" "XNNPACK" "zstd"))))))
+                              "python-six" "tbb" "XNNPACK" "zstd"))
+                  (substitute* "functorch/CMakeLists.txt"
+                    (("\\$\\{_rpath_portable_origin\\}/../torch/lib")
+                     "$ORIGIN/../torch/lib"))))))
     (build-system python-build-system)
     (arguments
      '(#:phases (modify-phases %standard-phases
@@ -3267,47 +3852,328 @@ PyTorch when needed.
 Note: currently this package does not provide GPU support.")
     (license license:bsd-3)))
 
-(define-public python-pytorch-for-r-torch
+(define-public python-pytorch-for-r-torch python-pytorch)
+
+(define-public python-lightning-cloud
   (package
-    (inherit python-pytorch)
-    (name "python-pytorch")
-    (version "1.12.1")
+    (name "python-lightning-cloud")
+    (version "0.5.34")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "lightning_cloud" version))
+              (sha256
+               (base32
+                "0mqrhq3s23mn8n4i0q791pshn3dgplp0h9ny0pmmp798q0798dzs"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-click
+                             python-fastapi-for-pytorch-lightning
+                             python-multipart
+                             python-pyjwt
+                             python-requests
+                             python-rich
+                             python-six
+                             python-urllib3
+                             python-uvicorn
+                             python-websocket-client))
+    (home-page "https://lightning.ai")
+    (synopsis "Lightning Cloud command line client")
+    (description "This package provides a command line interface for Lightning
+AI services.")
+    (license license:asl2.0)))
+
+(define-public python-lightning-utilities
+  (package
+    (name "python-lightning-utilities")
+    (version "0.8.0")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "lightning-utilities" version))
+              (sha256
+               (base32
+                "084pn8fizxrcn1699jb8x2jsg4wcx01l65bwxpgnq0kzqp3rapcf"))))
+    (build-system python-build-system)
+    (propagated-inputs (list python-importlib-metadata python-packaging
+                             python-typing-extensions))
+    (native-inputs (list python-coverage))
+    (home-page "https://github.com/Lightning-AI/utilities")
+    (synopsis "PyTorch Lightning sample project")
+    (description "This package provides common Python utilities and GitHub
+Actions for the Lightning suite of libraries.")
+    (license license:asl2.0)))
+
+(define-public python-captum
+  (package
+    (name "python-captum")
+    (version "0.6.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
-                    (url "https://github.com/pytorch/pytorch")
-                    (commit (string-append "v" version))
-                    (recursive? #t)))
+                    (url "https://github.com/pytorch/captum")
+                    (commit (string-append "v" version))))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1wimgnmn8kfazc8vhf65b9psdwj80n3chzkd8ic28541ac2zqzpk"))
-              (patches (search-patches "python-pytorch-system-libraries.patch"
-                                       "python-pytorch-runpath.patch"))
-              (modules '((guix build utils)))
-              (snippet
-               '(begin
-                  ;; XXX: Let's be clear: this package is a bundling fest.  We
-                  ;; delete as much as we can, but there's still a lot left.
-                  (for-each (lambda (directory)
-                              (delete-file-recursively
-                               (string-append "third_party/" directory)))
-                            '("benchmark" "cpuinfo" "eigen"
+                "1h4n91ivhjxm6wj0vgqpfss2dmq4sjcp0appd08cd5naisabjyb5"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      '(list "-k"
+             ;; These two tests (out of more than 1000 tests) fail because of
+             ;; accuracy problems.
+             "not test_softmax_classification_batch_multi_target\
+ and not test_softmax_classification_batch_zero_baseline")))
+    (propagated-inputs (list python-matplotlib python-numpy python-pytorch))
+    (native-inputs (list jupyter
+                         python-annoy
+                         python-black
+                         python-flake8
+                         python-flask
+                         python-flask-compress
+                         python-ipython
+                         python-ipywidgets
+                         python-mypy
+                         python-parameterized
+                         python-pytest
+                         python-pytest-cov
+                         python-scikit-learn))
+    (home-page "https://captum.ai")
+    (synopsis "Model interpretability for PyTorch")
+    (description "Captum is a model interpretability and understanding library
+for PyTorch.  Captum contains general purpose implementations of integrated
+gradients, saliency maps, smoothgrad, vargrad and others for PyTorch models.
+It has quick integration for models built with domain-specific libraries such
+as torchvision, torchtext, and others.")
+    (license license:bsd-3)))
 
-                              ;; FIXME: QNNPACK (of which XNNPACK is a fork)
-                              ;; needs these.
-                              ;; "FP16" "FXdiv" "gemmlowp" "psimd"
+(define-public python-readchar
+  (package
+    (name "python-readchar")
+    (version "4.0.5")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "readchar" version))
+              (sha256
+               (base32
+                "09n8vl2jjbnbnrzfvkynijrnwrqvc91bb2267zg8r261sz15d908"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      '(modify-phases %standard-phases
+         ;; This one file requires the msvcrt module, which we don't have.
+         (add-after 'unpack 'delete-windows-file
+           (lambda _
+             (delete-file "readchar/_win_read.py"))))))
+    (propagated-inputs (list python-setuptools))
+    (home-page "https://github.com/magmax/python-readchar")
+    (synopsis "Library to easily read single chars and key strokes")
+    (description "This package provides a Python library to easily read single
+characters and key strokes.")
+    (license license:expat)))
 
-                              "gloo" "googletest" "ios-cmake" "NNPACK"
-                              "onnx" "protobuf" "pthreadpool"
-                              "pybind11" "python-enum" "python-peachpy"
-                              "python-six" "tbb" "XNNPACK" "zstd"))))))))
+(define-public python-inquirer
+  (package
+    (name "python-inquirer")
+    (version "3.1.3")
+    ;; Pypi has no tests.
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/magmax/python-inquirer")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0kp6a0535n9ra5sk8bmb5qvhrv0fbn1zawydi0fkb7104jqcfrzc"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs
+     (list python-blessed python-editor python-readchar))
+    (native-inputs
+     (list python-poetry-core python-pexpect python-pytest))
+    (home-page "https://github.com/magmax/python-inquirer")
+    (synopsis "Collection of common interactive command line user interfaces")
+    (description
+     "Inquirer should ease the process of asking end user questions, parsing,
+validating answers, managing hierarchical prompts and providing error
+feedback.")
+    (license license:expat)))
+
+(define-public python-pytorch-lightning
+  (package
+    (name "python-pytorch-lightning")
+    (version "2.0.2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/Lightning-AI/lightning")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1w4lajiql4y5nnhqf6i5wii1mrwnhp5f4bzbwdzb5zz0d0lysb1i"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      '(list "-m" "not cloud and not tpu" "tests/tests_pytorch"
+             ;; we don't have onnxruntime
+             "--ignore=tests/tests_pytorch/models/test_onnx.py"
+
+             ;; We don't have tensorboard, so we skip all those tests that
+             ;; require it for logging.
+             "--ignore=tests/tests_pytorch/checkpointing/test_model_checkpoint.py"
+             "--ignore=tests/tests_pytorch/loggers/test_all.py"
+             "--ignore=tests/tests_pytorch/loggers/test_logger.py"
+             "--ignore=tests/tests_pytorch/loggers/test_tensorboard.py"
+             "--ignore=tests/tests_pytorch/models/test_cpu.py"
+             "--ignore=tests/tests_pytorch/models/test_hparams.py"
+             "--ignore=tests/tests_pytorch/models/test_restore.py"
+             "--ignore=tests/tests_pytorch/profilers/test_profiler.py"
+             "--ignore=tests/tests_pytorch/trainer/flags/test_fast_dev_run.py"
+             "--ignore=tests/tests_pytorch/trainer/logging_/test_eval_loop_logging.py"
+             "--ignore=tests/tests_pytorch/trainer/logging_/test_train_loop_logging.py"
+             "--ignore=tests/tests_pytorch/trainer/properties/test_loggers.py"
+             "--ignore=tests/tests_pytorch/trainer/properties/test_log_dir.py"
+             "--ignore=tests/tests_pytorch/trainer/test_trainer.py"
+
+             ;; This needs internet access
+             "--ignore=tests/tests_pytorch/helpers/test_models.py"
+             "--ignore=tests/tests_pytorch/helpers/test_datasets.py"
+             "--ignore=tests/tests_pytorch/helpers/datasets.py"
+
+             ;; We have no legacy checkpoints
+             "--ignore=tests/tests_pytorch/checkpointing/test_legacy_checkpoints.py"
+
+             ;; TypeError: _FlakyPlugin._make_test_flaky() got an unexpected keyword argument 'reruns'
+             "--ignore=tests/tests_pytorch/models/test_amp.py"
+             "--ignore=tests/tests_pytorch/profilers/test_profiler.py"
+
+             "--ignore=tests/tests_pytorch/graveyard/test_legacy_import_unpickler.py"
+
+             "-k"
+             (string-append
+              ;; We don't have tensorboard
+              "not test_property_logger"
+              " and not test_cli_logger_shorthand"
+              ;; Something wrong with Flaky
+              " and not test_servable_module_validator_with_trainer"))
+      #:phases
+      '(modify-phases %standard-phases
+         (add-after 'unpack 'patch-version-detection
+           (lambda _
+             ;; We do have pytorch 1.13.1, but the version comparison fails.
+             (substitute* "src/lightning/fabric/utilities/imports.py"
+               (("_TORCH_GREATER_EQUAL_1_13 =.*")
+                "_TORCH_GREATER_EQUAL_1_13 = True\n"))))
+         (add-before 'build 'pre-build
+           (lambda _ (setenv "PACKAGE_NAME" "lightning")))
+         (add-after 'install 'pre-build-pytorch
+           (lambda _
+             ;; pyproject-build-system only tolerates unicycles.
+             (for-each delete-file (find-files "dist" "\\.whl"))
+             (setenv "PACKAGE_NAME" "pytorch")))
+         (add-after 'pre-build-pytorch 'build-pytorch
+           (assoc-ref %standard-phases 'build))
+         (add-after 'build-pytorch 'install-pytorch
+           (assoc-ref %standard-phases 'install))
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; We don't have Tensorboard
+             (substitute* "tests/tests_pytorch/test_cli.py"
+               ((" TensorBoardLogger\\(\".\"\\)") "")))))))
+    (propagated-inputs
+     (list python-arrow
+           python-beautifulsoup4
+           python-croniter
+           python-dateutils
+           python-deepdiff
+           python-fastapi-for-pytorch-lightning
+           python-fsspec
+           python-inquirer
+           python-jsonargparse
+           python-lightning-cloud
+           python-lightning-utilities
+           python-numpy
+           python-packaging
+           python-pytorch
+           python-pyyaml
+           python-starsessions-for-pytorch-lightning
+           python-torchmetrics
+           python-torchvision
+           python-tqdm
+           python-traitlets
+           python-typing-extensions))
+    (native-inputs
+     (list python-aiohttp
+           python-cloudpickle
+           python-coverage
+           python-flaky
+           python-pympler
+           python-pytest
+           python-psutil
+           python-requests-mock
+           python-scikit-learn))
+    (home-page "https://lightning.ai/")
+    (synopsis "Deep learning framework to train, deploy, and ship AI products")
+    (description
+     "PyTorch Lightning is just organized PyTorch; Lightning disentangles
+PyTorch code to decouple the science from the engineering.")
+    (license license:asl2.0)))
+
+(define-public python-torchmetrics
+  (package
+    (name "python-torchmetrics")
+    (version "0.11.4")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "torchmetrics" version))
+              (sha256
+               (base32
+                "150lcy6c20n42rwxl4d3m1b8s4js9ddds5wh3685vmjdnha5mr0z"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs
+     (list python-numpy python-packaging python-pytorch
+           python-typing-extensions))
+    (native-inputs
+     (list python-cloudpickle
+           python-coverage
+           python-fire
+           python-mir-eval
+           python-mypy
+           python-pandas
+           python-psutil
+           python-pytest
+           python-pytest-cov
+           python-pytest-doctestplus
+           python-pytest-rerunfailures
+           python-pytest-timeout
+           python-requests
+           python-scikit-image
+           python-scikit-learn
+           python-scipy
+           python-types-protobuf
+           python-types-setuptools))
+    (home-page "https://github.com/Lightning-AI/metrics")
+    (synopsis "Machine learning metrics for PyTorch applications")
+    (description "TorchMetrics is a collection of 100+ PyTorch metrics
+implementations and an easy-to-use API to create custom metrics.  It offers:
+
+@itemize
+@item A standardized interface to increase reproducibility
+@item Reduces boilerplate
+@item Automatic accumulation over batches
+@item Metrics optimized for distributed-training
+@item Automatic synchronization between multiple devices
+@end itemize
+")
+    (license license:asl2.0)))
 
 ;; Keep this in sync with python-pytorch
 (define-public python-torchvision
   (package
     (name "python-torchvision")
-    (version "0.13.0")
+    (version "0.15.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3317,17 +4183,11 @@ Note: currently this package does not provide GPU support.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "19f6s3ffwkdvjjbvib18c8n7vhysg58smxzq3rvii1c0z4g3b0cw"))))
-    (build-system python-build-system)
+                "1cq2s13vkgg9rljjbrm4g33yxq7q5zqp7f4xm5cq624gvs0wxmi8"))))
+    (build-system pyproject-build-system)
     (arguments
-     `(#:tests? #false ;the test suite is expensive and there is no easy way
-                       ;to subset it.
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (invoke "pytest" "-vv")))))))
+     (list #:tests? #false)) ;the test suite is expensive and there is no easy
+                             ;way to subset it.
     (inputs
      (list libpng
            libjpeg-turbo))
@@ -3407,7 +4267,7 @@ of Hidden Markov Models.")
 (define-public liblantern
   (package
     (name "liblantern")
-    (version "0.9.1")
+    (version "0.10.0")
     (source
      (origin
        (method git-fetch)
@@ -3416,7 +4276,7 @@ of Hidden Markov Models.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1rycs7fgm03fxp8lxj8ljrdwy5whxd4554xzklbcmn4mcwbxgg57"))))
+        (base32 "12480fac9xq7rgw0q5f2cnvmakhakjsnq1gvh2ncjfwxz34n8fl7"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -3425,7 +4285,7 @@ of Hidden Markov Models.")
       (let ((python-version (version-major+minor (package-version python))))
         #~(modify-phases %standard-phases
             (add-after 'unpack 'chdir
-              (lambda _ (chdir "lantern")))
+              (lambda _ (chdir "src/lantern")))
             (add-after 'chdir 'do-not-download-binaries
               (lambda* (#:key inputs #:allow-other-keys)
                 (substitute* "CMakeLists.txt"
@@ -3737,7 +4597,7 @@ simple speech recognition.")
                   "library_dirs=["
                   "'" #$vosk-api "/lib'"
                   "],\n\t"
-                  "libraries=['vosk', 'python3.9'],\n\t"
+                  "libraries=['vosk', 'python3.10'],\n\t"
                   "include_dirs=["
                   "'" #$vosk-api "/src'" "])")))
               (substitute* "vosk/__init__.py"
@@ -3751,8 +4611,8 @@ simple speech recognition.")
                  "lib.")))))))))
 
 (define-public nerd-dictation
-  (let* ((commit "53ab129a5ee0f8b5df284e8cf2229219b732c59e")
-         (revision "0"))
+  (let* ((commit "0eb44b7fd0927d69c92de5566e5807ed2c2e20b7")
+         (revision "1"))
     (package
       (name "nerd-dictation")
       (version (git-version "0" revision commit))
@@ -3764,7 +4624,7 @@ simple speech recognition.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "184qijiva1h1x00dzicik0yzgh78pq2lqr5fkgicgp26mkarlyhc"))))
+          (base32 "0frdpswv6w3cwj3c7wd5w8gj3s1hvpdwd48qhfhfxf7imahz9bqf"))))
       (build-system python-build-system)
       (arguments
        '(#:phases
@@ -3772,7 +4632,6 @@ simple speech recognition.")
            (add-after 'unpack 'chdir
              (lambda _ (chdir "package/python"))))))
       (propagated-inputs (list python-vosk))
-      (inputs (list pulseaudio xdotool))
       (home-page "https://github.com/ideasman42/nerd-dictation")
       (synopsis "Offline speech-to-text for desktop Linux")
       (description "\
@@ -3782,37 +4641,168 @@ The user configuration lets you manipulate text using Python string
 operations.  It has zero overhead, as this relies on manual activation and
 there are no background processes.  Dictation is accessed manually with
 @code{nerd-dictation begin} and @code{nerd-dictation end} commands.")
-      (license license:gpl3+))))
+      (license license:gpl2+))))
 
-(define-public nerd-dictation/wayland
-  (package
-    (inherit nerd-dictation)
-    (name "nerd-dictation-wayland")
-    (inputs (list bash-minimal nerd-dictation))
-    (propagated-inputs (list ydotool sox))
-    (build-system trivial-build-system)
-    (arguments
-     (list
-      #:modules '((guix build utils))
-      #:builder
-      #~(begin
-          (use-modules (guix build utils))
-          (let* ((exe (string-append #$output "/bin/nerd-dictation"))
-                 (original-exe #$(file-append nerd-dictation
-                                              "/bin/nerd-dictation"))
-                 (bash #$(this-package-input "bash-minimal"))
-                 (bash-exe (string-append bash "/bin/bash")))
-            (mkdir-p (dirname exe))
-            (call-with-output-file exe
-              (lambda (port)
-                (format port "#!~a
+(define (nerd-dictation-gexp input-name output-name bash nerd-dictation)
+  (with-imported-modules '((guix build utils))
+    #~(begin
+        (use-modules (guix build utils))
+
+        (let* ((exe (string-append #$output "/bin/nerd-dictation"))
+               (nerd-dictation-exe
+                #$(file-append nerd-dictation "/bin/nerd-dictation")))
+          (mkdir-p (dirname exe))
+          (call-with-output-file exe
+            (lambda (port)
+              (format port "#!~a
 if [ \"$1\" = begin ]
   then
-    exec ~a $@ --input=SOX --simulate-input-tool=YDOTOOL
+    exec ~a $@ --input=~a --simulate-input-tool=~a
   else
     exec ~a $@
 fi"
-                        bash-exe
-                        original-exe
-                        original-exe)))
-            (chmod exe #o555)))))))
+                      #$(file-append bash "/bin/bash")
+                      nerd-dictation-exe
+                      #$input-name
+                      #$output-name
+                      nerd-dictation-exe)))
+          (chmod exe #o555)))))
+
+(define-public nerd-dictation/xdotool
+  (package
+    (inherit nerd-dictation)
+    (name "nerd-dictation-xdotool")
+    (build-system trivial-build-system)
+    (arguments
+     (list #:builder
+           (nerd-dictation-gexp "PAREC" "XDOTOOL"
+                                (this-package-input "bash-minimal")
+                                (this-package-input "nerd-dictation"))))
+    (inputs (list bash-minimal nerd-dictation))
+    (propagated-inputs (list pulseaudio xdotool))))
+
+(define-public nerd-dictation/sox-xdotool
+  (package
+    (inherit nerd-dictation/xdotool)
+    (name "nerd-dictation-sox-xdotool")
+    (arguments
+     (list #:builder
+           (nerd-dictation-gexp "SOX" "XDOTOOL"
+                                (this-package-input "bash-minimal")
+                                (this-package-input "nerd-dictation"))))
+    (propagated-inputs (list sox xdotool))))
+
+(define-public nerd-dictation/sox-ydotool
+  (package
+    (inherit nerd-dictation/xdotool)
+    (name "nerd-dictation-sox-ydotool")
+    (arguments
+     (list #:builder
+           (nerd-dictation-gexp "SOX" "YDOTOOL"
+                                (this-package-input "bash-minimal")
+                                (this-package-input "nerd-dictation"))))
+    (propagated-inputs (list sox ydotool))))
+
+(define-public nerd-dictation/sox-wtype
+  (package
+    (inherit nerd-dictation/xdotool)
+    (name "nerd-dictation-sox-wtype")
+    (arguments
+     (list #:builder
+           (nerd-dictation-gexp "SOX" "WTYPE"
+                                (this-package-input "bash-minimal")
+                                (this-package-input "nerd-dictation"))))
+    (propagated-inputs (list sox wtype))))
+
+(define-public python-brian2
+  (package
+    (name "python-brian2")
+    (version "2.5.1")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "Brian2" version))
+              (sha256
+               (base32
+                "1g48hzn3cdsvfjgz64s3kvh5d5287ggjxdyacb7wh2n5nd5iqlf7"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (setenv "HOME" "/tmp")
+               ;; Must be run in a different directory, otherwise compiled
+               ;; modules are not found.
+               (with-directory-excursion "/tmp"
+                 ;; Invoking brian2.test() is preferred to running pytest.
+                 (invoke "python" "-c"
+                  "import brian2, sys; sys.exit(0 if brian2.test() else 1)"))))))))
+    (propagated-inputs (list python-cython ; Required by codegen.
+                             python-jinja2
+                             python-numpy
+                             python-py-cpuinfo
+                             python-pyparsing
+                             ;; Required by codegen.
+                             python-setuptools
+                             python-sympy))
+    (native-inputs (list python-pytest python-pytest-xdist))
+    (home-page "https://briansimulator.org/")
+    (synopsis "Clock-driven simulator for spiking neural networks")
+    (description
+     "Brian is a simulator for spiking neural networks written in Python.  It
+is therefore designed to be easy to learn and use, highly flexible and
+easily extensible.")
+    (license license:cecill)))
+
+(define-public python-brian2tools
+  (package
+    (name "python-brian2tools")
+    (version "0.3")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "brian2tools" version))
+              (sha256
+               (base32
+                "0fn028mfy3qlzjkadd0wr5d7rcplijd5jphln414xifvvsb9jcc2"))))
+    (build-system python-build-system)
+    ;; Both pypi tarball and git repo lack test files.
+    (arguments (list #:tests? #f))
+    (propagated-inputs (list python-brian2
+                             python-libneuroml
+                             python-markdown-strings
+                             python-matplotlib
+                             python-pylems
+                             python-setuptools
+                             python-setuptools-scm))
+    (native-inputs (list python-pytest))
+    (home-page "https://github.com/brian-team/brian2tools")
+    (synopsis "Tools for the Brian 2 simulator")
+    (description "Visualization and NeuroML import/export tools for the
+Brian 2 simulator.")
+    (license license:cecill)))
+
+(define-public oneapi-dnnl
+  (package
+    (name "oneapi-dnnl")
+    (version "3.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/oneapi-src/oneDNN")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1jgmb5kl0bf4a2zfn94zlb117672r9lvvkkmwl86ihlyr1mpr3d0"))))
+    (build-system cmake-build-system)
+    (arguments (if (target-riscv64?)
+                   (list #:configure-flags #~'("-DDNNL_CPU_RUNTIME=SEQ"))
+                   '()))
+    (home-page "https://github.com/oneapi-src/oneDNN")
+    (synopsis "Deep Neural Network Library")
+    (description
+     "OneAPI Deep Neural Network Library (oneDNN) is a cross-platform
+performance library of basic building blocks for deep learning applications.")
+    (license license:asl2.0)))

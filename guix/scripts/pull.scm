@@ -30,7 +30,6 @@
   #:use-module (guix packages)
   #:use-module (guix derivations)
   #:use-module (guix profiles)
-  #:use-module (guix gexp)
   #:use-module (guix memoization)
   #:use-module (guix monads)
   #:use-module (guix channels)
@@ -45,7 +44,6 @@
   #:autoload   (gnu packages) (fold-available-packages)
   #:autoload   (guix scripts package) (build-and-use-profile
                                        delete-matching-generations)
-  #:autoload   (gnu packages base) (canonical-package)
   #:autoload   (gnu packages bootstrap) (%bootstrap-guile)
   #:autoload   (gnu packages certs) (le-certs)
   #:use-module (srfi srfi-1)
@@ -771,22 +769,21 @@ Use '~/.config/guix/channels.scm' instead."))
         (url (or (assoc-ref opts 'repository-url)
                  (environment-variable))))
     (if (or ref url)
-        (match (find guix-channel? channels)
-          ((? channel? guix)
-           ;; Apply '--url', '--commit', and '--branch' to the 'guix' channel.
-           (let ((url (or url (channel-url guix))))
-             (cons (match ref
-                     (('commit . commit)
-                      (channel (inherit guix)
-                               (url url) (commit commit) (branch #f)))
-                     (('branch . branch)
-                      (channel (inherit guix)
-                               (url url) (commit #f) (branch branch)))
-                     (#f
-                      (channel (inherit guix) (url url))))
-                   (remove guix-channel? channels))))
-          (#f                           ;no 'guix' channel, failure will ensue
-           channels))
+        ;; Apply '--url', '--commit', and '--branch' to the 'guix' channel.
+        (map (lambda (c)
+               (if (guix-channel? c)
+                   (let ((url (or url (channel-url c))))
+                     (match ref
+                       (('commit . commit)
+                        (channel (inherit c)
+                                 (url url) (commit commit) (branch #f)))
+                       (('branch . branch)
+                        (channel (inherit c)
+                                 (url url) (commit #f) (branch branch)))
+                       (#f
+                        (channel (inherit c) (url url)))))
+                   c))
+             channels)
         channels)))
 
 (define (validate-cache-directory-ownership)

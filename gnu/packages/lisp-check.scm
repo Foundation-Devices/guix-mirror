@@ -6,10 +6,10 @@
 ;;; Copyright © 2019 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019, 2020 Katherine Cox-Buday <cox.katherine.e@gmail.com>
 ;;; Copyright © 2019, 2020, 2021, 2022 Guillaume Le Vaillant <glv@posteo.net>
-;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2021, 2023 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;; Copyright © 2021 Charles Jackson <charles.b.jackson@protonmail.com>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
-;;; Copyright © 2022 André A. Gomes <andremegafone@gmail.com>
+;;; Copyright © 2022, 2023 André A. Gomes <andremegafone@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -253,23 +253,28 @@ against the last run.")
   (sbcl-package->ecl-package sbcl-checkl))
 
 (define-public sbcl-cl-mock
-  ;; .asd version only got updated recently, despired the old GitHug "1.0.1" release.
-  (let ((commit "7988dca2093358911b67597a2cd1570c785dfe76"))
+  (let ((commit "01762fda96718fefd3745ce4a20a4013a865b109")
+        (revision "0"))
     (package
       (name "sbcl-cl-mock")
-      (version (git-version "1.0.1" "1" commit))
+      (version (git-version "1.1.0" revision commit))
       (source
        (origin
          (method git-fetch)
          (uri (git-reference
                (url "https://github.com/Ferada/cl-mock/")
                (commit commit)))
-         (file-name (git-file-name name version))
+         (file-name (git-file-name "cl-mock" version))
          (sha256
-          (base32 "0f40wikcf783jx26ip0nnhwjjfjvjiw7njqsqrb6kaphc8bgw0i1"))))
+          (base32 "19641sm3klx9yfk8lr376rfkd26vy72yp1hkpkqcw3q3m1xrf9xp"))))
       (build-system asdf-build-system/sbcl)
+      (arguments
+       `(#:asd-systems '("cl-mock" "cl-mock-basic")))
       (inputs
-       (list sbcl-alexandria sbcl-closer-mop sbcl-trivia))
+       (list sbcl-alexandria
+             sbcl-bordeaux-threads
+             sbcl-closer-mop
+             sbcl-trivia))
       (native-inputs
        (list sbcl-fiveam))
       (home-page "https://github.com/Ferada/cl-mock")
@@ -377,6 +382,40 @@ easy to use so that you can quickly start testing.")
 
 (define-public ecl-clunit2
   (sbcl-package->ecl-package sbcl-clunit2))
+
+(define-public sbcl-confidence
+  (let ((commit "5cbc74715348e12e689afb2d459dcb216c640a44")
+        (revision "0"))
+    (package
+      (name "sbcl-confidence")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/melusina-org/cl-confidence")
+               (commit commit)))
+         (file-name (git-file-name "cl-confidence" version))
+         (sha256
+          (base32 "0zc135rvq2valrw15bh8k6i53v7kk5l7x0kccb1bf7pglc8zgivs"))))
+      (build-system asdf-build-system/sbcl)
+      (arguments
+       `(#:asd-systems '("org.melusina.confidence"
+                         "org.melusina.confidence/testsuite")))
+      (inputs (list sbcl-alexandria))
+      (home-page "https://github.com/melusina-org/cl-confidence")
+      (synopsis "Interactive test framework for Common Lisp")
+      (description
+       "Confidence is a test framework for Common Lisp that focuses on
+simplicity.  It avoids bureaucracy and makes it easy to work interactively,
+without a complicated setup, and with explicit functions and decisions.")
+      (license license:expat))))
+
+(define-public ecl-confidence
+  (sbcl-package->ecl-package sbcl-confidence))
+
+(define-public cl-confidence
+  (sbcl-package->cl-source-package sbcl-confidence))
 
 (define-public sbcl-eos
   (let ((commit "b4413bccc4d142cbe1bf49516c3a0a22c9d99243")
@@ -657,29 +696,31 @@ testing.  It is an extension of the library written by Chris Riesbeck.")
 (define-public sbcl-lisp-unit2
   ;; There is a cyclical dependency between symbol-munger and lisp-unit2.
   ;; See https://github.com/AccelerationNet/symbol-munger/issues/4
-  (package
-    (name "sbcl-lisp-unit2")
-    (version "0.9.4")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/AccelerationNet/lisp-unit2")
-             (commit version)))
-       (file-name (git-file-name "cl-lisp-unit2" version))
-       (sha256
-        (base32 "0dnq0qvbsn7ciknvmwzfjnimlzq1gdkv5xd87agmhxm1cpm1ksz0"))))
-    (build-system asdf-build-system/sbcl)
-    (inputs
-     (list sbcl-alexandria sbcl-cl-interpol sbcl-iterate
-           sbcl-symbol-munger))
-    (synopsis "Test Framework for Common Lisp")
-    (description
-     "LISP-UNIT2 is a Common Lisp library that supports unit testing in the
+  (let ((commit "b5aa17b298cf2f669f4c0262c471e1ee4ab4699a")
+        (revision "0"))
+    (package
+      (name "sbcl-lisp-unit2")
+      (version (git-version "0.9.4" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/AccelerationNet/lisp-unit2")
+               (commit commit)))
+         (file-name (git-file-name "cl-lisp-unit2" version))
+         (sha256
+          (base32 "140nn22n1xv3qaash3x6h2h7xmys44s3f42b7bakfhpc4qlx0b69"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       (list sbcl-alexandria sbcl-cl-interpol sbcl-iterate
+             sbcl-symbol-munger))
+      (synopsis "Test Framework for Common Lisp")
+      (description
+       "LISP-UNIT2 is a Common Lisp library that supports unit testing in the
 style of JUnit for Java.  It is a new version of the lisp-unit library written
 by Chris Riesbeck.")
-    (home-page "https://github.com/AccelerationNet/lisp-unit2")
-    (license license:expat)))
+      (home-page "https://github.com/AccelerationNet/lisp-unit2")
+      (license license:expat))))
 
 (define-public cl-lisp-unit2
   (sbcl-package->cl-source-package sbcl-lisp-unit2))
@@ -718,8 +759,8 @@ by Chris Riesbeck.")
   (sbcl-package->cl-source-package sbcl-nst))
 
 (define-public sbcl-parachute
-  (let ((commit "8bc3e1b5a1808341967aeb89516f9fab23cd1d9e")
-        (revision "0"))
+  (let ((commit "bd072b0e4d0ff3ee2201eca3eb28c287686ab49e")
+        (revision "1"))
     (package
       (name "sbcl-parachute")
       (version (git-version "1.5.0" revision commit))
@@ -732,7 +773,7 @@ by Chris Riesbeck.")
            (commit commit)))
          (file-name (git-file-name "cl-parachute" version))
          (sha256
-          (base32 "0cppp1sp9xqkgxgkwidhqzlsj03ywnar7z9mzwcliww8y0kv5555"))))
+          (base32 "0srjsklhr04snlv98021mb0a5lb8dlypv1lnjdhsdhjbbiwbw2n9"))))
       (build-system asdf-build-system/sbcl)
       (inputs
        (list sbcl-documentation-utils
@@ -829,29 +870,30 @@ tester module.")
   (sbcl-package->ecl-package sbcl-ptester))
 
 (define-public sbcl-rove
-  (package
-    (name "sbcl-rove")
-    (version "0.9.6")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/fukamachi/rove")
-             (commit "f3695db08203bf26f3b861dc22ac0f4257d3ec21")))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32
-         "07ala4l2fncxf540fzxj3h5mhi9i4wqllhj0rqk8m2ljl5zbz89q"))))
-    (build-system asdf-build-system/sbcl)
-    (inputs
-     (list sbcl-bordeaux-threads sbcl-dissect sbcl-trivial-gray-streams))
-    (home-page "https://github.com/fukamachi/rove")
-    (synopsis
-     "Yet another common lisp testing library")
-    (description
-     "Rove is a unit testing framework for Common Lisp applications.
+  (let ((commit "6a5dfcdced42879a4eff2a529e7e8ce492fadf41")
+        (revision "1"))
+    (package
+      (name "sbcl-rove")
+      (version (git-version "0.10.0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/fukamachi/rove")
+                      (commit commit)))
+                (file-name (git-file-name "cl-rove" version))
+                (sha256
+                 (base32
+                  "1w99c0795ykhn14pfhyhvfzxzz0k1z1bb846xgz3iv19s0j2vykr"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs (list sbcl-bordeaux-threads
+                    sbcl-dissect
+                    sbcl-trivial-gray-streams))
+      (home-page "https://github.com/fukamachi/rove")
+      (synopsis "Yet another common lisp testing library")
+      (description
+       "Rove is a unit testing framework for Common Lisp applications.
 This is intended to be a successor of Prove.")
-    (license license:bsd-3)))
+      (license license:bsd-3))))
 
 (define-public cl-rove
   (sbcl-package->cl-source-package sbcl-rove))

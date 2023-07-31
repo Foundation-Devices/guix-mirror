@@ -1,8 +1,8 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013-2020, 2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2020, 2022, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
-;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2020, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -155,11 +155,31 @@ alias grep='grep --color=auto'\n"))
 if [ -f ~/.profile ]; then . ~/.profile; fi
 
 # Honor per-interactive-shell startup file
-if [ -f ~/.bashrc ]; then . ~/.bashrc; fi\n"))
+if [ -f ~/.bashrc ]; then . ~/.bashrc; fi
+
+# Merge search-paths from multiple profiles, the order matters.
+eval \"$(guix package --search-paths \\
+-p $HOME/.config/guix/current \\
+-p $HOME/.guix-profile \\
+-p /run/current-system/profile)\"
+
+# Prepend setuid programs.
+export PATH=/run/setuid-programs:$PATH
+"))
         (bashrc  %default-bashrc)
         (zprofile    (plain-file "zprofile" "\
 # Honor system-wide environment variables
-source /etc/profile\n"))
+source /etc/profile
+
+# Merge search-paths from multiple profiles, the order matters.
+eval \"$(guix package --search-paths \\
+-p $HOME/.config/guix/current \\
+-p $HOME/.guix-profile \\
+-p /run/current-system/profile)\"
+
+# Prepend setuid programs.
+export PATH=/run/setuid-programs:$PATH
+"))
         (xdefaults (plain-file "Xdefaults" "\
 XTerm*utf8: always
 XTerm*metaSendsEscape: true\n"))
@@ -168,8 +188,16 @@ XTerm*metaSendsEscape: true\n"))
 guile
 (use-modules (gdb))
 (execute (string-append \"set debug-file-directory \"
-                        (or (getenv \"GDB_DEBUG_FILE_DIRECTORY\")
-                            \"~/.guix-profile/lib/debug\")))
+                        (string-join
+                          (filter file-exists?
+                                  (append
+                                    (if (getenv \"GDB_DEBUG_FILE_DIRECTORY\")
+                                      (list (getenv \"GDB_DEBUG_FILE_DIRECTORY\"))
+                                      '())
+                                    (list \"~/.guix-home/profile/lib/debug\"
+                                          \"~/.guix-profile/lib/debug\"
+                                          \"/run/current-system/profile/lib/debug\")))
+                          \":\")))
 end
 
 # Authorize extensions found in the store, such as the
@@ -228,6 +256,9 @@ for a colorful Guile experience.\\n\\n\"))))\n"))
                        (when (file-exists? ".nanorc")
                          (mkdir-p ".config/nano")
                          (rename-file ".nanorc" ".config/nano/nanorc"))
+                       (when (file-exists? ".gdbinit")
+                         (mkdir-p ".config/gdb")
+                         (rename-file ".gdbinit" ".config/gdb/gdbinit"))
                        #t))))
 
 (define (find-duplicates list)
@@ -427,6 +458,7 @@ the /etc/skel directory for those."
                                           (const '(user-homes)))
                        (service-extension etc-service-type
                                           etc-files)))
+                (default-value '())
                 (description
                  "Ensure the specified user accounts and groups exist, as well
 as each account home directory.")))

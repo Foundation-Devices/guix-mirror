@@ -4,6 +4,7 @@
 ;;; Copyright © 2022 muradm <mail@muradm.net>
 ;;; Copyright © 2022 Aleksandr Vityazev <avityazev@posteo.org>
 ;;; Copyright © 2023 Andrew Tropin <andrew@trop.in>
+;;; Copyright © 2023 Nicolas Graves <ngraves@ngraves.fr>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -22,6 +23,7 @@
 
 (define-module (gnu packages tree-sitter)
   #:use-module ((guix licenses) #:prefix license:)
+  #:use-module (gnu packages)
   #:use-module (gnu packages crates-graphics)
   #:use-module (gnu packages crates-io)
   #:use-module (gnu packages graphviz)
@@ -29,16 +31,72 @@
   #:use-module (gnu packages node)
   #:use-module (guix build-system cargo)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system pyproject)
   #:use-module (guix build-system tree-sitter)
   #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix utils))
 
+(define-public python-tree-sitter
+  (package
+    (name "python-tree-sitter")
+    (version "0.20.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/tree-sitter/py-tree-sitter")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1rc8zqiry4n52xlf7pwx4s56ka9vwjzwgn7blwbkiscqdwvsai92"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'set-tree-sitter-lib-path
+            (lambda _
+              (let ((tree-sitter #$(this-package-input "tree-sitter")))
+                (substitute* "setup.py"
+                  (((string-append
+                     "( *)\\[\"tree_sitter\\/core\\/lib\\/src\\/lib\\.c\", "
+                     "\"tree_sitter\\/binding\\.c\"\\],") all tabs)
+                   (string-append
+                    tabs "[\"tree_sitter/binding.c\"],\n"
+                    tabs "library_dirs=[\"" tree-sitter "/lib\"],\n"
+                    tabs "libraries=[\"tree-sitter\"],"))
+                  (("include_dirs=.*")
+                   (string-append
+                    "include_dirs=[\"" tree-sitter "/include\"],\n"))))))
+          (add-before 'check 'set-test-lib-paths
+            (lambda _
+              (let ((py #$(this-package-native-input "tree-sitter-python"))
+                    (js #$(this-package-native-input "tree-sitter-javascript")))
+                (substitute* "tests/test_tree_sitter.py"
+                  (("Language\\.build_library")
+                   "_ =")
+                  (("LIB_PATH(, \"python\")" all name)
+                   (string-append
+                    "\"" py "/lib/tree-sitter/libtree-sitter-python.so\"" name))
+                  (("LIB_PATH(, \"javascript\")" all name)
+                   (string-append
+                    "\"" js "/lib/tree-sitter/libtree-sitter-javascript.so\""
+                    name)))))))))
+    (inputs (list tree-sitter))
+    (native-inputs
+     (list tree-sitter-python tree-sitter-javascript))
+    (home-page "https://github.com/tree-sitter/py-tree-sitter")
+    (synopsis "Python bindings to the Tree-sitter parsing library")
+    (description "This package provides Python bindings to the
+Tree-sitter parsing library.")
+    (license license:expat)))
+
 (define-public tree-sitter
   (package
     (name "tree-sitter")
-    (version "0.20.7")
+    (version "0.20.8")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -47,7 +105,7 @@
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1nv2a2hr22w8ix71b6rkkxv9rfvhvwlmyql0g6lva9qzj4vy50p4"))
+                "10w17lfn9asqrk612xivkx26lc620s3nnm30hhlyqd4bj19k7gyv"))
               (modules '((guix build utils)))
               (snippet #~(begin
                            ;; Remove bundled ICU parts
@@ -141,18 +199,19 @@ This package includes the @code{libtree-sitter} runtime library.")
         ("rust-semver" ,rust-semver-1)
         ("rust-smallbitvec" ,rust-smallbitvec-2)
         ("rust-thiserror" ,rust-thiserror-1)
-        ("rust-tiny-http" ,rust-tiny-http-0.8)
+        ("rust-tiny-http" ,rust-tiny-http-0.12)
         ("rust-toml" ,rust-toml-0.5)
         ("rust-walkdir" ,rust-walkdir-2)
-        ("rust-webbrowser" ,rust-webbrowser-0.5)
+        ("rust-webbrowser" ,rust-webbrowser-0.8)
         ("rust-which" ,rust-which-4))
       #:cargo-development-inputs
-      `(("rust-pretty-assertions" ,rust-pretty-assertions-0.7))
+      `(("rust-ctor" ,rust-ctor-0.1)
+        ("rust-pretty-assertions" ,rust-pretty-assertions-0.7)
+        ("rust-rand" ,rust-rand-0.8)
+        ("rust-tempfile" ,rust-tempfile-3)
+        ("rust-unindent" ,rust-unindent-0.2))
       #:phases
       #~(modify-phases %standard-phases
-          (add-after 'unpack 'delete-cargo-lock
-            (lambda _
-              (delete-file "Cargo.lock")))
           (add-after 'unpack 'patch-node
             (lambda _
               (substitute* "cli/src/generate/mod.rs"
@@ -265,6 +324,17 @@ will be used in description and synopsis."
    #:inputs (list tree-sitter-javascript)
    #:grammar-directories '("typescript" "tsx")))
 
+(define-public tree-sitter-bibtex
+  (let ((commit "ccfd77db0ed799b6c22c214fe9d2937f47bc8b34")
+        (revision "0"))
+    (tree-sitter-grammar
+     "bibtex" "Bibtex"
+     "0m7f3dkqbmy8x1bhl11m8f4p6n76wfvh99rp46zrqv39355nw1y2"
+     (git-version "0.1.0" revision commit)
+     #:repository-url "https://github.com/latex-lsp/tree-sitter-bibtex"
+     #:commit commit
+     #:license license:expat)))
+
 (define-public tree-sitter-css
   (tree-sitter-grammar
    "css" "CSS"
@@ -301,6 +371,13 @@ will be used in description and synopsis."
        #:commit commit
        #:license (list license:asl2.0 license:expat))))
 
+(define-public tree-sitter-heex
+  (tree-sitter-grammar
+   "heex" "Heex"
+   "00330rgg67fq0d9gk1yswj78d9mn1jvvjmmy1k7cxpvm5993p3sw"
+   "0.6.0"
+   #:repository-url "https://github.com/phoenixframework/tree-sitter-heex"))
+
 (define-public tree-sitter-bash
   (tree-sitter-grammar
    "bash" "Bash"
@@ -320,6 +397,13 @@ will be used in description and synopsis."
    "5.6.3"
    #:article "an"
    #:repository-url "https://github.com/elm-tooling/tree-sitter-elm"))
+
+(define-public tree-sitter-gomod
+  (tree-sitter-grammar
+   "gomod" "Go .mod"
+   "1hblbi2bs4hlil703myqhvvq2y1x41rc3w903hg2bhbazh7x8yyf"
+   "1.0.0"
+   #:repository-url "https://github.com/camdencheek/tree-sitter-go-mod.git"))
 
 (define-public tree-sitter-go
   ;; There are a lot of additions, the last tag was placed more than 1 year ago
@@ -348,10 +432,13 @@ will be used in description and synopsis."
    "0.20.0"))
 
 (define-public tree-sitter-json
-  (tree-sitter-grammar
-   "json" "JSON"
-   "06pjh31bv9ja9hlnykk257a6zh8bsxg2fqa54al7qk1r4n9ksnff"
-   "0.19.0"))
+  ;; Not tagged
+  (let ((commit "5d992d9dd42d533aa25618b3a0588f4375adf9f3"))
+    (tree-sitter-grammar
+     "json" "JSON"
+     "08kxzqyyl900al8mc0bwigxlkzsh2f14qzjyb5ki7506myxlmnql"
+     "0.20.0"
+     #:commit commit)))
 
 (define-public tree-sitter-julia
   (tree-sitter-grammar

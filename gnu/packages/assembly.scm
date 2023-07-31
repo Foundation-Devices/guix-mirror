@@ -37,6 +37,7 @@
   #:use-module (guix git-download)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
+  #:use-module (guix gexp)
   #:use-module (gnu packages)
   #:use-module (gnu packages admin)
   #:use-module (gnu packages autotools)
@@ -185,14 +186,14 @@ speed on x86, NEON on ARM, etc.).")
 (define-public fasm
   (package
     (name "fasm")
-    (version "1.73.30")
+    (version "1.73.31")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://flatassembler.net/fasm-"
                            version ".tgz"))
        (sha256
-        (base32 "00giqb94z8cxhv20yiyk8axkd2kzjcg1c0841yzbn7c8lm8m06bm"))))
+        (base32 "1qqg1czr9dr73l4gwrwim85mjs65al7vv8b292jipywimhhwnf4g"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no tests exist
@@ -345,7 +346,7 @@ package for the Game Boy and Game Boy Color.  It consists of:
 (define-public wla-dx
   (package
     (name "wla-dx")
-    (version "10.1")
+    (version "10.5")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -354,20 +355,21 @@ package for the Game Boy and Game Boy Color.  It consists of:
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1nh2k2xn5fj389gq68f3fxgrxakgn8c6dw2ffqay86s3706hac9w"))))
+                "1h6apmhaks4772s2cja34ck488p8yhb3nscbxjw5061ml2046zqq"))))
     (build-system cmake-build-system)
     (native-inputs (list python-sphinx)) ; to generate man pages
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-before 'check 'copy-tests-to-build-directory
-           (lambda _
-             (copy-recursively "../source/tests" "tests")))
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (let ((sh (which "sh")))
-               (when tests?
-                 (invoke sh "../source/run_tests.sh"))))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'check 'copy-tests-to-build-directory
+            (lambda _
+              (copy-recursively "../source/tests" "tests")))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (let ((sh (which "sh")))
+                (when tests?
+                  (invoke sh "../source/run_tests.sh"))))))))
     (home-page "https://github.com/vhelin/wla-dx")
     (synopsis "Assemblers for various processors")
     (description "WLA DX is a set of tools to assemble assembly files to
@@ -394,21 +396,23 @@ Supported architectures are:
 (define-public xa
   (package
     (name "xa")
-    (version "2.3.12")
+    (version "2.3.14")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://www.floodgap.com/retrotech/xa"
                                   "/dists/xa-" version ".tar.gz"))
               (sha256
                (base32
-                "0107zdwc2rzlp26pyx7gns4lqmiyg68nmpgwrg36yrrd04v1bzgq"))))
+                "0bph41aglxl07rnggrir2dl1x97f52hm0bl51d0vklyqvfyvm6qv"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f   ; TODO: custom test harness, not sure how it works
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure))            ; no "configure" script
-       #:make-flags (list (string-append "DESTDIR=" (assoc-ref %outputs "out")))))
+     (list
+      #:tests? #f           ; TODO: custom test harness, not sure how it works
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure))          ; no "configure" script
+      #:make-flags
+      #~(list (string-append "DESTDIR=" #$output)))) ; no $prefix support
     (native-inputs (list perl))
     (home-page "https://www.floodgap.com/retrotech/xa/")
     (synopsis "Two-pass portable cross-assembler")
@@ -420,38 +424,48 @@ as 6502A, 6504, 6507, 6510, 7501, 8500, 8501, 8502 ...),
     (license license:gpl2)))
 
 (define-public armips
-  (package
-    (name "armips")
-    (version "0.11.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/Kingcom/armips")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "1c4dhjkvynqn9xm2vcvwzymk7yg8h25alnawkz4z1dnn1z1k3r9g"))))
-    (build-system cmake-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key inputs #:allow-other-keys)
-             (invoke "./armipstests" "../source/Tests")))
-         (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (install-file "armips" (string-append (assoc-ref outputs "out")
-                                                   "/bin"))
-             #t)))))
-    (home-page "https://github.com/Kingcom/armips")
-    (synopsis "Assembler for various ARM and MIPS platforms")
-    (description
-     "armips is an assembler with full support for the MIPS R3000, MIPS R4000,
+  (let ((commit "6719edebaae03330ee5441d9b28280672edf00d5")
+        (revision "1"))
+    (package
+      (name "armips")
+      (version "0.11.0")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/Kingcom/armips")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1a85h2b3r3hy9hm07v8drvkklp4qfdq3i3zwb3cgk011s0njdfvz"))
+         (modules '((guix build utils)))
+         (snippet
+          #~(begin
+              (substitute* "Core/Types.h"
+                (("#include <string>" all)
+                 (string-append all "\n"
+                                "#include <string_view>")))))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:configure-flags '("-DARMIPS_USE_STD_FILESYSTEM=ON")
+         #:phases
+         (modify-phases %standard-phases
+           (replace 'check
+             (lambda* (#:key inputs #:allow-other-keys)
+               (invoke "./armipstests" "../source/Tests")))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (install-file "armips" (string-append (assoc-ref outputs "out")
+                                                     "/bin"))
+               #t)))))
+      (home-page "https://github.com/Kingcom/armips")
+      (synopsis "Assembler for various ARM and MIPS platforms")
+      (description
+       "armips is an assembler with full support for the MIPS R3000, MIPS R4000,
 Allegrex and RSP instruction sets, partial support for the EmotionEngine
 instruction set, as well as complete support for the ARM7 and ARM9 instruction
 sets, both THUMB and ARM mode.")
-    (license license:expat)))
+      (license license:expat))))
 
 (define-public intel-xed
   (package
@@ -542,3 +556,34 @@ family of command line utility wrappers in the default output.  Each of the cli
 tools is named like @code{xed*}.  Documentation for the cli tools is sparse, so
 this is a case where ``the code is the documentation.''")
     (license license:asl2.0)))
+
+(define-public neon2sse
+  (let ((commit "097a5ecacd527d5b5c3006e360fb9cb1c1c48a1f")
+        (version "0")
+        (revision "1"))
+    (package
+      (name "neon2sse")
+      (version (git-version version revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/intel/ARM_NEON_2_x86_SSE")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "17mf788b8asrvjl6dnyzrm5xrz20wx9j5f8n6drgc6qgwqxpx4hv"))))
+      (build-system cmake-build-system)
+      (arguments
+       (list #:tests? #f)) ;no tests
+      (home-page "https://github.com/intel/ARM_NEON_2_x86_SSE")
+      (synopsis "Header file to simplify ARM->IA32 porting")
+      (description
+       "The @file{NEON_2_SSE.h} file is intended to simplify ARM-to-IA32
+porting.  It makes the correspondence (or a real porting) of ARM NEON
+intrinsics as defined in the @file{arm_neon.h} header and x86 SSE (up to
+SSE4.2) intrinsic functions as defined in corresponding x86 compilers headers
+files.")
+      (license license:bsd-2))))
+
+

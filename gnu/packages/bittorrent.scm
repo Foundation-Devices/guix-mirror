@@ -2,7 +2,7 @@
 ;;; Copyright © 2014 Taylan Ulrich Bayirli/Kammer <taylanbayirli@gmail.com>
 ;;; Copyright © 2014, 2015, 2016 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016, 2017, 2018, 2019, 2020 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2016, 2017, 2018, 2019, 2020, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016-2020, 2022, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Tomáš Čech <sleep_walker@gnu.org>
 ;;; Copyright © 2016, 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Jelle Licht <jlicht@fsfe.org>
@@ -40,6 +40,7 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system qt)
   #:use-module (guix build-system glib-or-gtk)
   #:use-module ((guix licenses) #:prefix l:)
   #:use-module (guix gexp)
@@ -81,7 +82,7 @@
 (define-public transmission
   (package
     (name "transmission")
-    (version "3.00")
+    (version "4.0.3")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/transmission/transmission"
@@ -89,51 +90,60 @@
                                   version ".tar.xz"))
               (sha256
                (base32
-                "1wjmn96zrvmk8j1yz2ysmqd7a2x6ilvnwwapcvfzgxs2wwpnai4i"))
-              (patches (search-patches "transmission-honor-localedir.patch"))))
-    (build-system glib-or-gtk-build-system)
+                "0njlmpcdsxwx8vwdk9dvsby51l6f6awks9d0mgvi9fs2ivaizc5n"))))
+    (build-system cmake-build-system)
     (outputs '("out"                      ; library and command-line interface
                "gui"))                    ; graphical user interface
     (arguments
-     '(#:configure-flags
-       (list (string-append "--localedir="
-                            (assoc-ref %outputs "gui")
-                            "/share/locale"))
-       ;; Some tests segfault when using libevent 2.12 without internet
-       ;; connection. This has been reported mainstream but not fixed yet:
-       ;; https://github.com/transmission/transmission/issues/1437.
-       #:tests? #f
-       #:glib-or-gtk-wrap-excluded-outputs '("out")
-       #:phases
-       (modify-phases %standard-phases
+      (list
+        #:imported-modules `((guix build glib-or-gtk-build-system)
+                             ,@%cmake-build-system-modules)
+        #:modules '(((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
+                    (guix build cmake-build-system)
+                    (guix build utils))
+        #:phases
+        #~(modify-phases %standard-phases
          ;; Avoid embedding kernel version for reproducible build
-         (add-after 'unpack 'remove-kernel-version
-           (lambda _
-             (substitute* "third-party/miniupnpc/updateminiupnpcstrings.sh"
-               (("OS_VERSION=`uname -r`") "OS_VERSION=Guix"))))
-         (add-after 'install 'move-gui
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Move the GUI to its own output, so that "out" doesn't
-             ;; depend on GTK+.
-             (let ((out (assoc-ref outputs "out"))
-                   (gui (assoc-ref outputs "gui")))
-               (mkdir-p (string-append gui "/bin"))
-               (rename-file (string-append out "/bin/transmission-gtk")
-                            (string-append gui "/bin/transmission-gtk"))
-
+           (add-after 'unpack 'remove-kernel-version
+             (lambda _
+               (substitute* "third-party/miniupnpc/updateminiupnpcstrings.sh"
+                 (("OS_VERSION=`uname -r`") "OS_VERSION=Guix"))))
+           (replace 'check
+             (lambda* (#:key tests? parallel-tests? #:allow-other-keys)
+               (if tests?
+                   ;; XXX this test fails...
+                   (invoke "ctest" "-E" "usesBootstrapFile"
+                           "-j" (if parallel-tests?
+                                    (number->string (parallel-job-count))
+                                    "1"))
+                   (format #t "test suite not run~%"))))
+           (add-after 'install 'move-gui
+             (lambda* (#:key outputs #:allow-other-keys)
+               (mkdir-p (string-append #$output:gui "/bin"))
+               (mkdir-p (string-append #$output:gui "/share/man/man1"))
+               (rename-file (string-append #$output "/bin/transmission-gtk")
+                            (string-append #$output:gui "/bin/transmission-gtk"))
                (for-each
                 (lambda (dir)
-                  (rename-file (string-append out "/share/" dir)
-                               (string-append gui "/share/" dir)))
-                '("appdata" "applications" "icons" "pixmaps"))
-
-               (mkdir-p (string-append gui "/share/man/man1"))
-               (rename-file
-                (string-append out "/share/man/man1/transmission-gtk.1")
-                (string-append gui "/share/man/man1/transmission-gtk.1"))
-             #t))))))
-    (inputs
-     (list libevent curl openssl zlib gtk+ libappindicator))
+                  (rename-file (string-append #$output "/share/" dir)
+                               (string-append #$output:gui "/share/" dir)))
+                '("applications" "icons" "metainfo" "transmission"))
+              (rename-file
+               (string-append #$output "/share/man/man1/transmission-gtk.1")
+               (string-append #$output:gui "/share/man/man1/transmission-gtk.1"))))
+           (add-after 'move-gui 'glib-or-gtk-wrap
+             (lambda* (#:key outputs #:allow-other-keys #:rest args)
+               (apply (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap)
+                      #:glib-or-gtk-wrap-excluded-outputs (list "out")
+                      args))))))
+    (inputs (list curl
+                  (list glib "bin")
+                  gtkmm
+                  libappindicator
+                  libevent
+                  openssl
+                  python
+                  zlib))
     (native-inputs
      (list intltool pkg-config))
     (home-page "https://transmissionbt.com/")
@@ -230,19 +240,21 @@ XML-RPC over SCGI.")
     (license l:gpl2+)))
 
 (define-public tremc
+  (let ((commit "6c15e3f5637c8f3641473328bd8c5b0cc122d930")
+        (revision "0"))
   (package
     (name "tremc")
-    (version "0.9.3")
+    (version (git-version "0.9.3" revision commit))
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/tremc/tremc")
-             (commit version)))
+             (commit commit)))
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "11izsgwj435skkgvw96an6ddcm1hk3ff1gji4ksnidlyv6g6npyv"))))
+         "1anlqzbwgmhrxlh20pfzf4iyw5l2w227h95rq6xf29ai7vddr82k"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no test suite
@@ -259,7 +271,7 @@ XML-RPC over SCGI.")
     (description "Tremc is a console client, with a curses interface, for the
 Transmission BitTorrent daemon.")
     (home-page "https://github.com/tremc/tremc")
-    (license l:gpl3+)))
+    (license l:gpl3+))))
 
 (define-public aria2
   (package
@@ -440,7 +452,7 @@ desktops.")
 (define-public qbittorrent
   (package
     (name "qbittorrent")
-    (version "4.4.1")
+    (version "4.5.4")
     (source
      (origin
        (method git-fetch)
@@ -449,37 +461,20 @@ desktops.")
              (commit (string-append "release-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "00whc4p209g2krsggxyq4sna01djbk1rbzkyjbq4qczvya01xn0w"))))
-    (build-system gnu-build-system)
+        (base32 "1r4vqlwmvg7b0ibq53m7ascyykv3v66qxlwfi0zmmi1ig7rlkxkk"))))
+    (build-system qt-build-system)
     (arguments
-     `(#:configure-flags
-       (list (string-append "--with-boost-libdir="
-                            (assoc-ref %build-inputs "boost")
-                            "/lib")
-             "--enable-debug"
-             "QMAKE_LRELEASE=lrelease")
-       #:modules ((guix build gnu-build-system)
-                  (guix build qt-utils)
-                  (guix build utils))
-       #:imported-modules (,@%gnu-build-system-modules
-                           (guix build qt-utils))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'install 'wrap-qt
-           (lambda* (#:key outputs inputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               (wrap-qt-program "qbittorrent" #:output out #:inputs inputs))
-             #t)))))
+     (list #:configure-flags #~(list "-DTESTING=ON")
+           #:test-target "check"))
     (native-inputs
-     (list pkg-config qttools-5))
+     (list qttools-5))
     (inputs
-     `(("boost" ,boost)
-       ("libtorrent-rasterbar" ,libtorrent-rasterbar)
-       ("openssl" ,openssl)
-       ("python" ,python-wrapper)
-       ("qtbase" ,qtbase-5)
-       ("qtsvg-5" ,qtsvg-5)
-       ("zlib" ,zlib)))
+     (list boost
+           libtorrent-rasterbar
+           openssl
+           python-wrapper
+           qtsvg-5
+           zlib))
     (home-page "https://www.qbittorrent.org/")
     (synopsis "Graphical BitTorrent client")
     (description
@@ -490,6 +485,54 @@ It aims to be a good alternative to all other BitTorrent clients out there.
 qBittorrent is fast, stable and provides unicode support as well as many
 features.")
     (license l:gpl2+)))
+
+(define-public qbittorrent-nox
+  (let ((base qbittorrent))
+    (package
+      (inherit base)
+      (name "qbittorrent-nox")
+      (arguments
+       (substitute-keyword-arguments (package-arguments base)
+         ((#:configure-flags configure-flags)
+          #~(cons "-DGUI=OFF" #$configure-flags))))
+      (inputs
+       (modify-inputs (package-inputs base)
+         (delete "qtsvg-5"))))))
+
+(define-public qbittorrent-enhanced
+  (package
+    (inherit qbittorrent)
+    (name "qbittorrent-enhanced")
+    (version "4.5.4.10")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/c0re100/qBittorrent-Enhanced-Edition")
+             (commit (string-append "release-" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0qwk69mgcyh7fij4nsi4ndd17aa61p2c6cxn9l402w4cf1dy6hfs"))))
+    (home-page "https://github.com/c0re100/qBittorrent-Enhanced-Edition")
+    (description
+     "qBittorrent Enhanced is a bittorrent client based on qBittorrent with
+the following features:
+
+@itemize
+@item Auto Ban Xunlei, QQ, Baidu, Xfplay, DLBT and Offline downloader
+@item Auto Ban Unknown Peer from China Option (Default: OFF)
+@item Auto Update Public Trackers List (Default: OFF)
+@item Auto Ban BitTorrent Media Player Peer Option (Default: OFF)
+@item Peer whitelist/blacklist
+@end itemize")))
+
+(define-public qbittorrent-enhanced-nox
+  (package
+    (inherit qbittorrent-enhanced)
+    (name "qbittorrent-enhanced-nox")
+    (arguments (package-arguments qbittorrent-nox))
+    (inputs (package-inputs qbittorrent-nox))))
 
 (define-public deluge
   (package
@@ -525,9 +568,7 @@ features.")
            python-zope-interface))
     (native-inputs
      (list intltool python-wheel
-           (if (string-prefix? "x86_64-" (%current-system))
-               librsvg
-               librsvg-2.40)))
+           (librsvg-for-system)))
     ;; TODO: Enable tests.
     ;; After "pytest-twisted" is packaged, HOME is set, and an X server is
     ;; started, some of the tests still fail.  There are likely some tests

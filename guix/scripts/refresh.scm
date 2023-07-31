@@ -1,12 +1,12 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2013 Nikita Karetnikov <nikita@karetnikov.org>
 ;;; Copyright © 2014 Eric Bavier <bavier@member.fsf.org>
 ;;; Copyright © 2015 Alex Kost <alezost@gmail.com>
 ;;; Copyright © 2016 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2017 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2018 Efraim Flashner <efraim@flashner.co.il>
-;;; Copyright © 2019 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2019, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2020 Simon Tournier <zimon.toutoune@gmail.com>
 ;;; Copyright © 2021 Sarah Morgensen <iskarian@mgsn.dev>
 ;;; Copyright © 2022 Hartmut Goebel <h.goebel@crazy-compilers.com>
@@ -32,6 +32,7 @@
   #:use-module ((guix scripts build) #:select (%standard-build-options))
   #:use-module (guix store)
   #:use-module (guix utils)
+  #:use-module (guix discovery)
   #:use-module (guix packages)
   #:use-module (guix profiles)
   #:use-module (guix upstream)
@@ -43,15 +44,13 @@
   #:use-module (gnu packages)
   #:use-module ((gnu packages commencement) #:select (%final-inputs))
   #:use-module (ice-9 match)
-  #:use-module (ice-9 regex)
-  #:use-module (ice-9 vlist)
   #:use-module (ice-9 format)
+  #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-37)
   #:use-module (srfi srfi-71)
-  #:use-module (ice-9 binary-ports)
   #:export (guix-refresh))
 
 
@@ -74,8 +73,23 @@
                     ((or "core" "non-core")
                      (alist-cons 'select (string->symbol arg)
                                  result))
+                    ((? (cut string-prefix? "module:" <>))
+                     (let ((mod (cond
+                                 ;; Shorthand name: "module:guile".
+                                 ((string-match "module:([^\( ]+)$" arg) =>
+                                  (lambda (m)
+                                    `(gnu packages ,(string->symbol
+                                                     (match:substring m 1)))))
+                                 ;; Full name : "module:(gnu packages guile)".
+                                 ((string-match "module:\\(([^)]+)\\)$" arg) =>
+                                  (lambda (m)
+                                    (map string->symbol
+                                         (string-split
+                                          (match:substring m 1) #\space))))
+                                 (else (leave (G_ "invalid module: ~a~%") arg)))))
+                       (alist-cons 'select (cons 'module mod) result)))
                     (x
-                     (leave (G_ "~a: invalid selection; expected `core' or `non-core'~%")
+                     (leave (G_ "~a: invalid selection; expected `core', `non-core' or `module:NAME'~%")
                             arg)))))
         (option '(#\t "type") #t #f
                 (lambda (opt name arg result)
@@ -101,7 +115,7 @@
         (option '(#\r "recursive") #f #f
                 (lambda (opt name arg result)
                   (alist-cons 'recursive? #t result)))
-        (option '("list-transitive") #f #f
+        (option '(#\T "list-transitive") #f #f
                 (lambda (opt name arg result)
                   (alist-cons 'list-transitive? #t result)))
 
@@ -144,8 +158,10 @@ specified with `--select'.\n"))
   (display (G_ "
   -u, --update           update source files in place"))
   (display (G_ "
-  -s, --select=SUBSET    select all the packages in SUBSET, one of
-                         `core' or `non-core'"))
+  -s, --select=SUBSET    select all the packages in SUBSET, one of `core`,
+                         `non-core' or `module:NAME' (eg: module:guile)
+                         the module can also be fully specified as
+                         'module:(gnu packages guile)'"))
   (display (G_ "
   -m, --manifest=FILE    select all the packages from the manifest in FILE"))
   (display (G_ "
@@ -159,7 +175,7 @@ specified with `--select'.\n"))
   (display (G_ "
   -r, --recursive        check the PACKAGE and its inputs for upgrades"))
   (display (G_ "
-      --list-transitive  list all the packages that PACKAGE depends on"))
+  -T, --list-transitive  list all the packages that PACKAGE depends on"))
   (newline)
   (display (G_ "
       --keyring=FILE     use FILE as the keyring of upstream OpenPGP keys"))
@@ -212,7 +228,8 @@ options like '--recursive'."
     (let* ((input->package (match-lambda
                              ((name (? package? package) _ ...) package)
                              (_ #f)))
-           (final-inputs   (map input->package %final-inputs))
+           (final-inputs   (map input->package
+                                (%final-inputs (%current-system))))
            (core           (append final-inputs
                                    (append-map (compose (cut filter-map input->package <>)
                                                         package-transitive-inputs)
@@ -260,13 +277,20 @@ update would trigger a complete rebuild."
        (let ((select? (match (assoc-ref opts 'select)
                         ('core core-package?)
                         ('non-core (negate core-package?))
-                        (_ (const #t)))))
+                        (_ (const #t))))
+             (modules (match (assoc-ref opts 'select)
+                         (('module . mod)
+                          (list (resolve-interface mod)))
+                         (_ (all-modules (%package-module-path)
+                                         #:warn
+                                         warn-about-load-error)))))
          (map update-spec
               (fold-packages (lambda (package result)
                                (if (select? package)
                                    (keep-newest package result)
                                    result))
-                             '()))))
+                             '()
+                             modules))))
       (some                                       ;user-specified packages
        some)))
 
@@ -325,7 +349,8 @@ update would trigger a complete rebuild."
            (package-name package)))
 
 (define* (update-package store package version updaters
-                         #:key (key-download 'interactive) warn?)
+                         #:key (key-download 'interactive) key-server
+                         warn?)
   "Update the source file that defines PACKAGE with the new version.
 KEY-DOWNLOAD specifies a download policy for missing OpenPGP keys; allowed
 values: 'interactive' (default), 'always', and 'never'.  When WARN? is true,
@@ -333,7 +358,9 @@ warn about packages that have no matching updater."
   (if (lookup-updater package updaters)
       (let ((version output source
                      (package-update store package updaters
-                                     #:key-download key-download #:version version))
+                                     #:version version
+                                     #:key-download key-download
+                                     #:key-server key-server))
             (loc (or (package-field-location package 'version)
                      (package-location package))))
         (when version
@@ -343,42 +370,6 @@ warn about packages that have no matching updater."
                       (G_ "~a: updating from version ~a to version ~a...~%")
                       (package-name package)
                       (package-version package) version)
-                (for-each
-                 (lambda (change)
-                   (define field
-                     (match (upstream-input-change-type change)
-                       ('native 'native-inputs)
-                       ('propagated 'propagated-inputs)
-                       (_ 'inputs)))
-
-                   (define name
-                     (package-name package))
-                   (define loc
-                     (package-field-location package field))
-                   (define change-name
-                     (upstream-input-change-name change))
-
-                   (match (list (upstream-input-change-action change)
-                                (upstream-input-change-type change))
-                     (('add 'regular)
-                      (info loc (G_ "~a: consider adding this input: ~a~%")
-                            name change-name))
-                     (('add 'native)
-                      (info loc (G_ "~a: consider adding this native input: ~a~%")
-                            name change-name))
-                     (('add 'propagated)
-                      (info loc (G_ "~a: consider adding this propagated input: ~a~%")
-                            name change-name))
-                     (('remove 'regular)
-                      (info loc (G_ "~a: consider removing this input: ~a~%")
-                            name change-name))
-                     (('remove 'native)
-                      (info loc (G_ "~a: consider removing this native input: ~a~%")
-                            name change-name))
-                     (('remove 'propagated)
-                      (info loc (G_ "~a: consider removing this propagated input: ~a~%")
-                            name change-name))))
-                 (upstream-source-input-changes source))
                 (let ((hash (file-hash* output)))
                   (update-package-source package source hash)))
               (warning (G_ "~a: version ~a could not be \
@@ -599,15 +590,28 @@ all are dependent packages: ~{~a~^ ~}~%")
                               (or (assoc-ref opts 'keyring)
                                   (string-append (config-directory)
                                                  "/upstream/trustedkeys.kbx"))))
-                (for-each
-                 (lambda (update)
-                   (update-package store
-                                   (update-spec-package update)
-                                   (update-spec-version update)
-                                   updaters
-                                   #:key-download key-download
-                                   #:warn? warn?))
-                 update-specs)
+                (let* ((spec-line
+                        (compose (cut string-trim-right <> char-set:digit)
+                                 location->string
+                                 package-location
+                                 update-spec-package))
+                       ;; Sort the specs so that we update packages from the
+                       ;; bottom of the file to the top.  This way we can be
+                       ;; sure that the package locations are always correct
+                       ;; and never shifted due to previous edits.
+                       (sorted-update-specs
+                        (sort update-specs
+                              (lambda (a b) (string> (spec-line a) (spec-line b))))))
+                  (for-each
+                   (lambda (update)
+                     (update-package store
+                                     (update-spec-package update)
+                                     (update-spec-version update)
+                                     updaters
+                                     #:key-server (%openpgp-key-server)
+                                     #:key-download key-download
+                                     #:warn? warn?))
+                   sorted-update-specs))
                 (return #t)))
              (else
               (for-each (cut check-for-package-update <> updaters

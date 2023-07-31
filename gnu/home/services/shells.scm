@@ -1,6 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2021 Andrew Tropin <andrew@trop.in>
 ;;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
+;;; Copyright © 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -44,7 +45,10 @@
 
             home-fish-service-type
             home-fish-configuration
-            home-fish-extension))
+            home-fish-extension
+
+            home-inputrc-service-type
+            home-inputrc-configuration))
 
 ;;; Commentary:
 ;;;
@@ -133,7 +137,7 @@ Shell startup process will continue with
   (environment-variables
    (alist '())
    "Association list of environment variables to set for the Zsh session."
-   serialize-posix-env-vars)
+   (serializer serialize-posix-env-vars))
   (zshenv
    (text-config '())
    "List of file-like objects, which will be added to @file{.zshenv}.
@@ -309,16 +313,24 @@ source ~/.profile
 ;;;
 
 (define (bash-serialize-aliases field-name val)
-  #~(string-append
-     #$@(map
-         (match-lambda
-           ((key . #f)
-            "")
-           ((key . #t)
-            #~(string-append "alias " #$key "\n"))
-           ((key . value)
-            #~(string-append "alias " #$key "=\"" #$value "\"\n")))
-         val)))
+  (with-shell-quotation-bindings
+   #~(string-append
+      #$@(map
+          (match-lambda
+            ((key . #f)
+             "")
+            ((key . #t)
+             #~(string-append "alias " #$key "\n"))
+            ((key . (? literal-string? value))
+             #~(string-append "alias " #$key "="
+                              (shell-single-quote
+                               #$(literal-string-value value))
+                              "\n"))
+            ((key . value)
+             #~(string-append "alias " #$key "="
+                              (shell-double-quote #$value)
+                              "\n")))
+          val))))
 
 (define-configuration home-bash-configuration
   (package
@@ -334,7 +346,7 @@ source ~/.profile
 rules for the @code{home-environment-variables-service-type} apply
 here (@pxref{Essential Home Services}).  The contents of this field will be
 added after the contents of the @code{bash-profile} field."
-   serialize-posix-env-vars)
+   (serializer serialize-posix-env-vars))
   (aliases
    (alist '())
    "Association list of aliases to set for the Bash session.  The aliases will be
@@ -351,7 +363,7 @@ turns into
 @example
 alias ls=\"ls -alF\"
 @end example"
-   bash-serialize-aliases)
+   (serializer bash-serialize-aliases))
   (bash-profile
    (text-config '())
    "List of file-like objects, which will be added to @file{.bash_profile}.
@@ -536,19 +548,19 @@ with text blocks from other extensions and the base service."))
   (environment-variables
    (alist '())
    "Association list of environment variables to set in Fish."
-   serialize-fish-env-vars)
+   (serializer serialize-fish-env-vars))
   (aliases
    (alist '())
    "Association list of aliases for Fish, both the key and the value
 should be a string.  An alias is just a simple function that wraps a
 command, If you want something more akin to @dfn{aliases} in POSIX
 shells, see the @code{abbreviations} field."
-   serialize-fish-aliases)
+   (serializer serialize-fish-aliases))
   (abbreviations
    (alist '())
    "Association list of abbreviations for Fish.  These are words that,
 when typed in the shell, will automatically expand to the full text."
-   serialize-fish-abbreviations))
+   (serializer serialize-fish-abbreviations)))
 
 (define (fish-files-service config)
   `(("fish/config.fish"
@@ -625,6 +637,134 @@ end\n\n")
                 (default-value (home-fish-configuration))
                 (description "\
 Install and configure Fish, the friendly interactive shell.")))
+
+
+;;;
+;;; Readline.
+;;;
+
+(define (serialize-inputrc-key-bindings field-name val)
+  #~(string-append
+     #$@(map
+         (match-lambda
+           ((key . value)
+            #~(string-append #$key ": " #$value "\n")))
+         val)))
+
+(define (serialize-inputrc-variables field-name val)
+  #~(string-append
+     #$@(map
+         (match-lambda
+           ((key . #f)
+            #~(string-append "set " #$key " off\n"))
+           ((key . #t)
+            #~(string-append "set " #$key " on\n"))
+           ((key . value)
+            #~(string-append "set " #$key " " #$value "\n")))
+         val)))
+
+(define (serialize-inputrc-conditional-constructs field-name val)
+  #~(string-append
+     #$@(map
+         (match-lambda
+           (("$endif" . _)
+            "$endif\n")
+           (("$include" . value)
+            #~(string-append "$include " #$value "\n"))
+           ;; TODO: key can only be "$if" or "$else".
+           ((key . value)
+            #~(string-append #$key "\n"
+                             #$(serialize-configuration
+                                 value
+                                 home-inputrc-configuration-fields))))
+         val)))
+
+(define (serialize-inputrc-extra-content field-name value)
+  #~(if (string=? #$value "") "" (string-append #$value "\n")))
+
+(define-configuration home-inputrc-configuration
+  (key-bindings
+   (alist '())
+   "Association list of readline key bindings to be added to the
+@code{~/.inputrc} file.  This is where code like this:
+
+@lisp
+'((\"Control-l\" . \"clear-screen\"))
+@end lisp
+
+turns into
+
+@example
+Control-l: clear-screen
+@end example"
+   (serializer serialize-inputrc-key-bindings))
+  (variables
+   (alist '())
+   "Association list of readline variables to set.  This is where configuration
+options like this:
+
+@lisp
+'((\"bell-style\" . \"visible\")
+  (\"colored-completion-prefix\" . #t))
+@end lisp
+
+turns into
+
+@example
+set bell-style visible
+set colored-completion-prefix on
+@end example"
+   (serializer serialize-inputrc-variables))
+  (conditional-constructs
+   (alist '())
+   "Association list of conditionals to add to the initialization file.  This
+includes @command{$if}, @command{else}, @command{endif} and @command{include}
+and they receive a value of another @command{home-inputrc-configuration}.
+
+@lisp
+(conditional-constructs
+ `((\"$if mode=vi\" .
+     ,(home-inputrc-configuration
+        (variables
+         `((\"show-mode-in-prompt\" . #t)))))
+   (\"$else\" .
+     ,(home-inputrc-configuration
+        (key-bindings
+         `((\"Control-l\" . \"clear-screen\")))))
+   (\"$endif\" . #t)))
+@end lisp
+
+turns into
+
+@example
+$if mode=vi
+set show-mode-in-prompt on
+$else
+Control-l: clear-screen
+$endif
+@end example"
+   (serializer serialize-inputrc-conditional-constructs))
+  (extra-content
+   (string "")
+   "Extra content appended as-is to the configuration file.  Run @command{man
+readline} for more information about all the configuration options."
+   (serializer serialize-inputrc-extra-content)))
+
+(define (home-inputrc-files config)
+  (list
+   `(".inputrc"
+     ,(mixed-text-file "inputrc"
+                       (serialize-configuration
+                         config
+                         home-inputrc-configuration-fields)))))
+
+(define home-inputrc-service-type
+  (service-type (name 'inputrc)
+                (extensions
+                 (list (service-extension home-files-service-type
+                                          home-inputrc-files)))
+                (default-value (home-inputrc-configuration))
+                (description "Configure readline in @code{.inputrc}.")))
 
 
 (define (generate-home-shell-profile-documentation)

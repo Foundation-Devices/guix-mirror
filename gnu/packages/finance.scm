@@ -109,6 +109,7 @@
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages networking)
+  #:use-module (gnu packages pdf)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
@@ -122,6 +123,7 @@
   #:use-module (gnu packages readline)
   #:use-module (gnu packages security-token)
   #:use-module (gnu packages sphinx)
+  #:use-module (gnu packages sqlite)
   #:use-module (gnu packages tex)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages textutils)
@@ -132,10 +134,12 @@
   #:use-module (gnu packages xml)
   #:use-module (gnu packages gnuzilla))
 
-(define-public bitcoin-core-23.0
+(define-public bitcoin-core
+  ;; The support lifetimes for bitcoin-core versions can be found in
+  ;; <https://bitcoincore.org/en/lifecycle/#schedule>.
   (package
     (name "bitcoin-core")
-    (version "23.0")
+    (version "25.0")
     (source (origin
               (method url-fetch)
               (uri
@@ -143,7 +147,7 @@
                               version "/bitcoin-" version ".tar.gz"))
               (sha256
                (base32
-                "01fcb90pqip3v77kljykx51cmg7jdg2cmp7ys0a40svdkps8nx16"))))
+                "1hpbw6diyla75a6jrwsis9c5pnhpnnxwbznsik1s1fd35ks7rxjx"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf
@@ -159,7 +163,8 @@
            libevent
            miniupnpc
            openssl
-           qtbase-5))
+           qtbase-5
+           sqlite))
     (arguments
      `(#:configure-flags
        (list
@@ -209,11 +214,6 @@ collectively by the network.  Bitcoin Core is the reference implementation
 of the bitcoin protocol.  This package provides the Bitcoin Core command
 line client and a client based on Qt.")
     (license license:expat)))
-
-;; The support lifetimes for bitcoin-core versions can be found in
-;; <https://bitcoincore.org/en/lifecycle/#schedule>.
-
-(define-public bitcoin-core bitcoin-core-23.0)
 
 (define-public ghc-hledger
   (package
@@ -288,14 +288,14 @@ Accounting.")
 (define-public homebank
   (package
     (name "homebank")
-    (version "5.6.2")
+    (version "5.6.5")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://homebank.free.fr/public/sources/"
                                   "homebank-" version ".tar.gz"))
               (sha256
                (base32
-                "1w8nafqr54i3gksd2s0n246ip178qikn0jcmdx4ihg2dw1cdxsqj"))))
+                "1a1cdldvs0xc30xkxkap72gafss90hmglakad5r8aykxz3y4sjdm"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
      (list pkg-config intltool))
@@ -312,7 +312,7 @@ and dynamically with report tools based on filtering and graphical charts.")
 (define-public ledger
   (package
     (name "ledger")
-    (version "3.2.1")
+    (version "3.3.2")
     (source
      (origin
        (method git-fetch)
@@ -321,14 +321,7 @@ and dynamically with report tools based on filtering and graphical charts.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0x6jxwss3wwzbzlwmnwb8yzjk8f9wfawif4f1b74z2qg6hc4r7f6"))
-       (snippet '(begin
-                   ;; Remove test that fails due to difference in
-                   ;; reported error message (missing leading "./" in the
-                   ;; file name); started some time after Guix commit
-                   ;; 727f05e1e285aa52f5a19ec923fdc2259859b4b1
-                   (delete-file "test/regress/BF3C1F82-2.test")
-                   #true))))
+        (base32 "0vchc97952w3fkkdn3v0nzjlgzg83cblwsi647jp3k9jq6rvhaak"))))
     (build-system cmake-build-system)
     (arguments
      `(#:modules (,@%cmake-build-system-modules
@@ -370,10 +363,6 @@ and dynamically with report tools based on filtering and graphical charts.")
              (setenv "TZDIR"
                      (search-input-directory inputs
                                              "share/zoneinfo"))
-             ;; Skip failing test BaselineTest_cmd-org.
-             ;; This is a known upstream issue. See
-             ;; https://github.com/ledger/ledger/issues/550
-             (setenv "ARGS" "-E BaselineTest_cmd-org")
              #t)))))
     (inputs
      (list boost
@@ -558,7 +547,7 @@ do so.")
 (define-public electrum
   (package
     (name "electrum")
-    (version "4.3.2")
+    (version "4.4.5")
     (source
      (origin
        (method url-fetch)
@@ -566,13 +555,12 @@ do so.")
                            version "/Electrum-"
                            version ".tar.gz"))
        (sha256
-        (base32 "1kbyinm9fnxpx9chkyd11yr9rxvcxvw3ml7kzvxcfa8v7jnl0dmx"))
+        (base32 "1gifnb927b51947psbj58c7kdsgncn3d9j7rpk5mls678yf1qd5d"))
        (modules '((guix build utils)))
        (snippet
         '(begin
            ;; Delete the bundled dependencies.
-           (delete-file-recursively "packages")
-           #t))))
+           (delete-file-recursively "packages")))))
     (build-system python-build-system)
     (inputs
      (list libsecp256k1
@@ -596,31 +584,13 @@ do so.")
      `(#:tests? #f                      ; no tests
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'fix-prefix
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               ;; setup.py installs to ~/.local/share if sys.prefix/share isn't
-               ;; writable.  sys.prefix points to Python's, not our, --prefix.
-               (mkdir-p (string-append out "/share"))
-               (substitute* "setup.py"
-                 (("sys\\.prefix")
-                  (format #f "\"~a\"" out)))
-               #t)))
-         (add-after 'unpack 'relax-dnspython-version-requirement
-           ;; The version requirement for dnspython>=2.0,<2.1 makes the
-           ;; sanity-check phase fail, but the application seems to be working
-           ;; fine with dnspython 2.1 (the version we have currently).
-           (lambda _
-             (substitute* "contrib/requirements/requirements.txt"
-               (("dnspython>=.*")
-                "dnspython"))))
          (add-after 'unpack 'use-libsecp256k1-input
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "electrum/ecc_fast.py"
-               (("library_paths = .* 'libsecp256k1.so.0'.")
-                (string-append "library_paths = ('"
+               (("library_paths = \\[\\]")
+                (string-append "library_paths = ['"
                                (assoc-ref inputs "libsecp256k1")
-                               "/lib/libsecp256k1.so.0'"))))))))
+                               "/lib/libsecp256k1.so']"))))))))
     (home-page "https://electrum.org/")
     (synopsis "Bitcoin wallet")
     (description
@@ -633,7 +603,7 @@ other machines/servers.  Electrum does not download the Bitcoin blockchain.")
 (define-public electron-cash
   (package
     (name "electron-cash")
-    (version "4.2.12")
+    (version "4.3.1")
     (source
      (origin
        (method git-fetch)
@@ -642,7 +612,7 @@ other machines/servers.  Electrum does not download the Bitcoin blockchain.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1bfnfpdyi3q5zq0zj07dq82aj3cihnr7j82gy4ch97182lsl6nms"))))
+        (base32 "0slx7hmlw2gpcqg951vwvnyl7j52pfzqyaldphghhfxbfzjs7v64"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -663,11 +633,6 @@ other machines/servers.  Electrum does not download the Bitcoin blockchain.")
               (substitute* "electroncash/secp256k1.py"
                 (("libsecp256k1.so.0")
                  (search-input-file inputs "lib/libsecp256k1.so.0")))))
-          (add-after 'unpack 'relax-requirements
-            (lambda _
-              (substitute* "contrib/requirements/requirements.txt"
-                (("qdarkstyle==2\\.6\\.8")
-                 "qdarkstyle"))))
           (add-after 'install 'wrap-qt
             (lambda* (#:key outputs inputs #:allow-other-keys)
               (let ((out (assoc-ref outputs "out")))
@@ -714,7 +679,7 @@ blockchain.")
   ;; the system's dynamically linked library.
   (package
     (name "monero")
-    (version "0.18.2.0")
+    (version "0.18.2.2")
     (source
      (origin
        (method git-fetch)
@@ -732,7 +697,7 @@ blockchain.")
             delete-file-recursively
             '("external/miniupnp" "external/rapidjson"))))
        (sha256
-        (base32 "0k41mkz0lp8qavgy3d9813pkmyy8rnhd0fl7wvzdhr7fznqn9sca"))))
+        (base32 "0hi6grf2xnnra60g3dzspahi0rwyiad6hc07n3pq3aknmz5xx8d4"))))
     (build-system cmake-build-system)
     (native-inputs
      (list doxygen
@@ -819,7 +784,7 @@ the Monero command line client and daemon.")
 (define-public monero-gui
   (package
     (name "monero-gui")
-    (version "0.18.2.0")
+    (version "0.18.2.2")
     (source
      (origin
        (method git-fetch)
@@ -835,7 +800,7 @@ the Monero command line client and daemon.")
            ;; See the 'extract-monero-sources' phase.
            (delete-file-recursively "monero")))
        (sha256
-        (base32 "0ka20p4f6fbhkhrm1jbssnjh5sjl419fy418jl8hcg34jriywvck"))))
+        (base32 "07gfvrxm3n0844ximm4rd3f3n0m125shpawdzg8blfjjbfr1k1ij"))))
     (build-system qt-build-system)
     (native-inputs
      `(,@(package-native-inputs monero)
@@ -1083,6 +1048,8 @@ of Bitcoin BIP-0039.")
           (base32
             "0nbfa5i9ww7jsfc8cgy0r229pq2a1vj4xvn8mz0nxl7mx1wykqm4"))))
     (build-system python-build-system)
+    (arguments
+     `(#:tests? #f)) ; no tests
     (propagated-inputs
      (list python-ecpy
            python-future
@@ -1326,16 +1293,66 @@ agent.")
 agent.")
     (license license:lgpl3)))
 
+(define-public kitsas
+  (package
+    (name "kitsas")
+    (version "4.0.3")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/artoh/kitupiikki")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0hrbsqqm6v2pmjq17s7i4akjgclz3d051mg02vcykq80xgxvbkgf"))))
+    (build-system qt-build-system)
+    (inputs (list qtbase-5 libzip poppler-qt5 qtsvg-5))
+    (arguments
+     (list #:tests? #f               ;XXX: some tests fail and others segfault
+           #:test-target "check"
+           #:phases
+           #~(modify-phases %standard-phases
+               (replace 'configure
+                 (lambda* _
+                   (invoke "qmake" "kitsasproject.pro" "CONFIG+=release")))
+               (replace 'install
+                 (lambda* _
+                   (install-file "kitsas/kitsas"
+                                 (string-append #$output "/bin/"))
+                   (install-file "kitsas.png"
+                                 (string-append #$output "/share/icons/"))
+                   (install-file "kitsas.desktop"
+                                 (string-append #$output "/share/applications/")))))))
+    (home-page "https://kitsas.fi")
+    (synopsis "Finnish bookkeeping software for small organisations")
+    (description
+     "Kitsas is a Finnish accounting program with the following goals and
+features:
+
+@itemize @bullet
+@item Ease of use
+@item Digital management of documents
+@item Creating a digital archive
+@item Built-in invoicing
+@item Creating reports.
+@end itemize")
+    ;; GPLv3+ with additional terms:
+    ;; - Modified versions of this software should be clearly mentioned as modified
+    ;; - Kitsas Oy will not support any modified version of this software
+    ;; - The name Kitsas Oy should not be used in any modified version
+    (license license:gpl3+)))
+
 (define-public python-stdnum
   (package
     (name "python-stdnum")
-    (version "1.17")
+    (version "1.18")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "python-stdnum" version))
        (sha256
-        (base32 "0h4369b7gws5w5s2vhq590bk219y5k53zcmha2zwsb4i2dg2nkip"))))
+        (base32 "1h5y4qx75b6i2051ch8k0pcwkvhxzpaqd9mpsajkvqlsqkcn7ixw"))))
     (build-system python-build-system)
     (arguments
      '(#:phases (modify-phases %standard-phases
@@ -1647,72 +1664,6 @@ trezord as a regular user instead of needing to it run as root.")
 Trezor wallet.")
     (license license:lgpl3+)))
 
-(define-public bitcoin-abc
-  (package
-    (name "bitcoin-abc")
-    (version "0.21.12")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://download.bitcoinabc.org/"
-                                  version "/src/bitcoin-abc-"
-                                  version ".tar.gz"))
-              (sha256
-               (base32
-                "1amzwy3gpl8ai90dsy7g0z51qq8vxfzbf642wn4bfynb8jmw3kx5"))))
-    (build-system cmake-build-system)
-    (native-inputs
-     (list pkg-config
-           python ; for the tests
-           util-linux ; provides the hexdump command for tests
-           qttools-5))
-    (inputs
-     (list bdb-5.3
-           boost
-           jemalloc
-           libevent
-           miniupnpc
-           openssl
-           protobuf
-           qrencode
-           qtbase-5
-           zeromq
-           zlib))
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-before 'configure 'make-qt-deterministic
-           (lambda _
-             ;; Make Qt deterministic.
-             (setenv "QT_RCC_SOURCE_DATE_OVERRIDE" "1")
-             #t))
-         (add-before 'check 'set-home
-           (lambda _
-             (setenv "HOME" (getenv "TMPDIR")) ; tests write to $HOME
-             #t))
-         (add-after 'check 'check-functional
-           (lambda _
-             (invoke
-              "python3" "./test/functional/test_runner.py"
-              (string-append "--jobs=" (number->string (parallel-job-count)))
-              ;; TODO: find why the abc-miner-fund test fails.
-              "--exclude=abc-miner-fund")
-             #t)))))
-    (home-page "https://www.bitcoinabc.org/")
-    (synopsis "Bitcoin ABC peer-to-peer full node for the Bitcoin Cash protocol")
-    (description
-     "Bitcoin Cash brings sound money to the world, fulfilling the original
-promise of Bitcoin as Peer-to-Peer Electronic Cash.  Merchants and users are
-empowered with low fees and reliable confirmations is a digital currency that
-enables instant payments to anyone anywhere in the world.  It uses
-peer-to-peer technology to operate without central authority: managing
-transactions and issuing money are carried out collectively by the network.
-As a fork it implemented changes lowering the time between blocks and now
-offers confimations after less than 5 seconds and have significantly lower
-fees that BTC.  Bitcoin ABC is the reference implementation of the Bitcoin
-Cash protocol.  This package provides the Bitcoin Cash command line client and
-a client based on Qt.  This is a fork of Bitcoin Core.")
-    (license license:expat)))
-
 (define-public libofx
   (package
     (name "libofx")
@@ -1762,7 +1713,7 @@ following three utilities are included with the library:
 (define-public bitcoin-unlimited
   (package
     (name "bitcoin-unlimited")
-    (version "1.10.0.0")
+    (version "2.0.0.0")
     (source
      (origin
        (method git-fetch)
@@ -1771,7 +1722,7 @@ following three utilities are included with the library:
              (commit (string-append "BCHunlimited" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "12yb2rbd6hsns43qyxc5dm7h5k4sph9sb64q7kkbqi3xhgrrsjdq"))))
+        (base32 "0s4iyjfhjx21xa3z7433m4skfr115565k0ckza87ha2d4nl8kz5h"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf
@@ -1818,6 +1769,16 @@ following three utilities are included with the library:
              ;; exist.
              (substitute* "src/Makefile.test.include"
                (("test/utilprocess_tests.cpp")
+                ""))
+             ;; Disable PaymentServer failing test because it's using
+             ;; an expired SSL certificate.
+             (substitute* "src/qt/test/test_main.cpp"
+               (("if \\(QTest::qExec\\(&test2\\) != 0\\)")
+                "if (QTest::qExec(&test2) == 0)"))
+             ;; The following test passes with OpenSSL 1.1, but fails with
+             ;; OpenSSL 3.
+             (substitute* "src/secp256k1/src/tests.c"
+               (("run_ecdsa_der_parse\\(\\);")
                 ""))))
          (add-before 'check 'set-home
            (lambda _
@@ -2112,7 +2073,7 @@ trading, and risk management in real-life.")
      (list gsl gtk+ ncurses))
     (native-inputs
      (list pkg-config texinfo
-           (texlive-updmap.cfg (list texlive-epsf texlive-tex-texinfo))))
+           (texlive-updmap.cfg (list texlive-epsf texlive-texinfo))))
     (home-page "https://anthonybradford.github.io/optionmatrix/")
     (synopsis "Financial derivative calculator")
     (description
@@ -2219,7 +2180,7 @@ and manipulation.")
 (define-public xmrig
   (package
     (name "xmrig")
-    (version "6.19.0")
+    (version "6.20.0")
     (source
      (origin
        (method git-fetch)
@@ -2227,7 +2188,7 @@ and manipulation.")
              (url "https://github.com/xmrig/xmrig")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
-       (sha256 (base32 "10vaq6ld4sddnpmv9dg71fjvw1jrfaddrp3bq6p3dxhsl153khm4"))
+       (sha256 (base32 "02clipcixn0g4sm3b5r1cxx56ddhjkm8sqnq40jy1zm66ad5zhkj"))
        (modules '((guix build utils)))
        (snippet
         ;; TODO: Try to use system libraries instead of bundled ones in
@@ -2261,23 +2222,22 @@ and manipulation.")
     (home-page "https://xmrig.com/")
     (synopsis "Monero miner")
     (description
-     "XMRig is a high performance, cross platform RandomX, KawPow,
-CryptoNight, AstroBWT and GhostRider unified CPU/GPU miner and RandomX
-benchmark.
+     "XMRig is a high-performance, cross-platform RandomX, KawPow,
+CryptoNight and GhostRider unified CPU/GPU miner and RandomX benchmark.
 
 Warning: upstream, by default, receives a percentage of the mining time.  This
-anti-functionality has been neutralised in Guix, but possibly not in all other
+anti-functionality has been neutralized in Guix, but possibly not in all other
 distributions.
 
-Warning: this software, because of it's nature, has high energy consumption.
-Also, the energy expenses might be higher that the cryptocurrency gained by
+Warning: this software, because of its nature, has high energy consumption.
+Also, the energy expenses might be higher than the cryptocurrency gained by
 mining.")
     (license license:gpl3+)))
 
 (define-public p2pool
   (package
     (name "p2pool")
-    (version "3.1")
+    (version "3.5")
     (source
      (origin
        (method git-fetch)
@@ -2286,7 +2246,7 @@ mining.")
              (commit (string-append "v" version))
              (recursive? #t)))
        (file-name (git-file-name name version))
-       (sha256 (base32 "0fvm864p4pxjsb03g88jkaj3wj94dkxrbwjwa1jk6s11skzn0z68"))
+       (sha256 (base32 "1brv3lksajnmpf7g01jbx76nax6vlx8231sxb0s33yf76yc481xb"))
        (modules '((guix build utils)))
        (snippet
         #~(for-each delete-file-recursively
@@ -2311,6 +2271,8 @@ mining.")
                      (chdir "tests")
                      (invoke "cmake" "../../source/tests")
                      (invoke "make" "-j" (number->string (parallel-job-count)))
+                     (invoke "gzip" "-d" "sidechain_dump.dat.gz")
+                     (invoke "gzip" "-d" "sidechain_dump_mini.dat.gz")
                      (invoke "./p2pool_tests")
                      (chdir ".."))))
                (replace 'install

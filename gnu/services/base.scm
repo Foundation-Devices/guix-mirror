@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015, 2016 Alex Kost <alezost@gmail.com>
 ;;; Copyright © 2015, 2016, 2020 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015 Sou Bunnbu <iyzsong@gmail.com>
@@ -10,12 +10,12 @@
 ;;; Copyright © 2019 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2019 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019 John Soo <jsoo1@asu.edu>
-;;; Copyright © 2019 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2019, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020 Florian Pelz <pelzflorian@pelzflorian.de>
 ;;; Copyright © 2020, 2021 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;; Copyright © 2021 Hui Lu <luhuins@163.com>
-;;; Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 muradm <mail@muradm.net>
 ;;; Copyright © 2022 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2022 Justin Veilleux <terramorpha@cock.li>
@@ -40,7 +40,7 @@
 (define-module (gnu services base)
   #:use-module (guix store)
   #:use-module (guix deprecation)
-  #:autoload   (guix diagnostics) (warning &fix-hint)
+  #:autoload   (guix diagnostics) (warning formatted-message &fix-hint)
   #:autoload   (guix i18n) (G_)
   #:use-module (guix combinators)
   #:use-module (gnu services)
@@ -83,6 +83,7 @@
   #:use-module (guix gexp)
   #:use-module (guix records)
   #:use-module (guix modules)
+  #:use-module (guix pki)
   #:use-module ((guix self) #:select (make-config.scm))
   #:use-module (guix diagnostics)
   #:use-module (guix i18n)
@@ -99,7 +100,8 @@
             file-system-service-type
             file-system-utilities
             swap-service
-            host-name-service
+            host-name-service  ; deprecated
+            host-name-service-type
             %default-console-font
             console-font-service-type
             console-font-service
@@ -149,7 +151,7 @@
             udev-configuration?
             udev-configuration-rules
             udev-service-type
-            udev-service
+            udev-service  ; deprecated
             udev-rule
             file->udev-rule
             udev-rules-service
@@ -157,11 +159,11 @@
             login-configuration
             login-configuration?
             login-service-type
-            login-service
+            login-service  ; deprecated
 
             agetty-configuration
             agetty-configuration?
-            agetty-service
+            agetty-service  ; deprecated
             agetty-service-type
 
             mingetty-configuration
@@ -172,11 +174,11 @@
             mingetty-configuration-clear-on-logout?
             mingetty-configuration-mingetty
             mingetty-configuration?
-            mingetty-service
+            mingetty-service  ; deprecated
             mingetty-service-type
 
             %nscd-default-caches
-            %nscd-default-configuration
+            %nscd-default-configuration  ; deprecated
 
             nscd-configuration
             nscd-configuration?
@@ -185,11 +187,11 @@
             nscd-cache?
 
             nscd-service-type
-            nscd-service
+            nscd-service  ; deprecated
 
             syslog-configuration
             syslog-configuration?
-            syslog-service
+            syslog-service  ; deprecated
             syslog-service-type
             %default-syslog.conf
 
@@ -222,7 +224,6 @@
             guix-publish-configuration-port
             guix-publish-configuration-host
             guix-publish-configuration-compression
-            guix-publish-configuration-compression-level ;deprecated
             guix-publish-configuration-nar-path
             guix-publish-configuration-cache
             guix-publish-configuration-ttl
@@ -238,14 +239,14 @@
             rngd-configuration
             rngd-configuration?
             rngd-service-type
-            rngd-service
+            rngd-service  ; deprecated
 
             kmscon-configuration
             kmscon-configuration?
             kmscon-service-type
 
             pam-limits-service-type
-            pam-limits-service
+            pam-limits-service  ; deprecated
 
             greetd-service-type
             greetd-configuration
@@ -323,11 +324,7 @@ system objects.")))
              (sync)
 
              (let ((null (%make-void-port "w")))
-               ;; Close 'shepherd.log'.
-               (display "closing log\n")
-               ((@ (shepherd comm) stop-logging))
-
-               ;; Redirect the default output ports..
+               ;; Redirect the default output ports.
                (set-current-output-port null)
                (set-current-error-port null)
 
@@ -661,8 +658,10 @@ down.")))
 (define-record-type* <rngd-configuration>
   rngd-configuration make-rngd-configuration
   rngd-configuration?
-  (rng-tools rngd-configuration-rng-tools)        ;file-like
-  (device    rngd-configuration-device))          ;string
+  (rng-tools rngd-configuration-rng-tools         ;file-like
+             (default rng-tools))
+  (device    rngd-configuration-device            ;string
+             (default "/dev/hwrng")))
 
 (define rngd-service-type
   (shepherd-service-type
@@ -681,12 +680,13 @@ down.")))
         (provision '(trng))
         (start #~(make-forkexec-constructor '#$rngd-command))
         (stop #~(make-kill-destructor))))
+    (rngd-configuration)
     (description "Run the @command{rngd} random number generation daemon to
 supply entropy to the kernel's pool.")))
 
-(define* (rngd-service #:key
-                       (rng-tools rng-tools)
-                       (device "/dev/hwrng"))
+(define-deprecated (rngd-service #:key (rng-tools rng-tools)
+                                 (device "/dev/hwrng"))
+  rngd-service-type
   "Return a service that runs the @command{rngd} program from @var{rng-tools}
 to add @var{device} to the kernel's entropy pool.  The service will fail if
 @var{device} does not exist."
@@ -699,9 +699,10 @@ to add @var{device} to the kernel's entropy pool.  The service will fail if
 ;;; /etc/hosts
 ;;;
 
-(define (valid-name? name)
-  "Return true if @var{name} is likely to be a valid host name."
-  (false-if-exception (not (string-any char-set:whitespace name))))
+(eval-when (expand load eval)
+  (define (valid-name? name)
+    "Return true if @var{name} is likely to be a valid host name."
+    (false-if-exception (not (string-any char-set:whitespace name)))))
 
 (define-compile-time-procedure (assert-valid-name (name valid-name?))
   "Ensure @var{name} is likely to be a valid host name."
@@ -778,7 +779,8 @@ host names."
       (one-shot? #t)))
    (description "Initialize the machine's host name.")))
 
-(define (host-name-service name)
+(define-deprecated (host-name-service name)
+  host-name-service-type
   "Return a service that sets the host name to @var{name}."
   (service host-name-service-type name))
 
@@ -807,21 +809,6 @@ host names."
         (stop #~(const #f)))))
    #t                                             ;default to UTF-8
    (description "Ensure the Linux virtual terminals run in UTF-8 mode.")))
-
-(define console-keymap-service-type
-  (shepherd-service-type
-   'console-keymap
-   (lambda (files)
-     (shepherd-service
-      (documentation (string-append "Load console keymap (loadkeys)."))
-      (provision '(console-keymap))
-      (start #~(lambda _
-                 (zero? (system* #$(file-append kbd "/bin/loadkeys")
-                                 #$@files))))
-      (respawn? #f)))
-   (description "@emph{This service is deprecated in favor of the
-@code{keyboard-layout} field of @code{operating-system}.}  Load the given list
-of console keymaps with @command{loadkeys}.")))
 
 (define %default-console-font
   ;; Note: the 'font-gnu-unifont' package cannot be cross-compiled (yet), but
@@ -868,7 +855,7 @@ of console keymaps with @command{loadkeys}.")))
                                         "-C" #$device #$font))
                           ((0 71) #t)
                           (else #f))))
-             (stop #~(const #t))
+             (stop #~(const #f))
              (respawn? #f)))))
        tty+font))
 
@@ -894,14 +881,6 @@ package or any valid argument to @command{setfont}, as in this example:
                  font-terminus
                  \"/share/consolefonts/ter-132n\"))) ; for HDPI
 @end example\n")))
-
-(define* (console-font-service tty #:optional (font "LatGrkCyr-8x16"))
-  "This procedure is deprecated in favor of @code{console-font-service-type}.
-
-Return a service that sets up Unicode support in @var{tty} and loads
-@var{font} for that tty (fonts are per virtual console in Linux.)"
-  (simple-service (symbol-append 'console-font- (string->symbol tty))
-                  console-font-service-type `((,tty . ,font))))
 
 (define %default-motd
   (plain-file "motd" "This is the GNU operating system, welcome!\n\n"))
@@ -935,7 +914,8 @@ Return a service that sets up Unicode support in @var{tty} and loads
                  "Provide a console log-in service as specified by its
 configuration value, a @code{login-configuration} object.")))
 
-(define* (login-service #:optional (config (login-configuration)))
+(define-deprecated (login-service #:optional (config (login-configuration)))
+  login-service-type
   "Return a service configure login according to @var{config}, which specifies
 the message of the day, among other things."
   (service login-service-type config))
@@ -1195,9 +1175,19 @@ to use as the tty.  This is primarily useful for headless systems."
                            #$@(if term
                                   #~(#$term)
                                   #~())))
-                    (const #f))                   ; never start.
+                    #$(if tty
+                          #~(const #f)         ;always fail to start
+                          #~(lambda _          ;succeed, but don't do anything
+                              (format #t "~a: \
+no serial port console requested; doing nothing~%"
+                                      '#$(car provision))
+                              'idle)))
                 args)))))
-      (stop #~(make-kill-destructor))))))
+      (stop #~(let ((stop (make-kill-destructor)))
+                (lambda (running)
+                  (if (eq? 'idle running)
+                      #f
+                      (stop running)))))))))
 
 (define agetty-service-type
   (service-type (name 'agetty)
@@ -1207,7 +1197,8 @@ to use as the tty.  This is primarily useful for headless systems."
                  "Provide console login using the @command{agetty}
 program.")))
 
-(define* (agetty-service config)
+(define-deprecated (agetty-service config)
+  agetty-service-type
   "Return a service to run agetty according to @var{config}, which specifies
 the tty to run, among other things."
   (service agetty-service-type config))
@@ -1272,7 +1263,8 @@ the tty to run, among other things."
                  "Provide console login using the @command{mingetty}
 program.")))
 
-(define* (mingetty-service config)
+(define-deprecated (mingetty-service config)
+  mingetty-service-type
   "Return a service to run mingetty according to @var{config}, which specifies
 the tty to run, among other things."
   (service mingetty-service-type config))
@@ -1338,7 +1330,8 @@ the tty to run, among other things."
                     (check-files? #t)             ;check /etc/services changes
                     (persistent? #t))))
 
-(define %nscd-default-configuration
+(define-deprecated %nscd-default-configuration
+  #f
   ;; Default nscd configuration.
   (nscd-configuration))
 
@@ -1436,7 +1429,11 @@ the tty to run, among other things."
     (list (shepherd-service
            (documentation "Run libc's name service cache daemon (nscd).")
            (provision '(nscd))
-           (requirement '(user-processes))
+
+           ;; Logs are written with syslog(3), which writes to /dev/console
+           ;; when nobody's listening--ugly.  Thus, wait for syslogd.
+           (requirement '(user-processes syslogd))
+
            (start #~(make-forkexec-constructor
                      (list #$nscd "-f" #$nscd.conf "--foreground")
 
@@ -1492,18 +1489,50 @@ the tty to run, among other things."
                            (name-services (append
                                            (nscd-configuration-name-services config)
                                            name-services)))))
-                (default-value %nscd-default-configuration)
+                (default-value (nscd-configuration))
                 (description
                  "Runs libc's @dfn{name service cache daemon} (nscd) with the
 given configuration---an @code{<nscd-configuration>} object.  @xref{Name
 Service Switch}, for an example.")))
 
-(define* (nscd-service #:optional (config %nscd-default-configuration))
+(define-deprecated (nscd-service #:optional (config (nscd-configuration)))
+  nscd-service-type
   "Return a service that runs libc's name service cache daemon (nscd) with the
 given @var{config}---an @code{<nscd-configuration>} object.  @xref{Name
 Service Switch}, for an example."
   (service nscd-service-type config))
 
+;;; Snippet adapted from the GNU inetutils manual.
+(define %default-syslog.conf
+  (plain-file "syslog.conf" "\
+# See info '(inetutils) syslogd invocation' for the documentation
+# of the syslogd configuration syntax.
+
+# Log all error messages, authentication messages of
+# level notice or higher and anything of level err or
+# higher to the console.
+# Don't log private authentication messages!
+*.alert;auth.notice;authpriv.none      -/dev/console
+
+# Log anything (except mail) of level info or higher.
+# Don't log private authentication messages!
+*.info;mail.none;authpriv.none         -/var/log/messages
+
+# Log \"debug\"-level entries and nothing else.
+*.=debug                               -/var/log/debug
+
+# Same, in a different place.
+*.info;mail.none;authpriv.none         -/dev/tty12
+
+# The authpriv file has restricted access.
+# 'fsync' the file after each line (hence the lack of a leading dash).
+# Also include unprivileged auth logs of info or higher level
+# to conveniently gather the authentication data at the same place.
+authpriv.*;auth.info                    /var/log/secure
+
+# Log all the mail messages in one place.
+mail.*                                 -/var/log/maillog
+"))
 
 (define-record-type* <syslog-configuration>
   syslog-configuration  make-syslog-configuration
@@ -1513,57 +1542,57 @@ Service Switch}, for an example."
   (config-file          syslog-configuration-config-file
                         (default %default-syslog.conf)))
 
+;;; Note: a static file name is used for syslog.conf so that the reload action
+;;; work as intended.
+(define syslog.conf "/etc/syslog.conf")
+
+(define (syslog-etc configuration)
+  (match-record configuration <syslog-configuration>
+    (config-file)
+    (list `(,(basename syslog.conf) ,config-file))))
+
+(define (syslog-shepherd-service config)
+  (define config-file
+    (syslog-configuration-config-file config))
+
+  (shepherd-service
+   (documentation "Run the syslog daemon (syslogd).")
+   (provision '(syslogd))
+   (requirement '(user-processes))
+   (actions
+    (list (shepherd-configuration-action syslog.conf)
+          (shepherd-action
+           (name 'reload)
+           (documentation "Reload the configuration file from disk.")
+           (procedure
+            #~(lambda (pid)
+                (if pid
+                    (begin
+                      (kill pid SIGHUP)
+                      (display #$(G_ "Service syslog has been asked to \
+reload its settings file.")))
+                    (display #$(G_ "Service syslog is not running."))))))))
+   ;; Note: a static file name is used for syslog.conf so that the reload
+   ;; action work as intended.
+   (start #~(make-forkexec-constructor
+             (list #$(syslog-configuration-syslogd config)
+                   #$(string-append "--rcfile=" syslog.conf))
+             #:file-creation-mask #o137
+             #:pid-file "/var/run/syslog.pid"))
+   (stop #~(make-kill-destructor))))
+
 (define syslog-service-type
-  (shepherd-service-type
-   'syslog
-   (lambda (config)
-     (shepherd-service
-      (documentation "Run the syslog daemon (syslogd).")
-      (provision '(syslogd))
-      (requirement '(user-processes))
-      (start #~(let ((spawn (make-forkexec-constructor
-                             (list #$(syslog-configuration-syslogd config)
-                                   "--rcfile"
-                                   #$(syslog-configuration-config-file config))
-                             #:pid-file "/var/run/syslog.pid")))
-                 (lambda ()
-                   ;; Set the umask such that file permissions are #o640.
-                   (let ((mask (umask #o137))
-                         (pid  (spawn)))
-                     (umask mask)
-                     pid))))
-      (stop #~(make-kill-destructor))))
+  (service-type
+   (name 'syslog)
+   (default-value (syslog-configuration))
+   (extensions (list (service-extension shepherd-root-service-type
+                                        (compose list syslog-shepherd-service))
+                     (service-extension etc-service-type syslog-etc)))
    (description "Run the syslog daemon, @command{syslogd}, which is
 responsible for logging system messages.")))
 
-;; Snippet adapted from the GNU inetutils manual.
-(define %default-syslog.conf
-  (plain-file "syslog.conf" "
-     # Log all error messages, authentication messages of
-     # level notice or higher and anything of level err or
-     # higher to the console.
-     # Don't log private authentication messages!
-     *.alert;auth.notice;authpriv.none      -/dev/console
-
-     # Log anything (except mail) of level info or higher.
-     # Don't log private authentication messages!
-     *.info;mail.none;authpriv.none         -/var/log/messages
-
-     # Log \"debug\"-level entries and nothing else.
-     *.=debug                               -/var/log/debug
-
-     # Same, in a different place.
-     *.info;mail.none;authpriv.none         -/dev/tty12
-
-     # The authpriv file has restricted access.
-     # 'fsync' the file after each line (hence the lack of a leading dash).
-     authpriv.*                              /var/log/secure
-
-     # Log all the mail messages in one place.
-     mail.*                                 -/var/log/maillog
-"))
-
-(define* (syslog-service #:optional (config (syslog-configuration)))
+(define-deprecated (syslog-service #:optional (config (syslog-configuration)))
+  syslog-service-type
   "Return a service that runs @command{syslogd} and takes
 @var{<syslog-configuration>} as a parameter.
 
@@ -1573,25 +1602,43 @@ information on the configuration file syntax."
 
 
 (define pam-limits-service-type
-  (let ((security-limits
-         ;; Create /etc/security containing the provided "limits.conf" file.
-         (lambda (limits-file)
-           `(("security/limits.conf"
-              ,limits-file))))
-        (pam-extension
-         (lambda (pam)
-           (let ((pam-limits (pam-entry
-                              (control "required")
-                              (module "pam_limits.so")
-                              (arguments '("conf=/etc/security/limits.conf")))))
-             (if (member (pam-service-name pam)
-                         '("login" "greetd" "su" "slim" "gdm-password" "sddm"
-                           "sudo" "sshd"))
-                 (pam-service
-                  (inherit pam)
-                  (session (cons pam-limits
-                                 (pam-service-session pam))))
-                 pam)))))
+  (let ((pam-extension
+         (pam-extension
+          (transformer
+           (lambda (pam)
+             (let ((pam-limits (pam-entry
+                                (control "required")
+                                (module "pam_limits.so")
+                                (arguments
+                                 '("conf=/etc/security/limits.conf")))))
+               (if (member (pam-service-name pam)
+                           '("login" "greetd" "su" "slim" "gdm-password"
+                             "sddm" "sudo" "sshd" "lightdm"))
+                   (pam-service
+                    (inherit pam)
+                    (session (cons pam-limits
+                                   (pam-service-session pam))))
+                   pam))))))
+
+        ;; XXX: Using file-like objects is deprecated, use lists instead.
+        ;;      This is to be reduced into the list? case when the deprecated
+        ;;      code gets removed.
+        ;; Create /etc/security containing the provided "limits.conf" file.
+        (security-limits
+         (match-lambda
+           ((? file-like? obj)
+            (warning (G_ "Using file-like value for \
+'pam-limits-service-type' is deprecated~%"))
+            `(("security/limits.conf" ,obj)))
+           ((? list? lst)
+            `(("security/limits.conf"
+               ,(plain-file "limits.conf"
+                            (string-join (map pam-limits-entry->string lst)
+                                         "\n" 'suffix)))))
+           (_ (raise
+               (formatted-message
+                (G_ "invalid input for 'pam-limits-service-type'~%")))))))
+
     (service-type
      (name 'limits)
      (extensions
@@ -1601,9 +1648,11 @@ information on the configuration file syntax."
      (description
       "Install the specified resource usage limits by populating
 @file{/etc/security/limits.conf} and using the @code{pam_limits}
-authentication module."))))
+authentication module.")
+     (default-value '()))))
 
-(define* (pam-limits-service #:optional (limits '()))
+(define-deprecated (pam-limits-service #:optional (limits '()))
+  pam-limits-service-type
   "Return a service that makes selected programs respect the list of
 pam-limits-entry specified in LIMITS via pam_limits.so."
   (service pam-limits-service-type
@@ -1676,19 +1725,19 @@ archive' public keys, with GUIX."
   (with-imported-modules '((guix build utils))
     #~(begin
         (use-modules (guix build utils))
-
+        (define acl-file #$%acl-file)
         ;; If the ACL already exists, move it out of the way.  Create a backup
         ;; if it's a regular file: it's likely that the user manually updated
         ;; it with 'guix archive --authorize'.
-        (if (file-exists? "/etc/guix/acl")
-            (if (and (symbolic-link? "/etc/guix/acl")
-                     (store-file-name? (readlink "/etc/guix/acl")))
-                (delete-file "/etc/guix/acl")
-                (rename-file "/etc/guix/acl" "/etc/guix/acl.bak"))
-            (mkdir-p "/etc/guix"))
+        (if (file-exists? acl-file)
+            (if (and (symbolic-link? acl-file)
+                     (store-file-name? (readlink acl-file)))
+                (delete-file acl-file)
+                (rename-file acl-file (string-append acl-file ".bak")))
+            (mkdir-p (dirname acl-file)))
 
         ;; Installed the declared ACL.
-        (symlink #+default-acl "/etc/guix/acl"))))
+        (symlink #+default-acl acl-file))))
 
 (define %default-authorized-guix-keys
   ;; List of authorized substitute keys.
@@ -1793,7 +1842,8 @@ proxy of 'guix-daemon'...~%")
     (list (shepherd-service
            (documentation "Run the Guix daemon.")
            (provision '(guix-daemon))
-           (requirement '(user-processes))
+           (requirement `(user-processes
+                          ,@(if discover? '(avahi-daemon) '())))
            (actions (list shepherd-set-http-proxy-action
                           shepherd-discover-action))
            (modules '((srfi srfi-1)
@@ -1976,10 +2026,7 @@ proxy of 'guix-daemon'...~%")
               (default #f))
   (compression       guix-publish-configuration-compression
                      (thunked)
-                     (default (default-compression this-record
-                                (current-source-location))))
-  (compression-level %guix-publish-configuration-compression-level ;deprecated
-                     (default #f))
+                     (default (default-compression this-record)))
   (nar-path    guix-publish-configuration-nar-path ;string
                (default "nar"))
   (cache       guix-publish-configuration-cache   ;#f | string
@@ -1993,25 +2040,14 @@ proxy of 'guix-daemon'...~%")
   (negative-ttl guix-publish-configuration-negative-ttl ;#f | integer
                 (default #f)))
 
-(define-deprecated (guix-publish-configuration-compression-level config)
-  "Return a compression level, the old way."
-  (match (guix-publish-configuration-compression config)
-    (((_ level) _ ...) level)))
-
-(define (default-compression config properties)
+(define (default-compression config)
   "Return the default 'guix publish' compression according to CONFIG, and
 raise a deprecation warning if the 'compression-level' field was used."
-  (match (%guix-publish-configuration-compression-level config)
-    (#f
-     ;; Default to low compression levels when there's no cache so that users
-     ;; get good bandwidth by default.
-     (if (guix-publish-configuration-cache config)
-         '(("gzip" 5) ("zstd" 19))
-         '(("gzip" 3) ("zstd" 3))))               ;zstd compresses faster
-    (level
-     (warn-about-deprecation 'compression-level properties
-                             #:replacement 'compression)
-     `(("gzip" ,level)))))
+  ;; Default to low compression levels when there's no cache so that users
+  ;; get good bandwidth by default.
+  (if (guix-publish-configuration-cache config)
+      '(("gzip" 5) ("zstd" 19))
+      '(("gzip" 3) ("zstd" 3))))               ;zstd compresses faster
 
 (define (guix-publish-shepherd-service config)
   (define (config->compression-options config)
@@ -2343,7 +2379,8 @@ item of @var{packages}."
 directory dynamically.  Get extra rules from the packages listed in the
 @code{rules} field of its value, @code{udev-configuration} object.")))
 
-(define* (udev-service #:key (udev eudev) (rules '()))
+(define-deprecated (udev-service #:key (udev eudev) (rules '()))
+  udev-service-type
   "Run @var{udev}, which populates the @file{/dev} directory dynamically.  Get
 extra rules from the packages listed in @var{rules}."
   (service udev-service-type
@@ -2652,16 +2689,17 @@ Write, say, @samp{\"~a/24\"} for a 24-bit network mask.")
                             ipv6-address?))))
   (gateway     network-route-gateway (default #f)))
 
-(define* (cidr->netmask str #:optional (family AF_INET))
-  "Given @var{str}, a string in CIDR notation (e.g., \"1.2.3.4/24\"), return
+(eval-when (expand load eval)
+  (define* (cidr->netmask str #:optional (family AF_INET))
+    "Given @var{str}, a string in CIDR notation (e.g., \"1.2.3.4/24\"), return
 the netmask as a string like \"255.255.255.0\"."
-  (match (string-split str #\/)
-    ((ip (= string->number bits))
-     (let ((mask (ash (- (expt 2 bits) 1)
-                      (- (if (= family AF_INET6) 128 32)
-                         bits))))
-       (inet-ntop family mask)))
-    (_ #f)))
+    (match (string-split str #\/)
+      ((ip (= string->number bits))
+       (let ((mask (ash (- (expt 2 bits) 1)
+                        (- (if (= family AF_INET6) 128 32)
+                           bits))))
+         (inet-ntop family mask)))
+      (_ #f))))
 
 (define (cidr->ip str)
   "Strip the netmask bit of @var{str}, a CIDR-notation IP/netmask address."
@@ -2688,7 +2726,7 @@ to CONFIG."
   (match (static-networking-addresses config)
     ((and addresses (first _ ...))
      `("--ipv6" "/servers/socket/26"
-       "--interface" ,(network-address-device first)
+       "--interface" ,(string-append "/dev/" (network-address-device first))
        ,@(append-map (lambda (address)
                        `(,(if (network-address-ipv6? address)
                               "--address6"
@@ -2731,7 +2769,10 @@ to CONFIG."
                            (format #t "starting '~a~{ ~s~}'~%"
                                    #$(file-append hurd "/hurd/pfinet")
                                    options)
-                           (apply invoke #$(file-append hurd "/bin/settrans") "-fac"
+                           (apply invoke #$(file-append hurd "/bin/settrans")
+                                  "--active"
+                                  "--create"
+                                  "--keep-active"
                                   "/servers/socket/2"
                                   #$(file-append hurd "/hurd/pfinet")
                                   options)))))))
@@ -2761,6 +2802,12 @@ to CONFIG."
 
                        #$@(map (lambda (address)
                                  #~(begin
+                                     ;; Before going any further, wait for the
+                                     ;; device to show up.
+                                     (wait-for-link
+                                      #$(network-address-device address)
+                                      #:blocking? #f)
+
                                      (addr-add #$(network-address-device address)
                                                #$(network-address-value address)
                                                #:ipv6?
@@ -3229,16 +3276,18 @@ to handle."
                      (greetd-allow-empty-passwords? config)
                      #:motd
                      (greetd-motd config))
-   (lambda (pam)
-     (if (member (pam-service-name pam)
-                 '("login" "greetd" "su" "slim" "gdm-password"))
-         (pam-service
-          (inherit pam)
-          (auth (append (pam-service-auth pam)
-                        (list optional-pam-mount)))
-          (session (append (pam-service-session pam)
-                           (list optional-pam-mount))))
-         pam))))
+   (pam-extension
+    (transformer
+     (lambda (pam)
+       (if (member (pam-service-name pam)
+                   '("login" "greetd" "su" "slim" "gdm-password"))
+           (pam-service
+            (inherit pam)
+            (auth (append (pam-service-auth pam)
+                          (list optional-pam-mount)))
+            (session (append (pam-service-session pam)
+                             (list optional-pam-mount))))
+           pam))))))
 
 (define (greetd-shepherd-services config)
   (map
@@ -3250,7 +3299,7 @@ to handle."
           (greetd-vt (greetd-terminal-vt tc)))
        (shepherd-service
         (documentation "Minimal and flexible login manager daemon")
-        (requirement '(user-processes host-name udev virtual-terminal))
+        (requirement '(pam user-processes host-name udev virtual-terminal))
         (provision (list (symbol-append
                           'term-tty
                           (string->symbol (greetd-terminal-vt tc)))))
@@ -3287,7 +3336,7 @@ login manager daemon.")
                         (cons tty %default-console-font))
                       '("tty1" "tty2" "tty3" "tty4" "tty5" "tty6")))
 
-        (syslog-service)
+        (service syslog-service-type)
         (service agetty-service-type (agetty-configuration
                                        (extra-options '("-L")) ; no carrier detect
                                        (term "vt100")

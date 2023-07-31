@@ -1,15 +1,15 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2016, 2020, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2016, 2020, 2021, 2022, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015 Federico Beffa <beffa@fbengineering.ch>
 ;;; Copyright © 2016 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
-;;; Copyright © 2016, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2022, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016-2020, 2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2019 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2019, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2019, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2020 Pierre Langlois <pierre.langlois@gmx.com>
-;;; Copyright © 2020, 2021, 2022 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2021, 2022, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Greg Hogan <code@greghogan.com>
 ;;; Copyright © 2021 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2021 Paul Garlick <pgarlick@tourbillion-technology.com>
@@ -50,6 +50,7 @@
   #:use-module (gnu packages crypto)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages gcc)
+  #:use-module (gnu packages geo)
   #:use-module (gnu packages image)
   #:use-module (gnu packages image-processing)
   #:use-module (gnu packages machine-learning)
@@ -76,38 +77,29 @@
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix utils)
-  #:use-module (guix build-system python))
+  #:use-module (guix build-system python)
+  #:use-module (guix build-system pyproject))
 
 (define-public python-scipy
   (package
     (name "python-scipy")
-    (version "1.9.1")
+    (version "1.10.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "scipy" version))
        (sha256
-        (base32 "1jcb94xal7w7ax80kaivqqics36v8smi4a3xngyxbrh0i538rli6"))))
-    (build-system python-build-system)
+        (base32 "19gk88nvrxl050nasz25qpmmqvbdk247bkj09jx8jibv1awdzy9c"))))
+    (build-system pyproject-build-system)
     (arguments
      (list
+      ;; FIXME: The default 'mesonpy' build system doesn't seem to work with
+      ;; our pyproject-build-system, errors with: AttributeError: 'list'
+      ;; object has no attribute 'items' (see:
+      ;; https://issues.guix.gnu.org/62781).
+      #:build-backend "setuptools.build_meta"
       #:phases
       #~(modify-phases %standard-phases
-          (add-after 'unpack 'loosen-requirements
-            (lambda _
-              (substitute* "pyproject.toml"
-                (("numpy==") "numpy>=")
-                (("meson==") "meson>="))))
-          (replace 'build
-            (lambda _
-              ;; ZIP does not support timestamps before 1980.
-              (setenv "SOURCE_DATE_EPOCH" "315532800")
-              (invoke "python" "-m" "build" "--wheel" "--no-isolation" ".")))
-          (replace 'install
-            (lambda _
-              (let ((whl (car (find-files "dist" "\\.whl$"))))
-                (invoke "pip" "--no-cache-dir" "--no-input"
-                        "install" "--no-deps" "--prefix" #$output whl))))
           (replace 'check
             (lambda* (#:key tests? #:allow-other-keys)
               (when tests?
@@ -157,7 +149,6 @@
            meson-python
            pkg-config
            python-cython
-           python-pypa-build
            python-pytest
            python-pytest-xdist
            python-threadpoolctl))
@@ -166,6 +157,84 @@
     (description "The SciPy library is one of the core packages that make up
 the SciPy stack.  It provides many user-friendly and efficient numerical
 routines such as routines for numerical integration and optimization.")
+    (license license:bsd-3)))
+
+(define-public python-scikit-allel
+  (package
+    (name "python-scikit-allel")
+    (version "1.3.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "scikit-allel" version))
+       (sha256
+        (base32 "1vg88ng6gd175gzk39iz1drxig5l91dyx398w2kbw3w8036zv8gj"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      '(list "-k"
+             (string-append
+              ;; AttributeError: 'Dataset' object has no attribute 'asstr'
+              "not test_vcf_to_hdf5"
+              " and not test_vcf_to_hdf5_exclude"
+              " and not test_vcf_to_hdf5_rename"
+              " and not test_vcf_to_hdf5_group"
+              " and not test_vcf_to_hdf5_ann"
+              ;; Does not work with recent hmmlearn
+              " and not test_roh_mhmm_0pct"
+              " and not test_roh_mhmm_100pct"))
+      #:phases
+      '(modify-phases %standard-phases
+         (add-before 'check 'build-ext
+           (lambda _
+             (invoke "python" "setup.py" "build_ext" "--inplace"))))))
+    (propagated-inputs
+     (list python-dask
+           python-numpy))
+    (native-inputs
+     (list python-cython
+           ;; The following are all needed for the tests
+           htslib
+           python-h5py
+           python-hmmlearn
+           python-numexpr
+           python-pytest
+           python-scipy
+           python-setuptools-scm
+           python-zarr))
+    (home-page "https://github.com/cggh/scikit-allel")
+    (synopsis "Explore and analyze genetic variation data")
+    (description
+     "This package provides utilities for exploratory analysis of large scale
+genetic variation data.")
+    (license license:expat)))
+
+(define-public python-scikit-fem
+  (package
+    (name "python-scikit-fem")
+    (version "8.1.0")
+    (source (origin
+              (method git-fetch)        ; no tests in PyPI
+              (uri (git-reference
+                    (url "https://github.com/kinnala/scikit-fem")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1zpn0wpsvls5nkrav5a43z77yg9nc09dpyy9ri0dpmpm2ndh2mhs"))))
+    (build-system pyproject-build-system)
+    (arguments
+     ;; Examples below require python-autograd and python-pyamg.
+     (list #:test-flags #~(list "-k" "not TestEx32 and not TestEx45")))
+    (propagated-inputs (list python-meshio python-numpy python-scipy))
+    (native-inputs (list python-pytest))
+    (home-page "https://scikit-fem.readthedocs.io/en/latest/")
+    (synopsis "Library for performing finite element assembly")
+    (description
+     "@code{scikit-fem} is a library for performing finite element assembly.
+Its main purpose is the transformation of bilinear forms into sparse matrices
+and linear forms into vectors.")
     (license license:bsd-3)))
 
 (define-public python-scikit-fuzzy
@@ -244,64 +313,52 @@ logic, also known as grey logic.")
      "Scikit-image is a collection of algorithms for image processing.")
     (license license:bsd-3)))
 
-(define-public python-scikit-allel
+(define-public python-scikit-optimize
   (package
-    (name "python-scikit-allel")
-    (version "1.3.5")
-    (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "scikit-allel" version))
-        (sha256
-         (base32 "1vg88ng6gd175gzk39iz1drxig5l91dyx398w2kbw3w8036zv8gj"))))
-    (build-system python-build-system)
-    (arguments
-     (list
-       #:phases
-       #~(modify-phases %standard-phases
-           (replace 'check
-             (lambda* (#:key tests? #:allow-other-keys)
-               (when tests?
-                 (invoke "python" "setup.py" "build_ext" "--inplace")
-                 (invoke "python" "-m" "pytest" "-v" "allel"
-                         ;; AttributeError: 'Dataset' object has no attribute 'asstr'
-                         "-k" (string-append
-                                "not test_vcf_to_hdf5"
-                                " and not test_vcf_to_hdf5_exclude"
-                                " and not test_vcf_to_hdf5_rename"
-                                " and not test_vcf_to_hdf5_group"
-                                " and not test_vcf_to_hdf5_ann"))))))))
+    (name "python-scikit-optimize")
+    (version "0.9.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/scikit-optimize/scikit-optimize")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0hsq6pmryimxc275yrcy4bv217bx7ma6rz0q6m4138bv4zgq18d1"))
+              (patches
+               ;; These are for compatibility with more recent versions of
+               ;; numpy and scikit-learn.
+               (search-patches "python-scikit-optimize-1148.patch"
+                               "python-scikit-optimize-1150.patch"))))
+    (build-system pyproject-build-system)
     (propagated-inputs
-     (list python-dask
-           python-numpy))
+     (list python-joblib
+           python-matplotlib
+           python-numpy
+           python-pyaml
+           python-scikit-learn
+           python-scipy))
     (native-inputs
-     (list python-cython
-           ;; The following are all needed for the tests
-           htslib
-           python-h5py
-           python-hmmlearn
-           python-numexpr
-           python-pytest
-           python-scipy
-           python-setuptools-scm
-           python-zarr))
-    (home-page "https://github.com/cggh/scikit-allel")
-    (synopsis "Explore and analyze genetic variation data")
-    (description
-     "This package provides utilities for exploratory analysis of large scale
-genetic variation data.")
-    (license license:expat)))
+     (list python-pytest))
+    (home-page "https://scikit-optimize.github.io/")
+    (synopsis "Sequential model-based optimization toolbox")
+    (description "Scikit-Optimize, or @code{skopt}, is a simple and efficient
+library to minimize (very) expensive and noisy black-box functions.  It
+implements several methods for sequential model-based optimization.
+@code{skopt} aims to be accessible and easy to use in many contexts.")
+    (license license:bsd-3)))
 
 (define-public python-trimesh
   (package
     (name "python-trimesh")
-    (version "3.10.7")
+    (version "3.22.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "trimesh" version))
        (sha256
-        (base32 "0bw55cwxlxds0j54naijh64sdb0rkscx4i1fy0ql94h96kw2p2ir"))))
+        (base32 "1ck4dkhz1x6sznd83c1hlvsv2m6d22fr82na0947j5jf47a4c1gl"))))
     (build-system python-build-system)
     (propagated-inputs
      (list python-numpy))
@@ -317,7 +374,7 @@ genetic variation data.")
        (modify-phases %standard-phases
          (add-after 'unpack 'fix-build
            (lambda _
-             (substitute* "trimesh/resources/templates/blender_boolean.py"
+             (substitute* "trimesh/resources/templates/blender_boolean.py.tmpl"
                (("\\$MESH_PRE")
                 "'$MESH_PRE'")))))))
     (home-page "https://github.com/mikedh/trimesh")
@@ -547,20 +604,21 @@ Python module with the same interface, but (hopefully) faster.")
 (define-public python-bottleneck
   (package
     (name "python-bottleneck")
-    (version "1.3.2")
+    (version "1.3.7")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "Bottleneck" version))
        (sha256
-        (base32 "0wz5320jx3n4q2nsvwvc7cpi66b46qbals9v53m955rmcq5ry5r0"))))
+        (base32 "1y410r3scfhs6s1j1jpxig01qlyn2hr2izyh1qsdlsfl78vpwip1"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
          (replace 'check
-           (lambda _
-             (invoke "python" "setup.py" "pytest"))))))
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "python" "setup.py" "pytest")))))))
     (native-inputs
      (list python-hypothesis python-pytest python-pytest-runner))
     (propagated-inputs
@@ -639,27 +697,55 @@ provides an example implementation of the algorithm as well as scripts
 necessary for reproducing the experiments in the paper.")
     (license license:expat)))
 
+(define-public python-einops
+  (package
+    (name "python-einops")
+    (version "0.6.1")
+    (source (origin
+              (method git-fetch) ;PyPI misses .ipynb files required for tests
+              (uri (git-reference
+                    (url "https://github.com/arogozhnikov/einops")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1h8p39kd7ylg99mh620xr20hg7v78x1jnj6vxwk31rlw2dmv2dpr"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list #:phases #~(modify-phases %standard-phases
+                        (add-after 'unpack 'set-backend
+                          (lambda _
+                            ;; Einops supports different backends, but we test
+                            ;; only NumPy for availability and simplicity.
+                            (setenv "EINOPS_TEST_BACKENDS" "numpy"))))))
+    (native-inputs (list jupyter
+                         python-hatchling
+                         python-nbconvert
+                         python-nbformat
+                         python-parameterized
+                         python-pytest))
+    (propagated-inputs (list python-numpy))
+    (home-page "https://einops.rocks/")
+    (synopsis "Tensor operations for different backends")
+    (description "Einops provides a set of tensor operations for NumPy and
+multiple deep learning frameworks.")
+    (license license:expat)))
+
 (define-public python-xarray
   (package
     (name "python-xarray")
-    (version "0.15.1")
+    (version "2023.6.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "xarray" version))
               (sha256
                (base32
-                "1yx8j66b7rn10m2l6gmn8yr9cn38pi5cj0x0wwpy4hdnhy6i7qv4"))))
-    (build-system python-build-system)
+                "1339fz5gxkizq02h6vn19546x9p4c3nd9ipzpcg39h7gwhg26yi6"))))
+    (build-system pyproject-build-system)
     (native-inputs
      (list python-setuptools-scm python-pytest))
     (propagated-inputs
      (list python-numpy python-pandas))
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda _
-             (invoke "pytest"))))))
     (home-page "https://github.com/pydata/xarray")
     (synopsis "N-D labeled arrays and datasets")
     (description "Xarray (formerly xray) makes working with labelled
@@ -671,6 +757,107 @@ concise, and less error-prone developer experience.  The package includes a
 large and growing library of domain-agnostic functions for advanced analytics
 and visualization with these data structures.")
     (license license:asl2.0)))
+
+(define-public python-xarray-einstats
+  (package
+    (name "python-xarray-einstats")
+    (version "0.5.1")
+    (source (origin
+              (method git-fetch) ; no tests in PyPI
+              (uri (git-reference
+                    (url "https://github.com/arviz-devs/xarray-einstats")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1gg7p2lq7zxic64nbr6a8ynizs8rjzb29fnqib7hw3lmp13wsfm0"))))
+    (build-system pyproject-build-system)
+    (native-inputs (list python-einops python-flit-core python-numba
+                         python-pytest))
+    (propagated-inputs (list python-numpy python-scipy python-xarray))
+    (home-page "https://einstats.python.arviz.org/en/latest/")
+    (synopsis "Stats, linear algebra and einops for xarray")
+    (description
+     "@code{xarray_einstats} provides wrappers around some NumPy and SciPy
+functions and around einops with an API and features adapted to xarray.")
+    (license license:asl2.0)))
+
+(define-public python-pytensor
+  (package
+    (name "python-pytensor")
+    (version "2.12.3")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/pymc-devs/pytensor")
+                    (commit (string-append "rel-" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1445fwbmzkdbndkq9hxiagdkfclgrnmpfzad40zqn6m5ry8192x8"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; Replace version manually because pytensor uses
+          ;; versioneer, which requires git metadata.
+          (add-after 'unpack 'versioneer
+            (lambda _
+              (with-output-to-file "setup.cfg"
+                (lambda ()
+                  (display "\
+[versioneer]
+VCS = git
+style = pep440
+versionfile_source = pytensor/_version.py
+versionfile_build = pytensor/_version.py
+tag_prefix =
+parentdir_prefix = pytensor-
+")))
+              (invoke "versioneer" "install")
+              (substitute* "setup.py"
+                (("versioneer.get_version\\(\\)")
+                 (string-append "\"" #$version "\"")))))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (setenv "HOME" "/tmp") ; required for most tests
+                ;; Test discovery fails, have to call pytest by hand.
+                ;; test_tensor_basic.py file requires JAX.
+                (invoke "python" "-m" "pytest" "-vv"
+                        "--ignore" "tests/link/jax/test_tensor_basic.py"
+                        ;; Skip benchmark tests.
+                        "-k" (string-append
+                              "not test_elemwise_speed"
+                              " and not test_logsumexp_benchmark"
+                              " and not test_fused_elemwise_benchmark"
+                              " and not test_scan_multiple_output"
+                              " and not test_vector_taps_benchmark"
+                              " and not test_cython_performance")
+                        ;; Skip computationally intensive tests.
+                        "--ignore" "tests/scan/"
+                        "--ignore" "tests/tensor/"
+                        "--ignore" "tests/sandbox/"
+                        "--ignore" "tests/sparse/sandbox/")))))))
+    (native-inputs (list python-cython python-pytest python-versioneer))
+    (propagated-inputs (list python-cons
+                             python-etuples
+                             python-filelock
+                             python-logical-unification
+                             python-minikanren
+                             python-numba
+                             python-numpy
+                             python-scipy
+                             python-typing-extensions))
+    (home-page "https://pytensor.readthedocs.io/en/latest/")
+    (synopsis
+     "Library for mathematical expressions in multi-dimensional arrays")
+    (description
+     "PyTensor is a Python library that allows one to define, optimize, and
+efficiently evaluate mathematical expressions involving multi-dimensional
+arrays.  It is a fork of the Aesara library.")
+    (license license:bsd-3)))
 
 (define-public python-msgpack-numpy
   (package
@@ -861,18 +1048,18 @@ two-dimensional renderings such as scatter plots and histograms.
 (define-public python-pandas-flavor
   (package
     (name "python-pandas-flavor")
-    (version "0.2.0")
+    (version "0.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pandas_flavor" version))
        (sha256
         (base32
-         "12g4av8gpl6l83yza3h97j3f2jblqv69frlidrvdq8ny2rc6awbq"))))
+         "0473lkbdnsag3w5x65sxwjlyq0i7z938ssxqwn2cpcml282vksx1"))))
     (build-system python-build-system)
     (propagated-inputs
-     (list python-pandas python-xarray))
-    (home-page "https://github.com/Zsailer/pandas_flavor")
+     (list python-lazy-loader python-packaging python-pandas python-xarray))
+    (home-page "https://github.com/pyjanitor-devs/pandas_flavor")
     (synopsis "Write your own flavor of Pandas")
     (description "Pandas 0.23 added a simple API for registering accessors
 with Pandas objects.  Pandas-flavor extends Pandas' extension API by
@@ -990,7 +1177,7 @@ Mathematics (GLM) library to Python.")
 (define-public python-distributed
   (package
     (name "python-distributed")
-    (version "2022.05.2")
+    (version "2023.7.0")
     (source
      (origin
        ;; The test files are not included in the archive on pypi
@@ -1001,165 +1188,193 @@ Mathematics (GLM) library to Python.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "009jrlk7kmazrd3nkl217cl3x5ddg7kw9mqdgq1z9knv5h1rm8qv"))
-       ;; Delete bundled copy of python-versioneer.
-       (snippet '(delete-file "versioneer.py"))))
-    (build-system python-build-system)
+         "0b93fpwz7kw31pkzfyihpkw8mzbqshzd6rw5vcwld7n3z2aaaxxb"))))
+    (build-system pyproject-build-system)
     (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'versioneer
-           (lambda _
-             (invoke "versioneer" "install")))
-         (add-after 'unpack 'fix-references
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* '("distributed/comm/tests/test_ucx_config.py"
-                            "distributed/tests/test_client.py"
-                            "distributed/tests/test_queues.py"
-                            "distributed/tests/test_variable.py"
-                            "distributed/cli/tests/test_tls_cli.py"
-                            "distributed/cli/tests/test_dask_spec.py"
-                            "distributed/cli/tests/test_dask_worker.py"
-                            "distributed/cli/tests/test_dask_scheduler.py")
-               (("\"dask-scheduler\"")
-                (format #false "\"~a/bin/dask-scheduler\""
-                        (assoc-ref outputs "out")))
-               (("\"dask-worker\"")
-                (format #false "\"~a/bin/dask-worker\""
-                        (assoc-ref outputs "out"))))))
-         ;; ERROR: distributed==2022.5.2
-         ;; ContextualVersionConflict (locket 0.2.0
-         ;; (/gnu/store/...-python-locket-0.2.0/lib/python3.9/site-packages),
-         ;; Requirement.parse('locket>=1.0.0'), {'distributed'})
-         (delete 'sanity-check)
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (setenv "DISABLE_IPV6" "1")
-               ;; The integration tests are all problematic to some
-               ;; degree.  They either require network access or some
-               ;; other setup.  We only run the tests in
-               ;; distributed/tests.
-               (for-each (lambda (dir)
-                           (delete-file-recursively
-                            (string-append "distributed/" dir "/tests")))
-                         (list "cli" "comm" "dashboard" "deploy" "diagnostics"
-                               "http" "http/scheduler" "http/worker"
-                               "protocol" "shuffle"))
-               (invoke "python" "-m" "pytest" "-vv" "distributed"
-                       "-m"
-                       (string-append "not slow"
-                                      " and not flaky"
-                                      " and not gpu"
-                                      " and not ipython"
-                                      " and not avoid_ci")
-                       "-k"
-                       (string-append
-                        ;; These fail because they require network access,
-                        ;; specifically access to 8.8.8.8.
-                        "not "
-                        (string-join
-                         (list
-                          "TestClientSecurityLoader.test_security_loader"
-                          "test_BatchedSend"
-                          "test_allowed_failures_config"
-                          "test_async_context_manager"
-                          "test_async_with"
-                          "test_client_repr_closed_sync"
-                          "test_close_closed"
-                          "test_close_fast_without_active_handlers"
-                          "test_close_grace_period_for_handlers"
-                          "test_close_loop_sync"
-                          "test_close_properly"
-                          "test_close_twice"
-                          "test_compression"
-                          "test_connection_pool"
-                          "test_connection_pool_close_while_connecting"
-                          "test_connection_pool_detects_remote_close"
-                          "test_connection_pool_outside_cancellation"
-                          "test_connection_pool_remove"
-                          "test_connection_pool_respects_limit"
-                          "test_connection_pool_tls"
-                          "test_counters"
-                          "test_dashboard_host"
-                          "test_dashboard_link_cluster"
-                          "test_dashboard_link_inproc"
-                          "test_deserialize_error"
-                          "test_dont_override_default_get"
-                          "test_errors"
-                          "test_fail_to_pickle_target_2"
-                          "test_file_descriptors_dont_leak"
-                          "test_finished"
-                          "test_get_client_functions_spawn_clusters"
-                          "test_host_uses_scheduler_protocol"
-                          "test_identity_inproc"
-                          "test_identity_tcp"
-                          "test_large_packets_inproc"
-                          "test_locked_comm_drop_in_replacement"
-                          "test_locked_comm_intercept_read"
-                          "test_locked_comm_intercept_write"
-                          "test_multiple_listeners"
-                          "test_no_dangling_asyncio_tasks"
-                          "test_plugin_exception"
-                          "test_plugin_internal_exception"
-                          "test_plugin_multiple_exceptions"
-                          "test_ports"
-                          "test_preload_import_time"
-                          "test_queue_in_task"
-                          "test_quiet_client_close"
-                          "test_rebalance_sync"
-                          "test_repr_localcluster"
-                          "test_require_encryption"
-                          "test_rpc_default"
-                          "test_rpc_inproc"
-                          "test_rpc_message_lifetime_default"
-                          "test_rpc_message_lifetime_inproc"
-                          "test_rpc_message_lifetime_tcp"
-                          "test_rpc_serialization"
-                          "test_rpc_tcp"
-                          "test_rpc_tls"
-                          "test_rpc_with_many_connections_inproc"
-                          "test_rpc_with_many_connections_tcp"
-                          "test_scheduler_file"
-                          "test_security_dict_input_no_security"
-                          "test_security_loader"
-                          "test_security_loader_ignored_if_explicit_security_provided"
-                          "test_security_loader_ignored_if_returns_none"
-                          "test_send_after_stream_start"
-                          "test_send_before_close"
-                          "test_send_before_start"
-                          "test_send_recv_args"
-                          "test_send_recv_cancelled"
-                          "test_sending_traffic_jam"
-                          "test_serializers"
-                          "test_server"
-                          "test_server_comms_mark_active_handlers"
-                          "test_shutdown"
-                          "test_shutdown_localcluster"
-                          "test_teardown_failure_doesnt_crash_scheduler"
-                          "test_threadpoolworkers_pick_correct_ioloop"
-                          "test_tls_listen_connect"
-                          "test_tls_temporary_credentials_functional"
-                          "test_variable_in_task"
-                          "test_worker_preload_text"
-                          "test_worker_uses_same_host_as_nanny")
-                         " and not ")
+     (list
+      #:test-flags
+      '(list "-x" "-m"
+             (string-append "not slow"
+                            " and not flaky"
+                            " and not gpu"
+                            " and not ipython"
+                            " and not avoid_ci")
+             "-k"
+             (string-append
+              ;; These fail because they require network access,
+              ;; specifically access to 8.8.8.8.
+              "not "
+              (string-join
+               (list
+                "TestClientSecurityLoader.test_security_loader"
+                "test_BatchedSend"
+                "test_allowed_failures_config"
+                "test_async_context_manager"
+                "test_async_with"
+                "test_client_repr_closed_sync"
+                "test_client_is_quiet_cluster_close"
+                "test_close_closed"
+                "test_close_fast_without_active_handlers"
+                "test_close_grace_period_for_handlers"
+                "test_close_loop_sync"
+                "test_close_properly"
+                "test_close_twice"
+                "test_compression"
+                "test_connection_pool"
+                "test_connection_pool_close_while_connecting"
+                "test_connection_pool_detects_remote_close"
+                "test_connection_pool_outside_cancellation"
+                "test_connection_pool_remove"
+                "test_connection_pool_respects_limit"
+                "test_connection_pool_tls"
+                "test_counters"
+                "test_dashboard_host"
+                "test_dashboard_link_cluster"
+                "test_dashboard_link_inproc"
+                "test_deserialize_error"
+                "test_dont_override_default_get"
+                "test_ensure_no_new_clients"
+                "test_errors"
+                "test_fail_to_pickle_target_2"
+                "test_failure_doesnt_crash"
+                "test_file_descriptors_dont_leak"
+                "test_finished"
+                "test_freeze_batched_send"
+                "test_get_client_functions_spawn_clusters"
+                "test_host_uses_scheduler_protocol"
+                "test_identity_inproc"
+                "test_identity_tcp"
+                "test_large_packets_inproc"
+                "test_locked_comm_drop_in_replacement"
+                "test_locked_comm_intercept_read"
+                "test_locked_comm_intercept_write"
+                "test_mixing_clients_different_scheduler"
+                "test_multiple_listeners"
+                "test_no_dangling_asyncio_tasks"
+                "test_plugin_exception"
+                "test_plugin_internal_exception"
+                "test_plugin_multiple_exceptions"
+                "test_ports"
+                "test_preload_import_time"
+                "test_queue_in_task"
+                "test_quiet_client_close"
+                "test_rebalance_sync"
+                "test_repr_localcluster"
+                "test_require_encryption"
+                "test_rpc_default"
+                "test_rpc_inproc"
+                "test_rpc_message_lifetime_default"
+                "test_rpc_message_lifetime_inproc"
+                "test_rpc_message_lifetime_tcp"
+                "test_rpc_serialization"
+                "test_rpc_tcp"
+                "test_rpc_tls"
+                "test_rpc_with_many_connections_inproc"
+                "test_rpc_with_many_connections_tcp"
+                "test_scheduler_file"
+                "test_security_dict_input_no_security"
+                "test_security_loader"
+                "test_security_loader_ignored_if_explicit_security_provided"
+                "test_security_loader_ignored_if_returns_none"
+                "test_send_after_stream_start"
+                "test_send_before_close"
+                "test_send_before_start"
+                "test_send_recv_args"
+                "test_send_recv_cancelled"
+                "test_sending_traffic_jam"
+                "test_serializers"
+                "test_server"
+                "test_server_comms_mark_active_handlers"
+                "test_shutdown"
+                "test_shutdown_localcluster"
+                "test_teardown_failure_doesnt_crash_scheduler"
+                "test_threadpoolworkers_pick_correct_ioloop"
+                "test_tls_listen_connect"
+                "test_tls_temporary_credentials_functional"
+                "test_variable_in_task"
+                "test_worker_preload_text"
+                "test_worker_uses_same_host_as_nanny")
+               " and not ")
 
-                        ;; These fail because it doesn't find dask[distributed]
-                        " and not test_quiet_close_process"
+              ;; These fail because it doesn't find dask[distributed]
+              " and not test_quiet_close_process"
 
-                        ;; This one fails because of a silly assert failure:
-                        ;; '2022.05.2' == '2022.5.2'
-                        " and not test_version"
-                        " and not test_git_revision"
+              ;; There is no distributed.__git_revision__ property.
+              " and not test_git_revision"
 
-                        ;; Recursion stack failure.  No idea what they
-                        ;; expected to happen.
-                        " and not test_stack_overflow"
+              ;; The system monitor did not return a dictionary containing
+              ;; "host_disk_io.read_bps".
+              " and not test_disk_config"
 
-                        ;; These tests are rather flaky
-                        " and not test_quiet_quit_when_cluster_leaves"
-                        " and not multiple_clients_restart"))))))))
+              ;; These fail because the exception text format
+              ;; appears to have changed.
+              " and not test_exception_text"
+              " and not test_worker_bad_args"
+
+              ;; These time out
+              " and not test_nanny_timeout"
+
+              ;; These tests are rather flaky
+              " and not test_quiet_quit_when_cluster_leaves"
+              " and not multiple_clients_restart"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'versioneer
+            (lambda _
+              ;; Our version of versioneer needs setup.cfg.  This is adapted
+              ;; from pyproject.toml.
+              (with-output-to-file "setup.cfg"
+                (lambda ()
+                  (display "\
+[versioneer]
+VCS = git
+style = pep440
+versionfile_source = distributed/_version.py
+versionfile_build = distributed/_version.py
+tag_prefix =
+parentdir_prefix = distributed-
+")))
+              (invoke "versioneer" "install")
+              (substitute* "setup.py"
+                (("versioneer.get_version\\(\\)")
+                 (string-append "\"" #$version "\"")))))
+          (add-after 'unpack 'fix-pytest-config
+            (lambda _
+              ;; This option is not supported by our version of pytest.
+              (substitute* "pyproject.toml"
+                (("--cov-config=pyproject.toml.*") ""))))
+          (add-after 'unpack 'fix-references
+            (lambda* (#:key outputs #:allow-other-keys)
+              (substitute* '("distributed/comm/tests/test_ucx_config.py"
+                             "distributed/tests/test_client.py"
+                             "distributed/tests/test_queues.py"
+                             "distributed/tests/test_variable.py"
+                             "distributed/cli/tests/test_tls_cli.py"
+                             "distributed/cli/tests/test_dask_spec.py"
+                             "distributed/cli/tests/test_dask_worker.py"
+                             "distributed/cli/tests/test_dask_scheduler.py")
+                (("\"dask-scheduler\"")
+                 (format #false "\"~a/bin/dask-scheduler\"" #$output))
+                (("\"dask-worker\"")
+                 (format #false "\"~a/bin/dask-worker\"" #$output)))))
+          (add-before 'check 'pre-check
+            (lambda _
+              (setenv "DISABLE_IPV6" "1")
+              ;; The integration tests are all problematic to some
+              ;; degree.  They either require network access or some
+              ;; other setup.  We only run the tests in
+              ;; distributed/tests.
+              (for-each (lambda (dir)
+                          (delete-file-recursively
+                           (string-append "distributed/" dir "/tests")))
+                        (list "cli" "comm" "dashboard" "deploy" "diagnostics"
+                              "http" "http/scheduler" "http/worker"
+                              "protocol" "shuffle"))))
+          ;; We need to use "." here.
+          (replace 'check
+            (lambda* (#:key tests? test-flags #:allow-other-keys)
+              (when tests?
+                (apply invoke "python" "-m" "pytest" "." "-vv" test-flags)))))))
     (propagated-inputs
      (list python-click
            python-cloudpickle
@@ -1176,7 +1391,8 @@ Mathematics (GLM) library to Python.")
            python-urllib3
            python-zict))
     (native-inputs
-     (list python-pytest
+     (list python-importlib-metadata
+           python-pytest
            python-pytest-timeout
            python-flaky
            python-versioneer))
@@ -1282,10 +1498,107 @@ pandas code.")
 aggregated sum and more.")
     (license license:bsd-3)))
 
+(define-public python-plotnine
+  (package
+    (name "python-plotnine")
+    ;; XXX Version 0.12.x exists, but we can't build it because we're still at
+    ;; matplotlib 3.5.  We'd need at least 3.6.
+    (version "0.10.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/has2k1/plotnine")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0lg53wcm00lj8zbb4q9yj4a0n0fqaqq7c7vj18bda0k56gg0fpwl"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      ;; These all fail because the images are considered to be too different,
+      ;; though they really do look fine.
+      '(list "-k" (string-append
+                   "not TestThemes"
+                   (string-join
+                    (list
+                     ;; Image tests
+                     "test_adjust_text"
+                     "test_annotation_logticks_coord_flip_discrete"
+                     "test_annotation_logticks_faceting"
+                     "test_arrow"
+                     "test_aslabeller_dict_0tag"
+                     "test_caption_simple"
+                     "test_continuous_x"
+                     "test_continuous_x_fullrange"
+                     "test_coord_trans_backtransforms"
+                     "test_coord_trans_se_false"
+                     "test_datetime_scale_limits"
+                     "test_dir_v_ncol"
+                     "test_discrete_x"
+                     "test_discrete_x_fullrange"
+                     "test_facet_grid_drop_false"
+                     "test_facet_grid_expression"
+                     "test_facet_grid_space_ratios"
+                     "test_facet_wrap"
+                     "test_facet_wrap_expression"
+                     "test_facet_wrap_label_both"
+                     "test_label_context_wrap2vars"
+                     "test_labeller_cols_both_grid"
+                     "test_labeller_cols_both_wrap"
+                     "test_labeller_towords"
+                     "test_missing_data_discrete_scale"
+                     "test_ribbon_facetting"
+                     "test_stack_non_linear_scale"
+                     "test_uneven_num_of_lines"
+
+                     ;; Missing optional modules
+                     "test_non_linear_smooth"
+                     "test_non_linear_smooth_no_ci")
+                    " and not " 'prefix)))
+      #:phases
+      '(modify-phases %standard-phases
+         (add-before 'check 'pre-check
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             ;; The data files are referenced by the tests but they are not
+             ;; installed.
+             (copy-recursively "plotnine/data"
+                               (string-append (site-packages inputs outputs)
+                                              "/plotnine/data"))
+             ;; Matplotlib needs to be able to write its configuration file
+             ;; somewhere.
+             (setenv "MPLCONFIGDIR" "/tmp")
+             (setenv "TZ" "UTC")
+             (setenv "TZDIR"
+                     (search-input-directory inputs "share/zoneinfo")))))))
+    (propagated-inputs
+     (list python-adjusttext
+           python-matplotlib
+           python-mizani
+           python-numpy
+           python-patsy
+           python-scipy
+           python-statsmodels))
+    (native-inputs
+     (list python-geopandas
+           python-mock
+           python-pandas
+           python-pytest python-pytest-cov
+           tzdata-for-tests))
+    (home-page "https://github.com/has2k1/plotnine")
+    (synopsis "Grammar of Graphics for Python")
+    (description
+     "Plotnine is a Python implementation of the Grammar of Graphics.
+It is a powerful graphics concept for creating plots and visualizations in a
+structured and declarative manner.  It is inspired by the R package ggplot2
+and aims to provide a similar API and functionality in Python.")
+    (license license:expat)))
+
 (define-public python-pyvista
   (package
     (name "python-pyvista")
-    (version "0.36.1")
+    (version "0.39.1")
     (source
      ;; The PyPI tarball does not contain the tests.
      ;; (However, we don't yet actually run the tests.)
@@ -1296,15 +1609,15 @@ aggregated sum and more.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1kjilcrz2cyh67n79r8dpxrans99mlviz2whc6g7j8hgn7v14z2n"))))
+        (base32 "00nij00z5r35f6dx7mwndsrpmiw43adjk8x35mk308c369ylbv9p"))))
     (build-system python-build-system)
     (propagated-inputs
-     (list python-appdirs
-           python-imageio
+     (list python-imageio
            python-matplotlib
            python-meshio
            python-numpy
            python-pillow
+           python-pooch
            python-scooby
            vtk))
     (arguments
@@ -1315,7 +1628,7 @@ aggregated sum and more.")
          (delete 'check)
          ;; Disable the sanity check, which fails with the following error:
          ;;
-         ;;   ...checking requirements: ERROR: pyvista==0.34.0 DistributionNotFound(Requirement.parse('vtk'), {'pyvista'})
+         ;;   ...checking requirements: ERROR: pyvista==0.39.1 DistributionNotFound(Requirement.parse('vtk'), {'pyvista'})
          (delete 'sanity-check))))
     (home-page "https://docs.pyvista.org/")
     (synopsis "3D plotting and mesh analysis through VTK")
@@ -1686,6 +1999,50 @@ documentation for more information.")
 Out-of-Core DataFrames (similar to Pandas), to visualize and explore big
 tabular datasets.  This package provides the core modules of Vaex.")
     (license license:expat)))
+
+(define-public python-pylems
+  (package
+    (name "python-pylems")
+    (version "0.6.0")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "PyLEMS" version))
+              (sha256
+               (base32
+                "074azbyivjbwi61fs5p8z9n6d8nk8xw6fmln1www13z1dccb3740"))))
+    (build-system python-build-system)
+    (propagated-inputs (list python-lxml))
+    (home-page "https://github.com/LEMS/pylems")
+    (synopsis
+     "Python support for the Low Entropy Model Specification language (LEMS)")
+    (description
+     "A LEMS simulator written in Python which can be used to run
+NeuroML2 models.")
+    (license license:lgpl3)))
+
+(define-public python-libneuroml
+  (package
+    (name "python-libneuroml")
+    (version "0.4.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/NeuralEnsemble/libNeuroML.git")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0mrm4rd6x1sm6hkvhk20mkqp9q53sl3lbvq6hqzyymkw1iqq6bhy"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-lxml python-six))
+    (native-inputs (list python-pytest python-numpy python-tables))
+    (home-page "https://libneuroml.readthedocs.org/en/latest/")
+    (synopsis
+     "Python library for working with NeuroML descriptions of neuronal models")
+    (description
+     "This package provides a Python library for working with NeuroML descriptions of
+neuronal models")
+    (license license:bsd-3)))
 
 ;;;
 ;;; Avoid adding new packages to the end of this file. To reduce the chances

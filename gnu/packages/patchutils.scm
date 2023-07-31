@@ -1,10 +1,13 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2014, 2018 Eric Bavier <bavier@member.fsf.org>
+;;; Copyright © 2014, 2018, 2023 Eric Bavier <bavier@posteo.net>
 ;;; Copyright © 2015, 2018 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2018–2022 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019 Christopher Baines <mail@cbaines.net>
 ;;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
+;;; Copyright © 2023 Andy Tai <atai@atai.org>
+;;; Copyright © 2023 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -29,14 +32,20 @@
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system glib-or-gtk)
+  #:use-module (guix build-system meson)
+  #:use-module (guix build-system ocaml)
   #:use-module (guix build-system python)
   #:use-module (gnu packages)
+  #:use-module (gnu packages autotools)
   #:use-module (gnu packages ed)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages check)
+  #:use-module (gnu packages compression)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages django)
+  #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages file)
   #:use-module (gnu packages gawk)
   #:use-module (gnu packages gettext)
@@ -47,11 +56,67 @@
   #:use-module (gnu packages less)
   #:use-module (gnu packages mail)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages ocaml)
+  #:use-module (gnu packages package-management)
   #:use-module (gnu packages perl)
+  #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages version-control)
   #:use-module (gnu packages xml))
+
+(define-public coccinelle
+  (let ((revision "0")
+        (commit "6608e45f85a10c57a3c910154cf049a5df4d98e4"))
+    (package
+      (name "coccinelle")
+      (version (git-version "1.1.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/coccinelle/coccinelle")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (modules '((guix build utils)))
+         (snippet
+          #~(delete-file-recursively "bundles"))
+         (sha256
+          (base32
+           "08nycmjyckqmqjpi78dcqdbmjq1xp18qdc6023dl90gdi6hmxz9l"))))
+      (build-system gnu-build-system)
+      (arguments
+       (list #:phases
+             #~(modify-phases %standard-phases
+                 (add-before 'bootstrap 'prepare-version.sh
+                   (lambda _
+                     (setenv "MAKE_COCCI_RELEASE" "y")
+                     (patch-shebang "version.sh")))
+                 (add-before 'check 'set-batch-mode
+                   (lambda _
+                     (substitute* "Makefile"
+                       (("--testall")
+                         "--batch_mode --testall")))))))
+      (propagated-inputs
+       (list ocaml-menhir
+             ocaml-num
+             ocaml-parmap
+             ocaml-pcre
+             ocaml-pyml
+             ocaml-stdcompat))
+      (native-inputs
+       (list autoconf
+             automake
+             ocaml
+             ocaml-findlib
+             pkg-config))
+      (home-page "https://coccinelle.lip6.fr")
+      (synopsis "Transformation of C code using semantic patches")
+      (description "Coccinelle is a tool that allows modification of C code
+using semantic patches in the @acronym{SmPL, Semantic Patch Language} for
+specifying desired matches and transformations in the C code.")
+      (license gpl2))))
 
 (define-public patchutils
   (package
@@ -103,53 +168,75 @@ listing the files modified by a patch.")
 (define-public quilt
   (package
     (name "quilt")
-    (version "0.66")
+    (version "0.67")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://savannah/quilt/"
                            "quilt-" version ".tar.gz"))
        (sha256
-        (base32 "01vfvk4pqigahx82fhaaffg921ivd3k7rylz1yfvy4zbdyd32jri"))))
+        (base32 "1hiw05aqysbnnl15zg2n5cr11k0z7rz85fvq8qv6qap7hw4vxqrv"))
+       (patches (search-patches "quilt-grep-compat.patch"))))
     (build-system gnu-build-system)
     (native-inputs
-     `(("gettext" ,gettext-minimal)))
-    (inputs (list perl less file ed diffstat))
+     (list gettext-minimal))
+    (inputs
+     (list bash-minimal perl less file gzip ed
+           diffutils diffstat findutils tar))
     (arguments
      '(#:parallel-tests? #f
        #:phases
        (modify-phases %standard-phases
-         (add-before 'check 'patch-tests
-           (lambda _
-             (substitute*
-                 '("test/run"
-                   "test/edit.test")
-               (("/bin/sh") (which "sh")))
-             #t))
+         (delete 'check)
          (add-after 'install 'wrap-program
            ;; quilt's configure checks for the absolute path to the utilities it
            ;; needs, but uses only the name when invoking them, so we need to
            ;; make sure the quilt script can find those utilities when run.
            (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out       (assoc-ref outputs "out"))
-                    (coreutils (assoc-ref inputs "coreutils"))
-                    (diffutils (assoc-ref inputs "diffutils"))
-                    (findutils (assoc-ref inputs "findutils"))
-                    (diffstat  (assoc-ref inputs "diffstat"))
-                    (less      (assoc-ref inputs "less"))
-                    (file      (assoc-ref inputs "file"))
-                    (ed        (assoc-ref inputs "ed"))
-                    (sed       (assoc-ref inputs "sed"))
-                    (bash      (assoc-ref inputs "bash"))
-                    (grep      (assoc-ref inputs "grep")))
+             (let ((cmd-path (lambda (cmd) (dirname (which cmd))))
+                   (out      (assoc-ref outputs "out")))
                (wrap-program (string-append out "/bin/quilt")
                  `("PATH" ":" prefix
-                   ,(map (lambda (dir)
-                           (string-append dir "/bin"))
-                         (list coreutils diffutils findutils
-                               less file ed sed bash grep
-                               diffstat)))))
-             #t)))))
+                   ,(map cmd-path
+                         (list "bash" "diff" "diffstat" "ed" "file" "find" "grep"
+                               "gzip" "less" "patch" "perl" "rm" "sed" "tar"))))
+               (wrap-program (string-append out "/share/quilt/scripts/backup-files")
+                 `("PATH" ":" prefix
+                   ,(map cmd-path
+                         (list "find" "grep" "mkdir")))))))
+         (add-after 'compress-documentation 'check
+           (lambda _
+             (substitute* '("test/run" "test/edit.test")
+               (("/bin/sh") (which "sh"))
+               (("rm -rf") (string-append (which "rm") " -rf")))
+             (substitute* "Makefile"
+               (("^(PATH|QUILT_DIR).*" &)
+                (string-append "#" &)) ; Test the installed 'quilt'
+               (("export QUILT_DIR") "export")
+               (("\\| sort") (string-append "| " (which "sort")))
+               (("\\| sed") (string-append "| " (which "sed")))
+               (("(chmod|touch)" &) (which &)))
+             ;; Tests are scripts interpreted by `test/run` and may specify
+             ;; the execution of several tools.  But PATH will be empty, so
+             ;; rewrite with the full file name:
+             (setenv "PATH" (string-append %output "/bin" ":" (getenv "PATH")))
+             (substitute* (find-files "test" "\\.test$")
+               (("([\\$\\|] )([[:graph:]]+)([[:blank:]\n]+)"
+                 & > cmd <)
+                (if (string=? cmd "zcat")
+                    ;; The `zcat` program is a script, and it will not be able
+                    ;; to invoke its `gzip` with PATH unset.  It's a simple
+                    ;; script though, so just translate here:
+                    (string-append > (which "gzip") " -cd " <)
+                    (or (and=> (which cmd)
+                               (lambda (p) (string-append > p <)))
+                        &))))
+             (let ((make (which "make")))
+               ;; Assert the installed 'quilt' can find utilities it needs.
+               (unsetenv "PATH")
+               ;; Used by some tests for access to internal "scripts"
+               (setenv "QUILT_DIR" (string-append %output "/share/quilt"))
+               (invoke make "check")))))))
     (home-page "https://savannah.nongnu.org/projects/quilt/")
     (synopsis "Script for managing patches to software")
     (description
@@ -161,7 +248,7 @@ refreshed, and more.")
 (define-public colordiff
   (package
     (name "colordiff")
-    (version "1.0.20")
+    (version "1.0.21")
     (source
       (origin
         (method url-fetch)
@@ -170,7 +257,7 @@ refreshed, and more.")
                    (string-append "http://www.colordiff.org/archive/colordiff-"
                                   version ".tar.gz")))
       (sha256
-       (base32 "1kbv3lsyzzrwca4v3ajpnv8q5j0h53r94lxiqgmikxmrxrxh3cp3"))))
+       (base32 "05g64z4ls1i70rpzznjxy2cpjgywisnwj9ssx9nq1w7hgqjz8c4v"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no tests
@@ -214,7 +301,7 @@ GiB).")
 (define-public meld
   (package
     (name "meld")
-    (version "3.20.4")
+    (version "3.22.0")
     (source
      (origin
        (method url-fetch)
@@ -222,66 +309,53 @@ GiB).")
                            (version-major+minor version)
                            "/meld-" version ".tar.xz"))
        (sha256
-        (base32 "04vx2mdbcdin0g3w8x910czfch5vyrl8drv1f2l8gxh6qvp113pl"))))
-    (build-system python-build-system)
+        (base32 "03f4j27amyi28flkks8i9bhqzd6xhm6d3c6jzxc57rzniv4hgh9z"))))
+    (build-system meson-build-system)
     (native-inputs
-     `(("intltool" ,intltool)
-       ("xmllint" ,libxml2)
-       ("glib-compile-schemas" ,glib "bin")
-       ("python-pytest" ,python-pytest)))
+     (list desktop-file-utils
+           intltool
+           itstool
+           libxml2
+           `(,glib "bin")               ; for glib-compile-schemas
+           gobject-introspection
+           pkg-config
+           python))
     (inputs
-     `(("python-cairo" ,python-pycairo)
-       ("python-gobject" ,python-pygobject)
-       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("gtksourceview" ,gtksourceview-3)))
+     (list bash-minimal
+           python
+           python-pycairo
+           python-pygobject
+           gsettings-desktop-schemas
+           gtksourceview-4))
     (propagated-inputs
      (list dconf))
     (arguments
-     `(#:imported-modules ((guix build glib-or-gtk-build-system)
-                           ,@%python-build-system-modules)
-       #:modules ((guix build python-build-system)
-                  ((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
+     (list
+      #:glib-or-gtk? #t
+      #:imported-modules `(,@%meson-build-system-modules
+                           (guix build python-build-system))
+      #:modules '((guix build meson-build-system)
+                  ((guix build python-build-system) #:prefix python:)
                   (guix build utils))
-       #:phases
-       (modify-phases %standard-phases
-         ;; This setup.py script does not support one of the Python build
-         ;; system's default flags, "--single-version-externally-managed".
-         (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (invoke "python" "setup.py"
-                     ;; This setup.py runs gtk-update-icon-cache  which we don't want.
-                     "--no-update-icon-cache"
-                     ;; "--no-compile-schemas"
-                     "install"
-                     (string-append "--prefix=" (assoc-ref outputs "out"))
-                     "--root=/")))
-         ;; The tests need to be run after installation.
-         (delete 'check)
-         (add-after 'install 'check
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Tests look for installed package
-             (add-installed-pythonpath inputs outputs)
-             ;; The tests fail when HOME=/homeless-shelter.
-             (setenv "HOME" "/tmp")
-             (invoke "py.test" "-v" "-k"
-                     ;; TODO: Those tests fail, why?
-                     "not test_classify_change_actions")))
-         (add-after 'install 'copy-styles
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((styles "/share/gtksourceview-3.0/styles"))
-               (copy-recursively
-                (string-append (assoc-ref inputs "gtksourceview") styles)
-                (string-append (assoc-ref outputs "out") styles))
-               #t)))
-         (add-after 'wrap 'glib-or-gtk-wrap
-           (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap))
-         (add-after 'wrap 'wrap-typelib
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               (wrap-program (string-append out "/bin/meld")
-                 `("GI_TYPELIB_PATH" prefix
-                   ,(search-path-as-string->list (getenv "GI_TYPELIB_PATH"))))
-               #t))))))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'skip-gtk-update-icon-cache
+            ;; Don't create 'icon-theme.cache'.
+            (lambda _
+              (substitute* "meson_post_install.py"
+                (("gtk-update-icon-cache") (which "true")))))
+          (add-after 'install 'copy-styles
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let ((styles "/share/gtksourceview-4/styles"))
+                (copy-recursively
+                 (string-append (assoc-ref inputs "gtksourceview") styles)
+                 (string-append (assoc-ref outputs "out") styles)))))
+          (add-after 'glib-or-gtk-wrap 'python-and-gi-wrap
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (wrap-program (search-input-file outputs "bin/meld")
+                `("GUIX_PYTHONPATH" = (,(getenv "GUIX_PYTHONPATH")
+                                       ,(python:site-packages inputs outputs)))
+                `("GI_TYPELIB_PATH" = (,(getenv "GI_TYPELIB_PATH")))))))))
     (home-page "https://meldmerge.org/")
     (synopsis "Compare files, directories and working copies")
     (description "Meld is a visual diff and merge tool targeted at
@@ -296,7 +370,7 @@ you to figure out what is going on in that merge you keep avoiding.")
 (define-public patchwork
   (package
     (name "patchwork")
-    (version "3.0.4")
+    (version "3.1.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -305,7 +379,7 @@ you to figure out what is going on in that merge you keep avoiding.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0dl0prsyzsnlq6g0jw05mxx00bq9y2rpc3vrbfxfiblyyydrn2xn"))))
+                "0is9d4gf93jcbyshyj2k3kjyrjnvimrm6bai6dbcx630md222j5w"))))
     (build-system python-build-system)
     (arguments
      `(;; TODO: Tests require a running database

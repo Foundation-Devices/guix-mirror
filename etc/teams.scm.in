@@ -5,7 +5,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2022, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2022 Mathieu Othacehe <othacehe@gnu.org>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -128,6 +128,17 @@ the haskell-build-system."
               "guix/import/stackage.scm"
               "guix/scripts/import/hackage.scm")))
 
+(define-team qt
+  (team 'qt
+        #:name "Qt team"
+        #:description
+        "The Qt toolkit/library and the qt-build-system,
+as well as some packages using Qt."
+        #:scope (list "gnu/packages/qt.scm"
+                      "guix/build-system/qt.scm"
+                      "guix/build/qt-build-system.scm"
+                      "guix/build/qt-utils.scm")))
+
 (define-team r
   (team 'r
         #:name "R team"
@@ -141,6 +152,20 @@ and the r-build-system."
                       "guix/import/cran.scm"
                       "guix/scripts/import/cran.scm"
                       "tests/cran.scm")))
+
+(define-team telephony
+  (team 'telephony
+        #:name "Telephony team"
+        #:description
+        "Telephony packages and services such as Jami, Linphone, etc."
+        #:scope (list "gnu/build/jami-service.scm"
+                      "gnu/packages/jami.scm"
+                      "gnu/packages/linphone.scm"
+                      "gnu/packages/telephony.scm"
+                      "gnu/services/telephony.scm"
+                      "gnu/tests/data/jami-dummy-account.dat"
+                      "gnu/tests/telephony.scm"
+                      "tests/services/telephony.scm")))
 
 (define-team tex
   (team 'tex
@@ -208,7 +233,7 @@ packages (e.g. Astronomy, Chemistry, Math, Physics etc.)"
         #:scope (list "gnu/packages/algebra.scm"
                       "gnu/packages/astronomy.scm"
                       "gnu/packages/geo.scm"
-                      "gnu/packages/chemestry.scm"
+                      "gnu/packages/chemistry.scm"
                       "gnu/packages/maths.scm")))
 
 (define-team emacs
@@ -255,14 +280,22 @@ asdf-build-system."
                       "guix/scripts/import/go.scm"
                       "tests/go.scm")))
 
-(define-team embedded-bootstrap
-  (team 'embedded-bootstrap
-        #:name "Embedded / Bootstrap"))
+(define-team bootstrap
+  (team 'bootstrap
+        #:name "Bootstrap"
+        #:scope (list "gnu/packages/mes.scm")))
+
+(define-team embedded
+  (team 'embedded
+        #:name "Embedded"
+        #:scope (list "gnu/packages/bootloaders.scm"
+                      "gnu/packages/firmware.scm")))
 
 (define-team rust
   (team 'rust
         #:name "Rust"
         #:scope (list (make-regexp "^gnu/packages/(crates|rust)(-.+|)\\.scm$")
+                      "gnu/packages/sequoia.scm"
                       "guix/build/cargo-build-system.scm"
                       "guix/build/cargo-utils.scm"
                       "guix/build-system/cargo.scm"
@@ -436,6 +469,34 @@ importer."
         "Reproducible Builds tooling and issues that affect any guix packages."
         #:scope (list "gnu/packages/diffoscope.scm")))
 
+(define-team gnome
+  (team 'gnome
+        #:name "Gnome team"
+        #:description
+        "The Gnome desktop environment, along with core technologies such as
+GLib/GIO, GTK, GStreamer and Webkit."
+        #:scope (list "gnu/packages/glib.scm"
+                      "gnu/packages/gstreamer.scm"
+                      "gnu/packages/gtk.scm"
+                      "gnu/packages/gnome.scm"
+                      "gnu/packages/gnome-xyz.scm"
+                      "gnu/packages/webkit.scm"
+                      "guix/build/glib-or-gtk-build-system.scm"
+                      "guix/build/meson-build-system.scm")))
+
+(define-team xfce
+  (team 'xfce
+        #:name "Xfce team"
+        #:description "Xfce desktop environment."
+        #:scope (list "gnu/packages/xfce.scm")))
+
+(define-team lxqt
+  (team 'lxqt
+        #:name "LXQt team"
+        #:description "LXQt desktop environment."
+        #:scope (list "gnu/packages/lxqt.scm"
+                      "gnu/packages/qt.scm")))
+
 
 (define-member (person "Eric Bavier"
                        "bavier@posteo.net")
@@ -451,11 +512,11 @@ importer."
 
 (define-member (person "Ludovic Courtès"
                        "ludo@gnu.org")
-  core home embedded-bootstrap mentors)
+  core home embedded bootstrap mentors)
 
 (define-member (person "Andreas Enge"
                        "andreas@enge.fr")
-  science)
+  lxqt science)
 
 (define-member (person "Tobias Geerinckx-Rice"
                        "me@tobias.gr")
@@ -471,7 +532,7 @@ importer."
 
 (define-member (person "Efraim Flashner"
                        "efraim@flashner.co.il")
-  embedded-bootstrap julia rust science)
+  embedded bootstrap julia rust science)
 
 (define-member (person "jgart"
                        "jgart@dismail.de")
@@ -499,14 +560,14 @@ importer."
 
 (define-member (person "Liliana Marie Prikler"
                        "liliana.prikler@gmail.com")
-  emacs games)
+  emacs games gnome)
 
 (define-member (person "Ricardo Wurmus"
                        "rekado@elephly.net")
   r core mentors tex)
 
 (define-member (person "Christopher Baines"
-                       "mail@cbaines.net")
+                       "guix@cbaines.net")
   core mentors ruby)
 
 (define-member (person "Andrew Tropin"
@@ -531,15 +592,27 @@ importer."
 
 (define-member (person "Raghav Gururajan"
                        "rg@raghavgururajan.name")
-  mentors)
+  gnome mentors)
 
 (define-member (person "宋文武"
                        "iyzsong@envs.net")
-  games localization)
+  games localization lxqt xfce)
+
+(define-member (person "Vagrant Cascadian"
+                       "vagrant@debian.org")
+  embedded)
 
 (define-member (person "Vagrant Cascadian"
                        "vagrant@reproducible-builds.org")
   reproduciblebuilds)
+
+(define-member (person "Zhu Zihao"
+                       "all_but_last@163.com")
+  localization xfce)
+
+(define-member (person "Maxim Cournoyer"
+                       "maxim.cournoyer@gmail.com")
+  gnome qt telephony)
 
 
 (define (find-team name)
@@ -568,24 +641,32 @@ of file names as string."
 (define (cc . teams)
   "Return arguments for `git send-email' to notify the members of the given
 TEAMS when a patch is received by Debbugs."
-  (format #true
-          "~{--add-header=\"X-Debbugs-Cc: ~a\"~^ ~}"
-          (map person-email
-               (delete-duplicates (append-map team-members teams) equal?))))
+  (let ((members (append-map team-members teams)))
+    (unless (null? members)
+      (format #true "--add-header=\"X-Debbugs-Cc: ~{~a~^, ~}\""
+              (map person-email (sort-members members))))))
+
+(define (sort-members members)
+  "Deduplicate and sort MEMBERS alphabetically by their name."
+  (sort (delete-duplicates members equal?)
+        (lambda (m1 m2)
+          (string<? (person-name m1) (person-name m2)))))
+
+(define (member->string member)
+  "Return the 'email <name>' string representation of MEMBER."
+  (let* ((name (person-name member))
+         (quoted-name/maybe (if (string-contains name ",")
+                                (string-append "\"" name "\"")
+                                name)))
+    (format #false "~a <~a>" quoted-name/maybe (person-email member))))
 
 (define* (list-members team #:optional port (prefix ""))
   "Print the members of the given TEAM."
   (define port* (or port (current-output-port)))
   (for-each
    (lambda (member)
-     (format port*
-             "~a~a <~a>~%"
-             prefix
-             (person-name member)
-             (person-email member)))
-   (sort
-    (team-members team)
-    (lambda (m1 m2) (string<? (person-name m1) (person-name m2))))))
+     (format port* "~a~a~%" prefix (member->string member)))
+   (sort-members (team-members team))))
 
 (define (list-teams)
   "Print all teams, their scope and their members."
@@ -660,6 +741,12 @@ and REV-END, two git revision strings."
          (rev-start (string-append rev-end "^")))
     (list rev-start rev-end)))
 
+(define (patch->teams patch-file)
+  "Return the name of the teams in scope for the changes in PATCH-FILE."
+  (map (compose symbol->string team-id)
+       (find-team-by-scope (apply diff-revisions
+                                  (git-patch->revisions patch-file)))))
+
 
 (define (main . args)
   (match args
@@ -672,11 +759,18 @@ and REV-END, two git revision strings."
     (("cc-members" rev-start rev-end)
      (apply cc (find-team-by-scope
                 (diff-revisions rev-start rev-end))))
+    (("cc-members-header-cmd" patch-file)
+     (let* ((teams (map find-team (patch->teams patch-file)))
+            (members (sort-members (append-map team-members teams))))
+       (unless (null? members)
+         (format #true "X-Debbugs-Cc: ~{~a~^, ~}"
+                 (map member->string members)))))
+    (("cc-mentors-header-cmd" patch-file)
+     (format #true "X-Debbugs-Cc: ~{~a~^, ~}"
+             (map member->string
+                  (sort-members (team-members (find-team "mentors"))))))
     (("get-maintainer" patch-file)
-     (apply main "list-members"
-            (map (compose symbol->string team-id)
-                 (find-team-by-scope (apply diff-revisions
-                                            (git-patch->revisions patch-file))))))
+     (apply main "list-members" (patch->teams patch-file)))
     (("list-teams" . args)
      (list-teams))
     (("list-members" . team-names)
@@ -691,8 +785,12 @@ and REV-END, two git revision strings."
 Commands:
   cc <team-name>
       get git send-email flags for cc-ing <team-name>
-  cc-members <start> <end> | patch
+  cc-members <start> <end> | <patch>
       cc teams related to files changed between revisions or in a patch file
+  cc-members-header-cmd <patch>
+      cc-members variant for use with 'git send-email --header-cmd'
+  cc-mentors-header-cmd <patch>
+      command to use with 'git send-email --header-cmd' to notify mentors
   list-teams
       list teams and their members
   list-members <team-name>

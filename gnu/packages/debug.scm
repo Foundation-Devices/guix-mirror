@@ -12,6 +12,7 @@
 ;;; Copyright © 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2022 Matthew James Kraai <kraai@ftbfs.org>
 ;;; Copyright © 2023 Andy Tai <atai@atai.org>
+;;; Copyright © 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -677,7 +678,7 @@ error reporting, better tracing, profiling, and a debugger.")
     (inputs
      (list gdb capnproto python python-pexpect zlib))
     (home-page "https://rr-project.org/")
-    (synopsis "Record and reply debugging framework")
+    (synopsis "Record and replay debugging framework")
     (description
      "rr is a lightweight tool for recording, replaying and debugging
 execution of applications (trees of processes and threads).  Debugging extends
@@ -688,8 +689,8 @@ fun.")
 
 (define-public libbacktrace
   ;; There are no releases nor tags.
-  (let ((revision "1")
-        (commit "5009c113981431ae1843ebd29d6ad24eb32fc1b2"))
+  (let ((revision "2")
+        (commit "cdb64b688dda93bbbacbc2b1ccf50ce9329d4748"))
     (package
       (name "libbacktrace")
       (version (git-version "1.0" revision commit))
@@ -701,10 +702,11 @@ fun.")
                 (file-name (git-file-name name version))
                 (sha256
                  (base32
-                  "0663zjpfpnsyv9h3pbp7cgmg9gz79n68bqpdl97y6i0jsx93v1zg"))))
+                  "0iwd41pgr2nxlmghqdfwfwxac27jbqxwxp07jihhq85a8s3igjgr"))))
       (build-system gnu-build-system)
       (arguments
-       `(#:make-flags '("CFLAGS=-fPIC")))
+       `(#:parallel-tests? #f ;spurious failures when testing in parallel
+         #:make-flags '("CFLAGS=-fPIC")))
       (home-page "https://github.com/ianlancetaylor/libbacktrace")
       (synopsis "C library for producing symbolic backtraces")
       (description "The @code{libbacktrace} library can be linked into a C/C++
@@ -714,7 +716,7 @@ program to produce symbolic backtraces.")
 (define-public libleak
   (package
     (name "libleak")
-    (version "0.3.5")
+    (version "0.3.6")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -723,7 +725,7 @@ program to produce symbolic backtraces.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1p8mb0hcfp8hdv1klv6rrpkn2zlhjxgkxbbjsk8kszxv7ijln87d"))))
+                "1p6x20mm0dym2qn10d6cvwmh71m93xwcd319g94zkv88hj5q17n6"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ;no test suite
@@ -837,7 +839,7 @@ engineering.")
 (define-public seer-gdb
   (package
     (name "seer-gdb")
-    (version "1.14")
+    (version "1.16")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -846,7 +848,7 @@ engineering.")
               (file-name (string-append name "-" version "-checkout"))
               (sha256
                (base32
-                "16mz1c58jf1zrgjpxmp58bx8viyidhs1qg0y8ql2f07wgyy6zx33"))))
+                "0jdvyg2jab1pvf36pvkyrfsg2wyy8zp1qx0v2ksclgrnr1hja6k6"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f ; Those are strangely manual
@@ -866,13 +868,13 @@ engineering.")
 (define-public ddd
   (package
     (name "ddd")
-    (version "3.3.12")
+    (version "3.4.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://gnu/ddd/ddd-" version ".tar.gz"))
               (sha256
                (base32
-                "0p5nx387857w3v2jbgvps2p6mlm0chajcdw5sfrddcglsxkwvmis"))))
+                "03sqsfiri5p130cmmzh2wikg0gisql496rvdhr1qaidh1f5bqk2x"))))
     (build-system gnu-build-system)
     (arguments
      (list #:tests? #f                  ;tests require manual intervention

@@ -1,8 +1,9 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2012-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2012-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2018 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
+;;; Copyright © 2023 Simon Tournier <zimon.toutoune@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -367,6 +368,23 @@
           (package-transitive-supported-systems d)
           (package-transitive-supported-systems e))))
 
+(test-equal "package-transitive-supported-systems detects cycles"
+  '("c" "a" "b" "c")
+  (letrec* ((a (dummy-package "a"
+                 (build-system trivial-build-system)
+                 (native-inputs (list c))))
+            (b (dummy-package "b"
+                 (build-system trivial-build-system)
+                 (inputs (list a))))
+            (c (dummy-package "c"
+                 (build-system trivial-build-system)
+                 (inputs (list b)))))
+    (guard (c ((package-cyclic-dependency-error? c)
+               (map package-name
+                    (cons (package-error-package c)
+                          (package-error-dependency-cycle c)))))
+      (package-transitive-supported-systems c))))
+
 (test-assert "package-development-inputs"
   ;; Note: Due to propagated inputs, 'package-development-inputs' returns a
   ;; couple more inputs, such as 'linux-libre-headers'.
@@ -418,12 +436,15 @@
 (let* ((o (dummy-origin))
        (u (dummy-origin))
        (i (dummy-origin))
+       (j (dummy-origin (patches (list o))))
        (a (dummy-package "a"))
        (b (dummy-package "b" (inputs (list a i))))
        (c (package (inherit b) (source o)))
        (d (dummy-package "d"
             (build-system trivial-build-system)
-            (source u) (inputs (list c)))))
+            (source u) (inputs (list c))))
+       (e (dummy-package "e" (source j)))
+       (f (package (inherit e) (inputs (list u)))))
   (test-assert "package-direct-sources, no source"
     (null? (package-direct-sources a)))
   (test-equal "package-direct-sources, #f source"
@@ -437,6 +458,17 @@
       (and (= (length (pk 's-sources s)) 2)
            (member o s)
            (member i s))))
+  (test-assert "package-direct-sources, with patches"
+    (let ((s (package-direct-sources e)))
+      (and (= (length (pk 's-sources s)) 2)
+           (member o s)
+           (member j s))))
+  (test-assert "package-direct-sources, with patches and inputs"
+    (let ((s (package-direct-sources f)))
+      (and (= (length (pk 's-sources s)) 3)
+           (member o s)
+           (member j s)
+           (member u s))))
   (test-assert "package-transitive-sources"
     (let ((s (package-transitive-sources d)))
       (and (= (length (pk 'd-sources s)) 3)
@@ -1577,6 +1609,24 @@
     (match (delete-duplicates pythons eq?)
       ((p) (eq? p (rewrite python))))))
 
+(test-assert "package-input-rewriting/spec, hidden package"
+  ;; Hidden packages are not subject to rewriting.
+  (let* ((python  (hidden-package python))
+         (p0      (dummy-package "chbouib"
+                    (build-system trivial-build-system)
+                    (inputs (list python))))
+         (rewrite (package-input-rewriting/spec
+                   `(("python" . ,(const sed)))
+                   #:deep? #t))
+         (p1      (rewrite p0))
+         (bag1    (package->bag p1))
+         (pythons (filter-map (match-lambda
+                                (("python" python) python)
+                                (_ #f))
+                              (bag-transitive-inputs bag1))))
+    (match (delete-duplicates pythons eq?)
+      ((p) (eq? p python)))))
+
 (test-equal "package-input-rewriting/spec, graft"
   (derivation-file-name (package-derivation %store sed))
 
@@ -1741,6 +1791,9 @@
     ;; exponential behavior.
     (let ((set1 duplicates1 (list->set* from-cache))
           (set2 duplicates2 (list->set* no-cache)))
+      ;; For easier debugging.
+      (pk 'from-cache-duplicates: duplicates1)
+      (pk 'no-cache-duplicates: duplicates2)
       (and (null? duplicates1) (null? duplicates2)
            (every (cut set-contains? set1 <>) no-cache)
            (every (cut set-contains? set2 <>) from-cache)))))

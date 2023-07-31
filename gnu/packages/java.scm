@@ -861,21 +861,19 @@ new Date();"))
     (name "openjdk")
     (version "9.181")
     (source (origin
-              (method url-fetch)
-              (uri "https://hg.openjdk.java.net/jdk/jdk/archive/3cc80be736f2.tar.bz2")
-              (file-name (string-append name "-" version ".tar.bz2"))
+              (method hg-fetch)
+              (uri (hg-reference (url "https://hg.openjdk.org/jdk/jdk")
+                                 (changeset "jdk-9+181")))
+              (file-name (hg-file-name name version))
+              (modules '((guix build utils)))
+              (snippet `(begin
+                          (for-each delete-file
+                                    (find-files "." ".*.(bin|exe|jar)$"))))
               (sha256
                (base32
-                "01ihmyf7k5z17wbr7xig7y40l9f01d5zjgkcmawn1102hw5kchpq"))
-              (patches (search-patches
-                        "openjdk-9-hotspot-pointer-comparison.patch"
-                        "openjdk-9-hotspot-stack-size.patch"))
-              (modules '((guix build utils)))
-              (snippet
-               `(begin
-                  (for-each delete-file
-                            (find-files "." ".*.(bin|exe|jar)$"))
-                  #t))))
+                "1v92nzdqx07c35x945awzir4yk0fk22vky6fpp8mq9js930sxsz0"))
+              (patches (search-patches "openjdk-9-pointer-comparison.patch"
+                                       "openjdk-9-setsignalhandler.patch"))))
     (build-system gnu-build-system)
     (outputs '("out" "jdk" "doc"))
     (arguments
@@ -886,6 +884,18 @@ new Date();"))
 
        #:phases
        (modify-phases %standard-phases
+         ,@(if (target-aarch64?)
+               `((add-after 'unpack 'patch-for-aarch64
+                   (lambda _
+                     (substitute* "hotspot/src/cpu/aarch64/vm/interp_masm_aarch64.hpp"
+                       ;; This line is duplicated, so remove both occurrences,
+                       ;; then add back one occurrence by substituting a
+                       ;; comment that occurs once.
+                       (("using MacroAssembler::call_VM_leaf_base;") "")
+                       (("Interpreter specific version of call_VM_base")
+                        "Interpreter specific version of call_VM_base
+  using MacroAssembler::call_VM_leaf_base;")))))
+               '())
          (add-after 'patch-source-shebangs 'fix-java-shebangs
            (lambda _
              ;; This file was "fixed" by patch-source-shebangs, but it requires
@@ -1036,7 +1046,7 @@ new Date();"))
        ("unzip" ,unzip)
        ("which" ,which)
        ("zip" ,zip)))
-    (home-page "https://openjdk.java.net/projects/jdk9/")
+    (home-page "https://openjdk.org/projects/jdk9/")
     (synopsis "Java development kit")
     (description
      "This package provides the Java development kit OpenJDK.")
@@ -1048,19 +1058,21 @@ new Date();"))
     (name "openjdk")
     (version "10.46")
     (source (origin
-              (method url-fetch)
-              (uri "http://hg.openjdk.java.net/jdk/jdk/archive/6fa770f9f8ab.tar.bz2")
-              (file-name (string-append name "-" version ".tar.bz2"))
+              (method hg-fetch)
+              (uri (hg-reference (url "https://hg.openjdk.org/jdk/jdk")
+                                 (changeset "jdk-10+46")))
+              (file-name (hg-file-name name version))
+              (modules '((guix build utils)))
+              (snippet `(begin
+                          (for-each delete-file
+                                    (find-files "." ".*.(bin|exe|jar)$"))))
               (sha256
                (base32
-                "0zywq2203b4hx4jms9vbwvjcj1d3k2v3qpx4s33729fkpmid97r4"))
+                "0i47ar8lxzjrkkiwbzybfxs473390h4jq9ahm3xqdvy5zpchxy3y"))
               (patches (search-patches
                         "openjdk-10-idlj-reproducibility.patch"
-                        "openjdk-10-hotspot-pointer-comparison.patch"
-                        "openjdk-10-hotspot-stack-size.patch"))
-              (modules '((guix build utils)))
-              (snippet
-               '(for-each delete-file (find-files "." "\\.(bin|exe|jar)$")))))
+                        "openjdk-10-pointer-comparison.patch"
+                        "openjdk-10-setsignalhandler.patch"))))
     (arguments
      (substitute-keyword-arguments (package-arguments openjdk9)
        ((#:phases phases)
@@ -1433,7 +1445,7 @@ new Date();"))
       (modules '((guix build utils)))
       (snippet
        '(for-each delete-file (find-files "." "\\.(bin|exe|jar)$")))
-      (patches (search-patches "openjdk-10-hotspot-stack-size.patch"))))
+      (patches (search-patches "openjdk-10-setsignalhandler.patch"))))
    (arguments
     (substitute-keyword-arguments (package-arguments openjdk11)
       ((#:phases phases)
@@ -1460,15 +1472,14 @@ blacklisted.certs.pem"
    "07k9bsbxwyf2z2n50z96nvhsdai916mxdxcr5lm44jz7f6xrwfq6"
    (source (origin
              (inherit (package-source base))
-             (patches
-              (search-patches "openjdk-10-hotspot-stack-size.patch"))
              (snippet                   ;override snippet
               '(begin
                  ;; The m4 macro uses 'help' to search for builtins, which is
                  ;; not available in bash-minimal
                  (substitute* "make/autoconf/basics.m4"
                    (("if help") "if command -v"))
-                 (for-each delete-file (find-files "." "\\.(bin|exe|jar)$"))))))))
+                 (for-each delete-file (find-files "." "\\.(bin|exe|jar)$"))))
+             (patches (search-patches "openjdk-10-setsignalhandler.patch"))))))
 
 (define-public openjdk15
   (make-openjdk
@@ -1494,8 +1505,8 @@ blacklisted.certs.pem"
                 "0587px2qbz07g3xi4a3ya6m630p72dvkxcn0bj1813pxnwvcgigz"
    (source (origin
              (inherit (package-source base))
-             (patches
-              (search-patches "openjdk-10-hotspot-stack-size.patch"))))))
+             (patches (search-patches "openjdk-15-xcursor-no-dynamic.patch"
+                                      "openjdk-10-setsignalhandler.patch"))))))
 
 (define-public openjdk17
   (make-openjdk
@@ -1503,7 +1514,7 @@ blacklisted.certs.pem"
    "1asnysg6kxdkrmb88y6qihdr12ljsyxv0mg6hlcs7cwxgsdlqkfs"
    (source (origin
              (inherit (package-source base))
-             (patches '())))
+             (patches (search-patches "openjdk-15-xcursor-no-dynamic.patch"))))
    (arguments
     (substitute-keyword-arguments (package-arguments openjdk16)
       ((#:phases phases)
@@ -1519,8 +1530,8 @@ blacklisted.certs.pem"
                 "1yimfdkwpinhg5cf1mcrzk9xvjwnray3cx762kypb9jcwbranjwx"))
 
 (define-public openjdk19
-  (make-openjdk openjdk18 "19.0.1"
-                "0kyalb391znw6idmfn3dsx6c2mal1hl63f0bwa4mlnsxfl380bi1"
+  (make-openjdk openjdk18 "19.0.2"
+                "08kvx7n8qhhfl25pig966881j5h4x7y0pf4brq16x0283fc0f4d4"
    (arguments
     (substitute-keyword-arguments (package-arguments openjdk18)
       ((#:phases phases)
@@ -1537,6 +1548,42 @@ blacklisted.certs.pem"
 
 ;;; Convenience alias to point to the latest version of OpenJDK.
 (define-public openjdk openjdk19)
+
+
+(define-public jbr17
+  (package
+    (inherit openjdk17)
+    (name "jbr")
+    (version "17.0.7-b1020")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/JetBrains/JetBrainsRuntime.git")
+                     (commit (string-append "jb" version))))
+              (file-name (string-append name "-" version "-checkout"))
+              (sha256
+               (base32
+                "0wh9xhqgcjk0jgvpvlvf78dy3r8m0vgqd0f54whpx0qqbmyavgdw"))
+              (patches (search-patches "jbr-17-xcursor-no-dynamic.patch"))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments openjdk17)
+       ((#:configure-flags configure-flags)
+        #~(append #$configure-flags
+                  (list "--with-jvm-features=shenandoahgc"
+                        "--enable-cds=yes"
+                        "--with-vendor-name=JetBrains s.r.o"
+                        "--with-vendor-url=https://www.jetbrains.com/"
+                        "--with-vendor-bug-url=https://youtrack.jetbrains.com/issues/JBR")))))
+    (synopsis "JetBrains Java Runtime")
+    (description "This package provides a Java runtime environment for
+and Java development kit.  It supports enhanced class redefinition (DCEVM),
+features optional JCEF, a framework for embedding Chromium-based browsers,
+includes a number of improvements in font rendering, keyboards support,
+windowing/focus subsystems, HiDPI, accessibility, and performance,
+provides better desktop integration and bugfixes not yet present in
+OpenJDK.")
+    (home-page "https://www.jetbrains.com/")
+    (license license:gpl2+)))
 
 
 (define-public ant/java8
@@ -11242,7 +11289,7 @@ outputting XML data from Java code.")
               (file-name (string-append name "-" version))
               (sha256
                (base32
-                "18q3i6jgm6rkw8aysfgihgywrdc5nvijrwnslmi3ww497jvri6ja"))))
+                "0zjqmsad4xk0iar23hdyvx19nxczybd2bh0i35xrafli5cmh720k"))))
     (build-system ant-build-system)
     (arguments
      `(#:jar-name "geronimo-xbean-reflect.jar"
@@ -11293,7 +11340,7 @@ and graphs of objects for dependency injection frameworks")
               (file-name (string-append name "-" version "-source"))
               (sha256
                (base32
-                "119yn795jvnjf52si84q192s8wag1k013iabg78b7wnadssnnh31"))))
+                "1mky4zyl2xsqlgrkairaj5971byvhwk2z9bq8snsgvlr11ydc0zf"))))
     (build-system ant-build-system)
     (arguments
      `(#:tests? #f
@@ -13510,6 +13557,49 @@ Isolation and Durability) properties.")
 for the JVM.  It supports colors, autocompletion, subcommands, and more.  Written
 in Java, usable from Groovy, Kotlin, Scala, etc.")
     (license license:asl2.0)))
+
+(define-public java-pj
+  (package
+    (name "java-pj")
+    (version "20150107")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://www.cs.rit.edu/~ark/pjsrc"
+                                  version ".jar"))
+              (sha256
+               (base32
+                "078xwaivl2qqjc07r0vk6kzpqlcb1bcar80p8r5qigh34hpr86d3"))
+              (modules '((guix build utils)))
+              (snippet
+               '(for-each delete-file
+                          (find-files "." "\\.class$")))))
+    (build-system ant-build-system)
+    (arguments
+     (list
+      #:tests? #false ;there are none
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'chdir
+            (lambda _ (chdir "src/pj")))
+          (add-after 'chdir 'patch-source-directory
+            (lambda _
+              (substitute* "compile"
+                (("SRCDIR1=/home/ark/public_html/pj/lib")
+                 (string-append "SRCDIR1=" (getcwd) "/lib")))))
+          (replace 'build
+            (lambda _
+              (invoke "bash" "./compile" "linux")
+              (with-directory-excursion "lib"
+                (apply invoke "jar" "cf" (string-append "pj" #$version ".jar")
+                       (find-files "." "\\.class$")))))
+          (replace 'install (install-jars ".")))))
+    (home-page "https://www.cs.rit.edu/~ark/pj.shtml")
+    (synopsis "Parallel programming in Java")
+    (description "Parallel Java (PJ) is an API and middleware for parallel
+programming in 100% Java on shared memory multiprocessor (SMP) parallel
+computers, cluster parallel computers, and hybrid SMP cluster parallel
+computers.")
+    (license license:gpl3+)))
 
 (define-public java-jetbrains-annotations
   (package

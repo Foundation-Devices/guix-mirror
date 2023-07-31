@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2015, 2016, 2017, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2015-2023 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015-2017, 2019-2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Martin Becze <mjbecze@riseup.net>
 ;;; Copyright © 2021 Sarah Morgensen <iskarian@mgsn.dev>
@@ -29,12 +29,10 @@
   #:use-module ((ice-9 rdelim) #:select (read-string read-line))
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-2)
-  #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
   #:use-module (srfi srfi-71)
-  #:use-module (ice-9 receive)
   #:use-module (web uri)
   #:use-module (guix memoization)
   #:use-module (guix http-client)
@@ -52,11 +50,9 @@
   #:use-module (guix utils)
   #:use-module (guix git)
   #:use-module ((guix build-system r) #:select (cran-uri bioconductor-uri))
-  #:use-module (guix ui)
   #:use-module (guix upstream)
   #:use-module (guix packages)
   #:use-module (guix sets)
-  #:use-module (gnu packages)
   #:export (%input-style
 
             cran->guix-package
@@ -99,7 +95,8 @@
       ("AGPL (>= 3)" (prefix 'agpl3+))
       ("Artistic-2.0" (prefix 'artistic2.0))
       ((or "Apache License 2.0"
-           "Apache License (== 2.0)")
+           "Apache License (== 2.0)"
+           "Apache License (>= 2.0)")
        (prefix 'asl2.0))
       ("BSD_2_clause" (prefix 'bsd-2))
       ("BSD_2_clause + file LICENSE" (prefix 'bsd-2))
@@ -117,6 +114,7 @@
       ((or "GPL (> 2)"
            "GPL (>= 3)"
            "GPL (>= 3.0)"
+           "GPL (>=3)"
            "GNU General Public License (>= 3)")
        (prefix 'gpl3+))
       ((or "GPL-2"
@@ -168,32 +166,24 @@
                                  rest)))))))
     (fold parse '() lines)))
 
-(define (format-inputs names)
-  "Generate a sorted list of package inputs from a list of package NAMES."
-  (map (lambda (name)
-         (case (%input-style)
-           ((specification)
-            `(specification->package ,name))
-           (else
-            (string->symbol name))))
-       (sort names string-ci<?)))
-
-(define* (maybe-inputs package-inputs #:optional (type 'inputs))
+(define* (maybe-inputs package-inputs #:optional (input-type 'inputs))
   "Given a list of PACKAGE-INPUTS, tries to generate the TYPE field of a
 package definition."
   (match package-inputs
     (()
      '())
     ((package-inputs ...)
-     `((,type (list ,@(format-inputs package-inputs)))))))
+     `((,input-type (list ,@(map (compose string->symbol
+                                          upstream-input-downstream-name)
+                                 package-inputs)))))))
 
 (define %cran-url "https://cran.r-project.org/web/packages/")
 (define %cran-canonical-url "https://cran.r-project.org/package=")
 (define %bioconductor-url "https://bioconductor.org/packages/")
 
-;; The latest Bioconductor release is 3.16.  Bioconductor packages should be
+;; The latest Bioconductor release is 3.17.  Bioconductor packages should be
 ;; updated together.
-(define %bioconductor-version "3.16")
+(define %bioconductor-version "3.17")
 
 (define* (bioconductor-packages-list-url #:optional type)
   (string-append "https://bioconductor.org/packages/"
@@ -403,6 +393,7 @@ empty list when the FIELD cannot be found."
         "posix.1-2001"
         "linux"
         "none"
+        "unix"
         "windows"
         "xcode"
         "xquartz"))
@@ -439,6 +430,8 @@ empty list when the FIELD cannot be found."
     ("udunits-2" "udunits")
     ("whoami" "coreutils")
     ("x11" "libx11")
+    ("xml2" "libxml2")
+    ("zlib-devel" "zlib")
     (_ sysname)))
 
 (define cran-guix-name (cut guix-name "r-" <>))
@@ -513,7 +506,7 @@ referenced in build system files."
                        packages
                        (list-matches libraries-pattern line))))))))))
     (set)
-    (find-files dir "(Makevars.in*|configure.*)"))))
+    (find-files dir "(Makevars(.in.*)?|configure.*)"))))
 
 (define (directory-needs-pkg-config? dir)
   "Return #T if any of the Makevars files in the src directory DIR reference
@@ -522,14 +515,29 @@ the pkg-config tool."
                         "(Makevars.*|configure.*)"))
 
 (define (source-dir->dependencies dir)
-  "Guess dependencies of R package source in DIR and return two values: a list
-of package names for INPUTS and another list of names of NATIVE-INPUTS."
-  (values
-   (needed-libraries-in-directory dir)
-   (append
-       (if (directory-needs-esbuild? dir) '("esbuild") '())
-       (if (directory-needs-pkg-config? dir) '("pkg-config") '())
-       (if (directory-needs-fortran? dir) '("gfortran") '()))))
+  "Guess dependencies of R package source in DIR and return a list of
+<upstream-input> corresponding to the dependencies guessed from source files
+in DIR."
+  (define (native name)
+    (upstream-input
+     (name name)
+     (downstream-name name)
+     (type 'native)))
+
+  (append (map (lambda (name)
+                 (upstream-input
+                  (name name)
+                  (downstream-name name)))
+               (needed-libraries-in-directory dir))
+          (if (directory-needs-esbuild? dir)
+              (list (native "esbuild"))
+              '())
+          (if (directory-needs-pkg-config? dir)
+              (list (native "pkg-config"))
+              '())
+          (if (directory-needs-fortran? dir)
+              (list (native "gfortran"))
+              '())))
 
 (define (source->dependencies source tarball?)
   "SOURCE-DIR->DEPENDENCIES, but for directories and tarballs as indicated
@@ -543,7 +551,84 @@ by TARBALL?"
     (source-dir->dependencies source)))
 
 (define (vignette-builders meta)
-  (map cran-guix-name (listify meta "VignetteBuilder")))
+  (map (lambda (name)
+         (upstream-input
+          (name name)
+          (downstream-name (cran-guix-name name))
+          (type 'native)))
+       (listify meta "VignetteBuilder")))
+
+(define (uri-helper repository)
+  (match repository
+    ('cran         cran-uri)
+    ('bioconductor bioconductor-uri)
+    ('git          #f)
+    ('hg           #f)))
+
+(define (cran-package-source-url meta repository)
+  "Return the URL of the source code referred to by META, a package in
+REPOSITORY."
+  (case repository
+    ((git) (assoc-ref meta 'git))
+    ((hg)  (assoc-ref meta 'hg))
+    (else
+     (match (apply (uri-helper repository)
+                   (assoc-ref meta "Package")
+                   (assoc-ref meta "Version")
+                   (case repository
+                     ((bioconductor)
+                      (list (assoc-ref meta 'bioconductor-type)))
+                     (else '())))
+       ((urls ...) urls)
+       ((? string? url) url)
+       (_ #f)))))
+
+(define (cran-package-propagated-inputs meta)
+  "Return the list of <upstream-input> derived from dependency information in
+META."
+  (filter-map (lambda (name)
+                (and (not (member name
+                                  (append default-r-packages invalid-packages)))
+                     (upstream-input
+                      (name name)
+                      (downstream-name (cran-guix-name name))
+                      (type 'propagated))))
+              (lset-union equal?
+                          (listify meta "Imports")
+                          (listify meta "LinkingTo")
+                          (delete "R" (listify meta "Depends")))))
+
+(define* (cran-package-inputs meta repository
+                              #:key (download-source download))
+  "Return the list of <upstream-input> corresponding to all the dependencies
+of META, a package in REPOSITORY."
+  (let* ((url    (cran-package-source-url meta repository))
+         (name   (assoc-ref meta "Package"))
+         (source (download-source url
+                                  #:method
+                                  (cond ((assoc-ref meta 'git) 'git)
+                                        ((assoc-ref meta 'hg) 'hg)
+                                        (else #f))))
+         (tarball? (not (or (assoc-ref meta 'git)
+                            (assoc-ref meta 'hg)))))
+    (sort (filter
+           ;; Prevent tight cycles.
+           (lambda (input)
+             ((negate string=?) name (upstream-input-name input)))
+           (append (source->dependencies source tarball?)
+                   (filter-map (lambda (name)
+                                 (and (not (member name invalid-packages))
+                                      (upstream-input
+                                       (name name)
+                                       (downstream-name
+                                        (transform-sysname name)))))
+                               (map string-downcase
+                                    (listify meta "SystemRequirements")))
+                   (cran-package-propagated-inputs meta)
+                   (vignette-builders meta)))
+          (lambda (input1 input2)
+            (string<? (upstream-input-downstream-name input1)
+                      (upstream-input-downstream-name input2))))))
 
 (define* (description->package repository meta #:key (license-prefix identity)
                                (download-source download))
@@ -558,11 +643,6 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
                                ((cran)         %cran-canonical-url)
                                ((bioconductor) %bioconductor-url)
                                ((git)          #f)))
-         (uri-helper (case repository
-                       ((cran)         cran-uri)
-                       ((bioconductor) bioconductor-uri)
-                       ((git)          #f)
-                       ((hg)           #f)))
          (name       (assoc-ref meta "Package"))
          (synopsis   (assoc-ref meta "Title"))
          (version    (assoc-ref meta "Version"))
@@ -574,40 +654,16 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
                        (else (match (listify meta "URL")
                                ((url rest ...) url)
                                (_ (string-append canonical-url-base name))))))
-         (source-url (case repository
-                       ((git) (assoc-ref meta 'git))
-                       ((hg)  (assoc-ref meta 'hg))
-                       (else
-                        (match (apply uri-helper name version
-                                      (case repository
-                                        ((bioconductor)
-                                         (list (assoc-ref meta 'bioconductor-type)))
-                                        (else '())))
-                          ((urls ...) urls)
-                          ((? string? url) url)
-                          (_ #f)))))
+         (source-url (cran-package-source-url meta repository))
          (git?       (if (assoc-ref meta 'git) #true #false))
          (hg?        (if (assoc-ref meta 'hg) #true #false))
          (source     (download-source source-url #:method (cond
                                                            (git? 'git)
                                                            (hg? 'hg)
                                                            (else #f))))
-         (tarball?   (not (or git? hg?)))
-         (source-inputs source-native-inputs
-          (source->dependencies source tarball?))
-         (sysdepends (append
-                      source-inputs
-                      (filter (lambda (name)
-                                (not (member name invalid-packages)))
-                              (map string-downcase (listify meta "SystemRequirements")))))
-         (propagate  (filter (lambda (name)
-                               (not (member name (append default-r-packages
-                                                         invalid-packages))))
-                             (lset-union equal?
-                                         (listify meta "Imports")
-                                         (listify meta "LinkingTo")
-                                         (delete "R"
-                                                 (listify meta "Depends")))))
+         (uri-helper (uri-helper repository))
+         (inputs     (cran-package-inputs meta repository
+                                          #:download-source download-source))
          (package
            `(package
               (name ,(cran-guix-name name))
@@ -653,12 +709,18 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
                     `((properties ,`(,'quasiquote ((,'upstream-name . ,name)))))
                     '())
               (build-system r-build-system)
-              ,@(maybe-inputs (map transform-sysname sysdepends))
-              ,@(maybe-inputs (map cran-guix-name propagate) 'propagated-inputs)
-              ,@(maybe-inputs
-                 `(,@source-native-inputs
-                   ,@(vignette-builders meta))
-                 'native-inputs)
+
+              ,@(maybe-inputs (filter (upstream-input-type-predicate 'regular)
+                                      inputs)
+                              'inputs)
+              ,@(maybe-inputs (filter (upstream-input-type-predicate
+                                       'propagated)
+                                      inputs)
+                              'propagated-inputs)
+              ,@(maybe-inputs (filter (upstream-input-type-predicate 'native)
+                                      inputs)
+                              'native-inputs)
+
               (home-page ,(if (string-null? home-page)
                               (string-append base-url name)
                               home-page))
@@ -677,7 +739,10 @@ from the alist META, which was derived from the R package's DESCRIPTION file."
               (revision "1"))
           ,package))
       (else package))
-     propagate)))
+     (filter-map (lambda (input)
+                   (and (eq? 'propagated (upstream-input-type input))
+                        (upstream-input-name input)))
+                 inputs))))
 
 (define cran->guix-package
   (memoize
@@ -762,9 +827,7 @@ s-expression corresponding to that package, or #f on failure."
           (package (package-name pkg))
           (version version)
           (urls (cran-uri upstream-name version))
-          (input-changes
-           (changed-inputs pkg
-                           (description->package 'cran meta)))))))
+          (inputs (cran-package-inputs meta 'cran))))))
 
 (define* (latest-bioconductor-release pkg #:key (version #f))
   "Return an <upstream-source> for the latest release of the package PKG."
@@ -786,10 +849,9 @@ s-expression corresponding to that package, or #f on failure."
         (package (package-name pkg))
         (version latest-version)
         (urls (bioconductor-uri upstream-name latest-version))
-        (input-changes
-         (changed-inputs
-          pkg
-          (cran->guix-package upstream-name #:repo 'bioconductor))))))
+        (inputs
+         (let ((meta (fetch-description 'bioconductor upstream-name)))
+           (cran-package-inputs meta 'bioconductor))))))
 
 (define (cran-package? package)
   "Return true if PACKAGE is an R package from CRAN."

@@ -3,6 +3,8 @@
 ;;; Copyright © 2020, 2021 Raghav Gururajan <raghavgururajan@disroot.org>
 ;;; Copyright © 2020, 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2023 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2023 Andreas Enge <andreas@enge.fr>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -22,6 +24,7 @@
 (define-module (gnu packages linphone)
   #:use-module (gnu packages)
   #:use-module (gnu packages admin)
+  #:use-module (gnu packages aidc)
   #:use-module (gnu packages audio)
   #:use-module (gnu packages avahi)
   #:use-module (gnu packages cpp)
@@ -57,6 +60,7 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system qt))
@@ -130,7 +134,7 @@ writing, administering, and running unit tests in C.")
 (define-public bctoolbox
   (package
     (name "bctoolbox")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -139,18 +143,21 @@ writing, administering, and running unit tests in C.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0bfswwvvdshaahg4jd2j10f0sci8809s4khajd0m6b059zwc7y25"))))
+        (base32 "0b51308jy5z32gp594r78jvbyrha16sanxdnbcmxgrwnb4myqx5j"))))
     (build-system cmake-build-system)
     (outputs '("out" "debug"))
     (arguments
-     `(#:configure-flags '("-DENABLE_STATIC=OFF")
+     `(#:configure-flags (list "-DENABLE_STATIC=OFF"
+                               ;; Do not use -Werror, because due to skipping
+                               ;; a test there are unused procedures.
+                               "-DENABLE_STRICT=OFF")
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-cmake
            (lambda* (#:key inputs #:allow-other-keys)
              ;; Fix decaf dependency (see:
              ;; https://gitlab.linphone.org/BC/public/bctoolbox/-/issues/3).
-             (let* ((decaf (assoc-ref inputs "decaf")))
+             (let* ((decaf (assoc-ref inputs "libdecaf")))
                (substitute* (find-files "." "CMakeLists.txt")
                  (("find_package\\(Decaf CONFIG\\)")
                   "set(DECAF_FOUND 1)")
@@ -162,7 +169,7 @@ writing, administering, and running unit tests in C.")
            (lambda _
              ;; The following test relies on networking; disable it.
              (substitute* "tester/port.c"
-               (("[ \t]*TEST_NO_TAG.*bctbx_addrinfo_sort_test\\)")
+               (("[ \t]*TEST_NO_TAG.*bctbx_addrinfo_sort_test\\),")
                 ""))))
          (add-after 'unpack 'fix-installed-resource-directory-detection
            (lambda _
@@ -176,13 +183,12 @@ writing, administering, and running unit tests in C.")
                (("if \\(file_exists\\(\"..\"\\)\\)")
                 "if (NULL)"))))
          (replace 'check
-           (lambda _
-             (with-directory-excursion "tester"
-               (invoke "./bctoolbox_tester")))))))
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (with-directory-excursion "tester"
+                 (invoke "./bctoolbox_tester"))))))))
     (inputs
-     `(("bcunit" ,bcunit)
-       ("decaf" ,libdecaf)
-       ("mbedtls" ,mbedtls-apache)))
+     (list bcunit libdecaf mbedtls-apache))
     (synopsis "Belledonne Communications Tool Box")
     (description "BcToolBox is an utilities library used by Belledonne
 Communications software like belle-sip, mediastreamer2 and linphone.")
@@ -192,7 +198,7 @@ Communications software like belle-sip, mediastreamer2 and linphone.")
 (define-public belr
   (package
     (name "belr")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -201,36 +207,33 @@ Communications software like belle-sip, mediastreamer2 and linphone.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0w2canwwm0qb99whnangvaybvjzq8xg6vksqxykgr8fbx7clw03h"))))
+        (base32 "1bj8qd4ahbff476z0ccwsxy7qznqi6n5l1pdd7zbvk0h53zyj74c"))))
     (build-system cmake-build-system)
     (outputs '("out" "debug" "tester"))
     (arguments
-     `(#:configure-flags '("-DENABLE_STATIC=OFF")
+     (list
+      #:configure-flags '(list "-DENABLE_STATIC=OFF")
        #:phases
-       (modify-phases %standard-phases
-         (delete 'check)                ;moved after the install phase
-         (add-after 'install 'check
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((tester (assoc-ref outputs "tester"))
-                    (belr_tester (string-append tester "/bin/belr_tester"))
-                    (tester-share (string-append tester "/share/belr_tester")))
-               (invoke belr_tester))))
-         (add-after 'install 'move-tester
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (tester (assoc-ref outputs "tester")))
+       #~(modify-phases %standard-phases
+           (delete 'check)              ;moved after the install phase
+           (add-after 'install 'check
+             (lambda* (#:key tests? outputs #:allow-other-keys)
+               (when tests?
+                 (invoke (string-append #$output:tester "/bin/belr_tester")))))
+           (add-after 'install 'move-tester
+             (lambda _
                (for-each mkdir-p
-                         (list (string-append tester "/bin")
-                               (string-append tester "/share")))
+                         (list (string-append #$output:tester "/bin")
+                               (string-append #$output:tester "/share")))
                (rename-file
-                (string-append out "/bin/belr_tester")
-                (string-append tester "/bin/belr_tester"))
+                (string-append #$output "/bin/belr_tester")
+                (string-append #$output:tester "/bin/belr_tester"))
                (rename-file
-                (string-append out "/share/belr-tester")
+                (string-append #$output "/share/belr-tester/res")
                 ;; The detect_res_prefix procedure in bctoolbox's tester.c
                 ;; resolves the resource path based on the executable path and
                 ;; name, so have it match.
-                (string-append tester "/share/belr_tester"))))))))
+                (string-append #$output:tester "/share/belr_tester")))))))
     (inputs
      (list bctoolbox))
     (synopsis "Belledonne Communications Language Recognition Library")
@@ -244,7 +247,7 @@ IETF.")
 (define-public belcard
   (package
     (name "belcard")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -253,41 +256,38 @@ IETF.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "16x2xp8d0a115132zhy1kpxkyj86ia7vrsnpjdg78fnbvmvysc8m"))))
+        (base32 "1rl1x7rnlnncb45sjp8r2xbcwr9l8qv5bhfybhr0mmvsv3a4k4a3"))))
     (build-system cmake-build-system)
     (outputs '("out" "debug" "tester"))
     (arguments
-     `(#:configure-flags '("-DENABLE_STATIC=OFF")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-vcard-grammar-location
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (vcard-grammar
-                     (string-append out "/share/belr/grammars/vcard_grammar")))
-               (substitute* "include/belcard/vcard_grammar.hpp"
-                 (("define VCARD_GRAMMAR \"vcard_grammar\"")
-                  (format #f "define VCARD_GRAMMAR ~s" vcard-grammar))))))
-         (add-after 'install 'install-tester
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (tester (assoc-ref outputs "tester"))
-                   (test-name (string-append ,name "_tester")))
-               (for-each mkdir-p
-                         (list (string-append tester "/bin")
-                               (string-append tester "/share")))
-               (rename-file (string-append out "/bin/" test-name)
-                            (string-append tester "/bin/" test-name))
-               (rename-file (string-append out "/share/" test-name)
-                            (string-append tester "/share/" test-name)))))
-         (delete 'check)
-         (add-after 'install-tester 'check
-           (lambda* (#:key inputs outputs tests? #:allow-other-keys)
-             (when tests?
-               (let* ((tester (assoc-ref outputs "tester"))
-                      (belcard_tester (string-append tester
-                                                     "/bin/belcard_tester")))
-                 (invoke belcard_tester))))))))
+     (list
+      #:configure-flags '(list "-DENABLE_STATIC=OFF")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-vcard-grammar-location
+            (lambda _
+              (let ((vcard-grammar
+                     (string-append #$output
+                                    "/share/belr/grammars/vcard_grammar")))
+                (substitute* "include/belcard/vcard_grammar.hpp"
+                  (("define VCARD_GRAMMAR \"vcard_grammar\"")
+                   (format #f "define VCARD_GRAMMAR ~s" vcard-grammar))))))
+          (add-after 'install 'install-tester
+            (lambda _
+              (let ((test-name (string-append #$name "_tester")))
+                (for-each mkdir-p
+                          (list (string-append #$output:tester "/bin")
+                                (string-append #$output:tester "/share")))
+                (rename-file (string-append #$output "/bin/" test-name)
+                             (string-append #$output:tester "/bin/" test-name))
+                (rename-file (string-append #$output "/share/" test-name)
+                             (string-append #$output:tester "/share/" test-name)))))
+          (delete 'check)
+          (add-after 'install-tester 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (invoke (string-append #$output:tester
+                                       "/bin/belcard_tester"))))))))
     (inputs
      (list bctoolbox belr))
     (synopsis "Belledonne Communications VCard Library")
@@ -299,7 +299,7 @@ format.")
 (define-public bcmatroska2
   (package
     (name "bcmatroska2")
-    (version "0.23")
+    (version "5.2.1")
     (source
      (origin
        (method git-fetch)
@@ -308,11 +308,22 @@ format.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1avl9w18kh4dxm3g8j0bkw39bksd7bz3nfxvyibqqnz63ds8vfi2"))))
+        (base32 "14c79znw37q3yc7llbv2wmxmm4a3ws6iq3cvgkbmcnf7hmhm7zdi"))))
     (build-system cmake-build-system)
     (arguments
-     `(#:tests? #f                                     ; No test target
-       #:configure-flags (list "-DENABLE_STATIC=NO"))) ; Not required
+     (list
+      #:tests? #f                                     ;No test target
+      #:phases
+      '(modify-phases %standard-phases
+         ;; See
+         ;; https://gitlab.linphone.org/BC/public/bcmatroska2/-/merge_requests/18
+         (add-after 'unpack 'fix-build-system
+           (lambda _
+             (substitute* "corec/corec/CMakeLists.txt"
+               (("helpers/file/file_libc.c") "")))))
+      #:configure-flags
+      '(list "-DENABLE_STATIC=NO"))) ;Not required
+    (inputs (list bctoolbox))
     (synopsis "Belledonne Communications Media Container")
     (description "BcMatroska is a free and open standard multi-media container
 format.  It can hold an unlimited number of video, audio, picture, or subtitle
@@ -397,7 +408,7 @@ such as conferencing.")
 (define-public ortp
   (package
     (name "ortp")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -406,39 +417,39 @@ such as conferencing.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1r1kvjzyfvkf66in4p51wi87balzg3sw3aq6r4xr609mz86spi5m"))))
+        (base32 "1hzbrj1ny3lr9sql0lrxggc48sqv5j2yvbpnrdnph88pwzrdnbn5"))))
     (build-system cmake-build-system)
     (outputs '("out""tester"
                "doc"))                  ;1.5 MiB of HTML doc
     (arguments
-     `(#:tests? #f                      ;requires networking
-       #:configure-flags (list "-DENABLE_STATIC=NO"
+     (list
+      #:tests? #f                       ;requires networking
+      #:configure-flags '(list "-DENABLE_STATIC=NO"
+                               "-DENABLE_DOC=NO" ;XXX: missing link for b64
                                "-DENABLE_TESTS=YES")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-version-strings
-           ;; See: https://gitlab.linphone.org/BC/public/ortp/-/issues/5.
-           (lambda _
-             (substitute* "CMakeLists.txt"
-               (("VERSION [0-9]+\\.[0-9]+\\.[0-9]+")
-                (string-append "VERSION " ,version))
-               (("\\$\\{ORTP_DOC_VERSION\\}")
-                ,version))))
-         (add-after 'install 'separate-outputs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (doc (assoc-ref outputs "doc"))
-                    (doc-src (string-append out "/share/doc/ortp-" ,version))
-                    (doc-dest (string-append doc "/share/doc/ortp-" ,version))
-                    (tester (assoc-ref outputs "tester")))
-               (for-each mkdir-p (list (string-append doc "/share/doc")
-                                       (string-append tester "/bin")))
-               (rename-file doc-src doc-dest)
-               (rename-file (string-append out "/bin")
-                            (string-append tester "/bin"))))))))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-version-strings
+            ;; See: https://gitlab.linphone.org/BC/public/ortp/-/issues/5.
+            (lambda _
+              (substitute* "CMakeLists.txt"
+                (("VERSION [0-9]+\\.[0-9]+\\.[0-9]+")
+                 (string-append "VERSION " #$version))
+                (("\\$\\{ORTP_DOC_VERSION\\}")
+                 #$version))))
+          (add-after 'install 'separate-outputs
+            (lambda _
+              (let* ((doc-src
+                      (string-append #$output "/share/doc/ortp-" #$version))
+                     (doc-dest
+                      (string-append #$output:doc "/share/doc/ortp-" #$version)))
+                (for-each mkdir-p (list (string-append #$output:doc "/share/doc")
+                                        (string-append #$output:tester "/bin")))
+                (rename-file doc-src doc-dest)
+                (rename-file (string-append #$output "/bin")
+                             (string-append #$output:tester "/bin"))))))))
     (native-inputs
-     `(("dot" ,graphviz)
-       ("doxygen" ,doxygen)))
+     (list graphviz doxygen))
     (inputs
      (list bctoolbox))
     (synopsis "Belledonne Communications RTP Library")
@@ -450,7 +461,7 @@ implements the RFC 3550 standard.")
 (define-public bzrtp
   (package
     (name "bzrtp")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -459,7 +470,7 @@ implements the RFC 3550 standard.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1yjmsbqmymzl4r7sba6w4a2yld8m6hzafr6jf7sj0syhwpnc3zv6"))))
+        (base32 "0dvn1w0g9c07llz9n82l6qdzz8lzz74jcdm1yyfks0jy7i63cr8w"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags
@@ -467,9 +478,7 @@ implements the RFC 3550 standard.")
         "-DENABLE_STATIC=NO"
         "-DENABLE_TESTS=YES")))
     (inputs
-     `(("bctoolbox" ,bctoolbox)
-       ("sqlite3" ,sqlite)
-       ("xml2" ,libxml2)))
+     (list bctoolbox libxml2 sqlite))
     (synopsis "Belledonne Communications ZRTP Library")
     (description "BZRTP is an implementation of ZRTP keys exchange protocol,
 written in C.  It is fully portable and can be executed on many platforms
@@ -480,7 +489,7 @@ including both ARM and x86.")
 (define-public belle-sip
   (package
     (name "belle-sip")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -489,65 +498,78 @@ including both ARM and x86.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1kknnlczq7dpqaj1dwxvy092dzrqjy11ndkv90rqwmdryigkjk6z"))))
+        (base32 "0yx1qvzp11ysh24hxrvz7dm69j8zswa0xcx9m42vcv95z72166cq"))))
     (build-system cmake-build-system)
     (outputs '("out" "tester"))
     (arguments
-     `(#:configure-flags (list "-DENABLE_STATIC=NO"
-                               "-DENABLE_MDNS=ON")
+     (list
+      #:configure-flags '(list "-DENABLE_STATIC=NO"
+                               "-DENABLE_MDNS=ON"
+                               ;; We skip a test and thus have an unused
+                               ;; procedure, so we need to disable -Werror.
+                               "-DENABLE_STRICT=OFF")
        #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch
-           (lambda* (#:key inputs #:allow-other-keys)
-             ;; Fix mDNS dependency.
-             (let* ((avahi (assoc-ref inputs "avahi")))
-               (substitute* (find-files "." "CMakeLists.txt")
-                 (("find_package\\(DNSSD REQUIRED\\)")
-                  "set(DNSSD_FOUND 1)")
-                 (("\\$\\{DNSSD_INCLUDE_DIRS\\}")
-                  (string-append avahi "/include/avahi-compat-libdns_sd"))
-                 (("\\$\\{DNSSD_LIBRARIES\\}")
-                  "dns_sd")))
-             (substitute* "src/CMakeLists.txt"
-               ;; ANTLR would use multithreaded DFA generation otherwise,
-               ;; which would not be reproducible.
-               (("-Xmultithreaded ") ""))))
-         (delete 'check)                ;move after install
-         (add-after 'install 'separate-outputs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (tester (assoc-ref outputs "tester"))
-                    (tester-name "belle_sip_tester"))
-               (for-each mkdir-p (list (string-append tester "/bin")
-                                       (string-append tester "/share")))
-               (rename-file (string-append out "/bin")
-                            (string-append tester "/bin"))
-               (rename-file (string-append out "/share/" tester-name)
-                            (string-append tester "/share/" tester-name)))))
-         (add-after 'separate-outputs 'check
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((tester (string-append (assoc-ref outputs "tester")
-                                          "/bin/belle_sip_tester")))
-               (for-each (lambda (suite-name)
-                           (invoke tester "--suite" suite-name))
-                         (list "Object inheritance"
-                               "SIP URI"
-                               "FAST SIP URI"
-                               "FAST SIP URI 2"
-                               "Generic uri"
-                               "Headers"
-                               "Core"
-                               "SDP"
-                               ;;"Resolver"
-                               "Message"
-                               "Authentication helper"
-                               ;;"Register"
-                               ;;"Dialog"
-                               "Refresher"
-                               ;;"HTTP stack"
-                               "Object"))))))))
+       #~(modify-phases %standard-phases
+           (add-after 'unpack 'patch
+             (lambda* (#:key inputs #:allow-other-keys)
+               ;; Fix mDNS dependency.
+               (let* ((avahi (assoc-ref inputs "avahi")))
+                 (substitute* (find-files "." "CMakeLists.txt")
+                   (("find_package\\(DNSSD REQUIRED\\)")
+                    "set(DNSSD_FOUND 1)")
+                   (("\\$\\{DNSSD_INCLUDE_DIRS\\}")
+                    (string-append avahi "/include/avahi-compat-libdns_sd"))
+                   (("\\$\\{DNSSD_LIBRARIES\\}")
+                    "dns_sd")))
+               ;; Disable broken test.  This test uses
+               ;; bctbx_unescaped_string_only_chars_in_rules from bctoolbox,
+               ;; which unescapes too much.
+               (substitute* "tester/belle_sip_base_uri_tester.c"
+                 (("[ \t]*TEST_NO_TAG.*test_unescaping_good_chars\\),")
+                  ""))
+               (substitute* "src/sdp/parser.cc"
+                 (("load\\(\"sdp_grammar\"\\)")
+                  (string-append "load(\"" #$output
+                                 "/share/belr/grammars/sdp_grammar\")")))
+               (substitute* "src/CMakeLists.txt"
+                 ;; ANTLR would use multithreaded DFA generation otherwise,
+                 ;; which would not be reproducible.
+                 (("-Xmultithreaded ") ""))))
+           (delete 'check)              ;move after install
+           (add-after 'install 'separate-outputs
+             (lambda _
+               (let ((tester-name "belle_sip_tester"))
+                 (for-each mkdir-p (list (string-append #$output:tester "/bin")
+                                         (string-append #$output:tester "/share")))
+                 (rename-file (string-append #$output "/bin")
+                              (string-append #$output:tester "/bin"))
+                 (rename-file (string-append #$output "/share/" tester-name)
+                              (string-append #$output:tester "/share/" tester-name)))))
+           (add-after 'separate-outputs 'check
+             (lambda* (#:key tests? #:allow-other-keys)
+               (when tests?
+                 (let ((tester (string-append #$output:tester
+                                              "/bin/belle_sip_tester")))
+                   (for-each (lambda (suite-name)
+                               (invoke tester "--suite" suite-name))
+                             (list "Object inheritance"
+                                   "SIP URI"
+                                   "FAST SIP URI"
+                                   "FAST SIP URI 2"
+                                   "Generic uri"
+                                   "Headers"
+                                   "Core"
+                                   "SDP"
+                                   ;;"Resolver"
+                                   "Message"
+                                   "Authentication helper"
+                                   ;;"Register"
+                                   ;;"Dialog"
+                                   "Refresher"
+                                   ;;"HTTP stack"
+                                   "Object")))))))))
     (inputs
-     (list avahi bctoolbox zlib))
+     (list avahi bctoolbox belr zlib))
     (synopsis "Belledonne Communications SIP Library")
     (description "Belle-sip is a modern library implementing SIP transport,
 transaction and dialog layers.  It is written in C, with an object-oriented
@@ -558,7 +580,7 @@ API.  It also comprises a simple HTTP/HTTPS client implementation.")
 (define-public mediastreamer2
   (package
     (name "mediastreamer2")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -567,104 +589,99 @@ API.  It also comprises a simple HTTP/HTTPS client implementation.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0989h3d0h7qrx4kjx8gg09j8c5hvvi3h8qi1iq1dqbppwbaxbz8c"))))
+        (base32 "0mj0q2xaac22p2wf5gvgaiga03fbydilxfxzwyc6nwp5fyjnzawd"))))
     (outputs '("out" "doc" "tester"))
     (build-system cmake-build-system)
     (arguments
-     `(#:configure-flags (list "-DENABLE_STATIC=NO"
+     (list
+      #:configure-flags '(list "-DENABLE_STATIC=NO"
                                "-DENABLE_PCAP=YES"
                                ;; Do not fail on compile warnings.
                                "-DENABLE_STRICT=NO"
                                "-DENABLE_PORTAUDIO=YES"
                                "-DENABLE_G729B_CNG=YES")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-version
-           (lambda _
-             (substitute* "CMakeLists.txt"
-               (("VERSION [0-9]+\\.[0-9]+\\.[0-9]+")
-                (string-append "VERSION " ,version)))))
-         (add-after 'unpack 'patch-source
-           (lambda _
-             (substitute* "src/otherfilters/mspcapfileplayer.c"
-               (("O_BINARY") "L_INCR"))))
-         (add-before 'check 'pre-check
-           (lambda _
-             ;; Tests require a running X server.
-             (system "Xvfb :1 +extension GLX &")
-             (setenv "DISPLAY" ":1")
-             ;; Tests write to $HOME.
-             (setenv "HOME" (getenv "TEMP"))))
-         (delete 'check)                ;move after install
-         (add-after 'install 'separate-outputs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (tester (assoc-ref outputs "tester"))
-                    (tester-name (string-append ,name "_tester"))
-                    (doc (assoc-ref outputs "doc"))
-                    (doc-name (string-append ,name "-" ,version)))
-               (for-each mkdir-p
-                         (list (string-append tester "/bin")
-                               (string-append tester "/share")
-                               (string-append doc "/share/doc")))
-               ;; Move the tester executable.
-               (rename-file (string-append out "/bin/" tester-name)
-                            (string-append tester "/bin/" tester-name))
-               ;; Move the tester data files.
-               (rename-file (string-append out "/share/" tester-name)
-                            (string-append tester "/share/" tester-name))
-               ;; Move the HTML documentation.
-               (rename-file (string-append out "/share/doc/" doc-name)
-                            (string-append doc "/share/doc/" doc-name)))))
-         (add-after 'separate-outputs 'check
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((tester (string-append  (assoc-ref outputs "tester")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-version
+            (lambda _
+              (substitute* "CMakeLists.txt"
+                (("VERSION [0-9]+\\.[0-9]+\\.[0-9]+")
+                 (string-append "VERSION " #$version)))))
+          (add-after 'unpack 'patch-source
+            (lambda _
+              (substitute* "src/otherfilters/mspcapfileplayer.c"
+                (("O_BINARY") "L_INCR"))))
+          (add-before 'check 'pre-check
+            (lambda _
+              ;; Tests require a running X server.
+              (system "Xvfb :1 +extension GLX &")
+              (setenv "DISPLAY" ":1")
+              ;; Tests write to $HOME.
+              (setenv "HOME" (getenv "TEMP"))))
+          (delete 'check)               ;move after install
+          (add-after 'install 'separate-outputs
+            (lambda _
+              (let ((tester-name (string-append #$name "_tester"))
+                    (doc-name (string-append #$name "-" #$version)))
+                (for-each mkdir-p
+                          (list (string-append #$output:tester "/bin")
+                                (string-append #$output:tester "/share")
+                                (string-append #$output:doc "/share/doc")))
+                ;; Move the tester executable.
+                (rename-file (string-append #$output "/bin/" tester-name)
+                             (string-append #$output:tester "/bin/" tester-name))
+                ;; Move the tester data files.
+                (rename-file (string-append #$output "/share/" tester-name)
+                             (string-append #$output:tester "/share/" tester-name))
+                ;; Move the HTML documentation.
+                (rename-file (string-append #$output "/share/doc/" doc-name)
+                             (string-append #$output:doc "/share/doc/" doc-name)))))
+          (add-after 'separate-outputs 'check
+            (lambda _
+              (let ((tester (string-append #$output:tester
                                            "/bin/mediastreamer2_tester")))
-               (for-each (lambda (suite-name)
-                           (invoke tester "--suite" suite-name))
-                         ;; Some tests fail, due to requiring access to the
-                         ;; sound card or the network.
-                           (list "Basic Audio"
-                                 ;; "Sound Card"
-                                 ;; "AdaptiveAlgorithm"
-                                 ;; "AudioStream"
-                                 ;; "VideoStream"
-                                 "H26x Tools"
-                                 "Framework"
-                                 ;; "Player"
-                                 "TextStream"))))))))
+                (for-each (lambda (suite-name)
+                            (invoke tester "--suite" suite-name))
+                          ;; Some tests fail, due to requiring access to the
+                          ;; sound card or the network.
+                          (list "Basic Audio"
+                                ;; "Sound Card"
+                                ;; "AdaptiveAlgorithm"
+                                ;; "AudioStream"
+                                ;; "VideoStream"
+                                "H26x Tools"
+                                "Framework"
+                                ;; "Player"
+                                "TextStream"))))))))
     (native-inputs
-     `(("dot" ,graphviz)
-       ("doxygen" ,doxygen)
-       ("python" ,python-wrapper)
-       ("xorg-server" ,xorg-server-for-tests)))
+     (list graphviz doxygen python-wrapper xorg-server-for-tests))
     (inputs
-     `(("alsa" ,alsa-lib)
-       ("bcg729" ,bcg729)
-       ("bcmatroska2" ,bcmatroska2)
-       ("bctoolbox" ,bctoolbox)
-       ("ffmpeg" ,ffmpeg-4)
-       ("glew" ,glew)
-       ("glu" ,glu)
-       ("glx" ,mesa-utils)
-       ("gsm" ,gsm)
-       ("opengl" ,mesa)
-       ("opus" ,opus)
-       ("ortp" ,ortp)
-       ("pcap" ,libpcap)
-       ("portaudio" ,portaudio)
-       ("pulseaudio" ,pulseaudio)
-       ("spandsp" ,spandsp)
-       ("speex" ,speex)
-       ("speexdsp" ,speexdsp)
-       ("srtp" ,libsrtp)
-       ("theora" ,libtheora)
-       ("turbojpeg" ,libjpeg-turbo)
-       ("v4l" ,v4l-utils)
-       ("vpx" ,libvpx)
-       ("x11" ,libx11)
-       ("xv" ,libxv)
-       ("zrtp" ,bzrtp)))
+     (list alsa-lib
+           bcg729
+           bcmatroska2
+           bctoolbox
+           ffmpeg-4
+           glew
+           glu
+           mesa-utils
+           gsm
+           mesa
+           opus
+           ortp
+           libpcap
+           portaudio
+           pulseaudio
+           spandsp
+           speex
+           speexdsp
+           libsrtp
+           libtheora
+           libjpeg-turbo
+           v4l-utils
+           libvpx
+           libx11
+           libxv
+           bzrtp))
     (synopsis "Belledonne Communications Streaming Engine")
     (description "Mediastreamer2 is a powerful and lightweight streaming engine
 for telephony applications.  This media processing and streaming toolkit is
@@ -676,7 +693,7 @@ including media capture, encoding and decoding, and rendering.")
 (define-public lime
   (package
     (name "lime")
-    (version "4.4.34")
+    (version "5.2.49")
     (source
      (origin
        (method git-fetch)
@@ -685,12 +702,13 @@ including media capture, encoding and decoding, and rendering.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "14jg1zisjbzflw3scfqdbwy48wq3cp93l867vigb8l40lkc6n26z"))))
+        (base32 "1mglnypxl3glwvwf2h5q4ikbm6wbcd9pb7kdws8zajjhk9q803jr"))))
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (arguments
      `(#:configure-flags (list "-DENABLE_STATIC=NO"
-                               "-DENABLE_C_INTERFACE=YES")
+                               "-DENABLE_C_INTERFACE=YES"
+                               "-DENABLE_DOC=YES")
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-source
@@ -699,7 +717,9 @@ including media capture, encoding and decoding, and rendering.")
              (substitute* "tester/CMakeLists.txt"
                (("add_test\\(?.*\"Hello World\"\\)") "")
                (("add_test\\(?.*\"lime\"\\)") "")
-               (("add_test\\(?.*\"FFI\"\\)") ""))))
+               (("add_test\\(?.*\"FFI\"\\)") "")
+               (("add_test\\(?.*\"Multidomains\"\\)") "")
+               (("add_test\\(?.*\"Lime server\"\\)") ""))))
          (add-after 'build 'build-doc
            (lambda _
              (invoke "make" "doc")))
@@ -726,7 +746,7 @@ device.")
 (define-public liblinphone
   (package
     (name "liblinphone")
-    (version "4.4.34")
+    (version "5.2.50")
     (source
      (origin
        (method git-fetch)
@@ -735,30 +755,32 @@ device.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1lwabr93jw24y04pdqnw9dgg8jb3lzfplyx19f83jgp9dj8kmfq9"))))
+        (base32 "1lvbva234rmck57cxgswgqqvnq8r58i0ls4qgpymrxdfj74rinxj"))))
     (outputs '("out" "tester"))
     (build-system cmake-build-system)
     (arguments
-     `(#:tests? #f                      ; Tests require networking
-       #:configure-flags (list "-DENABLE_STATIC=NO"
-                               "-DENABLE_DOC=NO" ;requires unpackaged javasphinx
-                               "-DENABLE_LDAP=YES")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'install 'separate-outputs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (tester (assoc-ref outputs "tester"))
-                    (tester-name (string-append ,name "_tester")))
-               (for-each mkdir-p
-                         (list (string-append tester "/bin")
-                               (string-append tester "/share")))
-               (rename-file (string-append out "/bin/" tester-name)
-                            (string-append tester "/bin/" tester-name))
-               (rename-file (string-append out "/bin/groupchat_benchmark")
-                            (string-append tester "/bin/groupchat_benchmark"))
-               (rename-file (string-append out "/share/" tester-name)
-                            (string-append tester "/share/" tester-name))))))))
+     (list
+      #:tests? #f                       ; Tests require networking
+      #:configure-flags
+      '(list "-DENABLE_FLEXIAPI=NO"  ;requires jsoncpp, but it cannot be found
+             "-DENABLE_STATIC=NO"
+             "-DENABLE_DOC=NO"       ;requires unpackaged javasphinx
+             "-DENABLE_LDAP=YES"
+             "-DENABLE_STRICT=NO")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'separate-outputs
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let ((tester-name (string-append #$name "_tester")))
+                (for-each mkdir-p
+                          (list (string-append #$output:tester "/bin")
+                                (string-append #$output:tester "/share")))
+                (rename-file (string-append #$output "/bin/" tester-name)
+                             (string-append #$output:tester "/bin/" tester-name))
+                (rename-file (string-append #$output "/bin/groupchat_benchmark")
+                             (string-append #$output:tester "/bin/groupchat_benchmark"))
+                (rename-file (string-append #$output "/share/" tester-name)
+                             (string-append #$output:tester "/share/" tester-name))))))))
     (native-inputs
      (list graphviz
            doxygen
@@ -774,16 +796,17 @@ device.")
            belle-sip
            belr
            bzrtp
-           openldap
-           xsd
            lime
-           mediastreamer2
            libnotify
+           libxml2
+           mediastreamer2
+           openldap-for-linphone
            ortp
            soci
            sqlite
-           libxml2
-           zlib))
+           xsd
+           zlib
+           zxing-cpp))
     (synopsis "Belledonne Communications Softphone Library")
     (description "Liblinphone is a high-level SIP library integrating
 all calling and instant messaging features into an unified
@@ -796,7 +819,7 @@ and video calls or instant messaging capabilities to an application.")
 (define-public linphone-desktop
   (package
     (name "linphone-desktop")
-    (version "4.2.5")
+    (version "5.0.14")
     (source
      (origin
        (method git-fetch)
@@ -805,41 +828,55 @@ and video calls or instant messaging capabilities to an application.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1gq4l9p21rbrcksa7fbkzn9fzbbynqmn6ni6lhnvzk359sb1xvbz"))
+        (base32 "0glrfsp087ni5hn6x6p4f6y63r4nyp061yyy0rfgddbxkzdqi2j1"))
        (patches (search-patches "linphone-desktop-without-sdk.patch"))))
     (build-system qt-build-system)
     (outputs '("out" "debug"))
     (arguments
-     `(#:tests? #f                      ; No test target
-       #:configure-flags (list "-DENABLE_UPDATE_CHECK=NO"
-                               "-DENABLE_DAEMON=YES"
-                               "-DENABLE_CONSOLE_UI=YES")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'pre-configure
-           (lambda _
-             (make-file-writable "linphone-app/linphoneqt_version.cmake")
-             (substitute* "linphone-app/linphoneqt_version.cmake"
-               (("\\$\\{GUIX-SET-VERSION\\}") ,version))))
-         (add-after 'install 'post-install
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (liblinphone (assoc-ref inputs "liblinphone"))
-                    (grammar-dest (string-append out "/share/belr/grammars")))
-               ;; Remove unnecessary Qt configuration file.
-               (delete-file (string-append out "/bin/qt.conf"))
-               ;; Not using the FHS exposes an issue where the client
-               ;; refers to its own directories, which lacks files
-               ;; installed by the dependencies.
-               (symlink (string-append liblinphone "/lib")
-                        (string-append out "/lib"))
-               (symlink (string-append liblinphone "/share/sounds")
-                        (string-append out "/share/sounds"))
-               (symlink (string-append liblinphone "/share/linphone/rootca.pem")
-                        (string-append out "/share/linphone/rootca.pem"))
-               (mkdir-p (dirname grammar-dest))
-               (symlink (string-append liblinphone "/share/belr/grammars")
-                        grammar-dest)))))))
+     (list
+      #:tests? #f                       ; No test target
+      #:configure-flags
+      #~(list (string-append "-DFULL_VERSION=" #$version)
+              (string-append "-DCMAKE_INSTALL_PREFIX=" #$output)
+              (string-append "-DCMAKE_INSTALL_BINDIR=" #$output "/bin")
+              (string-append "-DCMAKE_INSTALL_DATAROOTDIR=" #$output "/share")
+              (string-append "-DCMAKE_INSTALL_LIBDIR=" #$output "/lib")
+              "-DENABLE_UPDATE_CHECK=NO"
+              "-DENABLE_DAEMON=YES"
+              "-DENABLE_CONSOLE_UI=YES")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'pre-configure
+            (lambda _
+              (make-file-writable "linphone-app/linphoneqt_version.cmake")
+              (substitute* "linphone-app/linphoneqt_version.cmake"
+                (("\\$\\{GUIX-SET-VERSION\\}") #$version))))
+          (add-before 'install 'pre-install
+            (lambda _
+              (mkdir-p (string-append #$output "/share/linphone"))
+              (symlink (string-append #$(this-package-input "liblinphone")
+                                      "/share/sounds")
+                       (string-append #$output
+                                      "/share/sounds"))))
+          (add-after 'install 'post-install
+            (lambda _
+              (let* ((liblinphone #$(this-package-input "liblinphone"))
+                     (grammar-dest (string-append #$output "/share/belr/grammars")))
+                ;; Remove unnecessary Qt configuration file.
+                (delete-file (string-append #$output "/bin/qt.conf"))
+                ;; Not using the FHS exposes an issue where the client
+                ;; refers to its own directories, which lacks files
+                ;; installed by the dependencies.
+                (for-each
+                 (lambda (file)
+                   (symlink file
+                            (string-append #$output "/lib/" (basename file))))
+                 (find-files (string-append liblinphone "/lib")))
+                (symlink (string-append liblinphone "/share/linphone/rootca.pem")
+                         (string-append #$output "/share/linphone/rootca.pem"))
+                (mkdir-p (dirname grammar-dest))
+                (symlink (string-append liblinphone "/share/belr/grammars")
+                         grammar-dest)))))))
     (native-inputs
      (list pkg-config qttools-5))
     (inputs
@@ -875,9 +912,6 @@ and video calls or instant messaging capabilities to an application.")
 @end itemize")
     (home-page "https://linphone.org/technical-corner/linphone")
     (license license:gpl3+)))
-
-(define-public linphoneqt
-  (deprecated-package "linphoneqt" linphone-desktop))
 
 (define-public msopenh264
   (let ((commit "88697cc95140017760d6da408cb0efdc5e86e40a")

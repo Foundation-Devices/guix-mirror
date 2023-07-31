@@ -47,7 +47,7 @@
 (define-public debian-archive-keyring
   (package
     (name "debian-archive-keyring")
-    (version "2021.1.1")
+    (version "2023.3")
     (source
       (origin
         (method git-fetch)
@@ -57,7 +57,7 @@
         (file-name (git-file-name name version))
         (sha256
          (base32
-          "0dcmv7y1k6j3a646kr0rkd2a0c4j2wrz868bh8j9zjx1npzns73q"))))
+          "1x0hsgfq08c53ws5llkhr1jqwr6yr0sccy5w9pz3p1dzbgfv2wd5"))))
     (build-system gnu-build-system)
     (arguments
      '(#:test-target "verify-results"
@@ -271,7 +271,7 @@ unpacking them into a directory which can eventually be chrooted into.")
 (define-public debianutils
   (package
     (name "debianutils")
-    (version "5.5-1")
+    (version "5.7-0.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -280,7 +280,7 @@ unpacking them into a directory which can eventually be chrooted into.")
               (file-name (git-file-name "debianutils" version))
               (sha256
                (base32
-                "1sbdjcb44g2s1zxjf9kxrp9drf9mmh6b49a9z3k428gmc6zsci4r"))))
+                "0hw407fm5ylsf28b0vrwz7rm2r2rsgfwzajbkbn6n2b6kqhdjyy9"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf automake gettext-minimal po4a))
@@ -337,7 +337,7 @@ distributions such as Debian and Trisquel.")
 (define-public dpkg
   (package
     (name "dpkg")
-    (version "1.21.21")
+    (version "1.21.22")
     (source
       (origin
         (method git-fetch)
@@ -346,57 +346,60 @@ distributions such as Debian and Trisquel.")
                (commit version)))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "0vgc5irrjyyb5y5hza2hbq3dgfylrxvfdzysw8zzlhgf4bhm69zq"))))
+         (base32 "0b5czgif5g6pdjzcw60hzzj0i1llxvajf3nlx115axmpa3y4iynd"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-before 'bootstrap 'patch-version
-           (lambda _
-             (patch-shebang "build-aux/get-version")
-             (with-output-to-file ".dist-version"
-               (lambda () (display ,version)))))
-         (add-after 'unpack 'set-perl-libdir
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out  (assoc-ref outputs "out"))
-                   (perl (assoc-ref inputs "perl")))
-               (setenv "PERL_LIBDIR"
-                       (string-append out
-                                      "/lib/perl5/site_perl/"
-                                      ,(package-version perl))))))
-         (add-after 'install 'wrap-scripts
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               (with-directory-excursion (string-append out "/bin")
-                 (for-each
-                   (lambda (file)
-                     (wrap-script file
-                       ;; Make sure all perl scripts in "bin" find the
-                       ;; required Perl modules at runtime.
-                       `("PERL5LIB" ":" prefix
-                         (,(string-append out
-                                          "/lib/perl5/site_perl")
-                           ,(getenv "PERL5LIB")))
-                       ;; DPKG perl modules always expect dpkg to be installed.
-                       ;; Work around this by adding dpkg to the path of the scripts.
-                       `("PATH" ":" prefix (,(string-append out "/bin")))))
-                   (list "dpkg-architecture"
-                         "dpkg-buildflags"
-                         "dpkg-buildpackage"
-                         "dpkg-checkbuilddeps"
-                         "dpkg-distaddfile"
-                         "dpkg-genbuildinfo"
-                         "dpkg-genchanges"
-                         "dpkg-gencontrol"
-                         "dpkg-gensymbols"
-                         "dpkg-mergechangelogs"
-                         "dpkg-name"
-                         "dpkg-parsechangelog"
-                         "dpkg-scanpackages"
-                         "dpkg-scansources"
-                         "dpkg-shlibdeps"
-                         "dpkg-source"
-                         "dpkg-vendor")))))))))
+     (list #:modules
+           `((srfi srfi-71)
+             ,@%gnu-build-system-modules)
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-before 'bootstrap 'patch-version
+                 (lambda _
+                   (patch-shebang "build-aux/get-version")
+                   (with-output-to-file ".dist-version"
+                     (lambda () (display #$version)))))
+               (add-after 'unpack 'set-perl-libdir
+                 (lambda _
+                   (let* ((perl #$(this-package-input "perl"))
+                          (_ perl-version (package-name->name+version perl)))
+                     (setenv "PERL_LIBDIR"
+                             (string-append #$output
+                                            "/lib/perl5/site_perl/"
+                                            perl-version)))))
+               (add-after 'install 'wrap-scripts
+                 (lambda _
+                   (with-directory-excursion (string-append #$output "/bin")
+                     (for-each
+                      (lambda (file)
+                        (wrap-script file
+                          ;; Make sure all perl scripts in "bin" find the
+                          ;; required Perl modules at runtime.
+                          `("PERL5LIB" ":" prefix
+                            (,(string-append #$output
+                                             "/lib/perl5/site_perl")
+                             ,(getenv "PERL5LIB")))
+                          ;; DPKG perl modules expect dpkg to be installed.
+                          ;; Work around it by adding dpkg to the script's path.
+                          `("PATH" ":" prefix (,(string-append #$output
+                                                               "/bin")))))
+                      (list "dpkg-architecture"
+                            "dpkg-buildflags"
+                            "dpkg-buildpackage"
+                            "dpkg-checkbuilddeps"
+                            "dpkg-distaddfile"
+                            "dpkg-genbuildinfo"
+                            "dpkg-genchanges"
+                            "dpkg-gencontrol"
+                            "dpkg-gensymbols"
+                            "dpkg-mergechangelogs"
+                            "dpkg-name"
+                            "dpkg-parsechangelog"
+                            "dpkg-scanpackages"
+                            "dpkg-scansources"
+                            "dpkg-shlibdeps"
+                            "dpkg-source"
+                            "dpkg-vendor"))))))))
     (native-inputs
      (list autoconf
            automake

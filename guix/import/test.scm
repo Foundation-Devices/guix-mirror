@@ -18,8 +18,6 @@
 
 (define-module (guix import test)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-26)
-  #:use-module (web uri)
   #:use-module (guix packages)
   #:use-module (guix upstream)
   #:use-module ((guix utils) #:select (version-prefix?))
@@ -54,7 +52,18 @@
                                         (upstream-source
                                          (package (package-name package))
                                          (version version)
-                                         (urls (list url)))))
+                                         (urls (list url))))
+                                       ((version url (inputs ...))
+                                        (upstream-source
+                                         (package (package-name package))
+                                         (version version)
+                                         (urls (list url))
+                                         (inputs
+                                          (map (lambda (name)
+                                                 (upstream-input
+                                                  (name name)
+                                                  (downstream-name name)))
+                                               inputs)))))
                                      updates)
                                 result)
                         result))))

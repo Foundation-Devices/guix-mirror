@@ -1,4 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
+;;; Copyright © 2020 Brice Waegeneire <brice@waegenei.re>
+;;; Copyright © 2020, 2022 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2022 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -34,8 +36,10 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages hardware)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages lua)
   #:use-module (gnu packages networking)
   #:use-module (gnu packages nss)
+  #:use-module (gnu packages pcre)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
   #:use-module (gnu packages rsync)
@@ -45,17 +49,64 @@
   #:use-module (gnu packages xml)
   #:use-module (gnu packages)
   #:use-module (guix build-system gnu)
-  #:use-module (guix gexp)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
+  #:use-module (guix utils)
   #:use-module ((guix licenses)
                 #:prefix license:))
+
+(define-public haproxy
+  (package
+    (name "haproxy")
+    (version "2.7.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://www.haproxy.org/download/"
+                           (version-major+minor version)
+                           "/src/haproxy-" version ".tar.gz"))
+       (sha256
+        (base32 "0kxpvrn6iaxhw2f2hrxblns6pnxmrds3vvs9h6nwbkrzvdykagqk"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f  ; there are only regression tests, using varnishtest
+      #:make-flags
+      #~(list "LUA_LIB_NAME=lua"
+              "TARGET=linux-glibc"
+              "USE_LUA=1"
+              "USE_OPENSSL=1"
+              "USE_PCRE2=1"
+              "USE_PCRE2_JIT=1"
+              "USE_PROMEX=1"
+              "USE_ZLIB=1"
+              (string-append "CC=" #$(cc-for-target))
+              (string-append "DOCDIR=" #$output "/share/" #$name)
+              (string-append "LUA_INC=" #$(this-package-input "lua") "/include")
+              (string-append "LUA_LIB=" #$(this-package-input "lua") "/lib")
+              (string-append "PREFIX=" #$output))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure))))
+    (inputs
+     (list lua openssl pcre2 zlib))
+    (home-page "https://www.haproxy.org/")
+    (synopsis "Reliable, high performance TCP/HTTP load balancer")
+    (description "HAProxy offers @acronym{HA, high availability}, load
+balancing, and proxying for TCP and HTTP-based applications.  It is particularly
+suited to Web sites crawling under very high loads while needing persistence or
+Layer 7 processing.  Supporting tens of thousands of connections is clearly
+realistic with today's hardware.")
+    (license (list license:gpl2+
+                   license:lgpl2.1
+                   license:lgpl2.1+))))
 
 (define-public libqb
   (package
     (name "libqb")
-    (version "2.0.6")
+    (version "2.0.7")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -63,17 +114,18 @@
                     version "/libqb-" version ".tar.xz"))
               (sha256
                (base32
-                "071k916vz9ppyb69rpk792fzjs3nf3chakn10i496scgiqh49rzi"))))
+                "0xd51wh7gdindh6fzi62r4xp9lkayggb1rqsprqmjkh1m71gnvin"))))
     (build-system gnu-build-system)
-    (native-inputs (list autoconf automake libtool libxml2 pkg-config))
+    (native-inputs (list pkg-config))
+    (inputs (list libxml2))
     (home-page "https://clusterlabs.github.io/libqb/")
     (synopsis
-     "Library providing high performance logging, tracing, ipc, and poll")
+     "Library providing high-performance logging, tracing, IPC, and polling")
     (description
      "Libqb is a library with the primary purpose of providing
 high-performance, reusable features for client-server architecture, such as
-logging, tracing, inter-process communication (IPC), and polling.  Libqb is
-not intended to be an all-encompassing library, but instead provide focused
+logging, tracing, @acronym{IPC, inter-process communication} and polling.  Libqb
+is not intended to be an all-encompassing library, but instead provide focused
 APIs that are highly tuned for maximum performance for client-server
 applications.")
     (license license:lgpl2.1)))

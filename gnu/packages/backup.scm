@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2014, 2015, 2020 Eric Bavier <bavier@posteo.net>
+;;; Copyright © 2014, 2015, 2020, 2023 Eric Bavier <bavier@posteo.net>
 ;;; Copyright © 2014 Ian Denhardt <ian@zenhack.net>
 ;;; Copyright © 2015, 2016, 2017, 2021, 2022 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2017–2022 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -23,6 +23,7 @@
 ;;; Copyright © 2021 Sarah Morgensen <iskarian@mgsn.dev>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Feng Shu <tumashu@163.com>
+;;; Copyright © 2023 Timo Wilken <guix@twilken.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -390,7 +391,7 @@ list and implement the backup strategy.")
 (define-public snapraid
   (package
     (name "snapraid")
-    (version "12.0")
+    (version "12.2")
     (source
      (origin
        (method git-fetch)
@@ -399,7 +400,7 @@ list and implement the backup strategy.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0k8pynafkx8bhnqnjhc3jsds5p40sflz4drm88i6dg6ifv35mhh9"))))
+        (base32 "0xgvyhyyl2v6azxwzqbpgyln4r2dw34xa8z09116vpkgdgivh36z"))))
     (build-system gnu-build-system)
     (arguments
      (list #:configure-flags
@@ -479,19 +480,19 @@ errors.")
 (define-public rdiff-backup
   (package
     (name "rdiff-backup")
-    (version "2.0.5")
+    (version "2.2.5")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://github.com/rdiff-backup/rdiff-backup/releases/"
                            "download/v" version "/rdiff-backup-" version ".tar.gz"))
        (sha256
-        (base32 "11rvjcp77zwgkphz1kyf5yqgr3rlss7dm9xzmvpvc4lp99xq7drb"))))
+        (base32 "13m0kq9y6rzgaq0zlzh7qhi789qmbzp3dnc7y57fmhsfg1mq5ql6"))))
     (build-system python-build-system)
     (native-inputs
      (list python-setuptools-scm))
     (inputs
-     (list python librsync))
+     (list python python-pyaml librsync))
     (arguments
      `(#:tests? #f))                    ; Tests require root/sudo
     (home-page "https://rdiff-backup.net/")
@@ -633,13 +634,13 @@ detection, and lossless compression.")
 (define-public borg
   (package
     (name "borg")
-    (version "1.2.3")
+    (version "1.2.4")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "borgbackup" version))
        (sha256
-        (base32 "11b7jqv9sw22a9512b270d12k3mrcgmmcaimh6bgm5iwcgw1h973"))
+        (base32 "1a2d6z2ln476l0fcnkl4rpciij5b2lql44b71aivg0cy8vlm9gd4"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
@@ -767,14 +768,14 @@ backups on untrusted computers.")
 (define-public wimlib
   (package
     (name "wimlib")
-    (version "1.13.5")
+    (version "1.14.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://wimlib.net/downloads/"
                                   "wimlib-" version ".tar.gz"))
               (sha256
                (base32
-                "08z3xxm5hq1n4wmyhgz14p1cv0w2lx610vn8nhfwpds4n7lwkz1j"))))
+                "0hkgcf3v3hmwck02s0623brdx1ijvk1la0h5mgly1whnaqviajj9"))))
     (build-system gnu-build-system)
     (native-inputs
      (list pkg-config))
@@ -1019,6 +1020,53 @@ precious backup space.
 @end itemize")
     (license license:bsd-2)))
 
+(define-public restic-rest-server
+  (package
+    (name "restic-rest-server")
+    (version "0.11.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/restic/rest-server")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1nvmxc9x0mlks6yfn66fmwn50k5q83ip4g9vvb0kndzd7hwcyacy"))))
+    (build-system go-build-system)
+    (arguments
+     '(#:import-path "github.com/restic/rest-server/cmd/rest-server"
+       #:unpack-path "github.com/restic/rest-server"
+       #:install-source? #f ;all we need is the binary
+       #:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda* (#:key tests? #:allow-other-keys . args)
+                      (when tests?
+                        ;; Unit tests seems to break with Guix' non-standard TMPDIR.
+                        (setenv "TMPDIR" "/tmp")
+                        (apply (assoc-ref %standard-phases
+                                          'check) args))))
+                  (add-after 'install 'rename-binary
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (with-directory-excursion (assoc-ref outputs "out")
+                        ;; "rest-server" is a bit too generic.
+                        (rename-file "bin/rest-server"
+                                     "bin/restic-rest-server")))))))
+    (propagated-inputs (list go-golang-org-x-crypto
+                             go-github-com-spf13-cobra
+                             go-github-com-prometheus-client-golang
+                             go-github-com-miolini-datacounter
+                             go-github-com-minio-sha256-simd
+                             go-github-com-gorilla-handlers
+                             go-github-com-coreos-go-systemd-activation))
+    (home-page "https://github.com/restic/rest-server")
+    (synopsis "Restic REST server")
+    (description
+     "The Restic REST server is a high performance HTTP server that implements
+restic's REST backend API.  It provides a secure and efficient way to backup
+data remotely, using the restic backup client and a @code{rest:} URL.")
+    (license license:bsd-2)))
+
 (define-public zbackup
   (package
     (name "zbackup")
@@ -1088,14 +1136,14 @@ interactive mode.")
 (define-public btrbk
   (package
     (name "btrbk")
-    (version "0.32.5")
+    (version "0.32.6")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://digint.ch/download/btrbk/releases/"
                                   "btrbk-" version ".tar.xz"))
               (sha256
                (base32
-                "1d4zqf5klad55gdzzldipsjrhpprixzjmn03g66df5h2d28l1zpi"))))
+                "0sxppfraakf56d1i4sbh4gyzg92panwpnq5y5hh6714igijarqh2"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1105,7 +1153,7 @@ interactive mode.")
                      (lambda _
                        (substitute* "Makefile"
                          (("= /etc")
-                          (string-append "= " #$output "/etc")))))
+                          (string-append "= $(PREFIX)/etc")))))
                    (delete 'check)
                    (add-after 'install 'wrap-scripts
                      (lambda* (#:key inputs outputs #:allow-other-keys)
@@ -1211,14 +1259,14 @@ backup.")
 (define-public disarchive
   (package
     (name "disarchive")
-    (version "0.4.0")
+    (version "0.5.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://files.ngyro.com/disarchive/"
                                   "disarchive-" version ".tar.gz"))
               (sha256
                (base32
-                "1pql8cspsxyx8cpw3xyhirnisv6rb4vj5mxr1d7w9la72q740n8s"))))
+                "16sjplkn9nr7zhfrqll7l1m2b2j4hg8k29p6bqjap9fkj6zpn2q2"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf
@@ -1245,13 +1293,13 @@ compression parameters used by Gzip.")
 (define-public borgmatic
   (package
     (name "borgmatic")
-    (version "1.5.22")
+    (version "1.7.12")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "borgmatic" version))
        (sha256
-        (base32 "0pvqlj17vp81i7saxqh5hsaxqz29ldrjd7bcssh4g1h0ikmnaf2r"))))
+        (base32 "0720wvs3h2w8h28d7mpvjfp0q37dnrwf1y2ik3y4yr9csih7fmgh"))))
     (build-system python-build-system)
     (arguments
      (list #:phases
@@ -1260,10 +1308,15 @@ compression parameters used by Gzip.")
                  (lambda* (#:key inputs #:allow-other-keys)
                    ;; Set absolute store path to borg.
                    (substitute* "borgmatic/commands/borgmatic.py"
-                     (("location\\.get\\('local_path', 'borg'\\)")
-                      (string-append "location.get('local_path', '"
+                     (("\\.get\\('local_path', 'borg'\\)")
+                      (string-append ".get('local_path', '"
                                      (search-input-file inputs "bin/borg")
-                                     "')")))))
+                                     "')")))
+                   (substitute* "tests/unit/commands/test_borgmatic.py"
+                     (("(module.get_local_path.+ == )'borg'" all start)
+                      (string-append start "'"
+                                     (search-input-file inputs "bin/borg")
+                                     "'")))))
                (replace 'check
                  (lambda* (#:key tests? #:allow-other-keys)
                    (when tests?

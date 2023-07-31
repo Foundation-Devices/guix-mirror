@@ -46,7 +46,7 @@
 (define-public syncthing
   (package
     (name "syncthing")
-    (version "1.23.0")
+    (version "1.23.4")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/syncthing/syncthing"
@@ -54,7 +54,7 @@
                                   "/syncthing-source-v" version ".tar.gz"))
               (sha256
                (base32
-                "0n7438vppr8yrq8k4lsacjr48m1l0bfc2wv7rbrsc5br5bfx6rhg"))))
+                "1yi9adlp30myizlmv7a118cwrm6w1qfv09b0z7x1b7n4i8pqi8h6"))))
     (build-system go-build-system)
     ;; The primary Syncthing executable goes to "out", while the auxiliary
     ;; server programs and utility tools go to "utils".  This reduces the size
@@ -876,96 +876,6 @@ extensions for the Go language, namely support for record length-delimited
 message streaming.")
       (home-page "https://github.com/matttproud/golang_protobuf_extensions")
       (license asl2.0))))
-
-(define-public go-github-com-prometheus-common
-    (package
-      (name "go-github-com-prometheus-common")
-      (version "0.4.1")
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                       (url "https://github.com/prometheus/common")
-                       (commit (string-append "v" version))))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "0sf4sjdckblz1hqdfvripk3zyp8xq89w7q75kbsyg4c078af896s"))))
-      (build-system go-build-system)
-      (arguments
-       '(#:import-path "github.com/prometheus/common"
-         #:tests? #f
-         #:phases
-         (modify-phases %standard-phases
-           ;; Source-only package
-           (delete 'build))))
-      (propagated-inputs
-       (list go-github-com-golang-protobuf-proto
-             go-github-com-matttproud-golang-protobuf-extensions-pbutil
-             go-github-com-prometheus-client-model))
-      (synopsis "Prometheus metrics")
-      (description "This package provides tools for reading and writing
-Prometheus metrics.")
-      (home-page "https://github.com/prometheus/common")
-      (license asl2.0)))
-
-(define-public go-github-com-prometheus-procfs
-    (package
-      (name "go-github-com-prometheus-procfs")
-      (version "0.0.4")
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                       (url "https://github.com/prometheus/procfs")
-                       (commit (string-append "v" version))))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "1z5jq5rjala0a0di4nwk1rai0z9f73qwqj6mgcbpjbg2qknlb544"))))
-      (build-system go-build-system)
-      (arguments
-       '(#:import-path "github.com/prometheus/procfs"
-         ;; The tests require Go modules, which are not yet supported in Guix's
-         ;; Go build system.
-         #:tests? #f))
-      (synopsis "Go library for reading @file{/proc}")
-      (description "The @code{procfs} Go package provides functions to retrieve
-system, kernel, and process metrics from the @file{/proc} pseudo file system.")
-      (home-page "https://github.com/prometheus/procfs")
-      (license asl2.0)))
-
-(define-public go-github-com-prometheus-client-golang
-    (package
-      (name "go-github-com-prometheus-client-golang")
-      (version "1.2.1")
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                       (url "https://github.com/prometheus/client_golang")
-                       (commit (string-append "v" version))))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "0zs49psk23n9z8wrl02d5vib5wclpym8kaxcy6n5pk696i419065"))))
-      (build-system go-build-system)
-      (arguments
-       '(#:tests? #f
-         #:import-path "github.com/prometheus/client_golang"
-         #:phases
-         (modify-phases %standard-phases
-           ;; Source-only package
-           (delete 'build))))
-      (propagated-inputs
-       (list go-github-com-beorn7-perks-quantile
-             go-github-com-golang-protobuf-proto
-             go-github-com-prometheus-client-model
-             go-github-com-prometheus-common
-             go-github-com-prometheus-procfs
-             go-github-com-cespare-xxhash))
-      (synopsis "HTTP server and client tools for Prometheus")
-      (description "This package @code{promhttp} provides HTTP client and
-server tools for Prometheus metrics.")
-      (home-page "https://github.com/prometheus/client_golang")
-      (license asl2.0)))
 
 (define-public go-github-com-go-asn1-ber-asn1-ber
   (package

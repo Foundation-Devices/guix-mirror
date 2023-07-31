@@ -12,6 +12,7 @@
 ;;; Copyright © 2022 Jai Vetrivelan <jaivetrivelan@gmail.com>
 ;;; Copyright © 2022 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2022 Michael Rohleder <mike@rohleder.de>
+;;; Copyright © 2023 Adam Faiz <adam.faiz@disroot.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -40,6 +41,7 @@
   #:use-module (guix build-system python)
   #:use-module (guix build-system meson)
   #:use-module (gnu packages)
+  #:use-module (gnu packages adns)
   #:use-module (gnu packages aspell)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
@@ -51,6 +53,7 @@
   #:use-module (gnu packages gawk)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages glib)
+  #:use-module (gnu packages gnunet)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages icu4c)
@@ -67,6 +70,7 @@
   #:use-module (gnu packages qt)
   #:use-module (gnu packages sphinx)
   #:use-module (gnu packages time)
+  #:use-module (gnu packages tls)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xml)
@@ -328,6 +332,61 @@ accounting for new lines and paragraph changes.  It also has robust support
 for parsing HTML files.")
     (license license:gpl3+)))
 
+(define-public dataparksearch
+  (let ((commit "8efa28f31ce1273c0556fd5c7e06abe955197a69")
+        (revision "0"))
+    (package
+      (name "dataparksearch")
+      (version (git-version "4.54" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/Maxime2/dataparksearch")
+                      (commit commit)))
+                (sha256
+                 (base32
+                  "01z7s3ws5px2p9brzrq9j41jbdh1cvj8n8y3ghx45gfv1n319ipg"))
+                (modules '((guix build utils)))
+                (snippet
+                 #~(for-each delete-file '("config.sub"
+                                           "config.guess"
+                                           "configure"
+                                           "Makefile.in"
+                                           "missing"
+                                           "depcomp"
+                                           "ltmain.sh"
+                                           "compile")))
+                (file-name (git-file-name name version))))
+      (build-system gnu-build-system)
+      (arguments
+       (list
+        #:configure-flags
+        #~(list "--with-extra-charsets=all"
+                (string-append "--with-aspell=" #$(this-package-input "aspell"))
+                (string-append "--with-pgsql="
+                               #$(this-package-input "postgresql")))
+        #:make-flags
+        #~(list "DPS_TEST_DBADDR=postgresql://localhost/tmp/postgresql/")))
+      (native-inputs
+       (list autoconf automake libtool openjade pkg-config))
+      (inputs
+       (list aspell
+             c-ares
+             libextractor
+             mbedtls-apache
+             postgresql
+             zlib))
+      (synopsis "Feature rich search engine")
+      (description
+       "Dataparksearch is a full featured web search engine.
+It has support for HTTP, HTTPS, ftp (passive mode), NNTP and news URL schemes,
+and other URL schemes with external parsers.  It can tweak URLs with session
+IDs and other weird formats, including some JavaScript link decoding.  Options
+to query with all words, all words near to each others, any words, or boolean
+queries.  A subset of VQL (Verity Query Language) is supported.")
+      (home-page "https://www.dataparksearch.org/")
+      (license license:gpl2+))))
+
 (define-public fsearch
   (package
     (name "fsearch")
@@ -362,14 +421,14 @@ Search Engine.  It is written in C and based on GTK3.")
 (define-public recoll
   (package
     (name "recoll")
-    (version "1.32.7")
+    (version "1.34.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.lesbonscomptes.com/recoll/"
                            "recoll-" version ".tar.gz"))
        (sha256
-        (base32 "1fkx6dk8s808ay4hf7ycfcs38kywmavsjqm02pwrnl8bpgsac26a"))))
+        (base32 "0s26b737brxp5hpqcwfxg19z40w6acnnr63ghrnzzjwxqz1ambkv"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -377,6 +436,7 @@ Search Engine.  It is written in C and based on GTK3.")
              "--disable-python-module"
              "--without-systemd"
              "--with-inotify"
+             "--enable-recollq"
              (string-append "QMAKEPATH=" (assoc-ref %build-inputs "qtbase")
                             "/bin/qmake"))
        #:phases
@@ -508,14 +568,14 @@ conflict with slocate compatibility.")
 (define-public plocate
   (package
     (name "plocate")
-    (version "1.1.16")
+    (version "1.1.18")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://plocate.sesse.net/download/"
                            "plocate-" version ".tar.gz"))
        (sha256
-        (base32 "0ccn785yi069dgwp4j3g23zvvivzsf5chadbdr357qphkmpxy125"))))
+        (base32 "0b71chcnl0xymwpcg8ixsnh64017cj5irz04rq0rnwbh1c2mg5lk"))))
     (build-system meson-build-system)
     (arguments
      `(#:configure-flags
@@ -675,14 +735,14 @@ bibliographic data and simple document and bibtex retrieval.")
 (define-public ugrep
   (package
     (name "ugrep")
-    (version "3.9.6")
+    (version "3.11.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                     (url "https://github.com/Genivia/ugrep")
                     (commit (string-append "v" version))))
               (sha256
-               (base32 "1nlxmrw0w21iwcbnir04bccb3z8hj9i4hj6gd2bk0qhdbrk2adh7"))
+               (base32 "0k0dzdyif9lpk0avjk02xkd6bjg9km4spr3p4hzls88y9hwgcc9l"))
               (file-name (git-file-name name version))
               (modules '((guix build utils)))
               (snippet

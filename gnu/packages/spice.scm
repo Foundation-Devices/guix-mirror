@@ -4,6 +4,7 @@
 ;;; Copyright © 2019 Rutger Helling <rhelling@mykolab.com>
 ;;; Copyright © 2019, 2020, 2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -27,6 +28,7 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages build-tools)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages gl)
@@ -356,6 +358,12 @@ resolution scaling on graphical console window resize.")
                (base32
                 "1rrjlclm6ad63gah1fa4yfwrz4z6vgq2yrybbvzvvdbxrgl4vgzv"))))
     (build-system meson-build-system)
+    (arguments
+     (list #:configure-flags
+           ;; Otherwise, the validate-runpath phase fails.
+           #~(list (string-append "-Dc_link_args=-Wl,-rpath="
+                                  (search-input-directory %build-inputs
+                                                          "lib/nss")))))
     (propagated-inputs
      ;; The following inputs are required in the pkg-config file.
      (list glib
@@ -378,16 +386,26 @@ share smart cards from client system to local or remote virtual machines.")
 (define-public virt-viewer
   (package
     (name "virt-viewer")
+    ;; XXX Remove the 'build-with-recent-meson phase when updating.
     (version "11.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://virt-manager.org/download/sources/virt-viewer/"
-                    "virt-viewer-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1l5bv6x6j21l487mk3n93ai121gg62n6b069r2jpf72cbhra4gx4"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://virt-manager.org/download/sources/virt-viewer/"
+             "virt-viewer-" version ".tar.xz"))
+       (sha256
+        (base32 "1l5bv6x6j21l487mk3n93ai121gg62n6b069r2jpf72cbhra4gx4"))))
     (build-system meson-build-system)
+    (arguments
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'build-with-recent-meson
+                 ;; Fix ‘ERROR: Function does not take positional arguments.’
+                 (lambda _
+                   (substitute* "data/meson.build"
+                     (("i18n\\.merge_file \\(.*" match)
+                      (string-append match "#"))))))))
     (native-inputs
      (list `(,glib "bin")
            gettext-minimal

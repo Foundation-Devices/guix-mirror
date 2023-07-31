@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2017-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2017-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2020 Martin Becze <mjbecze@riseup.net>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -19,7 +19,6 @@
 
 (define-module (guix self)
   #:use-module (guix config)
-  #:use-module (guix i18n)
   #:use-module (guix modules)
   #:use-module (guix gexp)
   #:use-module (guix store)
@@ -44,34 +43,43 @@
 ;;; Dependency handling.
 ;;;
 
-(define specification->package
+(define %packages
+  (let ((ref (lambda (module variable)
+               (delay
+                 (module-ref (resolve-interface
+                              `(gnu packages ,module))
+                             variable)))))
+    `(("guile"              . ,(ref 'guile 'guile-3.0-latest))
+      ("guile-avahi"        . ,(ref 'guile-xyz 'guile-avahi))
+      ("guile-json"         . ,(ref 'guile 'guile-json-4))
+      ("guile-ssh"          . ,(ref 'ssh   'guile-ssh))
+      ("guile-git"          . ,(ref 'guile 'guile-git))
+      ("guile-semver"       . ,(ref 'guile-xyz 'guile-semver))
+      ("guile-lib"          . ,(ref 'guile-xyz 'guile-lib))
+      ("guile-sqlite3"      . ,(ref 'guile 'guile-sqlite3))
+      ("guile-zlib"         . ,(ref 'guile 'guile-zlib))
+      ("guile-lzlib"        . ,(ref 'guile 'guile-lzlib))
+      ("guile-zstd"         . ,(ref 'guile 'guile-zstd))
+      ("guile-gcrypt"       . ,(ref 'gnupg 'guile-gcrypt))
+      ("guile-gnutls"       . ,(ref 'tls 'guile-gnutls))
+      ("guix-daemon"        . ,(ref 'package-management 'guix-daemon))
+      ("disarchive"         . ,(ref 'backup 'disarchive))
+      ("guile-lzma"         . ,(ref 'guile 'guile-lzma))
+      ("gzip"               . ,(ref 'compression 'gzip))
+      ("bzip2"              . ,(ref 'compression 'bzip2))
+      ("xz"                 . ,(ref 'compression 'xz))
+      ("po4a"               . ,(ref 'gettext 'po4a))
+      ("gettext-minimal"    . ,(ref 'gettext 'gettext-minimal))
+      ("gcc-toolchain"      . ,(ref 'commencement 'gcc-toolchain))
+      ("glibc-utf8-locales" . ,(ref 'base 'glibc-utf8-locales))
+      ("graphviz"           . ,(ref 'graphviz 'graphviz-minimal))
+      ("font-ghostscript"   . ,(ref 'ghostscript 'font-ghostscript))
+      ("texinfo"            . ,(ref 'texinfo 'texinfo)))))
+
+(define (specification->package name)
   ;; Use our own variant of that procedure because that of (gnu packages)
   ;; would traverse all the .scm files, which is wasteful.
-  (let ((ref (lambda (module variable)
-               (module-ref (resolve-interface module) variable))))
-    (match-lambda
-      ("guile"      (ref '(gnu packages guile) 'guile-3.0-latest))
-      ("guile-avahi" (ref '(gnu packages guile-xyz) 'guile-avahi))
-      ("guile-json" (ref '(gnu packages guile) 'guile-json-4))
-      ("guile-ssh"  (ref '(gnu packages ssh)   'guile-ssh))
-      ("guile-git"  (ref '(gnu packages guile) 'guile-git))
-      ("guile-semver"  (ref '(gnu packages guile-xyz) 'guile-semver))
-      ("guile-lib"  (ref '(gnu packages guile-xyz) 'guile-lib))
-      ("guile-sqlite3" (ref '(gnu packages guile) 'guile-sqlite3))
-      ("guile-zlib" (ref '(gnu packages guile) 'guile-zlib))
-      ("guile-lzlib" (ref '(gnu packages guile) 'guile-lzlib))
-      ("guile-zstd" (ref '(gnu packages guile) 'guile-zstd))
-      ("guile-gcrypt"  (ref '(gnu packages gnupg) 'guile-gcrypt))
-      ("guile-gnutls"  (ref '(gnu packages tls) 'guile-gnutls))
-      ("disarchive" (ref '(gnu packages backup) 'disarchive))
-      ("guile-lzma" (ref '(gnu packages guile) 'guile-lzma))
-      ("gzip"       (ref '(gnu packages compression) 'gzip))
-      ("bzip2"      (ref '(gnu packages compression) 'bzip2))
-      ("xz"         (ref '(gnu packages compression) 'xz))
-      ("po4a"       (ref '(gnu packages gettext) 'po4a))
-      ("gettext"       (ref '(gnu packages gettext) 'gettext-minimal))
-      ("gcc-toolchain" (ref '(gnu packages commencement) 'gcc-toolchain))
-      (_            #f))))                        ;no such package
+  (and=> (assoc-ref %packages name) force))
 
 
 ;;;
@@ -240,9 +248,8 @@ record with the new file name."
                       #:optional (directory domain))
   "Return the locale data from 'po/DIRECTORY' in SOURCE, corresponding to
 DOMAIN, a gettext domain."
-  (define gettext
-    (module-ref (resolve-interface '(gnu packages gettext))
-                'gettext-minimal))
+  (define gettext-minimal
+    (specification->package "gettext-minimal"))
 
   (define build
     (with-imported-modules '((guix build utils))
@@ -258,7 +265,7 @@ DOMAIN, a gettext domain."
             (let ((gmo (string-append #$output "/" language "/LC_MESSAGES/"
                                       #$domain ".mo")))
               (mkdir-p (dirname gmo))
-              (invoke #+(file-append gettext "/bin/msgfmt")
+              (invoke #+(file-append gettext-minimal "/bin/msgfmt")
                       "-c" "--statistics" "--verbose"
                       "-o" gmo
                       (string-append po-directory "/" language ".po"))))
@@ -280,20 +287,19 @@ DOMAIN, a gettext domain."
   "Return the translated texinfo manuals built from SOURCE."
   (define po4a
     (specification->package "po4a"))
-  
-  (define gettext
-    (specification->package "gettext"))
+
+  (define gettext-minimal
+    (specification->package "gettext-minimal"))
 
   (define glibc-utf8-locales
-    (module-ref (resolve-interface '(gnu packages base))
-                'glibc-utf8-locales))
+    (specification->package "glibc-utf8-locales"))
 
   (define documentation
     (file-append* source "doc"))
 
   (define documentation-po
     (file-append* source "po/doc"))
-  
+
   (define build
     (with-imported-modules '((guix build utils) (guix build po))
       #~(begin
@@ -365,7 +371,7 @@ a list of extra files, such as '(\"contributing\")."
 
           (setenv "GUIX_LOCPATH"
                   #+(file-append glibc-utf8-locales "/lib/locale"))
-          (setenv "PATH" #+(file-append gettext "/bin"))
+          (setenv "PATH" #+(file-append gettext-minimal "/bin"))
           (setenv "LC_ALL" "en_US.UTF-8")
           (setlocale LC_ALL "en_US.UTF-8")
 
@@ -394,16 +400,16 @@ a list of extra files, such as '(\"contributing\")."
 (define (info-manual source)
   "Return the Info manual built from SOURCE."
   (define texinfo
-    (module-ref (resolve-interface '(gnu packages texinfo))
-                'texinfo))
+    (specification->package "texinfo"))
 
   (define graphviz
-    (module-ref (resolve-interface '(gnu packages graphviz))
-                'graphviz))
+    (specification->package "graphviz"))
+
+  (define font-ghostscript
+    (specification->package "font-ghostscript"))
 
   (define glibc-utf8-locales
-    (module-ref (resolve-interface '(gnu packages base))
-                'glibc-utf8-locales))
+    (specification->package "glibc-utf8-locales"))
 
   (define documentation
     (file-append* source "doc"))
@@ -442,6 +448,9 @@ a list of extra files, such as '(\"contributing\")."
 
           ;; Build graphs.
           (mkdir-p (string-append #$output "/images"))
+
+          (setenv "XDG_DATA_DIRS"                 ;fonts needed by 'dot'
+                  #+(file-append font-ghostscript "/share"))
           (for-each (lambda (dot-file)
                       (invoke #+(file-append graphviz "/bin/dot")
                               "-Tpng" "-Gratio=.9" "-Gnodesep=.005"
@@ -586,8 +595,7 @@ instead of 'C'."
   "Return the 'guix' command such that it adds MODULES and DEPENDENCIES in its
 load path."
   (define glibc-utf8-locales
-    (module-ref (resolve-interface '(gnu packages base))
-                'glibc-utf8-locales))
+    (specification->package "glibc-utf8-locales"))
 
   (define module-directory
     ;; To minimize the number of 'stat' calls needed to locate a module,
@@ -646,7 +654,26 @@ load path."
                 ;; Use a 'guile' variant that doesn't complain about locales.
                 #:guile (quiet-guile guile)))
 
-(define (miscellaneous-files source)
+(define (selinux-policy source daemon)
+  "Return the SELinux policy file taken from SOURCE and adjusted to refer to
+DAEMON and to the current configuration variables."
+  (define build
+    (with-imported-modules '((guix build utils))
+      #~(begin
+          (use-modules (guix build utils))
+
+          (copy-file #+(file-append* source "/etc/guix-daemon.cil.in")
+                     "guix-daemon.cil")
+          (substitute* "guix-daemon.cil"
+            (("@guix_sysconfdir@") #$%sysconfdir)
+            (("@guix_localstatedir@") #$%localstatedir)
+            (("@storedir@") #$%storedir)
+            (("@prefix@") #$daemon))
+          (copy-file "guix-daemon.cil" #$output))))
+
+  (computed-file "guix-daemon.cil" build))
+
+(define (miscellaneous-files source daemon)
   "Return data files taken from SOURCE."
   (file-mapping "guix-misc"
                 `(("etc/bash_completion.d/guix"
@@ -657,6 +684,8 @@ load path."
                    ,(file-append* source "/etc/completion/zsh/_guix"))
                   ("share/fish/vendor_completions.d/guix.fish"
                    ,(file-append* source "/etc/completion/fish/guix.fish"))
+                  ("share/selinux/guix-daemon.cil"
+                   ,(selinux-policy source daemon))
                   ("share/guix/berlin.guix.gnu.org.pub"
                    ,(file-append* source
                                   "/etc/substitutes/berlin.guix.gnu.org.pub"))
@@ -1015,6 +1044,7 @@ itself."
   (cond ((= 1 pull-version)
          ;; The whole package, with a standard file hierarchy.
          (let* ((modules  (built-modules (compose list node-source+compiled)))
+                (daemon   (specification->package "guix-daemon"))
                 (command  (guix-command modules
                                         #:source source
                                         #:dependencies
@@ -1030,13 +1060,10 @@ itself."
                           ;; Include 'guix-daemon'.  XXX: Here we inject an
                           ;; older snapshot of guix-daemon, but that's a good
                           ;; enough approximation for now.
-                          #:daemon (module-ref (resolve-interface
-                                                '(gnu packages
-                                                      package-management))
-                                               'guix-daemon)
+                          #:daemon daemon
 
                           #:info (info-manual source)
-                          #:miscellany (miscellaneous-files source)
+                          #:miscellany (miscellaneous-files source daemon)
                           #:guile-version guile-version)))
         ((= 0 pull-version)
          ;; Legacy 'guix pull': return the .scm and .go files as one

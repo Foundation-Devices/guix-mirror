@@ -19,6 +19,7 @@
 ;;; Copyright © 2022 Eric Bavier <bavier@posteo.net>
 ;;; Copyright © 2022 Sughosha <sughosha@proton.me>
 ;;; Copyright © 2022 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
+;;; Copyright © 2023 Eidvilas Markevičius <markeviciuseidvilas@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -296,18 +297,17 @@ shadows, highlights, and gradients for some depth.")
 (define-public flat-remix-gnome-theme
   (package
     (name "flat-remix-gnome-theme")
-    (version "20221107-1")
+    (version "20230508")
     (source
      (origin
        (method git-fetch)
        (uri
         (git-reference
          (url "https://github.com/daniruiz/flat-remix-gnome")
-         ;; This commit adds GtkSourceView 5 theme, for GNOME Text Editor.
-         (commit "b5616efc515e9f1417436e67d94718db7529a2ba")))
+         (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "10fgdz8hz8rd7aj4vb3bvl8khzb2fvaia7n00gi0x19yvnnh36pr"))))
+        (base32 "1b31ayb4qvcr5m3dqcidl9ilpp3w4mr56wq6vrp73g4cj558pi9h"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
@@ -319,6 +319,54 @@ shadows, highlights, and gradients for some depth.")
 design.  It is mostly flat using a colorful palette with some shadows,
 highlights, and gradients for some depth.")
     (license license:gpl3+)))
+
+(define-public bibata-cursor-theme
+  (package
+    (name "bibata-cursor-theme")
+    (version "2.0.3")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/ful1e5/Bibata_Cursor")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1bhspswgxizc4sr2bihfjic8wm4khd6waw9qgw0yssfy0fm3nafc"))))
+    (build-system trivial-build-system)
+    (native-inputs (list python-attrs python-clickgen))
+    (arguments
+     (list
+      #:modules '((guix build utils))
+      #:builder
+      #~(begin
+          (use-modules (guix build utils))
+          (let ((themes-dir (string-append #$output "/share/icons")))
+            (mkdir-p themes-dir)
+            (let loop
+                ((themes '(("Bibata-Modern-Amber" . "Yellowish and rounded")
+                           ("Bibata-Modern-Classic" . "Black and rounded")
+                           ("Bibata-Modern-Ice" . "White and rounded")
+                           ("Bibata-Original-Amber" . "Yellowish and sharp")
+                           ("Bibata-Original-Classic" . "Black and sharp")
+                           ("Bibata-Original-Ice" . "White and sharp"))))
+              (define theme
+                (car themes))
+              (invoke (search-input-file %build-inputs "/bin/ctgen")
+                      (string-append #$source "/build.toml")
+                      "-p" "x11"
+                      "-d" (string-append #$source "/bitmaps/" (car theme))
+                      "-n" (car theme)
+                      "-c" (string-append (cdr theme) " edge Bibata cursors")
+                      "-o" themes-dir)
+              (unless (null? (cdr themes))
+                (loop (cdr themes))))))))
+    (home-page "https://github.com/ful1e5/Bibata_Cursor")
+    (synopsis "Open-source, compact, and material-designed cursor set")
+    (description
+     "Bibata is an open-source, compact, and material designed
+cursor set.  This project aims at improving the cursor experience.")
+    (license license:gpl3)))
 
 (define-public gnome-plots
   (package
@@ -866,7 +914,7 @@ certain elements or change animation speeds.")
 (define-public gnome-shell-extension-dash-to-panel
   (package
     (name "gnome-shell-extension-dash-to-panel")
-    (version "51")
+    (version "56")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -874,7 +922,7 @@ certain elements or change animation speeds.")
                     (commit (string-append "v" version))))
               (sha256
                (base32
-                "103pl77dhafi2ayds5yma2smv3b58zcysnd6vl5m5zavjvk35sz7"))
+                "17rm3wjj8zfdxgh5vp5f35vgd4mc9f9c2w77hac4vyvkgvwfzcnn"))
               (file-name (git-file-name name version))))
     (build-system gnu-build-system)
     (arguments
@@ -1280,6 +1328,61 @@ Speakers etc. of the same device are also displayed for selection.")
       (description "This extension adds keybindings to change the opacity
 of windows.")
       (license license:expat))))
+
+(define-public gnome-shell-extension-vitals
+  (package
+    (name "gnome-shell-extension-vitals")
+    (version "62.0.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/corecoding/Vitals")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0wmw5yd38vyv13x6frbafp21bdhlyjd5ggimdf2696irfhnm828h"))
+              (modules '((guix build utils)))
+              (snippet '(begin
+                          (delete-file "schemas/gschemas.compiled")
+                          (for-each delete-file
+                                    (find-files "locale" "\\.mo$"))))))
+    (build-system copy-build-system)
+    (native-inputs (list `(,glib "bin") gettext-minimal))
+    (inputs (list libgtop))
+    (arguments
+     (list #:modules '((guix build copy-build-system)
+                       (guix build utils)
+                       (ice-9 string-fun))
+           #:phases #~(modify-phases %standard-phases
+                        (add-before 'install 'compile-schemas
+                          (lambda _
+                            (invoke "glib-compile-schemas" "--strict"
+                                    "schemas")))
+                        (add-before 'install 'compile-locales
+                          (lambda _
+                            (for-each (lambda (file)
+                                        (let ((destfile (string-replace-substring
+                                                         file ".po" ".mo")))
+                                          (invoke "msgfmt" "-c" file "-o"
+                                                  destfile)))
+                                      (find-files "locale" "\\.po$")))))
+           #:install-plan #~'(("."
+                               "share/gnome-shell/extensions/Vitals@CoreCoding.com"
+                               #:include-regexp ("\\.js(on)?$" "\\.css$"
+                                                 "\\.ui$"
+                                                 "\\.svg$"
+                                                 "\\.xml$"
+                                                 "\\.mo$"
+                                                 "\\.compiled$")))))
+    (home-page "https://github.com/corecoding/Vitals")
+    (synopsis
+     "GNOME Shell extension displaying computer resource/sensor stats")
+    (description
+     "Vitals is a GNOME Shell extension that can display the computer
+temperature, voltage, fan speed, memory usage and CPU load from the top menu
+bar of the GNOME Shell.")
+    (license license:gpl2+)))
 
 (define-public arc-theme
   (package
@@ -1690,7 +1793,7 @@ It contains:
  sound themes.
 @end itemize")
     (license (list license:lgpl2.1 license:lgpl3 license:cc-by-sa4.0))))
-  
+
 (define-public nordic-theme
   (let ((commit "07d764c5ebd5706e73d2e573f1a983e37b318915")
 	(revision "0"))

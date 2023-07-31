@@ -3,7 +3,7 @@
 ;;; Copyright © 2015 Tomáš Čech <sleep_walker@gnu.org>
 ;;; Copyright © 2016, 2019 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016, 2017, 2019 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2016, 2018, 2021 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2018, 2021, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2017 Manolis Fragkiskos Ragkousis <manolis837@gmail.com>
 ;;; Copyright © 2017, 2018 Ben Woodcroft <donttrustben@gmail.com>
@@ -21,7 +21,7 @@
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Raghav Gururajan <raghavgururajan@disroot.org>
-;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Gabriel Arazas <foo.dogsquared@gmail.com>
 ;;; Copyright © 2021 Antoine Côté <antoine.cote@posteo.net>
 ;;; Copyright © 2021 Andy Tai <atai@atai.org>
@@ -189,13 +189,29 @@ framebuffer graphics, audio output and input event.")
            (lambda _
              (substitute* "src/core/core.c"
                (("..BUILDTIME..") ""))))
+         ;; TODO: Move patch to source.
+         ,@(if (target-arm32?)
+             `((add-after 'unpack 'patch-source
+                 (lambda* (#:key inputs #:allow-other-keys)
+                   (invoke "patch" "--force" "-p1" "-i"
+                           (assoc-ref inputs "patch-file")))))
+             '())
          (add-after 'unpack 'disable-configure-during-bootstrap
            (lambda _
              (substitute* "autogen.sh"
                (("^.*\\$srcdir/configure.*") ""))
              #t)))))
     (native-inputs
-     (list autoconf automake libtool perl pkg-config))
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)
+       ,@(if (target-arm32?)
+         `(("patch" ,patch)
+           ("patch-file"
+            ,(search-patch "directfb-davinci-glibc-228-compat.patch")))
+         '())))
     (inputs
      (list alsa-lib
            ffmpeg
@@ -413,7 +429,7 @@ with the @command{autotrace} utility or as a C library, @code{libautotrace}.")
 (define-public embree
   (package
     (name "embree")
-    (version "3.12.1")
+    (version "3.13.5")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -422,7 +438,7 @@ with the @command{autotrace} utility or as a C library, @code{libautotrace}.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0aznd16n7h8g3f6jcahzfp1dq4r7wayqvn03wsaskiq2dvsi4srd"))))
+                "1kcvz7g6j56anv9zjyd3gidxl46vipw0gg82lns12m45cd43iwxm"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f ; no tests (apparently)
@@ -474,100 +490,95 @@ typically encountered in feature film production.")
 (define-public blender
   (package
     (name "blender")
-    (version "3.3.1")
+    (version "3.3.5")                   ;3.3.x is the current LTS version
     (source (origin
               (method url-fetch)
               (uri (string-append "https://download.blender.org/source/"
                                   "blender-" version ".tar.xz"))
               (sha256
                (base32
-                "1jlc26axbhh97d2j6kfg9brgiq8j412mgmw7p41ah34apzq4inia"))))
+                "1pwl4lbc00g0bj97rd8l9fnrv3w1gny9ci6mrma3pp2acgs56502"))))
     (build-system cmake-build-system)
     (arguments
+     (list
+      ;; Test files are very large and not included in the release tarball.
+      #:tests? #f
+      #:configure-flags
       (let ((python-version (version-major+minor (package-version python))))
-       `(;; Test files are very large and not included in the release tarball.
-         #:tests? #f
-         #:configure-flags
-         (list "-DWITH_CODEC_FFMPEG=ON"
-               "-DWITH_CODEC_SNDFILE=ON"
-               "-DWITH_CYCLES=ON"
-               "-DWITH_DOC_MANPAGE=ON"
-               "-DWITH_FFTW3=ON"
-               "-DWITH_IMAGE_OPENJPEG=ON"
-               "-DWITH_INPUT_NDOF=ON"
-               "-DWITH_INSTALL_PORTABLE=OFF"
-               "-DWITH_JACK=ON"
-               "-DWITH_MOD_OCEANSIM=ON"
-               "-DWITH_OPENVDB=ON"
-               "-DWITH_OPENSUBDIV=ON"
-               "-DWITH_PYTHON_INSTALL=OFF"
-               (string-append "-DPYTHON_LIBRARY=python" ,python-version)
-               (string-append "-DPYTHON_LIBPATH=" (assoc-ref %build-inputs "python")
-                              "/lib")
-               (string-append "-DPYTHON_INCLUDE_DIR=" (assoc-ref %build-inputs "python")
-                              "/include/python" ,python-version)
-               (string-append "-DPYTHON_VERSION=" ,python-version)
-               (string-append "-DPYTHON_NUMPY_INCLUDE_DIRS="
-                              (assoc-ref %build-inputs "python-numpy")
-                              "/lib/python" ,python-version "/site-packages/numpy/core/include/")
-               (string-append "-DPYTHON_NUMPY_PATH="
-                              (assoc-ref %build-inputs "python-numpy")
-                              "/lib/python" ,python-version "/site-packages/"))
-         #:phases
-         (modify-phases %standard-phases
-           ;; XXX This file doesn't exist in the Git sources but will probably
-           ;; exist in the eventual 2.80 source tarball.
-           (add-after 'unpack 'fix-broken-import
-             (lambda _
-               (substitute* "release/scripts/addons/io_scene_fbx/json2fbx.py"
-                 (("import encode_bin") "from . import encode_bin"))
-               #t))
-           (add-after 'set-paths 'add-ilmbase-include-path
-             (lambda* (#:key inputs #:allow-other-keys)
-               ;; OpenEXR propagates ilmbase, but its include files do not
-               ;; appear in the C_INCLUDE_PATH, so we need to add
-               ;; "$ilmbase/include/OpenEXR/" to the C_INCLUDE_PATH to satisfy
-               ;; the dependency on "half.h" and "Iex.h".
-               (let ((headers (string-append
-                               (assoc-ref inputs "ilmbase")
-                               "/include/OpenEXR")))
-                 (setenv "C_INCLUDE_PATH"
-                         (string-append headers ":"
-                                        (or (getenv "C_INCLUDE_PATH") "")))
-                 (setenv "CPLUS_INCLUDE_PATH"
-                         (string-append headers ":"
-                                        (or (getenv "CPLUS_INCLUDE_PATH") ""))))))))))
+        #~(list "-DWITH_CODEC_FFMPEG=ON"
+                "-DWITH_CODEC_SNDFILE=ON"
+                "-DWITH_CYCLES=ON"
+                "-DWITH_DOC_MANPAGE=ON"
+                "-DWITH_FFTW3=ON"
+                "-DWITH_IMAGE_OPENJPEG=ON"
+                "-DWITH_INPUT_NDOF=ON"
+                "-DWITH_INSTALL_PORTABLE=OFF"
+                "-DWITH_JACK=ON"
+                "-DWITH_MOD_OCEANSIM=ON"
+                "-DWITH_OPENVDB=ON"
+                "-DWITH_OPENSUBDIV=ON"
+                "-DWITH_PYTHON_INSTALL=OFF"
+                (string-append "-DPYTHON_LIBRARY=python" #$python-version)
+                (string-append "-DPYTHON_LIBPATH="
+                               (assoc-ref %build-inputs "python")
+                               "/lib")
+                (string-append "-DPYTHON_INCLUDE_DIR="
+                               (assoc-ref %build-inputs "python")
+                               "/include/python" #$python-version)
+                (string-append "-DPYTHON_VERSION=" #$python-version)
+                (string-append "-DPYTHON_NUMPY_INCLUDE_DIRS="
+                               (assoc-ref %build-inputs "python-numpy")
+                               "/lib/python" #$python-version
+                               "/site-packages/numpy/core/include/")
+                (string-append "-DPYTHON_NUMPY_PATH="
+                               (assoc-ref %build-inputs "python-numpy")
+                               "/lib/python" #$python-version
+                               "/site-packages/")
+                ;; OpenEXR propagates ilmbase, but its include files do not
+                ;; appear in the C_INCLUDE_PATH, so we need to add
+                ;; "$ilmbase/include/OpenEXR/" to the C_INCLUDE_PATH to
+                ;; satisfy the dependency on "half.h" and "Iex.h".
+                (string-append "-DCMAKE_CXX_FLAGS=-I"
+                               (search-input-directory %build-inputs
+                                                       "include/OpenEXR"))))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-broken-import
+            (lambda _
+              (substitute* "release/scripts/addons/io_scene_fbx/json2fbx.py"
+                (("import encode_bin")
+                 "from . import encode_bin")))))))
     (inputs
-     `(("boost" ,boost)
-       ("jemalloc" ,jemalloc)
-       ("libx11" ,libx11)
-       ("libxi" ,libxi)
-       ("libxrender" ,libxrender)
-       ("opencolorio" ,opencolorio)
-       ("openimageio" ,openimageio)
-       ("openexr" ,openexr-2)
-       ("opensubdiv" ,opensubdiv)
-       ("ilmbase" ,ilmbase)
-       ("openjpeg" ,openjpeg)
-       ("libjpeg" ,libjpeg-turbo)
-       ("libpng" ,libpng)
-       ("libtiff" ,libtiff)
-       ("ffmpeg" ,ffmpeg)
-       ("fftw" ,fftw)
-       ("gmp" ,gmp) ;; needed for boolean operations on meshes
-       ("jack" ,jack-1)
-       ("libsndfile" ,libsndfile)
-       ("freetype" ,freetype)
-       ("glew" ,glew)
-       ("openal" ,openal)
-       ("pugixml" ,pugixml)
-       ("python" ,python)
-       ("python-numpy" ,python-numpy)
-       ("openvdb" ,openvdb)
-       ("tbb" ,tbb)
-       ("zlib" ,zlib)
-       ("zstd" ,zstd "lib")
-       ("embree" ,embree)))
+     (list boost
+           embree
+           ffmpeg-5
+           fftw
+           freetype
+           glew
+           gmp                        ;needed for boolean operations on meshes
+           ilmbase
+           jack-1
+           jemalloc
+           libjpeg-turbo
+           libpng
+           libsndfile
+           libtiff
+           libx11
+           libxi
+           libxrender
+           openal
+           opencolorio
+           openexr-2
+           openimageio
+           openjpeg
+           opensubdiv
+           openvdb
+           pugixml
+           python
+           python-numpy
+           tbb
+           zlib
+           `(,zstd "lib")))
     (home-page "https://blender.org/")
     (synopsis "3D graphics creation suite")
     (description
@@ -813,7 +824,8 @@ many more.")
      ;; precision), as was discussed and patched long ago:
      ;; <https://issues.guix.gnu.org/22049>.  It seems the relevant fixes
      ;; didn't make it upstream, so skip tests.
-     (list #:tests? (not (target-x86-32?))))
+     (list #:tests? (not (or (target-x86-32?)
+                             (%current-target-system)))))
     (home-page "https://github.com/AcademySoftwareFoundation/Imath")
     (synopsis "Library of math operations for computer graphics")
     (description
@@ -943,7 +955,7 @@ basic geometries.")
        (sha256
         (base32 "1f41lb19m8azchl1aqz6j5ycbspb8jsf1cnn42hlydxd68f85ylc"))))
     (build-system python-build-system)
-    (propagated-inputs (list python-fonttools python-pyclipper))
+    (propagated-inputs (list python-fonttools-minimal python-pyclipper))
     (native-inputs
      (list python-defcon-bootstrap
            python-fontpens-bootstrap
@@ -1275,7 +1287,7 @@ with strong support for multi-part, multi-channel use cases.")
 (define-public openimageio
   (package
     (name "openimageio")
-    (version "2.2.11.1")
+    (version "2.2.21.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1284,7 +1296,7 @@ with strong support for multi-part, multi-channel use cases.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1i9r6vgz15aj1yzbf5a9lqhlyakjs793yrw5gw720l84lcyigad7"))))
+                "0aicxbshzv1g9d8d08vsj1a9klaycxaifvvp565qjv70wyma2vkr"))))
     (build-system cmake-build-system)
     ;; FIXME: To run all tests successfully, test image sets from multiple
     ;; third party sources have to be present.  For details see
@@ -1453,11 +1465,12 @@ in Julia).")
 (define-public openmw-openscenegraph
   ;; OpenMW prefers its own fork of openscenegraph:
   ;; https://wiki.openmw.org/index.php?title=Development_Environment_Setup#OpenSceneGraph.
-  (let ((commit "36a962845a2c87a6671fd822157e0729d164e940"))
+  (let ((commit "69cfecebfb6dc703b42e8de39eed750a84a87489"))
     (hidden-package
      (package
        (inherit openscenegraph)
-       (version (git-version "3.6" "1" commit))
+       (version (git-version "3.6" "2" commit))
+       (outputs (list "out"))
        (source
         (origin
           (method git-fetch)
@@ -1467,7 +1480,7 @@ in Julia).")
           (file-name (git-file-name (package-name openscenegraph) version))
           (sha256
            (base32
-            "05yhgq3qm5q277y32n5sf36vx5nv5qd3zlhz4csgd3a6190jrnia"))))
+            "1qayk2gklm8zvss90dcjfxv6717rvcmwmgmgyy1qzkli67a0zbw2"))))
        (arguments
         (substitute-keyword-arguments (package-arguments openscenegraph)
           ((#:configure-flags flags)
@@ -1475,15 +1488,18 @@ in Julia).")
            #~(append
               '("-DBUILD_OSG_PLUGINS_BY_DEFAULT=0"
                 "-DBUILD_OSG_PLUGIN_OSG=1"
+                "-DBUILD_OSG_PLUGIN_DAE=1"
                 "-DBUILD_OSG_PLUGIN_DDS=1"
                 "-DBUILD_OSG_PLUGIN_TGA=1"
                 "-DBUILD_OSG_PLUGIN_BMP=1"
                 "-DBUILD_OSG_PLUGIN_JPEG=1"
                 "-DBUILD_OSG_PLUGIN_PNG=1"
-                "-DBUILD_OSG_DEPRECATED_SERIALIZERS=0"
-                ;; The jpeg plugin requires conversion between integers and booleans
-                "-DCMAKE_CXX_FLAGS=-fpermissive")
-              #$flags))))))))
+                "-DBUILD_OSG_PLUGIN_FREETYPE=1"
+                "-DBUILD_OSG_DEPRECATED_SERIALIZERS=0")
+              #$flags))
+          ((#:phases phases)
+           #~(modify-phases #$phases
+               (delete 'copy-plugins)))))))))
 
 (define-public povray
   (package
@@ -1626,17 +1642,19 @@ exec -a \"$0\" ~a/.brdf-real~%"
        (list qttools-5)) ;for 'qmake'
       (inputs
        (list qtbase-5 mesa glew freeglut zlib))
-      (home-page "https://www.disneyanimation.com/technology/brdf.html")
+      (home-page
+       (string-append "https://web.archive.org/web/20190115030100/"
+                      "https://www.disneyanimation.com/technology/brdf.html"))
       (synopsis
-       "Analyze bidirectional reflectance distribution functions (BRDFs)")
+       "@acronym{BRDF, bidirectional reflectance distribution function} analyzer")
       (description
        "BRDF Explorer is an application that allows the development and analysis
-of bidirectional reflectance distribution functions (BRDFs).  It can load and
-plot analytic BRDF functions (coded as functions in OpenGL's GLSL shader
-language), measured material data from the MERL database, and anisotropic
-measured material data from MIT CSAIL.  Graphs and visualizations update in
-real time as parameters are changed, making it a useful tool for evaluating
-and understanding different BRDFs (and other component functions).")
+of @acronym{BRDF, bidirectional reflectance distribution functions}.  It can
+load and plot analytic BRDF functions (coded as functions in OpenGL's GLSL
+shader language), measured material data from the MERL database, and anisotropic
+measured material data from MIT CSAIL.  Graphs and visualizations update in real
+time as parameters are changed, making it a useful tool for evaluating and
+understanding different BRDFs (and other component functions).")
       (license license:ms-pl))))
 
 (define-public agg
@@ -2329,7 +2347,9 @@ Features include:
                              "cmd/generate_density_map/main.cpp"
                              "cmd/generate_sdf/main.cpp")
                 (("^#include <cxxopts/cxxopts\\.hpp>")
-                 "#include <cxxopts.hpp>"))))))
+                 "#include <cxxopts.hpp>")
+                (("cxxopts::OptionException")
+                 "cxxopts::exceptions::parsing"))))))
       (build-system cmake-build-system)
       (outputs '("out" "bin"))
       (arguments
@@ -2378,7 +2398,7 @@ generated discrete signed distance field using the cubic spline kernel.
 (define-public mmg
   (package
     (name "mmg")
-    (version "5.6.0")
+    (version "5.7.1")
     (source
      (origin
        (method git-fetch)
@@ -2387,7 +2407,7 @@ generated discrete signed distance field using the cubic spline kernel.
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "173biz5skbwg27i5w6layg7mydjzv3rmi1ywhra4rx9rjf5c0cc5"))))
+        (base32 "0skb7yzsw6y44zp9gb729i5xks7qd97nvn3z6jhz4jksqksx7lz0"))))
     (build-system cmake-build-system)
     (outputs '("out" "lib" "doc"))
     (arguments
@@ -2397,11 +2417,14 @@ generated discrete signed distance field using the cubic spline kernel.
                    ;; The build doesn't honor -DCMAKE_INSTALL_BINDIR, hence
                    ;; the adjust-bindir phase.
                    ;;(string-append "-DCMAKE_INSTALL_BINDIR=" #$output "/bin")
+                   (string-append "-DCMAKE_INSTALL_MANDIR=" #$output "/share/man")
                    "-DBUILD_SHARED_LIBS=ON"
+                   "-DBUILD_DOC=ON"
                    "-DBUILD_TESTING=ON"
                    ;; The longer tests are for continuous integration and
                    ;; depend on input data which must be downloaded.
                    "-DONLY_VERY_SHORT_TESTS=ON"
+                   "-DUSE_SCOTCH=ON"
                    ;; TODO: Add Elas (from
                    ;; https://github.com/ISCDtoolbox/LinearElasticity).
                    "-DUSE_ELAS=OFF"
@@ -2427,9 +2450,6 @@ generated discrete signed distance field using the cubic spline kernel.
                (add-after 'install 'install-doc
                  (lambda _
                    (copy-recursively
-                    "../source/doc/man" (string-append #$output
-                                                       "/share/man/man1"))
-                   (copy-recursively
                     "doc" (string-append #$output:doc "/share/doc/"
                                          #$name "-" #$version))))
                (add-after 'install 'adjust-bindir
@@ -2452,7 +2472,7 @@ generated discrete signed distance field using the cubic spline kernel.
      (list doxygen graphviz
            ;; TODO: Fix failing LaTeX invocation (which results in equations
            ;; being inserted literally into PNGs rather than being typeset).
-           ;;texlive-tiny
+           ;; (texlive-updmap.cfg)
 
            perl))                            ;used to generate Fortran headers
     (inputs
@@ -2479,10 +2499,37 @@ a tetrahedral mesh, isovalue discretization and Lagrangian movement;
 @end itemize")
     (license license:lgpl3+)))
 
+(define-public nanosvg
+  ;; There are no proper versions or releases; use the latest commit.
+  (let ((commit "9da543e8329fdd81b64eb48742d8ccb09377aed1")
+        (revision "0"))
+    (package
+      (name "nanosvg")
+      (version (git-version "0.0.0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/memononen/nanosvg")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1pkzv75kavkhrbdd2kvq755jyr0vamgrfr7lc33dq3ipkzmqvs2l"))))
+      (build-system cmake-build-system)
+      (arguments (list #:tests? #f    ;no test suite
+                       #:configure-flags #~(list "-DBUILD_SHARED_LIBS=ON")))
+      (home-page "https://github.com/memononen/nanosvg")
+      (synopsis "Simple SVG parser")
+      (description "NanoSVG is a simple single-header SVG parser.  The output
+of the parser is a list of cubic bezier shapes.  The library suits well for
+anything from rendering scalable icons in an editor application to prototyping
+a game.")
+      (license license:zlib))))
+
 (define-public f3d
   (package
     (name "f3d")
-    (version "1.3.1")
+    (version "2.0.0")
     (source
      (origin
        (method git-fetch)
@@ -2491,16 +2538,21 @@ a tetrahedral mesh, isovalue discretization and Lagrangian movement;
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0hdfgwf5d24ykab634xg4vv9r09nh96ss7hhnqnh5nmw4abhxzg7"))
+        (base32 "1gcwpdkz3ylaxi133zri1cxkvj6za5s1hbgqqc8fn10q2dkkdd44"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
-            (delete-file "application/cxxopts.hpp")
-            (delete-file "application/json.hpp")
+            (delete-file "external/cxxopts.hpp")
+            (delete-file "external/json.hpp")
             (substitute* "application/F3DOptionsParser.cxx"
               (("^#include \"cxxopts\\.hpp\"")
                "#include <cxxopts.hpp>")
               (("^#include \"json\\.hpp\"")
+               "#include <nlohmann/json.hpp>")
+              (("cxxopts::OptionException")
+               "cxxopts::exceptions::parsing"))
+            (substitute* "library/src/engine.cxx"
+              (("^#include <json\\.hpp>")
                "#include <nlohmann/json.hpp>"))))))
     (build-system cmake-build-system)
     ;; The package cannot easily be split into out and lib outputs because
@@ -2536,7 +2588,7 @@ a tetrahedral mesh, isovalue discretization and Lagrangian movement;
     (native-inputs
      (list cxxopts
            help2man
-           json-modern-cxx))
+           nlohmann-json))
     (inputs
      (list alembic
            assimp
@@ -2590,4 +2642,3 @@ environment.  It supports drawing freehand as well as basic shapes and text.
 It features cut-and-paste for irregular regions or polygons.")
     (home-page "https://www.gnu.org/software/gpaint/")
     (license license:gpl3+)))
-

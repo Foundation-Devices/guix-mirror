@@ -199,7 +199,7 @@ driver.")
 (define-public fwupd
   (package
     (name "fwupd")
-    (version "1.8.3")
+    (version "1.8.14")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -208,7 +208,7 @@ driver.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "02jf052qj1nl47ppqrgz3s9qapq4pajgkf6lbj5rxr5sshlrw44n"))))
+                "179yc0nbbyrdya5q16ncf7lkslrhr3i90rgb9vdmv751ikilkby6"))))
     (build-system meson-build-system)
     (arguments
      (list
@@ -236,6 +236,15 @@ driver.")
               (substitute* "src/fu-self-test.c"
                 (("/bin/sh")
                  (which "sh")))))
+          ;; These two files are zipped by Python, so need a newer timestamp.
+          (add-after 'unpack 'newer-timestamps-for-python-zip
+            (lambda _
+              (let ((circa-1980 (* 10 366 24 60 60)))
+                (for-each (lambda (file)
+                            (make-file-writable file)
+                            (utime file circa-1980 circa-1980))
+                          '("./libfwupdplugin/tests/colorhug/firmware.bin"
+                            "./libfwupdplugin/tests/colorhug/firmware.bin.asc")))))
           (add-before 'build 'setup-home
             (lambda _
               (setenv "HOME" "/tmp")))
@@ -327,7 +336,7 @@ by the b43-open driver of Linux-libre.")
 (define-public eg25-manager
   (package
     (name "eg25-manager")
-    (version "0.4.2")
+    (version "0.4.6")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -336,11 +345,19 @@ by the b43-open driver of Linux-libre.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1czq2yi852aqkdnrxdifzcq669bdvlm7j40xivxq77jq04fggpmf"))))
+                "1a591dhr43mhwh09n2vlfpw6aajl6d1vkwniikjvwfjrmp01v6yq"))))
     (build-system meson-build-system)
+    (arguments
+     (list
+       #:phases
+       #~(modify-phases %standard-phases
+           (add-after 'unpack 'patch-path
+             (lambda* (#:key inputs #:allow-other-keys)
+               (substitute* "udev/80-modem-eg25.rules"
+                 (("/bin/grep") (search-input-file inputs "/bin/grep"))))))))
     (native-inputs (list curl
                          `(,glib "bin") pkg-config))
-    (inputs (list libgpiod libgudev libusb))
+    (inputs (list grep libgpiod libgudev libusb))
     (synopsis "Manager daemon for the Quectel EG25 mobile broadband modem")
     (description
      "This package provides a manager daemon for the Quectel EG25 mobile
@@ -410,7 +427,8 @@ utilites used to process FCODE, OpenFirmware's byte code, consisting of:
               (file-name (git-file-name "openbios" version))
               (sha256
                (base32
-                "1xp1b6xgx40i0j3a5y3id0d1p8vdvapai8szganxg3zrvj53fh0n"))))
+                "1xp1b6xgx40i0j3a5y3id0d1p8vdvapai8szganxg3zrvj53fh0n"))
+              (patches (search-patches "openbios-aarch64-riscv64-support.patch"))))
     (build-system gnu-build-system)
     (arguments
      (list #:tests? #f                  ;no tests
@@ -422,8 +440,9 @@ utilites used to process FCODE, OpenFirmware's byte code, consisting of:
                      (("TZ=UTC date \\+")
                       "TZ=UTC date --date=@1 +"))))
                (replace 'configure
-                 (lambda _
-                   (invoke "./config/scripts/switch-arch" #$arch)))
+                 (lambda* (#:key (configure-flags #~'()) #:allow-other-keys)
+                   (apply invoke "./config/scripts/switch-arch" #$arch
+                          configure-flags)))
                (replace 'install
                  (lambda _
                    (let ((build-target
@@ -456,11 +475,6 @@ provide OpenFirmware functionality on top of an already running system.")
       (inherit base)
       (arguments
        (substitute-keyword-arguments (package-arguments base)
-         ((#:system system (%current-system))
-          (if (string-prefix? "aarch64-linux" (or (%current-system)
-                                                  (%current-target-system)))
-            "armhf-linux"
-            system))
          ;; No need to cross-compile, package produces reproducible firmware.
          ((#:target _ #f) #f)
          ((#:phases phases)
@@ -475,7 +489,7 @@ provide OpenFirmware functionality on top of an already running system.")
 (define* (make-opensbi-package platform name #:optional (arch "riscv64"))
   (package
     (name name)
-    (version "1.1")
+    (version "1.3.1")
     (source
      (origin
        (method git-fetch)
@@ -484,14 +498,16 @@ provide OpenFirmware functionality on top of an already running system.")
              (commit (string-append "v" version))))
        (file-name (git-file-name "opensbi" version))
        (sha256
-        (base32 "0xlnhl965286kvizyjm571qbhj3l5n71a02dmbmgxzcqapzgi9wk"))))
+        (base32 "01pr7fyg3gcb5pj6d48w2an3m4mfjs9b398x31drqxwqcaz0zn94"))))
     (build-system gnu-build-system)
     (native-inputs
-     `(,@(if (and (not (string-prefix? "riscv64" (%current-system)))
-                  (string-prefix? "riscv64" arch))
-           `(("cross-gcc" ,(cross-gcc "riscv64-linux-gnu" #:xgcc gcc-7))
-             ("cross-binutils" ,(cross-binutils "riscv64-linux-gnu")))
-           '())))
+     (append
+       (if (and (not (string-prefix? "riscv64" (%current-system)))
+                (string-prefix? "riscv64" arch))
+         (list (cross-gcc "riscv64-linux-gnu")
+               (cross-binutils "riscv64-linux-gnu"))
+         '())
+       (list python)))
     (arguments
      `(#:tests? #f ; no check target
        #:make-flags (list (string-append "PLATFORM=" ,platform)
@@ -512,8 +528,7 @@ provide OpenFirmware functionality on top of an already running system.")
                (for-each
                  (lambda (file)
                    (install-file file out))
-                 bin))
-             #t)))))
+                 bin)))))))
     (home-page "https://github.com/riscv-software-src/opensbi")
     (synopsis "RISC-V @acronym{SBI, Supervisor Binary Interface} implementation")
     (description
@@ -555,7 +570,7 @@ executing in M-mode.")
 (define-public seabios
   (package
     (name "seabios")
-    (version "1.16.1")
+    (version "1.16.2")
     (source
      (origin
        (method git-fetch)
@@ -564,7 +579,7 @@ executing in M-mode.")
              (commit (string-append "rel-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0gph1hf70jjpx55qc0lzx2yghkipg9dnsin07i4jajk0p1jpd2d0"))
+        (base32 "1mal2zqn4ppxdjxddrxcphm6z9n8n4rw97xl2hldd7spw57nwq97"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
@@ -1005,7 +1020,7 @@ Virtual Machines.  OVMF contains a sample UEFI firmware for QEMU and KVM.")
                                        (gnu-triplet->nix-system triplet))))))
     (package
       (name (string-append "arm-trusted-firmware-" platform))
-      (version "2.8")
+      (version "2.9")
       (source
        (origin
          (method git-fetch)
@@ -1016,7 +1031,7 @@ Virtual Machines.  OVMF contains a sample UEFI firmware for QEMU and KVM.")
          (file-name (git-file-name "arm-trusted-firmware" version))
          (sha256
           (base32
-           "0grq3fgxi9xhcljnhwlxjvdghyz15gaq50raw41xy4lm8rkmnzp3"))
+           "16fjbn1zck0d8b554h8lk1svqqn0zlawvrlkjxry9l71s9h4vd0p"))
          (snippet
           #~(begin
               (use-modules (guix build utils))
@@ -1084,8 +1099,114 @@ such as:
   (let ((base (make-arm-trusted-firmware "imx8mq")))
     (package
       (inherit base)
+      ;; Newer versions do not build and are essentially not supported
+      ;; upstream.
+      ;; XXX: explore using NXP maintained branch
+      ;; https://github.com/nxp-imx/imx-atf
+      (version "2.8")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               ;; There are only GitHub generated release snapshots.
+               (url "https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git/")
+               (commit (string-append "v" version))))
+         (file-name (git-file-name "arm-trusted-firmware" version))
+         (sha256
+          (base32
+           "0grq3fgxi9xhcljnhwlxjvdghyz15gaq50raw41xy4lm8rkmnzp3"))))
       (arguments
        (substitute-keyword-arguments (package-arguments base)
          ((#:make-flags flags ''())
           ;; Adding debug symbols causes the size to exceed limits.
           #~(delete "DEBUG=1" #$flags)))))))
+
+(define (make-crust-package platform)
+  (package
+    (name (string-append "crust-"
+                         (string-replace-substring platform "_" "-")))
+    (version "0.5")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             ;; There are only GitHub generated release snapshots.
+             (url "https://github.com/crust-firmware/crust")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name "crust" version))
+       (sha256
+        (base32
+         "0xgbbhifg3miwd3yp6jq9kp7nqgz5gzy00w95vba45j8jk5vjvvz"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f                       ;no test suite
+      #:make-flags
+      (let ((triplet-without-vendor
+             (and (%current-target-system)
+                  (match (string-split (nix-system->gnu-triplet
+                                        (%current-target-system)) #\-)
+                    ((arch vendor os ..1)
+                     (string-join `(,arch ,@os) "-"))))))
+        #~(list "CROSS_COMPILE=or1k-elf-"
+                "V=1"
+                #$@(if triplet-without-vendor
+                       ;; We are cross-compiling the tools, intended to be
+                       ;; executable for the target system.
+                       (list (string-append "HOSTAR=" triplet-without-vendor
+                                            "-ar")
+                             (string-append "HOSTCC=" triplet-without-vendor
+                                            "-gcc"))
+                       ;; Not cross-compiling.
+                       (list "HOSTAR=ar"
+                             "HOSTCC=gcc"))
+                "LEX=flex"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'do-not-build-tests
+            (lambda _
+              ;; Attempting to build the tools test binary on a non-aarch64
+              ;; architecture fails with: "No cache cleaning implementation
+              ;; available for this architecture".  Avoid building it (see:
+              ;; https://github.com/crust-firmware/crust/issues/182).
+              (substitute* "tools/Makefile"
+                (("tools-y \\+= test") ""))))
+          (delete 'configure)
+          (add-before 'build 'defconfig
+            (lambda* (#:key make-flags #:allow-other-keys)
+              (let ((config-name (string-append #$platform "_defconfig")))
+                (apply invoke "make" (cons config-name make-flags)))))
+          (replace 'install
+            (lambda _
+              (for-each (lambda (file)
+                          (install-file file (string-append #$output
+                                                            "/libexec")))
+                        (find-files "." "(scp\\.bin|\\.config)$"))
+              (install-file "build/tools/load"
+                            (string-append #$output "/bin")))))))
+    ;; The firmware is cross-compiled using a "bare bones" compiler (no libc).
+    ;; Use our own tool chain for that.
+    (native-inputs
+     (list bison
+           (cross-gcc "or1k-elf")
+           (cross-binutils "or1k-elf")
+           flex))
+    (home-page "https://github.com/crust-firmware/crust")
+    (synopsis "System control processor firmware for Allwinner sunxi boards")
+    (description "Crust improves battery life and thermal performance by
+implementing a deep sleep state.  During deep sleep, the CPU cores, the DRAM
+controller, and most onboard peripherals are powered down, reducing power
+consumption by 80% or more compared to an idle device.  On boards without a
+PMIC, Crust is also responsible for orderly power-off and power-on of the
+device.  For this to work, Crust runs outside the main CPU and DRAM, on a
+dedicated always-on microprocessor called a System Control Processor (SCP).
+Crust is designed to run on a specific SCP implementation, Allwinner's
+AR100.")
+    ;; Most files are dual-licensed "BSD-3 OR GPL2", a few are GPL2 only.
+    (license (list license:bsd-3 license:gpl2))))
+
+(define-public crust-pinebook
+  (make-crust-package "pinebook"))
+
+(define-public crust-pine64-plus
+  (make-crust-package "pine64_plus"))

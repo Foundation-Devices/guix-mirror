@@ -2,7 +2,7 @@
 ;;; Copyright © 2016 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2016, 2017 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
-;;; Copyright © 2017, 2018, 2019, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2017-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018-2023 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Robert Smith <robertsmith@posteo.net>
@@ -150,7 +150,7 @@ of categories with some of the activities available in that category.
 (define-public gcompris-qt
   (package
     (name "gcompris-qt")
-    (version "2.3")
+    (version "3.2")
     (source
      (origin
        (method url-fetch)
@@ -158,7 +158,7 @@ of categories with some of the activities available in that category.
              "mirror://kde/stable/gcompris/qt/src/gcompris-qt-"
              version ".tar.xz"))
        (sha256
-        (base32 "0qncknaaf168anh4cjp7dqz6qzgx948kvgr32j2vga8mjakqn1aj"))))
+        (base32 "06yisr5qd2ri8qgpmlri0yic45fdfcdjn12anp17f6kvv83lk2js"))))
     (build-system qt-build-system)
     (arguments
      `(#:phases
@@ -183,13 +183,13 @@ of categories with some of the activities available in that category.
      (list openssl
            python-wrapper
            qtbase-5
+           qtcharts
            qtdeclarative-5
            qtgraphicaleffects
            qtmultimedia-5
-           qtquickcontrols-5
+           qtquickcontrols2-5
            qtsensors
-           qtsvg-5
-           qtxmlpatterns))
+           qtsvg-5))
     (home-page "https://gcompris.net/index-en.html")
     (synopsis "Educational games for small children")
     (description
@@ -452,11 +452,11 @@ specialized device.")
   ;; The last release builds from qtwebkit, which has been removed from
   ;; Guix, so use the latest commit of the 1.7-dev branch, which builds with
   ;; qtwebengine-5.
-  (let ((commit "39e914f600d26565706f0e5b6ea2482b8b4038c7") ;1.6.2-rc0311
-        (revision "1"))
+  (let ((commit "47a96e1d6bbdc0250977d22f1b79f11fcc1cbeee")
+        (revision "0"))
     (package
       (name "openboard")
-      (version (git-version "1.6.1" revision commit))
+      (version (git-version "1.7-dev" revision commit))
       (source
        (origin
          (method git-fetch)
@@ -465,7 +465,7 @@ specialized device.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1763l5dywirzidzc93726dggf9819p47hh6a7p7dwzd1bfq1wb2q"))))
+          (base32 "04pwmg41vlkwigym3zzkid6srh6f05b44g4mbihd6mhj6vsagx1f"))))
       (build-system qt-build-system)
       (arguments
        (list
@@ -500,7 +500,7 @@ specialized device.")
             (add-after 'unpack 'fix-library-path
               (lambda* (#:key inputs #:allow-other-keys)
                 (substitute* "OpenBoard.pro"
-                  (("/usr/include/quazip")
+                  (("/usr/include/quazip5")
                    (search-input-directory inputs "/include/quazip5"))
                   (("/usr/include/poppler")
                    (search-input-directory inputs "/include/poppler")))))
@@ -582,7 +582,7 @@ a pen-tablet display and a beamer.")
 (define-public fet
   (package
     (name "fet")
-    (version "6.8.4")
+    (version "6.9.0")
     (source
      (origin
        (method url-fetch)
@@ -591,7 +591,7 @@ a pen-tablet display and a beamer.")
               (list (string-append directory base)
                     (string-append directory "old/" base))))
        (sha256
-        (base32 "0bwm6j0drxkrmx8zbr78a7xbbzb1i9365qv93fkwjg9v92b9clhr"))))
+        (base32 "1lnw58ga1ldhqfznclmk9l21698pg152w3slq2cwmr69ywqr5wys"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1102,16 +1102,16 @@ mentored learning for programming languages.")
 (define-public mazo
   (package
     (name "mazo")
-    (version "1.0.0")
+    (version "1.1.0")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
-             (url "https://gitlab.com/luis-felipe/mazo.git")
+             (url "https://codeberg.org/luis-felipe/mazo.git")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "06246380i5rxycniwg5syn0aldd2zy10cbqk1lgyc0qfqb2lyrwj"))))
+        (base32 "14nk3qsj6lg7wp2ws8lxhb4hyjnczvw1cn9f3m466dkkfimp7ygf"))))
     (build-system python-build-system)
     (arguments
      `(#:use-setuptools? #f
@@ -1155,8 +1155,10 @@ mentored learning for programming languages.")
            python-pillow
            python-pycairo))
     (propagated-inputs
-     (list gstreamer
-           gtk+
+     (list adwaita-icon-theme
+           dbus
+           gstreamer
+           gtk
            python
            python-django
            python-django-cleanup

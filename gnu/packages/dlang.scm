@@ -137,7 +137,7 @@ to a minimal test case.")
                                    (dirname (search-input-file inputs "/bin/gdc"))
                                    "\";\n"))))))))
       (inputs
-       (list gdc-10 perl))
+       (list gdc-11 perl))
       (home-page "https://github.com/D-Programming-GDC/gdmd")
       (synopsis "DMD-like wrapper for GDC")
       (description "This package provides a DMD-like wrapper for the
@@ -149,17 +149,18 @@ to a minimal test case.")
 (define ldc-bootstrap
   (package
     (name "ldc")
-    (version "1.30.0")
+    (version "1.32.2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://github.com/ldc-developers/ldc/releases"
                            "/download/v" version "/ldc-" version "-src.tar.gz"))
        (sha256
-        (base32 "1kfs4fpr1525sv2ny10hlfppy8c075vjm8m649wr2b9411pkgfzx"))))
+        (base32 "15fdl7fy1ssjxpyb9g54ac4xzcirycly521whil142ijfkpam95z"))))
     (build-system cmake-build-system)
     (arguments
-     `(#:tests? #f                  ;skip in the bootstrap
+     `(#:disallowed-references (,tzdata-for-tests)
+       #:tests? #f                  ;skip in the bootstrap
        #:build-type "Release"
        #:configure-flags
         (list "-GNinja")
@@ -187,14 +188,14 @@ to a minimal test case.")
     (inputs
      `(("libconfig" ,libconfig)
        ("libedit" ,libedit)
-       ("tzdata" ,tzdata)
        ("zlib" ,zlib)))
     (native-inputs
-     `(("lld-wrapper" ,(make-lld-wrapper lld-11 #:lld-as-ld? #t))
-       ("llvm" ,llvm-11)
+     `(("lld-wrapper" ,(make-lld-wrapper lld-14 #:lld-as-ld? #t))
+       ("llvm" ,llvm-14)
        ("ldc" ,gdmd)
        ("ninja" ,ninja)
        ("python-wrapper" ,python-wrapper)
+       ("tzdata" ,tzdata-for-tests)
        ("unzip" ,unzip)))
     (home-page "http://wiki.dlang.org/LDC")
     (synopsis "LLVM-based compiler for the D programming language")
@@ -217,7 +218,8 @@ bootstrapping more recent compilers written in D.")
   (package
     (inherit ldc-bootstrap)
     (arguments
-     (substitute-keyword-arguments (package-arguments ldc-bootstrap)
+     (substitute-keyword-arguments
+       (strip-keyword-arguments '(#:tests?) (package-arguments ldc-bootstrap))
        ((#:make-flags _ #f)
         '(list "all"
                ;; Also build the test runner binaries.
@@ -226,7 +228,6 @@ bootstrapping more recent compilers written in D.")
         `(,@flags "-DBUILD_SHARED_LIBS=ON"
                   "-DLDC_LINK_MANUALLY=OFF"
                   "-DLDC_DYNAMIC_COMPILE=OFF"))
-       ((#:tests? _) #t)
        ((#:phases phases)
         `(modify-phases ,phases
            (add-after 'unpack 'fix-compiler-rt-library-discovery
@@ -263,11 +264,11 @@ bootstrapping more recent compilers written in D.")
                                    "/lib/linux\",\n"))))))
            (add-after 'unpack 'patch-paths-in-tests
              (lambda _
-               (substitute* "tests/d2/dmd-testsuite/Makefile"
+               (substitute* "tests/dmd/Makefile"
                  (("/bin/bash") (which "bash")))
                (substitute* "tests/linking/linker_switches.d"
                  (("echo") (which "echo")))
-               (substitute* "tests/d2/dmd-testsuite/dshell/test6952.d"
+               (substitute* "tests/dmd/dshell/test6952.d"
                  (("/usr/bin/env bash")
                   (which "bash")))))
            (add-after 'unpack 'disable-problematic-tests
@@ -280,8 +281,9 @@ bootstrapping more recent compilers written in D.")
                  ((" unittest") " version(skipunittest) unittest"))
                ;; The following tests plugins we don't have.
                (delete-file "tests/plugins/addFuncEntryCall/testPlugin.d")
+               (delete-file "tests/plugins/addFuncEntryCall/testPluginLegacy.d")
                ;; The following tests requires AVX instruction set in the CPU.
-               (substitute* "tests/d2/dmd-testsuite/runnable/cdvecfill.sh"
+               (substitute* "tests/dmd/runnable/cdvecfill.sh"
                  (("^// DISABLED: ") "^// DISABLED: linux64 "))
                ;; This unit test requires networking, fails with
                ;; "core.exception.RangeError@std/socket.d(778): Range
@@ -292,13 +294,13 @@ bootstrapping more recent compilers written in D.")
                ;; The GDB tests suite fails; there are a few bug reports about
                ;; it upstream.
                (for-each delete-file (find-files "tests" "gdb.*\\.(c|d|sh)$"))
-               (delete-file "tests/d2/dmd-testsuite/runnable/debug_info.d")
-               (delete-file "tests/d2/dmd-testsuite/runnable/b18504.d")
+               (delete-file "tests/dmd/runnable/debug_info.d")
+               (delete-file "tests/dmd/runnable/b18504.d")
                (substitute* "runtime/druntime/test/exceptions/Makefile"
                  ((".*TESTS\\+=rt_trap_exceptions_drt_gdb.*")
                   ""))
                ;; Drop gdb_dflags from the test suite.
-               (substitute* "tests/d2/CMakeLists.txt"
+               (substitute* "tests/dmd/CMakeLists.txt"
                  (("\\$\\{gdb_dflags\\}") ""))
                ;; The following tests fail on some systems, not all of
                ;; which are tested upstream.
@@ -314,10 +316,10 @@ bootstrapping more recent compilers written in D.")
                                  "instrument/xray_simple_execution.d"
                                  "sanitizers/msan_noerror.d"
                                  "sanitizers/msan_uninitialized.d"
-                                 "d2/dmd-testsuite/runnable_cxx/cppa.d")))
+                                 "dmd/runnable_cxx/cppa.d")))
                    (,(target-aarch64?)
                      (for-each delete-file
-                               '("d2/dmd-testsuite/runnable/ldc_cabi1.d"
+                               '("dmd/runnable/ldc_cabi1.d"
                                  "sanitizers/fuzz_basic.d"
                                  "sanitizers/msan_noerror.d"
                                  "sanitizers/msan_uninitialized.d")))
@@ -357,7 +359,7 @@ integration tests...\n")
      (append (delete "llvm"
                      (alist-replace "ldc" (list ldc-bootstrap)
                                     (package-native-inputs ldc-bootstrap)))
-         `(("clang" ,clang-11)          ;propagates llvm and clang-runtime
+         `(("clang" ,clang-14)          ;propagates llvm and clang-runtime
            ("python-lit" ,python-lit))))))
 
 (define-public dub

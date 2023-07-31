@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020, 2022 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
+;;; Copyright © 2022, 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -32,7 +32,7 @@
 (define-public imgui
   (package
     (name "imgui")
-    (version "1.88")
+    (version "1.89.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -41,7 +41,7 @@
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "13cw4hx55y5z678r558hv7znfz666wh0w849c5padnj4nkpbihdi"))
+                "1j79gsg9i969slygrwm0dp5mkzagglawxxagjpi3009wyp6lj6l8"))
               (modules '((guix build utils)))
               (snippet
                ;; Remove bundled fonts.
@@ -55,6 +55,18 @@
                   (guix build utils)
                   (ice-9 ftw)
                   (srfi srfi-26))
+      ;; The build phase does not use make but we will use make-flags in a
+      ;; similar fashion to make inheritance for older imgui versions easier.
+      #:make-flags
+      ;; This first option is necessary at least for OpenBoardView, otherwise
+      ;; it would fail with the "Too many vertices in ImDrawList using 16-bit
+      ;; indices".
+      #~(list "-DImDrawIdx=unsigned int"
+              "-I" (string-append (getcwd) "/source")
+              "-I" (search-input-directory %build-inputs "include/freetype2")
+              "-g" "-O2" "-fPIC" "-shared"
+              "-lGL" "-lSDL2" "-lglfw"
+              "-o" "libimgui.so")
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'unpack 'adjust-includes
@@ -64,52 +76,52 @@
                  "#include <SDL2/SDL"))))
           (delete 'configure)
           (replace 'build
-            (lambda* (#:key inputs #:allow-other-keys)
+            (lambda* (#:key make-flags #:allow-other-keys)
               ;; Build main library.
-              (apply invoke #$(cc-for-target) "-I" (getcwd)
-                     "-I" (search-input-directory inputs "include/freetype2")
-                     "-g" "-O2" "-fPIC" "-shared"
-                     "-lGL" "-lSDL2" "-lglfw"
-                     "-o" "libimgui.so"
-                     "imgui.cpp"
-                     "imgui_draw.cpp"
-                     "imgui_tables.cpp"
-                     "imgui_widgets.cpp"
-                     ;; Include the supported backends.
-                     "backends/imgui_impl_glfw.cpp"
-                     "backends/imgui_impl_sdl.cpp"
-                     "backends/imgui_impl_opengl2.cpp"
-                     "backends/imgui_impl_opengl3.cpp"
-                     ;; Include wrappers for C++ standard library (STL) and
-                     ;; fontconfig.
-                     (find-files "misc" "\\.cpp$"))))
+              (apply invoke #$(cc-for-target)
+                     (append make-flags
+                             `("imgui.cpp"
+                               "imgui_draw.cpp"
+                               "imgui_tables.cpp"
+                               "imgui_widgets.cpp"
+                               ;; Include the supported backends.
+                               "backends/imgui_impl_glfw.cpp"
+                               ,(if (file-exists? "backends/imgui_impl_sdl2.cpp")
+                                    "backends/imgui_impl_sdl2.cpp"
+                                    "backends/imgui_impl_sdl.cpp")
+                               "backends/imgui_impl_opengl2.cpp"
+                               "backends/imgui_impl_opengl3.cpp"
+                               ;; Include wrappers for C++ standard library (STL) and
+                               ;; fontconfig.
+                               ,@(find-files "misc" "\\.cpp$"))))))
           (replace 'install
-            (lambda* (#:key outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (doc (assoc-ref outputs "doc"))
-                     (header? (cut string-suffix? ".h" <>))
+            (lambda _
+              (let* ((header? (cut string-suffix? ".h" <>))
                      (imgui-headers (scandir "." header?))
                      (backend-headers (find-files
                                        "backends"
                                        "(glfw|opengl|sdl|vulkan).*\\.h$"))
                      (misc-headers (find-files "misc" "\\.h$")))
-                (install-file "libimgui.so" (string-append out "/lib"))
+                (install-file "libimgui.so" (string-append #$output "/lib"))
                 ;; Install headers.
                 (for-each (lambda (f)
-                            (install-file f (string-append out "/include/imgui")))
+                            (install-file f (string-append #$output
+                                                           "/include/imgui")))
                           imgui-headers)
                 (for-each (lambda (f)
                             (install-file f (string-append
-                                             out "/include/imgui/backends")))
+                                             #$output
+                                             "/include/imgui/backends")))
                           backend-headers)
                 (for-each (lambda (f)
-                            (install-file f (string-append
-                                             out "/include/imgui/" (dirname f))))
+                            (install-file f (string-append #$output
+                                                           "/include/imgui/"
+                                                           (dirname f))))
                           misc-headers)
                 ;; Install examples.
-                (copy-recursively
-                 "examples" (string-append
-                             doc "/share/imgui/examples"))))))))
+                (copy-recursively "examples"
+                                  (string-append #$output:doc
+                                                 "/share/imgui/examples"))))))))
     (inputs (list fontconfig glfw mesa sdl2))
     (home-page "https://github.com/ocornut/imgui")
     (synopsis "Immediate-mode C++ GUI library with minimal dependencies")
@@ -126,6 +138,22 @@ applications, full-screen applications, and embedded platforms without
 standard operating system features.")
     (license license:expat)))
 
+(define-public imgui-1.87
+  (package
+    (inherit imgui)
+    (name "imgui")
+    (version "1.87")
+    (source (origin
+              (inherit (package-source imgui))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/ocornut/imgui")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "10qil22s5qak3as41787iz273sibpq1bq66bakgn7yvhj5fym6hz"))))))
+
 (define-public imgui-1.86
   (package
     (inherit imgui)
@@ -140,4 +168,10 @@ standard operating system features.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "02a7b05zrka20jhzag2jb4jl624i1m456bsv69jb9zgys2p9dv1n"))))))
+                "02a7b05zrka20jhzag2jb4jl624i1m456bsv69jb9zgys2p9dv1n"))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments imgui)
+       ((#:make-flags flags ''())
+        ;; Remove the "-DImDrawIdx=unsigned int" make-flag as this breaks
+        ;; mangohud, the only user of this version.
+        #~(delete "-DImDrawIdx=unsigned int" #$flags))))))

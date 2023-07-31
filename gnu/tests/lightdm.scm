@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>.
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>.
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -46,11 +46,11 @@
 (define minimal-desktop-services
   (list polkit-wheel-service
         (service upower-service-type)
-        (accountsservice-service)
+        (service accountsservice-service-type)
         (service polkit-service-type)
-        (elogind-service)
-        (dbus-service)
-        x11-socket-directory-service))
+        (service elogind-service-type)
+        (service dbus-root-service-type)
+        (service x11-socket-directory-service-type)))
 
 (define %lightdm-os
   (operating-system
@@ -137,15 +137,12 @@
               (wait-for-screen-text marionette
                                     (cut string-contains <> "Log In")
                                     #:ocr #$(file-append tesseract-ocr
-                                                         "/bin/tesseract")))
+                                                         "/bin/tesseract")
+                                    #:timeout 60)) ;for slow systems
 
             (test-assert "can connect to TCP port 5900 on IPv4"
               (wait-for-tcp-port 5900 marionette))
 
-            ;; The VNC server fails to listen to IPv6 due to "Error binding to
-            ;; address [::]:5900: Address already in use" (see:
-            ;; https://github.com/canonical/lightdm/issues/266).
-            (test-expect-fail 1)
             (test-assert "can connect to TCP port 5900 on IPv6"
               (wait-for-tcp-port 5900 marionette
                                  #:address

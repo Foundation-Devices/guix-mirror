@@ -29,6 +29,7 @@
   #:use-module (srfi srfi-35)
   #:use-module (guix import json)
   #:use-module (guix import hackage)
+  #:autoload   (guix import cabal) (eval-cabal)
   #:use-module (guix import utils)
   #:use-module (guix memoization)
   #:use-module (guix packages)
@@ -145,7 +146,7 @@ included in the Stackage LTS release."
       "Return an <upstream-source> for the latest Stackage LTS release of
 PACKAGE or #f if the package is not included in the Stackage LTS release."
       (when version
-        (error
+        (raise
          (formatted-message
           (G_ "~a updater doesn't support updating to a specific version, sorry.")
           "stackage")))
@@ -162,10 +163,9 @@ PACKAGE or #f if the package is not included in the Stackage LTS release."
                 (package (package-name pkg))
                 (version version)
                 (urls (list url))
-                (input-changes
-                 (changed-inputs
-                  pkg
-                  (stackage->guix-package hackage-name #:packages (packages))))))))))))
+                (inputs
+                 (let ((cabal (eval-cabal (hackage-fetch name-version) '())))
+                   (cabal-package-inputs cabal)))))))))))
 
 (define (stackage-lts-package? package)
   "Return whether PACKAGE is available on the default Stackage LTS release."

@@ -15,8 +15,9 @@
 ;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Kei Kebreau <kkebreau@posteo.net>
 ;;; Copyright © 2021 Ivan Gankevich <i.gankevich@spbu.ru>
-;;; Copyright © 2021, 2022 John Kehayias <john.kehayias@protonmail.com>
+;;; Copyright © 2021, 2022, 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2022 Petr Hodina <phodina@protonmail.com>
+;;; Copyright © 2023 Kaelyn Takata <kaelyn.alexi@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -110,7 +111,7 @@ as ASCII text.")
 (define-public freeglut
   (package
     (name "freeglut")
-    (version "3.2.2")
+    (version "3.4.0")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -118,7 +119,7 @@ as ASCII text.")
                     "/download/v" version "/freeglut-" version ".tar.gz"))
               (sha256
                (base32
-                "0l3s57zw51fy3mn5qfdm4z775kfhflgxppanaxmskfzh5l44m565"))))
+                "1v7ayg3a03mv8b6lsr1qm21lbr8xg8dh3gdfxnbhl64vbn8wn2rw"))))
     (build-system cmake-build-system)
     (arguments
      '(#:tests? #f                      ;no test target
@@ -266,21 +267,17 @@ also known as DXTn or DXTC) for Mesa.")
 (define-public mesa
   (package
     (name "mesa")
-    (version "22.2.4")
+    (version "23.1.4")
     (source
       (origin
         (method url-fetch)
-        (uri (list (string-append "https://mesa.freedesktop.org/archive/"
+        (uri (list (string-append "https://archive.mesa3d.org/"
                                   "mesa-" version ".tar.xz")
                    (string-append "ftp://ftp.freedesktop.org/pub/mesa/"
-                                  "mesa-" version ".tar.xz")
-                   (string-append "ftp://ftp.freedesktop.org/pub/mesa/"
-                                  version "/mesa-" version ".tar.xz")))
+                                  "mesa-" version ".tar.xz")))
         (sha256
          (base32
-          "1azpr68pdg63yq3igmzwsgn2ypg49m0mp3hfkq0lcyswr99npmv5"))
-        (patches
-         (list (search-patch "mesa-fix-sporadic-test-failures.patch")))))
+          "0n89l7lvawh85hq2a7g5pp5v017s03qs3n4hbbff6rs8p5zs2qbj"))))
     (build-system meson-build-system)
     (propagated-inputs
      ;; The following are in the Requires.private field of gl.pc.
@@ -301,7 +298,8 @@ also known as DXTn or DXTC) for Mesa.")
            libxvmc
            llvm-for-mesa
            wayland
-           wayland-protocols))
+           wayland-protocols
+           `(,zstd "lib")))
     (native-inputs
      (list bison
            flex
@@ -314,8 +312,10 @@ also known as DXTn or DXTC) for Mesa.")
            (@ (gnu packages base) which)))
     (outputs '("out" "bin"))
     (arguments
-     `(#:configure-flags
-       '(,@(match (%current-system)
+     (list
+      #:configure-flags
+      #~(list
+         #$@(match (%current-system)
              ("aarch64-linux"
               ;; TODO: Fix svga driver for non-Intel architectures.
               '("-Dgallium-drivers=etnaviv,freedreno,kmsro,lima,nouveau,\
@@ -327,7 +327,7 @@ r300,r600,swrast,tegra,v3d,vc4,virgl"))
              ((or "powerpc64le-linux" "powerpc-linux" "riscv64-linux")
               '("-Dgallium-drivers=nouveau,r300,r600,radeonsi,swrast,virgl"))
              (_
-              '("-Dgallium-drivers=iris,nouveau,r300,r600,radeonsi,\
+              '("-Dgallium-drivers=crocus,iris,nouveau,r300,r600,radeonsi,\
 svga,swrast,virgl")))
          ;; Enable various optional features.  TODO: opencl requires libclc,
          ;; omx requires libomxil-bellagio
@@ -344,9 +344,9 @@ svga,swrast,virgl")))
          "-Dshared-glapi=enabled"
 
          ;; Explicitly enable Vulkan on some architectures.
-         ,@(match (%current-system)
+         #$@(match (%current-system)
              ((or "i686-linux" "x86_64-linux")
-              '("-Dvulkan-drivers=intel,amd"))
+              '("-Dvulkan-drivers=intel,intel_hasvk,amd,swrast"))
              ((or "powerpc64le-linux" "powerpc-linux")
               '("-Dvulkan-drivers=amd,swrast"))
              ("aarch64-linux"
@@ -359,6 +359,13 @@ svga,swrast,virgl")))
          ;; Enable the Vulkan overlay layer on all architectures.
          "-Dvulkan-layers=device-select,overlay"
 
+         ;; Enable the codecs that were built by default as part of the
+         ;; 21.3.x releases to avoid functionality regressions.
+         "-Dvideo-codecs=vc1dec,h264dec,h264enc,h265dec,h265enc"
+
+         ;; Enable ZSTD compression for shader cache.
+         "-Dzstd=enabled"
+
          ;; Also enable the tests.
          "-Dbuild-tests=true"
 
@@ -368,12 +375,12 @@ svga,swrast,virgl")))
        ;; documentation recommends using 'release' for performance anyway.
        #:build-type "release"
 
-       #:modules ((ice-9 match)
-                  (srfi srfi-1)
-                  (guix build utils)
-                  (guix build meson-build-system))
+       #:modules '((ice-9 match)
+                   (srfi srfi-1)
+                   (guix build utils)
+                   (guix build meson-build-system))
        #:phases
-       (modify-phases %standard-phases
+       #~(modify-phases %standard-phases
          (add-after 'unpack 'disable-failing-test
            (lambda _
              ;; Disable the intel vulkan (anv_state_pool) tests, as they may
@@ -382,7 +389,7 @@ svga,swrast,virgl")))
              (substitute* "src/intel/vulkan/meson.build"
                (("if with_tests")
                 "if false"))
-             ,@(match (%current-system)
+             #$@(match (%current-system)
                  ("riscv64-linux"
                   ;; According to the test logs the llvm JIT is not designed
                   ;; for this architecture and the llvmpipe tests all segfault.
@@ -427,8 +434,8 @@ svga,swrast,virgl")))
                  (_
                   '((display "No tests to disable on this architecture.\n"))))))
          (add-before 'configure 'fix-dlopen-libnames
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
+           (lambda _
+             (let ((out #$output))
                ;; Remain agnostic to .so.X.Y.Z versions while doing
                ;; the substitutions so we're future-safe.
                (substitute* "src/glx/meson.build"
@@ -445,9 +452,9 @@ svga,swrast,virgl")))
                  (("\"gbm_dri\\.so")
                   (string-append "\"" out "/lib/dri/gbm_dri.so"))))))
          (add-after 'install 'split-outputs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (bin (assoc-ref outputs "bin")))
+           (lambda _
+             (let ((out #$output)
+                   (bin #$output:bin))
                ;; Not all architectures have the Vulkan overlay control script.
                (mkdir-p (string-append out "/bin"))
                (call-with-output-file (string-append out "/bin/.empty")
@@ -456,13 +463,13 @@ svga,swrast,virgl")))
                                  (string-append bin "/bin"))
                (delete-file-recursively (string-append out "/bin")))))
          (add-after 'install 'symlinks-instead-of-hard-links
-           (lambda* (#:key outputs #:allow-other-keys)
+           (lambda _
              ;; All the drivers and gallium targets create hard links upon
              ;; installation (search for "hardlink each megadriver instance"
              ;; in the makefiles).  This is no good for us since we'd produce
              ;; nars that contain several copies of these files.  Thus, turn
              ;; them into symlinks, which saves ~124 MiB.
-             (let* ((out    (assoc-ref outputs "out"))
+             (let* ((out    #$output)
                     (lib    (string-append out "/lib"))
                     (files  (find-files lib
                                         (lambda (file stat)
@@ -488,7 +495,34 @@ svga,swrast,virgl")))
                                                        file)
                                               (symlink reference file)))
                                         others))))
-                         (delete-duplicates inodes))))))))
+                         (delete-duplicates inodes)))))
+         (add-after 'install 'set-layer-path-in-manifests
+           (lambda _
+             (let* ((out #$output)
+                    (implicit-path (string-append
+                                    out
+                                    "/share/vulkan/implicit_layer.d/"))
+                    (explicit-path (string-append
+                                    out
+                                    "/share/vulkan/explicit_layer.d/"))
+                    (fix-layer-path
+                     (lambda (layer-name)
+                       (let* ((explicit (string-append explicit-path layer-name ".json"))
+                              (implicit (string-append implicit-path layer-name ".json"))
+                              (manifest (if (file-exists? explicit)
+                                            explicit
+                                            implicit)))
+                         (substitute* manifest
+                           (((string-append "\"lib" layer-name ".so\""))
+                             (string-append "\"" out "/lib/lib" layer-name ".so\"")))))))
+               (for-each fix-layer-path '("VkLayer_MESA_device_select"
+                                          "VkLayer_MESA_overlay"))))))))
+    (native-search-paths
+     (list (search-path-specification
+            ;; Ensure the Mesa VDPAU drivers can be found.
+            (variable "VDPAU_DRIVER_PATH")
+            (separator #f)
+            (files '("lib/vdpau")))))
     (home-page "https://mesa3d.org/")
     (synopsis "OpenGL and Vulkan implementations")
     (description "Mesa is a free implementation of the OpenGL and Vulkan
@@ -501,13 +535,11 @@ from software emulation to complete hardware acceleration for modern GPUs.")
   (package/inherit mesa
     (name "mesa-opencl")
     (source (origin
-              (inherit (package-source mesa))
-              (patches (cons (search-patch "mesa-opencl-all-targets.patch")
-                             (origin-patches (package-source mesa))))))
+              (inherit (package-source mesa))))
     (arguments
      (substitute-keyword-arguments (package-arguments mesa)
        ((#:configure-flags flags)
-        `(cons "-Dgallium-opencl=standalone" ,flags))))
+        #~(cons "-Dgallium-opencl=standalone" #$flags))))
     (inputs
      (modify-inputs (package-inputs mesa)
        (prepend libclc)))
@@ -521,10 +553,10 @@ from software emulation to complete hardware acceleration for modern GPUs.")
     (arguments
       (substitute-keyword-arguments (package-arguments mesa)
         ((#:configure-flags flags)
-         `(cons "-Dgallium-opencl=icd"
-                ,(delete "-Dgallium-opencl=standalone" flags)))
+         #~(cons "-Dgallium-opencl=icd"
+                (delete "-Dgallium-opencl=standalone" #$flags)))
         ((#:phases phases)
-         `(modify-phases ,phases
+         #~(modify-phases #$phases
             (add-after 'install 'mesa-icd-absolute-path
               (lambda _
                 ;; Use absolute path for OpenCL platform library.
@@ -532,7 +564,7 @@ from software emulation to complete hardware acceleration for modern GPUs.")
                 ;; for ICD in our applications to find OpenCL platform.
                 (use-modules (guix build utils)
                              (ice-9 textual-ports))
-                (let* ((out (assoc-ref %outputs "out"))
+                (let* ((out #$output)
                        (mesa-icd (string-append out "/etc/OpenCL/vendors/mesa.icd"))
                        (old-path (call-with-input-file mesa-icd get-string-all))
                        (new-path (string-append out "/lib/" (string-trim-both old-path))))
@@ -606,14 +638,14 @@ glxdemo, glxgears, glxheads, and glxinfo.")
 (define-public glew
   (package
     (name "glew")
-    (version "2.1.0")
+    (version "2.2.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://sourceforge/glew/glew/" version
                                   "/glew-" version ".tgz"))
               (sha256
                (base32
-                "159wk5dc0ykjbxvag5i1m2mhp23zkk6ra04l26y3jc3nwvkr3ph4"))
+                "1qak8f7g1iswgswrgkzc7idk7jmqgwrs58fhg2ai007v7j4q5z6l"))
               (modules '((guix build utils)))
               (snippet
                '(begin
@@ -623,12 +655,15 @@ glxdemo, glxgears, glxheads, and glxinfo.")
                   #t))))
     (build-system gnu-build-system)
     (arguments
-     '(#:phases (modify-phases %standard-phases (delete 'configure))
-       #:make-flags (list (string-append "GLEW_PREFIX="
-                                         (assoc-ref %outputs "out"))
-                          (string-append "GLEW_DEST="
-                                         (assoc-ref %outputs "out")))
-       #:tests? #f))                              ;no 'check' target
+     (list #:make-flags #~(list (string-append "GLEW_PREFIX=" #$output)
+                                (string-append "GLEW_DEST=" #$output))
+           #:phases
+           #~(modify-phases %standard-phases
+               (delete 'configure)
+               (add-after 'install 'delete-static
+                 (lambda _
+                   (delete-file (string-append #$output "/lib/libGLEW.a")))))
+           #:tests? #f))                ;no 'check' target
     (inputs
      (list libxi libxmu libx11 mesa))
 
@@ -647,25 +682,19 @@ extension functionality is exposed in a single header file.")
 (define-public guile-opengl
   (package
     (name "guile-opengl")
-    (version "0.1.0")
+    (version "0.2.0")
     (source (origin
              (method url-fetch)
              (uri (string-append "mirror://gnu/guile-opengl/guile-opengl-"
                                  version ".tar.gz"))
              (sha256
               (base32
-               "13qfx4xh8baryxqrv986l848ygd0piqwm6s2s90pxk9c0m9vklim"))))
+               "0rbc2wf9x63ilj3n85h8wyllzc2b22abmhs2p2ghjgc253n8gw5q"))))
     (build-system gnu-build-system)
     (native-inputs (list pkg-config))
     (inputs (list guile-2.2 mesa glu freeglut))
     (arguments
      '(#:phases (modify-phases %standard-phases
-                 (add-after 'configure 'patch-makefile
-                   (lambda _
-                     ;; Install compiled Guile files in the expected place.
-                     (substitute* '("Makefile")
-                       (("^godir = .*$")
-                        "godir = $(moddir)\n"))))
                  (add-before 'build 'patch-dynamic-link
                    (lambda* (#:key inputs outputs #:allow-other-keys)
                      (substitute* "gl/runtime.scm"
@@ -696,16 +725,6 @@ OpenGL graphics API.")
   (package
     (inherit guile-opengl)
     (name "guile3.0-opengl")
-    (arguments
-     (substitute-keyword-arguments (package-arguments guile-opengl)
-       ((#:phases phases)
-        `(modify-phases ,phases
-           (add-after 'unpack 'build-with-guile-3.0
-             (lambda _
-               (substitute* "configure"
-                 (("_guile_versions_to_search=\"")
-                  "_guile_versions_to_search=\"3.0 "))
-               #t))))))
     (inputs
      (list guile-3.0 mesa glu freeglut))))
 

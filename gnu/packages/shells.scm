@@ -12,7 +12,7 @@
 ;;; Copyright © 2019 Meiyo Peng <meiyo.peng@gmail.com>
 ;;; Copyright © 2019 Timothy Sample <samplet@ngyro.com>
 ;;; Copyright © 2019 Mathieu Othacehe <m.othacehe@gmail.com>
-;;; Copyright © 2019, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2019, 2020, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2020 Ryan Prior <rprior@protonmail.com>
 ;;; Copyright © 2020, 2022 Efraim Flashner <efraim@flashner.co.il>
@@ -20,6 +20,7 @@
 ;;; Copyright © 2021, 2022 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2021, 2022 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2022 Andrew Tropin <andrew@trop.in>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -118,7 +119,7 @@ direct descendant of NetBSD's Almquist Shell (@command{ash}).")
 (define-public fish
   (package
     (name "fish")
-    (version "3.5.1")
+    (version "3.6.1")
     (source
      (origin
        (method url-fetch)
@@ -126,15 +127,10 @@ direct descendant of NetBSD's Almquist Shell (@command{ash}).")
                            "releases/download/" version "/"
                            "fish-" version ".tar.xz"))
        (sha256
-        (base32 "0a39vf0wqq6asw5xcrwgdsc67h5bxkgxzy77f8bx6pd4qlympm56"))
-       (modules '((guix build utils)))
-       (snippet
-        '(begin
-           ;; Remove bundled software.
-           (delete-file-recursively "pcre2")))))
+        (base32 "1cj91fyba259vhbxvq55w2yf2p2vj201gr15pa59swx6gjs2nh2m"))))
     (build-system cmake-build-system)
     (inputs
-     (list fish-foreign-env ncurses pcre2 ; don't use the bundled PCRE2
+     (list fish-foreign-env ncurses pcre2
            python))  ; for fish_config and manpage completions
     (native-inputs
      (list doxygen groff ; for 'fish --help'
@@ -403,7 +399,10 @@ written by Paul Haahr and Byron Rakitzis.")
               (patch-flags '("-p0"))))
     (build-system gnu-build-system)
     (native-inputs
-     (list autoconf perl))
+     (append (if (target-riscv64?)
+                 (list config)
+                 '())
+             (list autoconf perl)))
     (inputs
      (list ncurses))
     (arguments
@@ -416,6 +415,13 @@ written by Paul Haahr and Byron Rakitzis.")
                         (substitute* "configure"
                           (("CC_FOR_GETHOST=\"cc\"")
                            "CC_FOR_GETHOST=\"gcc\"")))))
+                 #~())
+          #$@(if (system-hurd?)
+                 #~((add-after 'unpack 'skip-tests
+                      (lambda _
+                        (substitute* "tests/testsuite.at"
+                          (("m4_include\\(\\[subst.at\\]\\)" all)
+                           (string-append "# " all))))))
                  #~())
           (add-before 'check 'patch-test-scripts
             (lambda _
@@ -461,7 +467,7 @@ history mechanism, job control and a C-like syntax.")
 (define-public zsh
   (package
     (name "zsh")
-    (version "5.8.1")
+    (version "5.9")
     (source (origin
               (method url-fetch)
               (uri (list (string-append
@@ -472,7 +478,8 @@ history mechanism, job control and a C-like syntax.")
                            ".tar.xz")))
               (sha256
                (base32
-                "06crvpqbpm8sq5c215f4b985z7npwnqnj0i0g53hnq6fp8h3b5xn"))))
+                "1mdc8lnq8qxq1ahxp8610n799pd7a9kqg3liy7xq2pjvvp71x3cv"))
+              (patches (search-patches "zsh-egrep-failing-test.patch"))))
     (build-system gnu-build-system)
     (arguments `(#:configure-flags
                  `("--with-tcsetpgrp"
@@ -535,14 +542,14 @@ ksh, and tcsh.")
 (define-public xonsh
   (package
     (name "xonsh")
-    (version "0.13.4")
+    (version "0.14.0")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "xonsh" version))
         (sha256
           (base32
-           "19r1g8i8k6ds7ncvqdh58vkm4m5hz4w9zbglmg1mi7xcdqp4ax8h"))
+           "1wcv1sk8igs5kb9fqb8njbxwiqbwzpn0kdx9xkaddq3wn6msma25"))
         (modules '((guix build utils)))
         (snippet
          #~(begin
@@ -580,6 +587,7 @@ ksh, and tcsh.")
     (inputs
      (list python-distro
            python-ply
+           python-prompt-toolkit
            python-pygments
            python-pyperclip
            python-setproctitle))
@@ -643,8 +651,8 @@ operating system.")
       (license license:bsd-3))))
 
 (define-public linenoise
-  (let ((commit "2105ce445821381cf1bca87b6d386d4ea88ee20d")
-        (revision "1"))
+  (let ((commit "93b2db9bd4968f76148dd62cdadf050ed50b84b3")
+        (revision "2"))
     (package
       (name "linenoise")
       (version (string-append "1.0-" revision "." (string-take commit 7)))
@@ -657,7 +665,7 @@ operating system.")
          (file-name (string-append name "-" version "-checkout"))
          (sha256
           (base32
-           "1z16qwix8z6a40fskdgxsibkqgdrp4q6ncp4n6hnv4r9iihy2d8r"))))
+           "102gwq6bzjq2b1lf55wrpgym58yfhry56hkajbj339m0bs1xijhs"))))
       (build-system gnu-build-system)
       (arguments
        `(#:tests? #f                    ; no tests are included
@@ -850,7 +858,7 @@ Shell (pdksh).")
 (define-public oil
   (package
     (name "oil")
-    (version "0.12.9")
+    (version "0.15.0")
     (source
      ;; oil's sources contain a modified version of CPython 2.7.13.
      ;; According to https://www.oilshell.org/blog/2017/05/05.html
@@ -863,7 +871,7 @@ Shell (pdksh).")
        (uri (string-append "https://www.oilshell.org/download/oil-"
                            version ".tar.gz"))
        (sha256
-        (base32 "047gjar5lkbms4gdp3063njnqc6fl6p0dcx8bbpi1cdn1956yh1s"))))
+        (base32 "1yy4523lbwkb0abnnvp4v08nv94isxb16wjryrp820idb90c1zfb"))))
     (build-system gnu-build-system)
     (arguments
      (list #:strip-binaries? #f         ; strip breaks the binary

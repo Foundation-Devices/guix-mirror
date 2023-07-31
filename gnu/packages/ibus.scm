@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015-2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2016 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2017, 2018 Efraim Flashner <efraim@flashner.co.il>
@@ -10,7 +10,7 @@
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2021 Songlin Jiang <hollowman@hollowman.ml>
 ;;; Copyright © 2021 Taiju HIGASHI <higashi@taiju.info>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2023 Luis Felipe López Acevedo <luis.felipe.la@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -59,10 +59,12 @@
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages iso-codes)
+  #:use-module (gnu packages linux)
   #:use-module (gnu packages logging)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages serialization)
@@ -91,7 +93,7 @@
     (outputs '("out" "doc"))
     (arguments
      (list
-      #:configure-flags #~(list "--enable-python-library"
+      #:configure-flags #~(list "--disable-gtk2"
                                 "--enable-gtk-doc"
                                 "--enable-memconf"
                                 (string-append
@@ -125,13 +127,6 @@
                 (substitute* '("ibus-share.c" "ibus-compose.c"
                                "ibus-keypress.c")
                   (("[ \t]*return g_test_run \\(\\);") "")))))
-          (add-after 'unpack 'patch-docbook-xml
-            (lambda* (#:key inputs #:allow-other-keys)
-              (with-directory-excursion "docs/reference/ibus"
-                (substitute* "ibus-docs.sgml.in"
-                  (("http://www.oasis-open.org/docbook/xml/4.1.2/")
-                   (string-append #$(this-package-native-input "docbook-xml")
-                                  "/xml/dtd/docbook/"))))))
           (add-after 'unpack 'patch-python-target-directories
             (lambda _
               (let ((root (string-append #$output
@@ -186,10 +181,8 @@
                (string-append #$output:doc "/share/gtk-doc"))))
           (add-after 'wrap-program 'wrap-with-additional-paths
             (lambda* (#:key outputs #:allow-other-keys)
-              ;; Make sure 'ibus-setup' runs with the correct PYTHONPATH and
-              ;; GI_TYPELIB_PATH.
+              ;; Make sure 'ibus-setup' runs with the correct GI_TYPELIB_PATH.
               (wrap-program (search-input-file outputs "bin/ibus-setup")
-                `("GUIX_PYTHONPATH" ":" prefix (,(getenv "GUIX_PYTHONPATH")))
                 `("GI_TYPELIB_PATH" ":" prefix
                   (,(getenv "GI_TYPELIB_PATH")
                    ,(string-append #$output "/lib/girepository-1.0")))))))))
@@ -198,7 +191,6 @@
            dbus
            dconf
            glib
-           gtk+-2
            gtk+
            iso-codes
            json-glib
@@ -206,9 +198,6 @@
            libx11
            libxkbcommon
            libxtst
-           python-pygobject
-           python
-           python-dbus
            setxkbmap
            ucd
            unicode-cldr-common
@@ -244,17 +233,35 @@ may also simplify input method development.")
 
 (define-public ibus
   (package/inherit ibus-minimal
-    (arguments (substitute-keyword-arguments (package-arguments ibus-minimal)
-                 ((#:configure-flags flags)
-                  #~(cons* "--enable-gtk4" #$flags))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments ibus-minimal)
+       ((#:configure-flags flags)
+        #~(cons* "--enable-gtk4"
+                 "--enable-python-library"
+                 #$flags))
+       ((#:phases phases '%standard-phases)
+        #~(modify-phases #$phases
+            (replace 'wrap-with-additional-paths
+              (lambda* (#:key outputs #:allow-other-keys)
+                ;; Make sure 'ibus-setup' runs with the correct
+                ;; GUIX_PYTHONPATH and GI_TYPELIB_PATH.
+                (wrap-program (search-input-file outputs "bin/ibus-setup")
+                  `("GUIX_PYTHONPATH" ":" prefix (,(getenv "GUIX_PYTHONPATH")))
+                  `("GI_TYPELIB_PATH" ":" prefix
+                    (,(getenv "GI_TYPELIB_PATH")
+                     ,(string-append #$output "/lib/girepository-1.0"))))))))))
     (inputs (modify-inputs (package-inputs ibus-minimal)
-              (prepend gtk pango)))
+              (prepend gtk
+                       pango
+                       python
+                       python-dbus
+                       python-pygobject)))
     (properties (alist-delete 'hidden? (package-properties ibus-minimal)))))
 
 (define-public ibus-libpinyin
   (package
     (name "ibus-libpinyin")
-    (version "1.12.0")
+    (version "1.15.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/libpinyin/ibus-libpinyin/"
@@ -262,40 +269,42 @@ may also simplify input method development.")
                                   "/ibus-libpinyin-" version ".tar.gz"))
               (sha256
                (base32
-                "0xl2lmffy42f6h6za05z4vpazpza1a9gsrva65giwyv3kpf652dd"))))
+                "01zsx3aw9iwjm70mksgpjlqjj5f5wi9l0pdixprw5lj5hxd8siyp"))))
     (build-system glib-or-gtk-build-system)
     (arguments
-     `(#:configure-flags
-       '("--enable-opencc")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'wrap-program 'wrap-with-additional-paths
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Make sure 'ibus-setup-libpinyin' runs with the correct
-             ;; PYTHONPATH and GI_TYPELIB_PATH.
-             (let ((out (assoc-ref outputs "out")))
-               (wrap-program (string-append out "/libexec/ibus-setup-libpinyin")
-                 `("GUIX_PYTHONPATH" ":" prefix
-                   (,(getenv "GUIX_PYTHONPATH")
-                    ,(string-append (assoc-ref inputs "ibus")
-                                    "/lib/girepository-1.0")
-                    ,(string-append (assoc-ref outputs "out")
-                                    "/share/ibus-libpinyin/setup/")))
-                 `("GI_TYPELIB_PATH" ":" prefix
-                   (,(string-append (assoc-ref inputs "ibus")
-                                    "/lib/girepository-1.0")
-                    ,(string-append (assoc-ref outputs "out")
-                                    "/share/ibus-libpinyin/setup/"))))
-               #t))))))
+     (list
+      #:configure-flags
+      '(list "--enable-opencc")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'wrap-program 'wrap-with-additional-paths
+            (lambda _
+              ;; Make sure 'ibus-setup-libpinyin' runs with the correct
+              ;; PYTHONPATH and GI_TYPELIB_PATH.
+              (wrap-program (string-append #$output "/libexec/ibus-setup-libpinyin")
+                `("GUIX_PYTHONPATH" ":" prefix
+                  (,(getenv "GUIX_PYTHONPATH")
+                   ,(string-append #$(this-package-input "ibus")
+                                   "/lib/girepository-1.0")
+                   ,(string-append #$output
+                                   "/share/ibus-libpinyin/setup/")))
+                `("GI_TYPELIB_PATH" ":" prefix
+                  (,(string-append #$(this-package-input "ibus")
+                                   "/lib/girepository-1.0")
+                   ,(string-append #$(this-package-input "gtk+")
+                                   "/lib/girepository-1.0")
+                   ,(string-append #$output
+                                   "/share/ibus-libpinyin/setup/")
+                   ,(getenv "GI_TYPELIB_PATH")))))))))
     (inputs
-     `(("ibus" ,ibus)
-       ("libpinyin" ,libpinyin)
-       ("bdb" ,bdb)
-       ("sqlite" ,sqlite)
-       ("opencc" ,opencc)
-       ("python" ,python)
-       ("pygobject2" ,python-pygobject)
-       ("gtk+" ,gtk+)))
+     (list ibus
+           libpinyin
+           bdb
+           sqlite
+           opencc
+           python
+           python-pygobject
+           gtk+))
     (native-inputs
      (list pkg-config intltool
            `(,glib "bin")))
@@ -309,7 +318,7 @@ ZhuYin (Bopomofo) input method based on libpinyin for IBus.")
 (define-public libpinyin
   (package
     (name "libpinyin")
-    (version "2.6.0")
+    (version "2.8.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/libpinyin/libpinyin/"
@@ -317,7 +326,7 @@ ZhuYin (Bopomofo) input method based on libpinyin for IBus.")
                                   "/libpinyin-" version ".tar.gz"))
               (sha256
                (base32
-                "10h5mjgv4ibhispvr3s1k36a4aclx4dcvcc2knd4sg1xibw0dp4w"))))
+                "0l4h1q2l5fql0fy9bmncyw0dpbfwn1yb5p3xnwvhgpbidpq58c9m"))))
     (build-system gnu-build-system)
     (inputs
      (list glib bdb))
@@ -341,18 +350,52 @@ Chinese pinyin input methods.")
                     version "/ibus-anthy-" version ".tar.gz"))
               (sha256
                (base32
-                "16vd0k8wm13s38869jqs3dnwmjvywgn0snnpyi41m28binhlssf8"))))
-    (build-system gnu-build-system)
+                "16vd0k8wm13s38869jqs3dnwmjvywgn0snnpyi41m28binhlssf8"))
+              (patches (search-patches "ibus-anthy-fix-tests.patch"))))
+    (build-system glib-or-gtk-build-system)
     (arguments
      (list
-      #:configure-flags
-      ;; Use absolute exec path in the anthy.xml.
-      #~(list (string-append "--libexecdir=" #$output "/libexec"))
-      ;; The test suite fails (see:
+      ;; The test suite hangs (see:
       ;; https://github.com/ibus/ibus-anthy/issues/28).
       #:tests? #f
+      #:configure-flags
+      ;; Use absolute exec path in the anthy.xml.
+      #~(list (string-append "--libexecdir=" #$output "/libexec")
+              (string-append
+               "--with-anthy-zipcode="
+               (assoc-ref %build-inputs "anthy") "/share/anthy/zipcode.t"))
+      ;; The test suite fails (see:
+      ;; https://github.com/ibus/ibus-anthy/issues/28).
       #:phases
       #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-check
+            (lambda _
+              (substitute* "data/Makefile.in"
+                ;; Use a year current at the time the release was made, to
+                ;; avoid the "This year ２０２３ is not included in era.y"
+                ;; error.
+                (("`date '\\+%Y'`")
+                 "2021"))))
+          (add-after 'unpack 'do-not-override-GI_TYPELIB_PATH
+            ;; Do not override the GI_TYPELIB_PATH to avoid the pygobject
+            ;; error: "ValueError: Namespace Gdk not available".
+            (lambda _
+              (substitute* "tests/test-build.sh"
+                (("GI_TYPELIB_PATH=\\$BUILDDIR/../gir" all)
+                 (string-append all ":$GI_TYPELIB_PATH")))))
+          (add-before 'configure 'pre-configure
+            (lambda _
+              ;; We need generate new _config.py with correct PKGDATADIR.
+              (delete-file "setup/python3/_config.py")
+              (delete-file "engine/python3/_config.py")))
+          (add-before 'check 'prepare-for-tests
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                ;; IBus requires write access to the HOME directory.
+                (setenv "HOME" "/tmp")
+                ;; The single test is skipped if no actual display is found.
+                (system "Xvfb :1 &")
+                (setenv "DISPLAY" ":1"))))
           (add-after 'install 'wrap-programs
             (lambda* (#:key inputs #:allow-other-keys)
               (for-each
@@ -369,7 +412,11 @@ Chinese pinyin input methods.")
            `(,glib "bin")
            intltool
            pkg-config
-           python))
+           procps                       ;for ps
+           python
+           python-pycotap
+           util-linux                   ;for getopt
+           xorg-server-for-tests))
     (inputs
      (list anthy
            gtk+

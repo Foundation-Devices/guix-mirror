@@ -10,7 +10,7 @@
 ;;; Copyright © 2020, 2021 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2020 Florian Pelz <pelzflorian@pelzflorian.de>
 ;;; Copyright © 2020, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
-;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <jannek@gnu.org>
+;;; Copyright © 2020, 2023 Janneke Nieuwenhuizen <jannek@gnu.org>
 ;;; Copyright © 2020, 2022 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;; Copyright © 2021 raid5atemyhomework <raid5atemyhomework@protonmail.com>
@@ -782,7 +782,7 @@ bookkeeping."
                             (operating-system-file-systems os)))
            (session-environment-service
             (operating-system-environment-variables os))
-           (host-name-service host-name)
+           (service host-name-service-type host-name)
            procs root-fs
            (service setuid-program-service-type
                     (operating-system-setuid-programs os))
@@ -967,9 +967,8 @@ syntactically correct."
                                "--check" "--file" #$file)
                        (copy-file #$file #$output)))))
 
-(define (os-release)
-  (plain-file "os-release"
-              "\
+(define os-release
+  (plain-file "os-release" "\
 NAME=\"Guix System\"
 ID=guix
 PRETTY_NAME=\"Guix System\"
@@ -1001,10 +1000,9 @@ the /etc directory."
 
          (hurd       (operating-system-hurd os))
          (issue      (plain-file "issue" (operating-system-issue os)))
-         (nsswitch   (operating-system-name-service-switch os))
-         (nsswitch   (and nsswitch
-                          (plain-file "nsswitch.conf"
-                                      (name-service-switch->string nsswitch))))
+         (nsswitch   (and=> (operating-system-name-service-switch os)
+                            (compose (cut plain-file "nsswitch.conf" <>)
+                                     name-service-switch->string)))
          (sudoers    (operating-system-sudoers-file os))
 
         ;; Startup file for POSIX-compliant login shells, which set system-wide
@@ -1092,16 +1090,16 @@ then
   # as those in ~/.guix-profile and /run/current-system/profile.
   source /run/current-system/profile/etc/profile.d/bash_completion.sh
 fi\n")))
-    (etc-service
-     `(("os-release" ,#~#$(os-release))
+    (service etc-service-type
+     `(("os-release" ,os-release)
        ("services" ,(file-append net-base "/etc/services"))
        ("protocols" ,(file-append net-base "/etc/protocols"))
        ("rpc" ,(file-append net-base "/etc/rpc"))
-       ("login.defs" ,#~#$login.defs)
-       ("issue" ,#~#$issue)
-       ,@(if nsswitch `(("nsswitch.conf" ,#~#$nsswitch)) '())
-       ("profile" ,#~#$profile)
-       ("bashrc" ,#~#$bashrc)
+       ("login.defs" ,login.defs)
+       ("issue" ,issue)
+       ,@(if nsswitch `(("nsswitch.conf" ,nsswitch)) '())
+       ("profile" ,profile)
+       ("bashrc" ,bashrc)
        ;; Write the operating-system-host-name to /etc/hostname to prevent
        ;; NetworkManager from changing the system's hostname when connecting
        ;; to certain networks.  Some discussion at
@@ -1203,15 +1201,7 @@ use 'plain-file' instead~%")
 
     ;; By default, applications that use D-Bus, such as Emacs, abort at startup
     ;; when /etc/machine-id is missing.  Make sure these warnings are non-fatal.
-    ("DBUS_FATAL_WARNINGS" . "0")
-
-    ;; XXX: Normally we wouldn't need to do this, but our glibc@2.23 package
-    ;; used to look things up in 'PREFIX/lib/locale' instead of
-    ;; '/run/current-system/locale' as was intended.  Keep this hack around so
-    ;; that people who still have glibc@2.23-using packages in their profiles
-    ;; can use them correctly.
-    ;; TODO: Remove when glibc@2.23 is long gone.
-    ("GUIX_LOCPATH" . "/run/current-system/locale")))
+    ("DBUS_FATAL_WARNINGS" . "0")))
 
 ;; Ensure LST is a list of <setuid-program> records and warn otherwise.
 (define-with-syntax-properties (ensure-setuid-program-list (lst properties))
@@ -1254,7 +1244,7 @@ deprecated; use 'setuid-program' instead~%"))
                (file-append sudo "/bin/sudo")
                (file-append sudo "/bin/sudoedit")
                (file-append fuse "/bin/fusermount")
-               (file-append fuse-3 "/bin/fusermount3")
+               (file-append fuse "/bin/fusermount3")
 
                ;; To allow mounts with the "user" option, "mount" and "umount" must
                ;; be setuid-root.
@@ -1496,16 +1486,28 @@ a list of <menu-entry>, to populate the \"old entries\" menu."
 
 (define (hurd-multiboot-modules os)
   (let* ((hurd (operating-system-hurd os))
+         (pci-arbiter-command
+          (list (file-append hurd "/hurd/pci-arbiter.static")
+                "pci-arbiter"
+                "--host-priv-port='${host-port}'"
+                "--device-master-port='${device-port}'"
+                "--next-task='${disk-task}'"
+                "'$(pci-task=task-create)'"
+                "'$(task-resume)'"))
+         (rumpdisk-command
+          (list (file-append hurd "/hurd/rumpdisk.static")
+                "rumpdisk"
+                "--next-task='${fs-task}'"
+                "'$(disk-task=task-create)'"))
          (root-file-system-command
           (list (file-append hurd "/hurd/ext2fs.static")
                 "ext2fs"
                 "--multiboot-command-line='${kernel-command-line}'"
-                "--host-priv-port='${host-port}'"
-                "--device-master-port='${device-port}'"
                 "--exec-server-task='${exec-task}'"
                 "--store-type=typed"
                 "--x-xattr-translator-records"
-                "'${root}'" "'$(task-create)'" "'$(task-resume)'"))
+                "'${root}'"
+                "'$(fs-task=task-create)'"))
          (target (%current-target-system))
          (libc (if target
                    (with-parameters ((%current-target-system #f))
@@ -1515,14 +1517,17 @@ a list of <menu-entry>, to populate the \"old entries\" menu."
                    glibc))
          (exec-server-command
           ;; XXX: Run the statically-linked 'exec' to work around
-          ;; <https://issues.guix.gnu.org/58631>, which manifests on some
+          ;; <https://issues.guix.gnu.org/58320>, which manifests on some
           ;; machines.
 
           ;; (list (file-append libc "/lib/ld.so.1") "exec"
           ;;       (file-append hurd "/hurd/exec") "'$(exec-task=task-create)'")
           (list (file-append hurd "/hurd/exec.static") "exec"
                 "'$(exec-task=task-create)'")))
-    (list root-file-system-command exec-server-command)))
+    (list pci-arbiter-command
+          rumpdisk-command
+          root-file-system-command
+          exec-server-command)))
 
 (define* (operating-system-boot-parameters os root-device
                                            #:key system-kernel-arguments?)

@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2016 Sou Bunnbu <iyzsong@gmail.com>
-;;; Copyright © 2016, 2017, 2018, 2020, 2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2016, 2017, 2018, 2020, 2022, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017 Huang Ying <huang.ying.caritas@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -19,6 +19,7 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (gnu services dict)
+  #:use-module (guix deprecation)
   #:use-module (guix gexp)
   #:use-module (guix records)
   #:use-module (guix modules)
@@ -34,7 +35,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
   #:use-module (ice-9 match)
-  #:export (dicod-service
+  #:export (dicod-service  ; deprecated
             dicod-service-type
             dicod-configuration
             dicod-handler
@@ -166,21 +167,23 @@ database {
            (provision '(dicod))
            (requirement '(user-processes))
            (documentation "Run the dicod daemon.")
-           (start #~(if (and (defined? 'make-inetd-constructor)
-                             #$(= 1 (length interfaces))) ;XXX
+           (start #~(if (defined? 'make-inetd-constructor)
                         (make-inetd-constructor
                          (list #$dicod "--inetd" "--foreground"
                                (string-append "--config=" #$dicod.conf))
-                         (addrinfo:addr
-                          (car (getaddrinfo #$(first interfaces) "dict")))
+                         (map (lambda (interface)
+                                (endpoint
+                                 (addrinfo:addr
+                                  (car (getaddrinfo interface "dict")))))
+                              '#$interfaces)
+                         #:requirements '#$requirement
                          #:user "dicod" #:group "dicod"
                          #:service-name-stem "dicod")
                         (make-forkexec-constructor
                          (list #$dicod "--foreground"
                                (string-append "--config=" #$dicod.conf))
                          #:user "dicod" #:group "dicod")))
-           (stop #~(if (and (defined? 'make-inetd-destructor)
-                            #$(= 1 (length interfaces))) ;XXX
+           (stop #~(if (defined? 'make-inetd-destructor)
                        (make-inetd-destructor)
                        (make-kill-destructor)))
            (actions (list (shepherd-configuration-action dicod.conf)))))))
@@ -202,7 +205,8 @@ database {
 implements the standard DICT protocol supported by clients such as
 @command{dico} and GNOME Dictionary.")))
 
-(define* (dicod-service #:key (config (dicod-configuration)))
+(define-deprecated (dicod-service #:key (config (dicod-configuration)))
+  dicod-service-type
   "Return a service that runs the @command{dicod} daemon, an implementation
 of DICT server (@pxref{Dicod,,, dico, GNU Dico Manual}).
 

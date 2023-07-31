@@ -17,6 +17,7 @@
 ;;; Copyright © 2022 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
 ;;; Copyright © 2022 Antero Mejr <antero@mailbox.org>
 ;;; Copyright © 2023 Philip McGrath <philip@philipmcgrath.com>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -36,10 +37,8 @@
 (define-module (guix utils)
   #:use-module (guix config)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-26)
-  #:use-module (srfi srfi-39)
   #:use-module (srfi srfi-71)
   #:use-module (rnrs io ports)                    ;need 'port-position' etc.
   #:use-module ((rnrs bytevectors) #:select (bytevector-u8-set!))
@@ -51,7 +50,6 @@
   #:use-module ((guix combinators) #:select (fold2))
   #:use-module (guix diagnostics)           ;<location>, &error-location, etc.
   #:use-module (ice-9 format)
-  #:use-module (ice-9 ftw)
   #:use-module ((ice-9 iconv) #:prefix iconv:)
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
@@ -92,6 +90,7 @@
             package-name->name+version
             target-linux?
             target-hurd?
+            system-hurd?
             target-mingw?
             target-x86-32?
             target-x86-64?
@@ -676,6 +675,10 @@ a character other than '@'."
   "Does TARGET represent the GNU(/Hurd) system?"
   (and (string-suffix? "-gnu" target)
        (not (string-contains target "linux"))))
+
+(define* (system-hurd?)
+  "Is the current system the GNU(/Hurd) system?"
+  (and=> (%current-system) target-hurd?))
 
 (define* (target-mingw? #:optional (target (%current-target-system)))
   "Is the operating system of TARGET Windows?"

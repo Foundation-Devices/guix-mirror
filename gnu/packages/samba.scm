@@ -9,7 +9,7 @@
 ;;; Copyright © 2018 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2019 Rutger Helling <rhelling@mykolab.com>
 ;;; Copyright © 2020 Pierre Langlois <pierre.langlois@gmx.com>
-;;; Copyright © 2020, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Jean-Pierre De Jesus DIAZ <me@jeandudey.tech>
 ;;; Copyright © 2022 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2022 Maxime Devos <maximedevos@telenet.be>
@@ -210,7 +210,11 @@ external dependencies.")
              (lambda* (#:key inputs #:allow-other-keys)
                (let* ((libdir (string-append #$output "/lib")))
                  (invoke "./configure"
-                         "--enable-selftest"
+                         #$@(if (member (%current-system)
+                                        (package-transitive-supported-systems
+                                         python-cryptography))
+                                '("--enable-selftest")
+                                '())
                          "--enable-fhs"
                          (string-append "--prefix=" #$output)
                          "--sysconfdir=/etc"
@@ -255,19 +259,27 @@ external dependencies.")
       ;; In Requires or Requires.private of pkg-config files.
       (list ldb talloc tevent))
      (native-inputs
-      (list perl-parse-yapp
-            pkg-config
-            python-cryptography         ;for krb5 tests
-            python-dnspython
-            python-iso8601
-            python-markdown
-            rpcsvc-proto                ;for 'rpcgen'
-            python-pyasn1               ;for krb5 tests
-            ;; For generating man pages.
-            docbook-xml-4.2
-            docbook-xsl
-            libxslt
-            libxml2))                   ;for XML_CATALOG_FILES
+      (append
+       (list perl-parse-yapp
+             pkg-config)
+       ;; The python-cryptography dependency is needed for the krb5 tests.
+       ;; Since python-cryptography requires Rust, add it conditionally
+       ;; depending on such support.
+       (if (member (%current-system)
+                   (package-transitive-supported-systems
+                    python-cryptography))
+           (list python-cryptography)
+           '())
+       (list python-dnspython
+             python-iso8601
+             python-markdown
+             rpcsvc-proto               ;for 'rpcgen'
+             python-pyasn1              ;for krb5 tests
+             ;; For generating man pages.
+             docbook-xml-4.2
+             docbook-xsl
+             libxslt
+             libxml2)))                 ;for XML_CATALOG_FILES
      (home-page "https://www.samba.org/")
      (synopsis
       "The standard Windows interoperability suite of programs for GNU and Unix")
@@ -283,8 +295,7 @@ Desktops into Active Directory environments using the winbind daemon.")
 (define-public samba
   (package
     (inherit samba/pinned)
-    (name "samba")
-    (version "4.17.0")
+    (version "4.18.1")
     (source
      ;; For updaters: the current PGP fingerprint is
      ;; 81F5E2832BD2545A1897B713AA99442FB680B620.
@@ -293,7 +304,7 @@ Desktops into Active Directory environments using the winbind daemon.")
        (uri (string-append "https://download.samba.org/pub/samba/stable/"
                            "samba-" version ".tar.gz"))
        (sha256
-        (base32 "0fl2y5avmyxjadh6zz0fwz35akd6c4j9lldzp2kyvjrgm36qx1h4"))))
+        (base32 "03ncp49pfpzjla205y3xpb9iy61dz4pryyrvyz26422a4hpsmpnf"))))
     (properties (alist-delete 'hidden? (package-properties samba/pinned)))))
 
 (define-public talloc
@@ -503,7 +514,7 @@ and IPV6 and the protocols layered above them, such as TCP and UDP.")
 (define-public wsdd
   (package
     (name "wsdd")
-    (version "0.7.0")
+    (version "0.7.1")
     (source
      (origin
        (method git-fetch)
@@ -511,14 +522,28 @@ and IPV6 and the protocols layered above them, such as TCP and UDP.")
                            (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "04an2w6hamnai668ag4vq8x0i09fsg2jrayb4a7ar0x6bn837k7m"))))
-    (build-system copy-build-system)
-    (inputs
-     `(("python" ,python)))
+        (base32 "16kk7x80jlargrvh643m23j277p0drs2yylqz54f9inf5ld5bxn5"))))
+    (build-system gnu-build-system)
     (arguments
-     '(#:install-plan
-       '(("src/wsdd.py" "bin/wsdd")
-         ("man/wsdd.1" "share/man/man1/"))))
+     (list
+      #:tests? #f                       ; no test suite, only examples
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)           ; no configure script
+          (delete 'build)               ; nothing to build
+          (replace 'install
+            (lambda _
+              (with-directory-excursion "src"
+                (rename-file "wsdd.py" "wsdd")
+                (install-file "wsdd" (string-append #$output "/bin")))
+              (for-each
+               (lambda (file)
+                 (install-file file
+                               (string-append #$output "/share/man/man"
+                                              (string-take-right file 1))))
+               (find-files "man" "\\.[0-9]$")))))))
+    (inputs
+     (list python))
     (home-page "https://github.com/christgau/wsdd")
     (synopsis "Web Service Discovery host daemon")
     (description "This daemon allows (Samba) hosts to be found by Web

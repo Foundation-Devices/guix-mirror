@@ -121,7 +121,7 @@ library.  It is primarily used with HLint's @code{--refactor} flag.")
    (arguments
     `(#:cabal-revision ("2"
                         "1kpgyfl5njxp4c8ax5ziag1bhqvph3h0pn660v3vpxalz8d1j6xv")))
-   (home-page "http://www.haskell.org/cabal/")
+   (home-page "https://www.haskell.org/cabal/")
    (synopsis "Command-line interface for Cabal and Hackage")
    (description
     "The cabal command-line program simplifies the process of managing
@@ -294,13 +294,13 @@ to @code{cabal repl}).")
 (define-public git-annex
   (package
     (name "git-annex")
-    (version "10.20230126")
+    (version "10.20230626")
     (source
      (origin
        (method url-fetch)
        (uri (hackage-uri "git-annex" version))
        (sha256
-        (base32 "06b5gnj0dxiz7lkc75xmmzi50svwbqhs5az01lfmw27r3ibcicpm"))))
+        (base32 "1z16alb5193y4m70rq0bcxx1rn6lnlgswigdnv5lqybjq1fw1z99"))))
     (build-system haskell-build-system)
     (properties '((upstream-name . "git-annex")))
     (arguments

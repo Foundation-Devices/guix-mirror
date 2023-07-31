@@ -12,6 +12,7 @@
 ;;; Copyright © 2022 Sheng Yang <styang@fastmail.com>
 ;;; Copyright © 2022 Greg Hogan <code@greghogan.com>
 ;;; Copyright © 2022 Ryan Tolboom <ryan@using.tech>
+;;; Copyright © 2023 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -40,6 +41,7 @@
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages astronomy)
   #:use-module (gnu packages audio)
+  #:use-module (gnu packages avahi)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
@@ -175,7 +177,7 @@ used as a drop-in substitute for @code{libfec}.")
 (define-public liquid-dsp
   (package
     (name "liquid-dsp")
-    (version "1.5.0")
+    (version "1.6.0")
     (source
      (origin (method git-fetch)
              (uri (git-reference
@@ -183,7 +185,7 @@ used as a drop-in substitute for @code{libfec}.")
                    (commit (string-append "v" version))))
              (file-name (git-file-name name version))
              (sha256
-              (base32 "0m0bhj80rs9yhfwnrlx960lii1cqijz1wr8q93i7m2z91h3v3w0j"))))
+              (base32 "1zw3h2d7kiyxz5zcg5wy4d6pkb07q1pqkc6zz4v9wq8s2v180hnx"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf automake))
@@ -196,12 +198,8 @@ used as a drop-in substitute for @code{libfec}.")
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'install 'delete-static-library
-            (lambda* (#:key outputs #:allow-other-keys)
-              (let ((version #$(version-major+minor
-                                (package-version this-package))))
-                (delete-file (string-append #$output
-                                            "/lib/libliquid.a."
-                                            version))))))))
+            (lambda _
+              (delete-file (string-append #$output "/lib/libliquid.a")))))))
     (home-page "https://liquidsdr.org")
     (synopsis "Signal processing library for software-defined radios")
     (description
@@ -274,52 +272,105 @@ To install the rtl-sdr udev rules, you must extend 'udev-service-type' with
 this package.  E.g.: @code{(udev-rules-service 'rtl-sdr rtl-sdr)}")
       (license license:gpl2+))))
 
+(define-public airspy
+  (let ((commit "6f92f47146aa8a8fce59b60927cf8c53da6851b3")
+        (revision "1"))
+    (package
+      (name "airspy")
+      (version (git-version "1.0.10" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/airspy/airspyone_host")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0y2yz8agp4v36z1766hi92msgs35yvy32brfcscijxdkgswdgbkd"))))
+      (build-system cmake-build-system)
+      (native-inputs
+       (list pkg-config))
+      (inputs
+       (list libusb))
+      (arguments
+       (list #:configure-flags #~(list "-DINSTALL_UDEV_RULES=ON")
+             #:tests? #f ; No tests
+             #:phases
+             #~(modify-phases %standard-phases
+                 (add-after 'unpack 'fix-paths
+                   (lambda _
+                     (substitute* "airspy-tools/CMakeLists.txt"
+                       (("DESTINATION \"/etc/udev/")
+                        (string-append "DESTINATION \""
+                                       #$output
+                                       "/lib/udev/")))))
+                 (add-after 'fix-paths 'fix-udev-rules
+                   (lambda _
+                     (substitute* "airspy-tools/52-airspy.rules"
+                       ;; The plugdev group does not exist; use dialout as in
+                       ;; the hackrf package.
+                       (("GROUP=\"plugdev\"")
+                        "GROUP=\"dialout\"")))))))
+      (home-page "https://github.com/airspy/airspyone_host")
+      (synopsis "Software defined radio driver for Airspy")
+      (description
+       "This package provides the driver and utilities for controlling the
+Airspy Software Defined Radio (SDR) over USB.
+
+To install the airspy udev rules, you must extend @code{udev-service-type}
+with this package.  E.g.: @code{(udev-rules-service 'airspy airspy)}")
+      (license (list license:bsd-3
+                     license:expat
+                     license:gpl2+)))))
+
 (define-public airspyhf
-  (package
-    (name "airspyhf")
-    (version "1.6.8")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/airspy/airspyhf")
-             (commit version)))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0n699i5a9fzzhf80fcjlqq6p2a013rzlwmwv4nmwfafy6c8cr924"))))
-    (build-system cmake-build-system)
-    (native-inputs
-     (list pkg-config))
-    (inputs
-     (list libusb))
-    (arguments
-     '(#:configure-flags '("-DINSTALL_UDEV_RULES=ON")
-       #:tests? #f ; No tests
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-paths
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "tools/CMakeLists.txt"
-               (("DESTINATION \"/etc/udev/")
-                (string-append "DESTINATION \""
-                               (assoc-ref outputs "out")
-                               "/lib/udev/")))))
-         (add-after 'fix-paths 'fix-udev-rules
-           (lambda _
-             (substitute* "tools/52-airspyhf.rules"
-               ;; The plugdev group does not exist; use dialout as in
-               ;; the hackrf package.
-               (("GROUP=\"plugdev\"")
-                "GROUP=\"dialout\"")))))))
-    (home-page "https://github.com/airspy/airspyhf")
-    (synopsis "Software defined radio driver for Airspy HF+")
-    (description
-     "This package provides the driver and utilities for controlling the Airspy
-HF+ Software Defined Radio (SDR) over USB.
+  (let ((commit "40836c59d35d989fe00ac12ef774df736a36c6e4")
+        (revision "1"))
+    (package
+      (name "airspyhf")
+      (version (git-version "1.6.8" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/airspy/airspyhf")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1s3fm856smvja3cg6fy615igir8wb0dzbp0q25v3vls0qj6pvprb"))))
+      (build-system cmake-build-system)
+      (native-inputs
+       (list pkg-config))
+      (inputs
+       (list libusb))
+      (arguments
+       '(#:configure-flags '("-DINSTALL_UDEV_RULES=ON")
+         #:tests? #f ; No tests
+         #:phases
+         (modify-phases %standard-phases
+           (add-after 'unpack 'fix-paths
+             (lambda* (#:key outputs #:allow-other-keys)
+               (substitute* "tools/CMakeLists.txt"
+                 (("DESTINATION \"/etc/udev/")
+                  (string-append "DESTINATION \""
+                                 (assoc-ref outputs "out")
+                                 "/lib/udev/")))))
+           (add-after 'fix-paths 'fix-udev-rules
+             (lambda _
+               (substitute* "tools/52-airspyhf.rules"
+                 ;; The plugdev group does not exist; use dialout as in
+                 ;; the hackrf package.
+                 (("GROUP=\"plugdev\"")
+                  "GROUP=\"dialout\"")))))))
+      (home-page "https://github.com/airspy/airspyhf")
+      (synopsis "Software defined radio driver for Airspy HF+")
+      (description
+       "This package provides the driver and utilities for controlling the
+Airspy HF+ Software Defined Radio (SDR) over USB.
 
 To install the airspyhf udev rules, you must extend @code{udev-service-type}
 with this package.  E.g.: @code{(udev-rules-service 'airspyhf airspyhf)}")
-    (license license:bsd-3)))
+      (license license:bsd-3))))
 
 (define-public soapysdr
   (package
@@ -348,6 +399,30 @@ with this package.  E.g.: @code{(udev-rules-service 'airspyhf airspyhf)}")
      "SoapySDR is a library designed to support several kinds of software
 defined radio hardware devices with a common API.")
     (license license:boost1.0)))
+
+(define-public soapyairspy
+  (package
+    (name "soapyairspy")
+    (version "0.2.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pothosware/SoapyAirspy")
+             (commit (string-append "soapy-airspy-" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0g23yybnmq0pg2m8m7dbhif8lw0hdsmnnjym93fdyxfk5iln7fsc"))))
+    (build-system cmake-build-system)
+    (inputs
+     (list airspy soapysdr))
+    (arguments
+     (list #:tests? #f))  ; No test suite
+    (home-page "https://github.com/pothosware/SoapyAirspy/wiki")
+    (synopsis "SoapySDR Airspy module")
+    (description "This package provides Airspy devices support to the
+SoapySDR library.")
+    (license license:expat)))
 
 (define-public soapyairspyhf
   (package
@@ -452,6 +527,58 @@ controls for certain tuners which may be paired with an audio device.")
       (description
        "This package provides HackRF devices support to the SoapySDR library.")
       (license license:expat))))
+
+(define-public soapymultisdr
+  (let ((commit "e8bd3298afaec04cb7ce2c8c516cb9cd8bd3bc9d")
+        (revision "1"))
+    (package
+      (name "soapymultisdr")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/pothosware/SoapyMultiSDR")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0f7d39s2zpgfi677i2aqp4zkf5c6cv8mpm7w8s7xj45bfhf94acl"))))
+      (build-system cmake-build-system)
+      (inputs
+       (list soapysdr))
+      (home-page "https://github.com/pothosware/SoapyMultiSDR")
+      (synopsis "Multi-device support module for SoapySDR")
+      (description
+       "This is a SoapySDR module to use multiple supported devices under
+a single device wrapper.")
+      (license license:boost1.0))))
+
+(define-public soapyremote
+  (let ((commit "f375555e7380acfd2517acde598e2e553e08df88")
+        (revision "1"))
+    (package
+      (name "soapyremote")
+      (version (git-version "0.5.2" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/pothosware/SoapyRemote")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0whn87wck7agsk3af4lh7nyyjn0ncs3xdny4vsd94qbjikfl6x5z"))))
+      (build-system cmake-build-system)
+      (inputs
+       (list avahi soapysdr))
+      (arguments
+       '(#:tests? #f)) ; No test suite
+      (home-page "https://github.com/pothosware/SoapyRemote")
+      (synopsis "Remote support for Soapy SDR")
+      (description
+       "This is a SoapySDR module to use a supported device transparently over
+a local network link.")
+      (license license:boost1.0))))
 
 (define-public soapyrtlsdr
   (package
@@ -657,10 +784,7 @@ used by RDS Spy, and audio files containing @dfn{multiplex} signals (MPX).")
            python-pyzmq
            python-scipy
            python-sphinx
-           (texlive-updmap.cfg (list texlive-amsfonts
-                                     texlive-amsmath
-                                     ;; TODO: Add newunicodechar.
-                                     texlive-graphics))
+           (texlive-updmap.cfg (list texlive-newunicodechar))
            xorg-server-for-tests))
     (inputs
      (list alsa-lib
@@ -814,7 +938,8 @@ environment.")
       (native-inputs
        (list doxygen pkg-config pybind11 python-mako python-six))
       (inputs
-       (list airspyhf
+       (list airspy
+             airspyhf
              boost
              fftwf
              gmp
@@ -867,10 +992,7 @@ to access different radio hardware.")
        ("doxygen" ,doxygen)
        ("libtool" ,libtool)
        ("pkg-config" ,pkg-config)
-       ("texlive" ,(texlive-updmap.cfg (list texlive-amsfonts
-                                        texlive-amsmath
-                                        ;; TODO: Add newunicodechar.
-                                        texlive-graphics)))))
+       ("texlive" ,(texlive-updmap.cfg (list texlive-newunicodechar)))))
     (inputs
      (list fftwf))
     (arguments
@@ -1044,7 +1166,7 @@ satellites.")
 (define-public gqrx
   (package
     (name "gqrx")
-    (version "2.15.9")
+    (version "2.16")
     (source
      (origin
        (method git-fetch)
@@ -1053,7 +1175,7 @@ satellites.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1a70lmcidp5ccmpvlvpfk1g7pshyp8xq2k0kgxrplf8za5hns019"))))
+        (base32 "189cgmp88kabv823l5bfn1xfyyj6sldi5sdbmflvncxicf51b0yp"))))
     (build-system qt-build-system)
     (native-inputs
      (list pkg-config))
@@ -1224,7 +1346,7 @@ for emergency communications data transfers (like ICS213 forms).")
 (define-public flwrap
   (package
     (name "flwrap")
-    (version "1.3.5")
+    (version "1.3.6")
     (source
      (origin
        (method git-fetch)
@@ -1233,7 +1355,7 @@ for emergency communications data transfers (like ICS213 forms).")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0xkhr82smfr7wpb9xl05wf7bz3vi2mr4xkcr2s8v6mblhgsdhqwg"))))
+        (base32 "0kd8jpgqyff3ck103i2nfvlxv2vqwn9ks02s8yddk7scww8raziy"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf automake pkg-config))
@@ -1251,7 +1373,7 @@ for correctness.")
 (define-public hackrf
   (package
     (name "hackrf")
-    (version "2022.09.1")
+    (version "2023.01.1")
     (source
      (origin
        (method git-fetch)
@@ -1260,7 +1382,7 @@ for correctness.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0m9j160q5zb3jimszv1lb6j76zf5lwijvpfl1k28d832rh847vvk"))))
+        (base32 "0ybgppwy09j9rmfhh84072li698k64w84q5hjrayc73avc495x6f"))))
     (build-system cmake-build-system)
     (arguments
      (list #:configure-flags
@@ -1457,7 +1579,7 @@ instances over the network, and general QSO and DXpedition logging.")
 (define-public wsjtx
   (package
     (name "wsjtx")
-    (version "2.5.4")
+    (version "2.6.1")
     (source
      (origin
        (method git-fetch)
@@ -1466,21 +1588,26 @@ instances over the network, and general QSO and DXpedition logging.")
              (commit (string-append "wsjtx-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0nciw9smrfcsirlwyny5r9h7sk2zvm40m56y1hxpgpmbnh6mqikh"))))
+        (base32 "1lqd77v9xm58k9g9kfwxva3mmzm1yyk1v27nws5j1a293zfg2hkw"))))
     (build-system qt-build-system)
-    (native-inputs
-     (list asciidoc gfortran pkg-config qttools-5 ruby-asciidoctor))
-    (inputs
-     `(("boost" ,boost)
-       ("fftw" ,fftw)
-       ("fftwf" ,fftwf)
-       ("hamlib" ,wsjtx-hamlib)
-       ("libusb" ,libusb)
-       ("qtbase" ,qtbase-5)
-       ("qtmultimedia-5" ,qtmultimedia-5)
-       ("qtserialport" ,qtserialport)))
     (arguments
-     `(#:tests? #f)) ; No test suite
+     (list #:tests? #f)) ; No test suite
+    (native-inputs
+     (list asciidoc
+           gfortran
+           pkg-config
+           qttools-5
+           ruby-asciidoctor))
+    (inputs
+     (list boost
+           fftw
+           fftwf
+           libusb
+           qtbase-5
+           qtmultimedia-5
+           qtserialport
+           wsjtx-hamlib))
+    (home-page "https://www.physics.princeton.edu/pulsar/k1jt/wsjtx.html")
     (synopsis "Weak-signal ham radio communication program")
     (description
      "WSJT-X implements communication protocols or modes called FT4, FT8,
@@ -1488,7 +1615,6 @@ JT4, JT9, JT65, QRA64, ISCAT, MSK144, and WSPR, as well as one called Echo for
 detecting and measuring your own radio signals reflected from the Moon.  These
 modes were all designed for making reliable, confirmed QSOs under extreme
 weak-signal conditions.")
-    (home-page "https://www.physics.princeton.edu/pulsar/k1jt/wsjtx.html")
     (license license:gpl3)))
 
 (define-public jtdx
@@ -1534,7 +1660,6 @@ focused on DXing and being shaped by community of DXers.JTDX")
 
 (define-public js8call
   (package
-    (inherit wsjtx)
     (name "js8call")
     (version "2.2.0")
     (source
@@ -1546,49 +1671,63 @@ focused on DXing and being shaped by community of DXers.JTDX")
         (base32 "149sjwc4zg6ckgq26af93p4fxappa4k9dh7rdy67g8ajfjad4cd8"))
        (modules '((guix build utils)))
        (snippet
-        '(begin
-           ;; Delete bundled boost to use the shared one.
-           (delete-file-recursively "boost")
-           #t))))
+        #~(begin
+            ;; Delete bundled boost to use the shared one.
+            (delete-file-recursively "boost")))))
     (build-system qt-build-system)
-    (native-inputs
-     (list asciidoc gfortran pkg-config qttools-5 ruby-asciidoctor))
-    (inputs
-     `(("boost" ,boost)
-       ("fftw" ,fftw)
-       ("fftwf" ,fftwf)
-       ("hamlib" ,wsjtx-hamlib)
-       ("libusb" ,libusb)
-       ("qtbase" ,qtbase-5)
-       ("qtmultimedia-5" ,qtmultimedia-5)
-       ("qtserialport" ,qtserialport)))
     (arguments
-     `(#:tests? #f ; No test suite
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-paths
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "CMakeLists.txt"
-               (("DESTINATION /usr/share")
-                (string-append "DESTINATION "
-                               (assoc-ref outputs "out")
-                               "/share")))))
-         (add-after 'unpack 'fix-hamlib
-           (lambda _
-             (substitute* "CMake/Modules/Findhamlib.cmake"
-               (("set \\(ENV\\{PKG_CONFIG_PATH\\}.*\\)")
-                "set (__pc_path $ENV{PKG_CONFIG_PATH})
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-paths
+            (lambda _
+              ;; XXX: How to get the /tmp/<build-name>.drv-<num> path? Use
+              ;; output path for after install check phase instead.
+              (substitute* "media/tests/test"
+                (("~/js8call-prefix/build/js8")
+                 (string-append #$output "/bin/js8"))
+                (("/opt/js8call/bin/js8")
+                 (string-append #$output "/bin/js8")))
+              (substitute* "CMakeLists.txt"
+                (("DESTINATION /usr/share")
+                 (string-append "DESTINATION " #$output "/share")))))
+          (add-after 'unpack 'fix-hamlib
+            (lambda _
+              (substitute* "CMake/Modules/Findhamlib.cmake"
+                (("set \\(ENV\\{PKG_CONFIG_PATH\\}.*\\)")
+                 "set (__pc_path $ENV{PKG_CONFIG_PATH})
   list (APPEND __pc_path \"${__hamlib_pc_path}\")
   set (ENV{PKG_CONFIG_PATH} \"${__pc_path}\")"))
-             (substitute* "HamlibTransceiver.hpp"
-               (("#ifdef JS8_USE_LEGACY_HAMLIB")
-                "#if 1")))))))
+              (substitute* "HamlibTransceiver.hpp"
+                (("#ifdef JS8_USE_LEGACY_HAMLIB")
+                 "#if 1"))))
+          (delete 'check)
+          (add-after 'install 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (with-directory-excursion "../js8call/media/tests"
+                  (invoke "./test"))))))))
+    (native-inputs
+     (list asciidoc
+           gfortran
+           pkg-config
+           qttools-5
+           ruby-asciidoctor))
+    (inputs
+     (list boost
+           fftw
+           fftwf
+           libusb
+           qtbase-5
+           qtmultimedia-5
+           qtserialport
+           wsjtx-hamlib))
+    (home-page "http://js8call.com/")
     (synopsis "Weak-signal ham radio communication program")
     (description
      "JS8Call is a software using the JS8 digital mode (a derivative of the FT8
 mode) providing weak signal keyboard to keyboard messaging to amateur radio
 operators.")
-    (home-page "http://js8call.com/")
     (license license:gpl3)))
 
 (define-public xnec2c
@@ -2098,7 +2237,8 @@ receiver.")
     (native-inputs
      (list pkg-config))
     (inputs
-     (list alsa-lib
+     (list airspy
+           alsa-lib
            faad2
            fftwf
            lame
@@ -2110,12 +2250,14 @@ receiver.")
            qtdeclarative-5
            qtgraphicaleffects
            qtmultimedia-5
+           qtquickcontrols-5
            qtquickcontrols2-5
            soapysdr))
     (arguments
-     `(#:configure-flags '("-DRTLSDR=ON"
-                           "-DSOAPYSDR=ON")
-       #:tests? #f))
+     (list #:configure-flags #~(list "-DAIRSPY=ON"
+                                     "-DRTLSDR=ON"
+                                     "-DSOAPYSDR=ON")
+           #:tests? #f))
     (home-page "https://www.welle.io/")
     (synopsis "DAB and DAB+ software radio")
     (description
@@ -2160,7 +2302,7 @@ program that can be used to build simple signal processing flow graphs.")
      (origin
        (method git-fetch)
        (uri (git-reference
-             (url "https://github.com/glv2/convert-samples")
+             (url "https://codeberg.org/glv/convert-samples")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
@@ -2192,7 +2334,7 @@ Supported formats:
 @item cu32: complex made of unsigned 32 bit integers
 @item cf32: complex made of 32 bit floats
 @end itemize")
-    (home-page "https://github.com/glv2/convert-samples")
+    (home-page "https://codeberg.org/glv/convert-samples")
     (license license:gpl3+)))
 
 (define-public serialdv
@@ -2371,7 +2513,8 @@ voice formats.")
     (native-inputs
      (list doxygen graphviz pkg-config))
     (inputs
-     (list airspyhf
+     (list airspy
+           airspyhf
            alsa-lib
            aptdec
            boost
@@ -2444,53 +2587,56 @@ various hardware.")
     (license license:gpl3+)))
 
 (define-public sdr++
-  (package
-    (name "sdr++")
-    (version "1.0.4")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/AlexandreRouma/SDRPlusPlus")
-             (commit version)))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "1xwbz6yyca6wmzad5ykxw6i0r8jzc7i3jbzq7mhp8caiymd6knw3"))))
-    (build-system cmake-build-system)
-    (native-inputs
-     (list pkg-config))
-    (inputs
-     `(("airspyhf" ,airspyhf)
-       ("alsa-lib" ,alsa-lib)
-       ("codec2" ,codec2)
-       ("fftwf" ,fftwf)
-       ("glew" ,glew)
-       ("glfw" ,glfw)
-       ("hackrf" ,hackrf)
-       ("jack" ,jack-2)
-       ("libusb" ,libusb)
-       ("pulseaudio" ,pulseaudio)
-       ("rtaudio" ,rtaudio)
-       ("rtl-sdr" ,rtl-sdr)
-       ("soapysdr" ,soapysdr)
-       ("volk" ,volk)))
-    (arguments
-     `(#:tests? #f ; No test suite.
-       #:configure-flags '("-DOPT_BUILD_AIRSPY_SOURCE=OFF"
-                           "-DOPT_BUILD_PLUTOSDR_SOURCE=OFF"
-                           "-DOPT_BUILD_M17_DECODER=ON")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-paths
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "CMakeLists.txt"
-               (("/usr")
-                (assoc-ref outputs "out"))))))))
-    (home-page "https://github.com/AlexandreRouma/SDRPlusPlus")
-    (synopsis "Software defined radio software")
-    (description
-     "SDR++ is a software defined radio software for various hardware.")
-    (license license:gpl3+)))
+  (let ((commit "b89fdba433cf6aa0dab424a06974a0b45abf6c4a")
+        (revision "1"))
+    (package
+      (name "sdr++")
+      (version (git-version "1.1.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/AlexandreRouma/SDRPlusPlus")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "11l1ja3dwxa67rp09x4rr5pd6rh6amn48z5vv6dygspq64w63hp2"))))
+      (build-system cmake-build-system)
+      (native-inputs
+       (list pkg-config))
+      (inputs
+       (list airspy
+             airspyhf
+             alsa-lib
+             codec2
+             fftwf
+             glew
+             glfw
+             hackrf
+             jack-2
+             libusb
+             pulseaudio
+             rtaudio
+             rtl-sdr
+             soapysdr
+             volk
+             (list zstd "lib")))
+      (arguments
+       (list #:tests? #f ; No test suite.
+             #:configure-flags #~(list "-DOPT_BUILD_PLUTOSDR_SOURCE=OFF"
+                                       "-DOPT_BUILD_M17_DECODER=ON")
+             #:phases
+             #~(modify-phases %standard-phases
+                 (add-after 'unpack 'fix-paths
+                   (lambda _
+                     (substitute* "CMakeLists.txt"
+                       (("/usr")
+                        #$output)))))))
+      (home-page "https://github.com/AlexandreRouma/SDRPlusPlus")
+      (synopsis "Software defined radio software")
+      (description
+       "SDR++ is a software defined radio software for various hardware.")
+      (license license:gpl3+))))
 
 (define-public inspectrum
   (package
@@ -2520,7 +2666,7 @@ software-defined radio receivers.")
 (define-public wfview
   (package
     (name "wfview")
-    (version "1.50")
+    (version "1.62")
     (source
      (origin
        (method git-fetch)
@@ -2529,37 +2675,46 @@ software-defined radio receivers.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1djgn1z4hibzci53mrvskz47jfq6hk8lhhqckpa93pvsi9kadl4k"))))
+        (base32 "0rrj6h5k8plq4m6fd2yxargfhqcwkxv6bdp4rmgh6bs4prl4wvwd"))))
     (build-system qt-build-system)
+    (arguments
+     (list
+      #:tests? #f  ; No test suite.
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-paths
+            (lambda _
+              (substitute* "wfview.pro"
+                (("\\.\\./wfview/")
+                 "../"))
+              (substitute* '("wfmain.cpp")
+                (("/usr/share")
+                 (string-append #$output "/share")))))
+          (replace 'configure
+            (lambda _
+              (mkdir-p "build")
+              (chdir "build")
+              (invoke "qmake"
+                      (string-append "PREFIX=" #$output)
+                      "../wfview.pro"))))))
+    ;; XXX: During the build it complains on missing git and hostname commands
+    ;; but it successfully finishes the build.
     (inputs
      (list eigen
+           hidapi
            opus
            portaudio
            pulseaudio
            qcustomplot
+           ;; TODO: Needs to be renamed to qtgamepad-5 when version 6 is
+           ;; packed.
+           qtgamepad
            qtbase-5
            qtmultimedia-5
+           ;; TODO: Needs to be renamed to qtserialport-5. when version 6 is
+           ;; packed.
            qtserialport
            rtaudio))
-    (arguments
-     `(#:tests? #f  ; No test suite.
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-paths
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "wfview.pro"
-               (("\\.\\./wfview/")
-                "../"))
-             (substitute* '("wfmain.cpp")
-               (("/usr/share")
-                (string-append (assoc-ref outputs "out") "/share")))))
-         (replace 'configure
-           (lambda* (#:key outputs #:allow-other-keys)
-             (mkdir-p "build")
-             (chdir "build")
-             (invoke "qmake"
-                     (string-append "PREFIX=" (assoc-ref outputs "out"))
-                     "../wfview.pro"))))))
     (home-page "https://wfview.org/")
     (synopsis "Software to control Icom radios")
     (description

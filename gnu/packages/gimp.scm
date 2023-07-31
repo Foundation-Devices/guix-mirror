@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2014, 2015, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016, 2018 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2016, 2017, 2018, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016-2018, 2020, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2018 Thorsten Wilms <t_w_@freenet.de>
@@ -215,7 +215,7 @@ provided, as well as a framework to add new color models and data types.")
 (define-public gegl
   (package
     (name "gegl")
-    (version "0.4.36")
+    (version "0.4.42")
     (source
      (origin
        (method url-fetch)
@@ -229,7 +229,7 @@ provided, as well as a framework to add new color models and data types.")
                                  (version-major+minor version)
                                  "/gegl-" version ".tar.xz")))
        (sha256
-        (base32 "19ic3fv0j8ysxxw7bx7gy3l8l8l9ldrvbzxfmmc24w67vh68mmbg"))))
+        (base32 "0bg0vlmj4n9x1291b9fsjqxsal192zlg48pa57f6xid6p863ma5b"))))
     (build-system meson-build-system)
     (arguments
      `(#:configure-flags
@@ -261,7 +261,7 @@ provided, as well as a framework to add new color models and data types.")
        ("libnsgif" ,libnsgif)
        ("libpng" ,libpng)
        ("libraw" ,libraw)
-       ("librsvg" ,librsvg)
+       ("librsvg" ,(librsvg-for-system))
        ("libspiro" ,libspiro)
        ("libtiff" ,libtiff)
        ("libwebp" ,libwebp)
@@ -333,7 +333,7 @@ buffers.")
               ;; ./configure requests not to annoy upstream with packaging bugs.
               "--with-bug-report-url=https://bugs.gnu.org/guix")))
     (inputs
-     (list atk
+     (list at-spi2-core
            babl
            gegl
            gexiv2
@@ -350,7 +350,7 @@ buffers.")
            lcms                         ;optional, color management
            libheif                      ;optional, HEIF + AVIF support
            libmng                       ;optional, MNG support
-           librsvg                      ;optional, SVG support
+           (librsvg-for-system)         ;optional, SVG support
            libxcursor                   ;optional, Mouse Cursor support
            openexr-2                    ;optional, EXR support
            openjpeg                     ;optional, JPEG 2000 support

@@ -3,6 +3,7 @@
 ;;; Copyright © 2018, 2019 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2020 Zhu Zihao <all_but_last@163.com>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -28,6 +29,7 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system glib-or-gtk)
   #:use-module (guix build-system qt)
+  #:use-module (gnu packages autotools)
   #:use-module (gnu packages check)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages enchant)
@@ -52,7 +54,7 @@
 (define-public fcitx-qt5
   (package
     (name "fcitx-qt5")
-    (version "1.2.6")
+    (version "1.2.7")
     (source
      (origin
        (method git-fetch)
@@ -63,7 +65,7 @@
        (file-name
         (git-file-name name version))
        (sha256
-        (base32 "13sanrir696fv7s44b7q453s5qi4r7ag0r3iyggyzk8xyf6rw8fk"))))
+        (base32 "1gw51m7hfnplkym33dzwfa8g0q20ji61pr80s2i6xhy2glrm1ssj"))))
     (build-system qt-build-system)
     (arguments
      `(#:tests? #f                      ; No target
@@ -71,12 +73,12 @@
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-install-dir
            (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "quickphrase-editor/CMakeLists.txt"
+             (substitute* "qt5/quickphrase-editor/CMakeLists.txt"
                (("\\$\\{FCITX4_ADDON_INSTALL_DIR\\}")
                 (string-append
                  (assoc-ref outputs "out")
                  "/lib/fcitx")))
-             (substitute* "platforminputcontext/CMakeLists.txt"
+             (substitute* "qt5/platforminputcontext/CMakeLists.txt"
                (("\\$\\{CMAKE_INSTALL_QTPLUGINDIR\\}")
                 (string-append
                  (assoc-ref outputs "out")
@@ -117,8 +119,8 @@
     (arguments
      `(#:configure-flags
        (list
-        "CFLAGS=-Wno-narrowing"
-        "CXXFLAGS=-Wno-narrowing")
+        "CFLAGS=-Wno-narrowing -std=c++14"
+        "CXXFLAGS=-Wno-narrowing -std=c++14")
        #:phases
        (modify-phases %standard-phases
          (add-after 'install 'move-doc
@@ -128,10 +130,18 @@
                (mkdir-p (string-append doc "/share/presage"))
                (rename-file
                 (string-append out "/share/presage/html")
-                (string-append doc "/share/presage/html"))
-               #t))))))
+                (string-append doc "/share/presage/html")))))
+         (add-after 'unpack 'update-config-scripts
+           (lambda* (#:key native-inputs inputs #:allow-other-keys)
+             (for-each (lambda (file)
+                         (install-file
+                          (search-input-file
+                           (or native-inputs inputs)
+                           (string-append "/bin/" file)) "."))
+                       '("config.guess" "config.sub")))))))
     (native-inputs
-     `(("dot" ,graphviz)
+     `(("config" ,config)
+       ("dot" ,graphviz)
        ("doxygen" ,doxygen)
        ("gettext" ,gettext-minimal)
        ("glib:bin" ,glib "bin")

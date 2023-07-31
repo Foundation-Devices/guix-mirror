@@ -169,7 +169,7 @@ Relogin="              (if (sddm-configuration-relogin? config)
 
   (list (shepherd-service
          (documentation "SDDM display manager.")
-         (requirement '(user-processes elogind))
+         (requirement '(user-processes elogind pam))
          (provision '(xorg-server display-manager))
          (start #~(make-forkexec-constructor #$sddm-command))
          (stop #~(make-kill-destructor)))))
@@ -324,9 +324,3 @@ Relogin="              (if (sddm-configuration-relogin? config)
                   (description
                    "Run SDDM, a display and log-in manager for X11 and
 Wayland."))))
-
-(define-deprecated (sddm-service #:optional (config (sddm-configuration)))
-  sddm-service-type
-  "Run the @uref{https://github.com/sddm/sddm,SDDM display manager}
-with the given @var{config}, a @code{<sddm-configuration>} object."
-  (service sddm-service-type config))

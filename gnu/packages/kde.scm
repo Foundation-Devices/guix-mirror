@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2016, 2017, 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2017, 2019-2021, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 David Craven <david@craven.ch>
 ;;; Copyright © 2016, 2017 Thomas Danckaert <post@thomasdanckaert.be>
 ;;; Copyright © 2017, 2018 Mark Meyer <mark@ofosos.org>
@@ -11,10 +11,10 @@
 ;;; Copyright © 2020 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020, 2021, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Prafulla Giri <pratheblackdiamond@gmail.com>
-;;; Copyright © 2020, 2021, 2022 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2021 Alexandros Theodotou <alex@zrythm.org>
 ;;; Copyright © 2021 la snesne <lasnesne@lagunposprasihopre.org>
-;;; Copyright © 2021, 2022 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2021, 2022, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2022 Brendan Tildesley <mail@brendan.scot>
 ;;; Copyright © 2022 Petr Hodina <phodina@protonmail.com>
 ;;;
@@ -221,7 +221,7 @@ browser for easy news reading.")
 (define-public kdenlive
   (package
     (name "kdenlive")
-    (version "22.08.3")
+    (version "23.04.2")
     (source
      (origin
        (method git-fetch)
@@ -230,7 +230,7 @@ browser for easy news reading.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1016mwgrf4dwb945pc2kqm2j8vq86r01s19miq0h4wdgbfxa496c"))))
+        (base32 "0dgrgnnq38nphfzbapr7dkb21lv4idqynxqmzv9x3maijmp1jjfr"))))
     (build-system qt-build-system)
     (arguments
      ;; XXX: there is a single test that spawns other tests and
@@ -412,9 +412,6 @@ software (Git, Subversion, Mercurial, CVS and Bazaar).")
 for some KDevelop language plugins (Ruby, PHP, CSS...).")
     (license license:lgpl2.0+)))
 
-;; kdevplatform was merged into kdevelop as of 5.2.x
-(define-deprecated kdevplatform kdevelop)
-
 (define-public kdiagram
   (package
     (name "kdiagram")
@@ -510,7 +507,7 @@ the functionality of the KDE resource and network access abstractions.")
                               (invoke "dbus-launch" "ctest" "-E"
                                "(fileopstest-cache|fileopstest-filejob)")))))))
     (native-inputs (list dbus extra-cmake-modules pkg-config))
-    (inputs (list fuse-3 kio kcoreaddons qtbase-5))
+    (inputs (list fuse kio kcoreaddons qtbase-5))
     (home-page "https://community.kde.org/Frameworks")
     (synopsis "FUSE Interface for KIO")
     (description "This package provides FUSE Interface for KIO.")
@@ -519,15 +516,16 @@ the functionality of the KDE resource and network access abstractions.")
 (define-public kirigami-addons
   (package
     (name "kirigami-addons")
-    (version "0.3")
+    (version "0.8.0")
     (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://invent.kde.org/libraries/kirigami-addons/-/archive/v"
-                    version "/kirigami-addons-v" version ".tar.gz"))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://invent.kde.org/libraries/kirigami-addons")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
               (sha256
                (base32
-                "1zr8dpc7bzw6g3y0jaxsr2lqlxqwlcphchpk8iah6g1f3n9fq73r"))))
+                "1bi6sc1fpycxj1ydd08gkbw1x1pi2ab6p9bk4175hm0mb0rykdir"))))
     (build-system qt-build-system)
     (arguments
      (list #:tests? #f)) ; failing test
@@ -569,7 +567,7 @@ expression library, that is used in Krita.")
 (define-public krita
   (package
     (name "krita")
-    (version "5.0.8")
+    (version "5.1.5")
     (source
      (origin
        (method url-fetch)
@@ -577,7 +575,7 @@ expression library, that is used in Krita.")
              "mirror://kde/stable/krita/" version "/krita-" version
              ".tar.gz"))
        (sha256
-        (base32 "2iaypyv21zxvhr989r9j9nlhx642jc89xphz1qaw9q1y0yjiy7gd"))))
+        (base32 "1lx4x4affkbh47b7w5qvahkkr4db0vcw6h24nykak6gpy2z5wxqw"))))
     (build-system qt-build-system)
     (arguments
      `(#:tests? #f

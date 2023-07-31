@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2016, 2018, 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 John Darrington <jmd@gnu.org>
@@ -89,6 +89,7 @@
             dhcp-client-configuration?
             dhcp-client-configuration-package
             dhcp-client-configuration-interfaces
+            dhcp-client-configuration-shepherd-requirement
 
             dhcpd-service-type
             dhcpd-configuration
@@ -121,7 +122,19 @@
             openntpd-service-type
 
             inetd-configuration
+            inetd-configuration?
+            inetd-configuration-program
+            inetd-configuration-entries
             inetd-entry
+            inetd-entry?
+            inetd-entry-node
+            inetd-entry-name
+            inetd-entry-socket-type
+            inetd-entry-protocol
+            inetd-entry-wait?
+            inetd-entry-user
+            inetd-entry-program
+            inetd-entry-arguments
             inetd-service-type
 
             opendht-configuration
@@ -138,17 +151,31 @@
 
             tor-configuration
             tor-configuration?
-            tor-hidden-service
+            tor-configuration-tor
+            tor-configuration-config-file
+            tor-configuration-hidden-services
+            tor-configuration-socks-socket-type
+            tor-configuration-control-socket-path
+            tor-onion-service-configuration
+            tor-onion-service-configuration?
+            tor-onion-service-configuration-name
+            tor-onion-service-configuration-mapping
+            tor-hidden-service  ; deprecated
             tor-service-type
 
             network-manager-configuration
             network-manager-configuration?
+            network-manager-configuration-shepherd-requirement
             network-manager-configuration-dns
             network-manager-configuration-vpn-plugins
             network-manager-service-type
 
             connman-configuration
             connman-configuration?
+            connman-configuration-connman
+            connman-configuration-shepherd-requirement
+            connman-configuration-disable-vpn?
+            connman-configuration-iwd?
             connman-service-type
 
             modem-manager-configuration
@@ -274,6 +301,8 @@
   dhcp-client-configuration?
   (package      dhcp-client-configuration-package ;file-like
                 (default isc-dhcp))
+  (shepherd-requirement dhcp-client-configuration-shepherd-requirement
+                        (default '()))
   (interfaces   dhcp-client-configuration-interfaces
                 (default 'all)))                  ;'all | list of strings
 
@@ -281,11 +310,12 @@
   (match-lambda
     ((? dhcp-client-configuration? config)
      (let ((package (dhcp-client-configuration-package config))
+           (shepherd-requirement (dhcp-client-configuration-shepherd-requirement config))
            (interfaces (dhcp-client-configuration-interfaces config))
            (pid-file "/var/run/dhclient.pid"))
        (list (shepherd-service
               (documentation "Set up networking via DHCP.")
-              (requirement '(user-processes udev))
+              (requirement `(user-processes udev ,@shepherd-requirement))
 
               ;; XXX: Running with '-nw' ("no wait") avoids blocking for a minute when
               ;; networking is unavailable, but also means that the interface is not up
@@ -481,36 +511,19 @@ daemon is responsible for allocating IP addresses to its client.")))
   ntp-configuration?
   (ntp      ntp-configuration-ntp
             (default ntp))
-  (servers  %ntp-configuration-servers   ;list of <ntp-server> objects
+  (servers  ntp-configuration-servers     ;list of <ntp-server> objects
             (default %ntp-servers))
   (allow-large-adjustment? ntp-allow-large-adjustment?
                            (default #t))) ;as recommended in the ntpd manual
 
-(define (ntp-configuration-servers ntp-configuration)
-  ;; A wrapper to support the deprecated form of this field.
-  (let ((ntp-servers (%ntp-configuration-servers ntp-configuration)))
-    (match ntp-servers
-      (((? string?) (? string?) ...)
-       (format (current-error-port) "warning: Defining NTP servers as strings is \
-deprecated.  Please use <ntp-server> records instead.\n")
-       (map (lambda (addr)
-              (ntp-server
-               (type 'server)
-               (address addr)
-               (options '()))) ntp-servers))
-      ((($ <ntp-server>) ($ <ntp-server>) ...)
-       ntp-servers))))
-
 (define (ntp-shepherd-service config)
   (match-record config <ntp-configuration>
     (ntp servers allow-large-adjustment?)
-    (let ((servers (ntp-configuration-servers config)))
-      ;; TODO: Add authentication support.
-      (define config
-        (string-append "driftfile /var/run/ntpd/ntp.drift\n"
-                       (string-join (map ntp-server->string servers)
-                                    "\n")
-                       "
+    ;; TODO: Add authentication support.
+    (define config
+      (string-append "driftfile /var/run/ntpd/ntp.drift\n"
+                     (string-join (map ntp-server->string servers) "\n")
+                     "
 # Disable status queries as a workaround for CVE-2013-5211:
 # <http://support.ntp.org/bin/view/Main/SecurityNotice#DRDoS_Amplification_Attack_using>.
 restrict default kod nomodify notrap nopeer noquery limited
@@ -524,21 +537,22 @@ restrict -6 ::1
 # option by default, as documented in the 'ntp.conf' manual.
 restrict source notrap nomodify noquery\n"))
 
-      (define ntpd.conf
-        (plain-file "ntpd.conf" config))
+    (define ntpd.conf
+      (plain-file "ntpd.conf" config))
 
-      (list (shepherd-service
-             (provision '(ntpd))
-             (documentation "Run the Network Time Protocol (NTP) daemon.")
-             (requirement '(user-processes networking))
-             (start #~(make-forkexec-constructor
-                       (list (string-append #$ntp "/bin/ntpd") "-n"
-                             "-c" #$ntpd.conf "-u" "ntpd"
-                             #$@(if allow-large-adjustment?
-                                    '("-g")
-                                    '()))
-                       #:log-file "/var/log/ntpd.log"))
-             (stop #~(make-kill-destructor)))))))
+    (list (shepherd-service
+           (provision '(ntpd))
+           (documentation "Run the Network Time Protocol (NTP) daemon.")
+           (requirement '(user-processes networking))
+           (actions (list (shepherd-configuration-action ntpd.conf)))
+           (start #~(make-forkexec-constructor
+                     (list (string-append #$ntp "/bin/ntpd") "-n"
+                           "-c" #$ntpd.conf "-u" "ntpd"
+                           #$@(if allow-large-adjustment?
+                                  '("-g")
+                                  '()))
+                     #:log-file "/var/log/ntpd.log"))
+           (stop #~(make-kill-destructor))))))
 
 (define %ntp-accounts
   (list (user-account
@@ -919,7 +933,7 @@ applications in communication.  It is used by Jami, for example.")))
                     (default '()))
   (socks-socket-type tor-configuration-socks-socket-type ; 'tcp or 'unix
                      (default 'tcp))
-  (control-socket?  tor-control-socket-path
+  (control-socket?  tor-configuration-control-socket-path
                     (default #f)))
 
 (define %tor-accounts
@@ -933,11 +947,22 @@ applications in communication.  It is used by Jami, for example.")))
          (home-directory "/var/empty")
          (shell (file-append shadow "/sbin/nologin")))))
 
-(define-record-type <hidden-service>
-  (hidden-service name mapping)
-  hidden-service?
-  (name    hidden-service-name)                   ;string
-  (mapping hidden-service-mapping))               ;list of port/address tuples
+(define-configuration/no-serialization tor-onion-service-configuration
+  (name
+   string
+   "Name for this Onion Service.  This creates a
+@file{/var/lib/tor/hidden-services/@var{name}} directory, where the
+@file{hostname} file contains the @indicateurl{.onion} host name for this
+Onion Service.")
+
+  (mapping
+   alist
+   "Association list of port to address mappings.  The following example:
+@lisp
+'((22 . \"127.0.0.1:22\")
+  (80 . \"127.0.0.1:8080\"))
+@end lisp
+maps ports 22 and 80 of the Onion Service to the local ports 22 and 8080."))
 
 (define (tor-configuration->torrc config)
   "Return a 'torrc' file for CONFIG."
@@ -977,7 +1002,7 @@ HiddenServicePort ~a ~a~%"
                                                 tcp-port host))
                                       ports hosts)))
                          '#$(map (match-lambda
-                                   (($ <hidden-service> name mapping)
+                                   (($ <tor-onion-service-configuration> name mapping)
                                     (cons name mapping)))
                                  hidden-services))
 
@@ -1064,7 +1089,7 @@ HiddenServicePort ~a ~a~%"
       (chmod "/var/lib" #o755)
 
       (for-each initialize
-                '#$(map hidden-service-name
+                '#$(map tor-onion-service-configuration-name
                         (tor-configuration-hidden-services config)))))
 
 (define tor-service-type
@@ -1077,7 +1102,7 @@ HiddenServicePort ~a ~a~%"
                        (service-extension activation-service-type
                                           tor-activation)))
 
-                ;; This can be extended with hidden services.
+                ;; This can be extended with Tor Onion Services.
                 (compose concatenate)
                 (extend (lambda (config services)
                           (tor-configuration
@@ -1090,21 +1115,14 @@ HiddenServicePort ~a ~a~%"
                  "Run the @uref{https://torproject.org, Tor} anonymous
 networking daemon.")))
 
-(define tor-hidden-service-type
-  ;; A type that extends Tor with hidden services.
-  (service-type (name 'tor-hidden-service)
-                (extensions
-                 (list (service-extension tor-service-type list)))
-                (description
-                 "Define a new Tor @dfn{hidden service}.")))
-
-(define (tor-hidden-service name mapping)
+(define-deprecated (tor-hidden-service name mapping)
+  #f
   "Define a new Tor @dfn{hidden service} called @var{name} and implementing
 @var{mapping}.  @var{mapping} is a list of port/host tuples, such as:
 
 @example
- '((22 \"127.0.0.1:22\")
-   (80 \"127.0.0.1:8080\"))
+ '((22 . \"127.0.0.1:22\")
+   (80 . \"127.0.0.1:8080\"))
 @end example
 
 In this example, port 22 of the hidden service is mapped to local port 22, and
@@ -1116,8 +1134,11 @@ service.
 
 See @uref{https://www.torproject.org/docs/tor-hidden-service.html.en, the Tor
 project's documentation} for more information."
-  (service tor-hidden-service-type
-           (hidden-service name mapping)))
+  (simple-service 'tor-hidden-service
+                  tor-service-type
+                  (list (tor-onion-service-configuration
+                         (name name)
+                         (mapping mapping)))))
 
 
 ;;;
@@ -1135,16 +1156,29 @@ project's documentation} for more information."
 ;;; NetworkManager
 ;;;
 
+;; TODO: deprecated field, remove later.
+(define-with-syntax-properties (warn-iwd?-field-deprecation
+                                (value properties))
+  (when value
+    (warning (source-properties->location properties)
+             (G_ "the 'iwd?' field is deprecated, please use \
+'shepherd-requirement' field instead~%")))
+  value)
+
 (define-record-type* <network-manager-configuration>
   network-manager-configuration make-network-manager-configuration
   network-manager-configuration?
   (network-manager network-manager-configuration-network-manager
                    (default network-manager))
+  (shepherd-requirement network-manager-configuration-shepherd-requirement
+                        (default '(wpa-supplicant)))
   (dns network-manager-configuration-dns
        (default "default"))
   (vpn-plugins network-manager-configuration-vpn-plugins ;list of file-like
                (default '()))
-  (iwd? network-manager-configuration-iwd? (default #f)))
+  (iwd? network-manager-configuration-iwd?  ; TODO: deprecated field, remove.
+        (default #f)
+        (sanitize warn-iwd?-field-deprecation)))
 
 (define (network-manager-activation config)
   ;; Activation gexp for NetworkManager
@@ -1200,28 +1234,52 @@ project's documentation} for more information."
 
 (define (network-manager-shepherd-service config)
   (match-record config <network-manager-configuration>
-    (network-manager dns vpn-plugins iwd?)
-    (let ((conf (plain-file "NetworkManager.conf"
-                            (string-append
-                             "[main]\ndns=" dns "\n"
-                             (if iwd? "[device]\nwifi.backend=iwd\n" ""))))
-          (vpn  (vpn-plugin-directory vpn-plugins)))
+    (network-manager shepherd-requirement dns vpn-plugins iwd?)
+    (let* ((iwd? (or iwd?  ; TODO: deprecated field, remove later.
+                     (and shepherd-requirement
+                          (memq 'iwd shepherd-requirement))))
+           (conf (plain-file "NetworkManager.conf"
+                             (string-append
+                              "[main]\ndns=" dns "\n"
+                              (if iwd? "[device]\nwifi.backend=iwd\n" ""))))
+           (vpn  (vpn-plugin-directory vpn-plugins)))
       (list (shepherd-service
              (documentation "Run the NetworkManager.")
-             (provision '(networking))
-             (requirement (append '(user-processes dbus-system loopback)
-                                  (if iwd? '(iwd) '(wpa-supplicant))))
-             (start #~(make-forkexec-constructor
-                       (list (string-append #$network-manager
-                                            "/sbin/NetworkManager")
-                             (string-append "--config=" #$conf)
-                             "--no-daemon")
-                       #:environment-variables
-                       (list (string-append "NM_VPN_PLUGIN_DIR=" #$vpn
-                                            "/lib/NetworkManager/VPN")
-                             ;; Override non-existent default users
-                             "NM_OPENVPN_USER="
-                             "NM_OPENVPN_GROUP=")))
+             (provision '(NetworkManager networking))
+             (requirement `(user-processes dbus-system loopback
+                            ,@shepherd-requirement
+                            ;; TODO: iwd? is deprecated and should be passed
+                            ;; with shepherd-requirement, remove later.
+                            ,@(if iwd? '(iwd) '())))
+             (actions (list (shepherd-configuration-action conf)))
+             (start
+              #~(lambda _
+                  (let ((pid
+                         (fork+exec-command
+                          (list #$(file-append network-manager
+                                               "/sbin/NetworkManager")
+                                (string-append "--config=" #$conf)
+                                "--no-daemon")
+                          #:environment-variables
+                          (list (string-append "NM_VPN_PLUGIN_DIR=" #$vpn
+                                               "/lib/NetworkManager/VPN")
+                                ;; Override non-existent default users
+                                "NM_OPENVPN_USER="
+                                "NM_OPENVPN_GROUP="
+                                ;; Allow NetworkManager to find the modules.
+                                (string-append
+                                 "LINUX_MODULE_DIRECTORY="
+                                 "/run/booted-system/kernel/lib/modules")))))
+                    ;; XXX: Despite the "online" name, this doesn't guarantee
+                    ;; WAN connectivity, it merely waits for NetworkManager
+                    ;; to finish starting-up. This is required otherwise
+                    ;; services will fail since the network interfaces be
+                    ;; absent until NetworkManager finishes setting them up.
+                    (system* #$(file-append network-manager "/bin/nm-online")
+                             "--wait-for-startup" "--quiet")
+                    ;; XXX: Finally, return the pid from running
+                    ;; fork+exec-command to shepherd.
+                    pid)))
              (stop #~(make-kill-destructor)))))))
 
 (define network-manager-service-type
@@ -1265,10 +1323,13 @@ wireless networking."))))
   connman-configuration?
   (connman      connman-configuration-connman
                 (default connman))
+  (shepherd-requirement connman-configuration-shepherd-requirement
+                        (default '()))
   (disable-vpn? connman-configuration-disable-vpn?
                 (default #f))
   (iwd?         connman-configuration-iwd?
-                (default #f)))
+                (default #f)
+                (sanitize warn-iwd?-field-deprecation)))
 
 (define (connman-activation config)
   (let ((disable-vpn? (connman-configuration-disable-vpn? config)))
@@ -1280,33 +1341,34 @@ wireless networking."))))
             (mkdir-p "/var/lib/connman-vpn/"))))))
 
 (define (connman-shepherd-service config)
-  "Return a shepherd service for Connman"
-  (and
-   (connman-configuration? config)
-   (let ((connman      (connman-configuration-connman config))
-         (disable-vpn? (connman-configuration-disable-vpn? config))
-         (iwd?         (connman-configuration-iwd? config)))
-     (list (shepherd-service
-            (documentation "Run Connman")
-            (provision '(networking))
-            (requirement
-             (append '(user-processes dbus-system loopback)
-                     (if iwd? '(iwd) '())))
-            (start #~(make-forkexec-constructor
-                      (list (string-append #$connman
-                                           "/sbin/connmand")
-                            "--nodaemon"
-                            "--nodnsproxy"
-                            #$@(if disable-vpn? '("--noplugin=vpn") '())
-                            #$@(if iwd? '("--wifi=iwd_agent") '()))
+  (match-record config <connman-configuration> (connman shepherd-requirement
+                                                disable-vpn? iwd?)
+    (let ((iwd? (or iwd?  ; TODO: deprecated field, remove later.
+                    (and shepherd-requirement
+                         (memq 'iwd shepherd-requirement)))))
+      (list (shepherd-service
+             (documentation "Run Connman")
+             (provision '(connman networking))
+             (requirement `(user-processes dbus-system loopback
+                                           ,@shepherd-requirement
+                                           ;; TODO: iwd? is deprecated and should be passed
+                                           ;; with shepherd-requirement, remove later.
+                                           ,@(if iwd? '(iwd) '())))
+             (start #~(make-forkexec-constructor
+                       (list (string-append #$connman
+                                            "/sbin/connmand")
+                             "--nodaemon"
+                             "--nodnsproxy"
+                             #$@(if disable-vpn? '("--noplugin=vpn") '())
+                             #$@(if iwd? '("--wifi=iwd_agent") '()))
 
-                      ;; As connman(8) notes, when passing '-n', connman
-                      ;; "directs log output to the controlling terminal in
-                      ;; addition to syslog."  Redirect stdout and stderr
-                      ;; to avoid spamming the console (XXX: for some reason
-                      ;; redirecting to /dev/null doesn't work.)
-                      #:log-file "/var/log/connman.log"))
-            (stop #~(make-kill-destructor)))))))
+                       ;; As connman(8) notes, when passing '-n', connman
+                       ;; "directs log output to the controlling terminal in
+                       ;; addition to syslog."  Redirect stdout and stderr
+                       ;; to avoid spamming the console (XXX: for some reason
+                       ;; redirecting to /dev/null doesn't work.)
+                       #:log-file "/var/log/connman.log"))
+             (stop #~(make-kill-destructor)))))))
 
 (define %connman-log-rotation
   (list (log-rotation

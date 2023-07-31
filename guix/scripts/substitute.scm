@@ -26,7 +26,6 @@
   #:use-module (guix store)
   #:use-module (guix substitutes)
   #:use-module (guix utils)
-  #:use-module (guix combinators)
   #:use-module (guix config)
   #:use-module (guix records)
   #:use-module (guix diagnostics)
@@ -36,11 +35,10 @@
   #:autoload   (guix scripts discover) (read-substitute-urls)
   #:use-module (gcrypt hash)
   #:use-module (guix base32)
-  #:use-module (guix base64)
   #:use-module (guix cache)
   #:use-module (gcrypt pk-crypto)
   #:use-module (guix pki)
-  #:use-module ((guix build utils) #:select (mkdir-p))
+  #:autoload   (guix build utils) (mkdir-p delete-file-recursively)
   #:use-module ((guix build download)
                 #:select (uri-abbreviation nar-uri-abbreviation
                           (open-connection-for-uri
@@ -55,10 +53,8 @@
   #:use-module (ice-9 ftw)
   #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-19)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
-  #:use-module (srfi srfi-35)
   #:use-module (srfi srfi-71)
   #:use-module (web uri)
   #:use-module (guix http-client)
@@ -171,6 +167,11 @@ was found."
 
 (define (cached-narinfo-expiration-time file)
   "Return the expiration time for FILE, which is a cached narinfo."
+  (define max-ttl
+    ;; Upper bound on the TTL used to avoid keeping around cached narinfos for
+    ;; too long, which makes the cache bigger and more expensive to traverse.
+    (* 2 30 24 60 60))                            ;2 months
+
   (catch 'system-error
     (lambda ()
       (call-with-input-file file
@@ -178,10 +179,10 @@ was found."
           (match (read port)
             (('narinfo ('version 2) ('cache-uri uri)
                        ('date date) ('ttl ttl) ('value #f))
-             (+ date ttl))
+             (+ date (min ttl max-ttl)))
             (('narinfo ('version 2) ('cache-uri uri)
                        ('date date) ('ttl ttl) ('value value))
-             (+ date ttl))
+             (+ date (min ttl max-ttl)))
             (x
              0)))))
     (lambda args
@@ -404,38 +405,50 @@ server certificates."
                     (drain-input socket)
                     socket))))))))
 
+(define kind-and-args-exception?
+  (exception-predicate &exception-with-kind-and-args))
+
 (define (call-with-cached-connection uri proc)
   (let ((port (open-connection-for-uri/cached uri
                                               #:verify-certificate? #f)))
-    (catch #t
-      (lambda ()
-        (proc port))
-      (lambda (key . args)
-        ;; If PORT was cached and the server closed the connection in the
-        ;; meantime, we get EPIPE.  In that case, open a fresh connection
-        ;; and retry.  We might also get 'bad-response or a similar
-        ;; exception from (web response) later on, once we've sent the
-        ;; request, or a ERROR/INVALID-SESSION from GnuTLS.
-        (if (or (and (eq? key 'system-error)
-                     (= EPIPE (system-error-errno `(,key ,@args))))
-                (and (eq? key 'gnutls-error)
-                     (memq (first args)
-                           (list error/invalid-session
+    (guard (c ((kind-and-args-exception? c)
+               (let ((key (exception-kind c))
+                     (args (exception-args c)))
+                 ;; If PORT was cached and the server closed the connection in the
+                 ;; meantime, we get EPIPE.  In that case, open a fresh connection
+                 ;; and retry.  We might also get 'bad-response or a similar
+                 ;; exception from (web response) later on, once we've sent the
+                 ;; request, or a ERROR/INVALID-SESSION from GnuTLS.
+                 (if (or (and (eq? key 'system-error)
+                              (= EPIPE (system-error-errno `(,key ,@args))))
+                         (and (eq? key 'gnutls-error)
+                              (memq (first args)
+                                    (list error/invalid-session
 
-                                 ;; XXX: These two are not properly handled in
-                                 ;; GnuTLS < 3.7.3, in
-                                 ;; 'write_to_session_record_port'; see
-                                 ;; <https://bugs.gnu.org/47867>.
-                                 error/again error/interrupted)))
-                (memq key '(bad-response bad-header bad-header-component)))
-            (proc (open-connection-for-uri/cached uri
-                                                  #:verify-certificate? #f
-                                                  #:fresh? #t))
-            (apply throw key args))))))
+                                          ;; XXX: These two are not properly handled in
+                                          ;; GnuTLS < 3.7.3, in
+                                          ;; 'write_to_session_record_port'; see
+                                          ;; <https://bugs.gnu.org/47867>.
+                                          error/again error/interrupted)))
+                         (memq key '(bad-response bad-header bad-header-component)))
+                     (proc (open-connection-for-uri/cached uri
+                                                           #:verify-certificate? #f
+                                                           #:fresh? #t))
+                     (raise c))))
+              (#t
+               ;; An exception that's not handled here, such as
+               ;; '&http-get-error'.  Re-raise it.
+               (raise c)))
+      (proc port))))
 
 (define-syntax-rule (with-cached-connection uri port exp ...)
   "Bind PORT with EXP... to a socket connected to URI."
   (call-with-cached-connection uri (lambda (port) exp ...)))
+
+(define-syntax-rule (catch-system-error exp)
+  (catch 'system-error
+    (lambda () exp)
+    (const #f)))
 
 (define* (download-nar narinfo destination
                        #:key status-port
@@ -478,18 +491,33 @@ STATUS-PORT."
        (leave (G_ "unsupported substitute URI scheme: ~a~%")
               (uri->string uri)))))
 
-  (let ((uri compression file-size
-             (narinfo-best-uri narinfo
-                               #:fast-decompression?
-                               %prefer-fast-decompression?)))
-    (unless print-build-trace?
-      (format (current-error-port)
-              (G_ "Downloading ~a...~%") (uri->string uri)))
+  (define (try-fetch choices)
+    (match choices
+      (((uri compression file-size) rest ...)
+       (guard (c ((and (pair? rest) (http-get-error? c))
+                  (warning (G_ "download from '~a' failed, trying next URL~%")
+                           (uri->string uri))
+                  (try-fetch rest)))
+         (let ((port download-size (fetch uri)))
+           (unless print-build-trace?
+             (format (current-error-port)
+                     (G_ "Downloading ~a...~%") (uri->string uri)))
+           (values port uri compression download-size))))
+      (()
+       (leave (G_ "no valid nar URLs for ~a at ~a~%")
+              (narinfo-path narinfo)
+              (narinfo-uri-base narinfo)))))
 
-    (let* ((raw download-size
-                ;; 'guix publish' without '--cache' doesn't specify a
-                ;; Content-Length, so DOWNLOAD-SIZE is #f in this case.
-                (fetch uri))
+  ;; Delete DESTINATION first--necessary when starting over after a failed
+  ;; download.
+  (catch-system-error (delete-file-recursively destination))
+
+  (let ((choices (narinfo-preferred-uris narinfo
+                                         #:fast-decompression?
+                                         %prefer-fast-decompression?)))
+    ;; 'guix publish' without '--cache' doesn't specify a Content-Length, so
+    ;; DOWNLOAD-SIZE is #f in this case.
+    (let* ((raw uri compression download-size (try-fetch choices))
            (progress
             (let* ((dl-size  (or download-size
                                  (and (equal? compression "none")
@@ -567,12 +595,10 @@ STATUS-PORT."
                     (bytevector->nix-base32-string expected)
                     (bytevector->nix-base32-string actual)))))))
 
-(define system-error?
-  (let ((kind-and-args? (exception-predicate &exception-with-kind-and-args)))
-    (lambda (exception)
-      "Return true if EXCEPTION is a Guile 'system-error exception."
-      (and (kind-and-args? exception)
-           (eq? 'system-error (exception-kind exception))))))
+(define (system-error? exception)
+  "Return true if EXCEPTION is a Guile 'system-error exception."
+  (and (kind-and-args-exception? exception)
+       (eq? 'system-error (exception-kind exception))))
 
 (define network-error?
   (let ((kind-and-args? (exception-predicate &exception-with-kind-and-args)))
@@ -581,7 +607,7 @@ STATUS-PORT."
       (or (and (system-error? exception)
                (let ((errno (system-error-errno
                              (cons 'system-error (exception-args exception)))))
-                 (memv errno (list ECONNRESET ECONNABORTED
+                 (memv errno (list ECONNRESET ECONNABORTED ETIMEDOUT
                                    ECONNREFUSED EHOSTUNREACH
                                    ENOENT))))     ;for "file://"
           (and (kind-and-args? exception)

@@ -9,7 +9,7 @@
 ;;; Copyright © 2015 Andy Wingo <wingo@igalia.com>
 ;;; Copyright © 2015 David Hashe <david.hashe@dhashe.com>
 ;;; Copyright © 2015, 2016, 2017, 2018, 2020, 2021 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2016, 2017, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2017, 2020-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Fabian Harfert <fhmgufs@web.de>
 ;;; Copyright © 2016 Kei Kebreau <kkebreau@posteo.net>
 ;;; Copyright © 2016 Patrick Hetu <patrick.hetu@auf.org>
@@ -24,7 +24,7 @@
 ;;; Copyright © 2019 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2020 Brendan Tildesley <mail@brendan.scot>
 ;;; Copyright © 2020 Guillaume Le Vaillant <glv@posteo.net>
-;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2021 Simon Streit <simon@netpanic.org>
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
@@ -34,6 +34,8 @@
 ;;; Copyright © 2022 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
 ;;; Copyright © 2022 Petr Hodina <phodina@protonmail.com>
 ;;; Copyright © 2023 Sergiu Ivanov <sivanov@colimite.fr>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -157,41 +159,6 @@ such as mate-panel and xfce4-panel.")
     (home-page "https://gitlab.com/vala-panel-project/vala-panel-appmenu")
     (license (list license:lgpl3))))
 
-(define-public atk
-  (package
-    (name "atk")
-    (version "2.36.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnome/sources/" name "/"
-                                  (version-major+minor version)  "/"
-                                  name "-" version ".tar.xz"))
-              (sha256
-               (base32
-                "1217cmmykjgkkim0zr1lv5j13733m4w5vipmy4ivw0ll6rz28xpv"))))
-    (build-system meson-build-system)
-    (arguments
-     `(#:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
-       ,@(if (%current-target-system)
-             `(#:configure-flags
-               ;; introspection requires running binaries for the host system
-               ;; on the build system.
-               '("-Dintrospection=false"))
-             '())))
-    (propagated-inputs (list glib)) ; required by atk.pc
-    (native-inputs
-     `(("gettext" ,gettext-minimal)
-       ("glib" ,glib "bin")             ; glib-mkenums, etc.
-       ("gobject-introspection" ,gobject-introspection) ; g-ir-compiler, etc.
-       ("pkg-config" ,pkg-config)))
-    (synopsis "GNOME accessibility toolkit")
-    (description
-     "ATK provides the set of accessibility interfaces that are implemented
-by other toolkits and applications.  Using the ATK interfaces, accessibility
-tools have full access to view and control running applications.")
-    (license license:lgpl2.1+)
-    (home-page "https://wiki.gnome.org/Accessibility")))
-
 (define-public cairo
   (package
     (name "cairo")
@@ -228,15 +195,21 @@ tools have full access to view and control running applications.")
                        (assoc-ref %outputs "doc")
                        "/share/gtk-doc/html"))))
     (native-inputs
-     `(("gobject-introspection" ,gobject-introspection)
+     `(,@(if (target-hurd?)
+             '()
+             `(("gobject-introspection" ,gobject-introspection)))
        ("pkg-config" ,pkg-config)
        ("python" ,python-wrapper)))
     (inputs
      `(("bash-minimal" ,bash-minimal)   ;for glib-or-gtk-wrap
-       ("drm" ,libdrm)
+       ,@(if (target-hurd?)
+             '()
+             `(("drm" ,libdrm)))
        ("ghostscript" ,ghostscript)
        ("libspectre" ,libspectre)
-       ("poppler" ,poppler)))
+       ,@(if (target-hurd?)
+             '()
+             `(("poppler" ,poppler)))))
     (propagated-inputs
      `( ;; ("cogl" ,cogl)
        ;; ("directfb" ,directfb)
@@ -303,11 +276,13 @@ output.  Experimental backends include OpenGL, BeOS, OS/2, and DirectFB.")
      ;; There are all in the Requires or Requires.private field of '.pc'.
      (list glib graphite2 icu4c))
     (native-inputs
-     (list `(,glib "bin")               ;for glib-mkenums
-           gobject-introspection
-           pkg-config
-           python-wrapper
-           which))
+     (append (list `(,glib "bin"))      ;for glib-mkenums
+             (if (target-hurd?)
+                 '()
+                 (list gobject-introspection))
+             (list pkg-config
+                   python-wrapper
+                   which)))
     (arguments
      (list #:configure-flags
            #~(list "--with-graphite2"
@@ -319,20 +294,6 @@ output.  Experimental backends include OpenGL, BeOS, OS/2, and DirectFB.")
     (license (license:x11-style "file://COPYING"
                                 "See 'COPYING' in the distribution."))
     (home-page "https://www.freedesktop.org/wiki/Software/HarfBuzz/")))
-
-
-(define-public harfbuzz-5
-  (package
-    (inherit harfbuzz)
-    (version "5.3.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/harfbuzz/harfbuzz"
-                                  "/releases/download/" version "/harfbuzz-"
-                                  version ".tar.xz"))
-              (sha256
-               (base32
-                "0ka3nkk2lks2lgakq02vyibwdziv11dkpa2brkx230asnyby0v2a"))))))
 
 (define-public libdatrie
   (package
@@ -440,12 +401,15 @@ applications.")
      (list bash-minimal
            zlib))
     (native-inputs
-     (list `(,glib "bin")               ;glib-mkenums, etc.
-           gobject-introspection        ;g-ir-compiler, etc.
-           help2man
-           perl
-           pkg-config
-           python-wrapper))
+     (append (list `(,glib "bin"))      ;glib-mkenums, etc.
+             (if (target-hurd?)
+                 '()
+                 (list gobject-introspection)) ;g-ir-compiler, etc.
+             (list
+              help2man
+              perl
+              pkg-config
+              python-wrapper)))
     (synopsis "Text and font handling library")
     (description "Pango is a library for laying out and rendering of text, with
 an emphasis on internationalization.  Pango can be used anywhere that text
@@ -625,7 +589,7 @@ printing and other features typical of a source code editor.")
 (define-public gtksourceview
   (package
     (name "gtksourceview")
-    (version "5.5.1")
+    (version "5.8.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://gnome/sources/gtksourceview/"
@@ -633,7 +597,7 @@ printing and other features typical of a source code editor.")
                                   "gtksourceview-" version ".tar.xz"))
               (sha256
                (base32
-                "068dqhacvs65gnmrryahm6qs0q050admlpqqi1gy8wgh2p6qrraa"))))
+                "0cw9h4aa84a48b3kd3rv0bb2mk7q1vz9hwkppxpqh8gg1p1d838i"))))
     (build-system meson-build-system)
     (arguments
      '(#:phases
@@ -739,8 +703,10 @@ highlighting and other features typical of a source code editor.")
        (modify-phases %standard-phases
          (add-before 'configure 'disable-failing-tests
            (lambda _
-             (substitute* "tests/meson.build"
-               (("\\[ 'pixbuf-fail', \\['conform', 'slow'\\], \\],")
+             ;; The test for the fix for issue 205 causes failures.
+             ;; https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/issues/215
+             (substitute* "tests/pixbuf-jpeg.c"
+               ((".*/pixbuf/jpeg/issue205.*")
                 ""))))
          ;; The slow tests take longer than the specified timeout.
          ,@(if (target-arm? (%current-system))
@@ -914,6 +880,9 @@ is part of the GNOME accessibility project.")
 (define-public at-spi2-atk
   (deprecated-package "at-spi2-atk" at-spi2-core))
 
+(define-public atk
+  (deprecated-package "atk" at-spi2-core))
+
 (define-public gtk+-2
   (package
     (name "gtk+")
@@ -933,7 +902,7 @@ is part of the GNOME accessibility project.")
     (build-system gnu-build-system)
     (outputs '("out" "bin" "doc" "debug"))
     (propagated-inputs
-     (list atk
+     (list at-spi2-core
            cairo
            glib
            (librsvg-for-system)
@@ -1016,7 +985,7 @@ application suites.")
   (package
     (inherit gtk+-2)
     (name "gtk+")
-    (version "3.24.30")
+    (version "3.24.37")
     (source
      (origin
        (method url-fetch)
@@ -1025,12 +994,15 @@ application suites.")
                            name "-" version ".tar.xz"))
        (sha256
         (base32
-         "1a9vg840fjq1mmm403b67k624qrkxh9shaz9pv7z9l8a6bzvyxds"))
+         "0mvzzgjrzzir7nzx379yz3swzk3pn1s283hgzm8l2yakq2sg0ib7"))
        (patches (search-patches "gtk3-respect-GUIX_GTK3_PATH.patch"
                                 "gtk3-respect-GUIX_GTK3_IM_MODULE_FILE.patch"))))
+    ;; There is no "doc" output, because adding gtk-doc here would introduce a
+    ;; dependency cycle with itself.
+    (outputs '("out" "bin"))
+    (build-system meson-build-system)
     (propagated-inputs
-     (list atk
-           at-spi2-core
+     (list at-spi2-core
            cairo
            fribidi
            fontconfig
@@ -1064,12 +1036,12 @@ application suites.")
            libxml2
            rest))
     (native-inputs
-     (list docbook-xml-4.1.2
+     (list docbook-xml-4.3
+           docbook-xsl
            gettext-minimal
            `(,glib "bin")
            gobject-introspection
            hicolor-icon-theme
-           perl
            pkg-config
            python-wrapper
            sassc
@@ -1080,43 +1052,34 @@ application suites.")
     (arguments
      (list
       #:imported-modules `((guix build glib-or-gtk-build-system)
-                           ,@%gnu-build-system-modules)
+                           ,@%meson-build-system-modules)
       #:modules '((guix build utils)
-                  (guix build gnu-build-system)
+                  (guix build meson-build-system)
                   ((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:))
       #:disallowed-references (list xorg-server-for-tests)
-      ;; 47 MiB goes to "out" (24 of which is locale data!), and 26 MiB goes
-      ;; to "doc".
-      #:configure-flags #~(list (string-append "--with-html-dir="
-                                               #$output "/share/gtk-doc/html")
-                                "--enable-cloudproviders"
-                                ;; The header file <gdk/gdkwayland.h> is required
-                                ;; by gnome-control-center
-                                "--enable-wayland-backend"
-                                ;; This is necessary to build both backends.
-                                "--enable-x11-backend"
-                                ;; This enables the HTML5 websocket backend.
-                                "--enable-broadway-backend")
+      #:configure-flags
+      #~(list "-Dcloudproviders=true"   ;for cloud-providers support
+              "-Dcolord=yes"            ;for color printing support
+              "-Dbroadway_backend=true"
+              "-Dman=true")
+      ;; Use the same test options as upstream uses for their CI (see the
+      ;; .gitlab-ci/run-tests.sh file).
+      #:test-options '(list "--suite=gtk"
+                            "--no-suite=failing"
+                            "--no-suite=flaky"
+                            "--no-suite=gsk-compare-broadway")
       #:phases
       #~(modify-phases %standard-phases
+          (add-after 'unpack 'disable-failing-tests
+            (lambda _
+              ;; These tests fail only in the containerized environment, for
+              ;; unknown reasons.
+              (substitute* "testsuite/gtk/meson.build"
+                ((".*\\['defaultvalue'],.*") "")
+                ((".*\\['objects-finalize',.*") ""))))
           (add-after 'unpack 'generate-gdk-pixbuf-loaders-cache-file
             (assoc-ref glib-or-gtk:%standard-phases
                        'generate-gdk-pixbuf-loaders-cache-file))
-          (add-after 'unpack 'disable-failing-tests
-            (lambda _
-              (substitute* "testsuite/gtk/Makefile.in"
-                (("builderparser cellarea check-icon-names check-cursor-names")
-                 "builderparser cellarea check-cursor-names")
-                (("notify no-gtk-init object objects-finalize papersize rbtree")
-                 "no-gtk-init papersize rbtree")
-                (("stylecontext templates textbuffer textiter treemodel treepath")
-                 "stylecontext textbuffer textiter treemodel treepath"))
-              (substitute* "testsuite/a11y/Makefile.in"
-                (("accessibility-dump tree-performance text children derive")
-                 "tree-performance text children derive"))
-              (substitute* "testsuite/reftests/Makefile.in"
-                (("TEST_PROGS = gtk-reftest")
-                 "TEST_PROGS = "))))
           (add-before 'check 'pre-check
             (lambda _
               ;; Tests require a running X server.
@@ -1235,7 +1198,6 @@ application suites.")
             (lambda _
               (for-each mkdir-p
                         (list
-                         (string-append #$output:bin "/bin")
                          (string-append #$output:bin "/share/applications")
                          (string-append #$output:bin "/share/icons")
                          (string-append #$output:bin "/share/man")
@@ -1247,7 +1209,6 @@ application suites.")
                            (string-append #$output dir)
                            (string-append #$output:bin dir)))
                         (list
-                         "/bin"
                          "/share/applications"
                          "/share/icons"
                          "/share/man"
@@ -1586,7 +1547,7 @@ documents.")
     (build-system gnu-build-system)
     (native-inputs
      (list pkg-config
-           atk
+           at-spi2-core
            ;;("corba" ,corba) ; not packaged yet
            gconf
            gobject-introspection
@@ -1760,7 +1721,7 @@ text rendering library.")
 (define-public atkmm
   (package
     (name "atkmm")
-    (version "2.36.0")
+    (version "2.36.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://gnome/sources/" name "/"
@@ -1768,7 +1729,7 @@ text rendering library.")
                                   name "-" version ".tar.xz"))
               (sha256
                (base32
-                "0wwr0663jrqx2klsasffd9wpk3kqnwisj1y3ahdkjdk5hzrsjgy9"))))
+                "0yg0v8f0xms2cfj1r9q6yrl4757wrivpb4q56rbmx626yycxsqkg"))))
     (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
@@ -1796,7 +1757,7 @@ text rendering library.")
        ("python" ,python)
        ("xsltproc" ,libxslt)))
     (propagated-inputs
-     (list glibmm atk))
+     (list glibmm at-spi2-core))
     (synopsis "C++ bindings for ATK")
     (description "ATKmm is the C++ binding for the ATK library.")
     (home-page "https://wiki.gnome.org/Accessibility")
@@ -2051,7 +2012,7 @@ so that they can be used normally in signals and properties.")
                 "0ry9jfvfgdwzalxcvwsgr7plhk3agx7p40l0fqdf3vrf7ds47i29"))))
     (build-system perl-build-system)
     (native-inputs
-     (list perl-extutils-depends perl-extutils-pkgconfig))
+     (list perl-extutils-depends perl-extutils-pkgconfig pkg-config))
     (inputs
      (list gtk+-2))
     (propagated-inputs
@@ -2421,7 +2382,7 @@ Parcellite and adds bugfixes and features.")
         "-Dinstalled_tests=false"
         ,@(if (%current-target-system)
               ;; Introspection requires running binaries for 'host' on 'build'.
-              '("-Dintrospection=false")
+              '("-Dintrospection=disabled")
               '()))))
     (native-inputs
      `(("git" ,git-minimal/pinned)
@@ -2439,17 +2400,20 @@ does not deal with windowing system surfaces, drawing, scene graphs, or input.")
 (define-public spread-sheet-widget
   (package
     (name "spread-sheet-widget")
-    (version "0.7")
+    (version "0.8")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://alpha.gnu.org/gnu/ssw/"
                            "spread-sheet-widget-" version ".tar.gz"))
        (sha256
-        (base32 "09rzgp7gabnzab460x874a1ibgyjiibpwzsz5srn9zs6jv2jdxjb"))))
+        (base32 "0jwmx5i02jwmkp6gci2mapqglh2g3a0092wns185hfygiwlxi2c5"))))
     (build-system gnu-build-system)
+    (arguments
+     (list #:configure-flags
+           #~(list "--disable-static")))
     (native-inputs
-     (list `(,glib "bin") ; for glib-genmarshal, etc.
+     (list `(,glib "bin")               ; for glib-genmarshal, etc.
            pkg-config))
     ;; In 'Requires' of spread-sheet-widget.pc.
     (propagated-inputs
@@ -2944,3 +2908,38 @@ Unix desktop environment under X11 as well as Wayland.")
     (synopsis "WebP GdkPixbuf loader library")
     (description "Webp-pixbuf-loader is a WebP format loader of GdkPixbuf.")
     (license license:lgpl2.0+)))
+
+(define-public libpanel
+  (package
+    (name "libpanel")
+    (version "1.0.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.gnome.org/GNOME/libpanel")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "10lkysbwg9w0lm1hj7lw4g7y9j8b88kmq07nfgx0r6f319znj12v"))))
+    (build-system meson-build-system)
+    (arguments
+     (list #:configure-flags #~(list "-Ddocs=disabled")  ;fontconfig issue
+           #:phases #~(modify-phases %standard-phases
+                        (add-after 'unpack 'disable-gtk-update-icon-cache
+                          (lambda _
+                            (substitute* "meson.build"
+                              (("gtk_update_icon_cache: true")
+                               "gtk_update_icon_cache: false")))))))
+    (native-inputs (list `(,glib-next "bin")
+                         gobject-introspection
+                         pkg-config
+                         vala))
+    (inputs (list glib-next gtk libadwaita))
+    (home-page "https://gitlab.gnome.org/GNOME/libpanel")
+    (synopsis "Dock and panel library for GTK 4")
+    (description "Libpanel provides a library to create IDE-like applications
+using GTK and @code{libadwaita}.  It has widgets for panels, docks, columns
+and grids of pages.  Primarily, its design and implementation focus around the
+GNOME Builder and Drafting projects.")
+    (license license:lgpl3)))

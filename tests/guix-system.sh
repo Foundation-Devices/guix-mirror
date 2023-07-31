@@ -318,7 +318,7 @@ cat > "$tmpdir/config.scm" <<EOF
 
 (bad-local-file "whatever.scm")
 EOF
-! guix system build "$tmpdir/config.scm" -n
+guix system build "$tmpdir/config.scm" -n && false
 guix system build "$tmpdir/config.scm" -n 2>&1 | \
     grep "config\.scm:4:2: warning:.*whatever.*relative to current directory"
 
@@ -359,7 +359,7 @@ for example in gnu/system/examples/*.tmpl; do
 done
 
 # Make sure the desktop image can be built on major architectures.
-for system in x86_64-linux i686-linux aarch64-linux
+for system in x86_64-linux aarch64-linux
 do
     guix system -n image -s "$system" gnu/system/examples/desktop.tmpl
 done

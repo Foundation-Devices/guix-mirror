@@ -5,7 +5,7 @@
 ;;; Copyright © 2015 David Hashe <david.hashe@dhashe.com>
 ;;; Copyright © 2016 Eric Bavier <bavier@member.fsf.org>
 ;;; Copyright © 2016 Jan Nieuwenhuizen <janneke@gnu.org>
-;;; Copyright © 2016, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2018-2020, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016-2022 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2017 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -28,6 +28,7 @@
 ;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2022 Garek Dyszel <garekdyszel@disroot.org>
 ;;; Copyright © 2023 Csepp <raingloom@riseup.net>
+;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1117,14 +1118,14 @@ concrete syntax of the language (Quotations, Syntax Extensions).")
 (define-public hevea
   (package
     (name "hevea")
-    (version "2.35")
+    (version "2.36")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://hevea.inria.fr/old/"
                                   "hevea-" version ".tar.gz"))
               (sha256
                (base32
-                "1jwydkb9ldb1sx815c364dxgr569f2rbbzgxbn2kanrybpdbm2gi"))))
+                "0j06f8gb8f5is34kzmzy3znb0jkm2qd2l6rcl5v5qa9af3bmjrsx"))))
     (build-system gnu-build-system)
     (inputs
      (list ocaml))
@@ -1376,8 +1377,7 @@ libpanel, librsvg and quartz.")
      `(("ocaml" ,ocaml-4.09)
        ;; For documentation
        ("ghostscript" ,ghostscript)
-       ("texlive" ,(texlive-updmap.cfg
-                    (list texlive-fonts-ec texlive-dvips-l3backend)))
+       ("texlive" ,(texlive-updmap.cfg))
        ("hevea" ,hevea)
        ("lynx" ,lynx)
        ("which" ,which)))
@@ -2372,14 +2372,14 @@ manipulate such data.")
 (define-public ocaml-mtime
   (package
     (name "ocaml-mtime")
-    (version "1.4.0")
+    (version "2.0.0")
     (source (origin
               (method url-fetch)
-              (uri (string-append "http://erratique.ch/software/mtime/releases/"
+              (uri (string-append "https://erratique.ch/software/mtime/releases/"
                                   "mtime-" version ".tbz"))
               (sha256
                (base32
-                "1xy6lg52n2zynp4p164ym9j0f1b95j5n4bi5y4mbdrry9w99h32m"))))
+                "1ss4w3qxsfp51d88r0j7dzqs05dbb1xdx11hn1jl9cvd03ma0g9z"))))
     (build-system ocaml-build-system)
     (native-inputs
      (list ocamlbuild opam))
@@ -2698,6 +2698,76 @@ simple (yet expressive) query language to select the tests to run.")
 syntactic tools.")
     (license license:expat)))
 
+(define-public ocaml-parmap
+  (package
+    (name "ocaml-parmap")
+    (version "1.2.5")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/rdicosmo/parmap")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0x5gnfap9f7kmgh8j725vxlbkvlplwzbpn8jdx2ywfa3dd6bn6xl"))))
+    (build-system dune-build-system)
+    (propagated-inputs
+     (list ocaml-odoc))
+    (home-page "https://github.com/rdicosmo/parmap")
+    (synopsis "Parallel map and fold primtives for OCaml")
+    (description
+     "Library to perform parallel fold or map taking advantage of multiple
+core architectures for OCaml programs.  Drop-in replacement for these
+@code{List} operations are provided:
+
+@itemize
+@item @code{List.map} -> @code{parmap}
+@item @code{List.map} -> @code{parfold}
+@item @code{List.mapfold} -> @code{parmapfold}
+@end itemize
+
+Also it allows specifying the number of cores to use with the optional
+parameter @code{ncores}.")
+    (license (list license:lgpl2.0
+                   (license:fsdg-compatible "file://LICENSE"
+                                            "See LICENSE file for details")))))
+
+(define-public ocaml-pyml
+  ;; NOTE: Using commit from master branch as 20220905 does not support
+  ;; Python 3.10.
+  (let ((revision "0")
+        (commit "e33f4c49cc97e7bc6f8e5faaa64cce994470642e"))
+    (package
+      (name "ocaml-pyml")
+      (version (git-version "20220905" revision commit))
+      (source
+        (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/thierry-martinez/pyml")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "1v421i5cvj8mbgrg5cs78bz1yzdprm9r5r41niiy20d3j7j8jx9k"))))
+      (build-system dune-build-system)
+      (propagated-inputs
+       (list ocaml-stdcompat
+             python
+             python-numpy))
+      (home-page "https://github.com/thierry-martinez/pyml")
+      (synopsis "Python bindings for OCaml")
+      (description "Library that allows OCaml programs to interact with Python
+modules and objects.  The library also provides low-level bindings to the
+Python C API.
+
+This library is an alternative to @code{pycaml} which is no longer
+maintained.  The @code{Pycaml} module provides a signature close to
+@code{pycaml}, to ease migration of code to this library.")
+      (license license:bsd-2))))
+
 (define-public ocaml-react
   (package
     (name "ocaml-react")
@@ -2847,7 +2917,7 @@ to which allows adding and looking up bindings in a type safe manner.")
 (define ocaml-eio
   (package
     (name "ocaml-eio")
-    (version "0.7")
+    (version "0.8.1")
     (home-page "https://github.com/ocaml-multicore/eio")
     (source
      (origin
@@ -2857,7 +2927,7 @@ to which allows adding and looking up bindings in a type safe manner.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256 (base32
-                "118raxdwv6pn5b152ffdhmwdi0l4wlwflcj2nmckfmm7v1z2fq4s"))))
+                "02q9i5wbb2497vd4ypc9d9p4zi3lmx0rsv8faiy7h8dnnzbjjf4z"))))
     (build-system dune-build-system)
     (arguments `(#:package "eio"))
     (propagated-inputs (list ocaml-bigstringaf
@@ -2871,7 +2941,10 @@ to which allows adding and looking up bindings in a type safe manner.")
                              ocaml-hmap
                              ocaml-mtime
                              ocaml-odoc))
-    (native-inputs (list ocaml-astring ocaml-crowbar ocaml-alcotest))
+    (native-inputs (list ocaml-astring
+                         ocaml-crowbar
+                         ocaml-alcotest
+                         ocaml-mdx))
     (synopsis "Effect-based direct-style IO API for OCaml")
     (description "This package provides an effect-based IO API for multicore
 OCaml with fibers.")
@@ -2897,7 +2970,7 @@ OCaml with fibers.")
 (define-public ocaml-uring
   (package
     (name "ocaml-uring")
-    (version "0.4")
+    (version "0.5")
     (home-page "https://github.com/ocaml-multicore/ocaml-uring")
     (source
       (origin
@@ -2907,7 +2980,7 @@ OCaml with fibers.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256 (base32
-                 "0k70y7nb2wrk2yql0pwnrhsp1x7k9ld4gd8iihbv6r34kcm3a5m1"))))
+                 "0ygx8v01bb5808wy6nppg40h1ns8b1f2l585lwc4389z4wrppk95"))))
     (build-system dune-build-system)
     (propagated-inputs
      (list ocaml-cstruct
@@ -2995,7 +3068,25 @@ OCaml with fibers.")
 make it easy to run normally-blocking I/O operations concurrently in a single
 process.  Also, in many cases, Lwt threads can interact without the need for
 locks or other synchronization primitives.")
+    (properties `((ocaml4.07-variant . ,(delay ocaml4.07-lwt))))
     (license license:lgpl2.1)))
+
+(define-public ocaml4.07-lwt
+  (package-with-ocaml4.07
+   (package
+     (inherit ocaml-lwt)
+     (name "ocaml-lwt")
+     (version "5.5.0")
+     (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+                (url "https://github.com/ocsigen/lwt")
+                (commit version)))
+         (file-name (git-file-name name version))
+         (sha256 (base32
+                  "1jbjz2rsz3j56k8vh5qlmm87hhkr250bs2m3dvpy9vsri8rkzj9z"))))
+     (properties '()))))
 
 ;; TODO this alias is not ideal but ocaml-lwt already explicitly specifies a
 ;; package argument and at least this way the importer doesn't try to
@@ -4547,6 +4638,52 @@ offered by the Perl language.")
 of interactive program.  You can match the question using a regular expression
 or a timeout.")
     (license license:lgpl2.1+))) ; with the OCaml static compilation exception
+
+(define-public ocaml-stdcompat
+  (package
+    (name "ocaml-stdcompat")
+    (version "19")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/thierry-martinez/stdcompat")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (modules '((guix build utils)))
+       (snippet
+        #~(for-each delete-file '("Makefile.in" "configure")))
+       (sha256
+        (base32
+         "0r9qcfjkn8634lzxp5bkagzwsi3vmg0hb6vq4g1p1515rys00h1b"))))
+    (build-system dune-build-system)
+    (arguments
+     (list #:imported-modules `((guix build gnu-build-system)
+                                ,@%dune-build-system-modules)
+           #:modules '((guix build dune-build-system)
+                       ((guix build gnu-build-system) #:prefix gnu:)
+                       (guix build utils))
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'bootstrap
+                 (assoc-ref gnu:%standard-phases 'bootstrap))
+               (add-before 'build 'prepare-build
+                 (lambda _
+                   (let ((bash (which "bash")))
+                     (setenv "CONFIG_SHELL" bash)
+                     (setenv "SHELL" bash)))))))
+    (native-inputs
+      (list autoconf
+            automake
+            ocaml
+            ocaml-findlib))
+    (home-page "https://github.com/thierry-martinez/stdcompat")
+    (synopsis "Compatibility module for OCaml standard library")
+    (description
+     "Compatibility module for OCaml standard library allowing programs to use
+some recent additions to the standard library while preserving the ability to
+be compiled on former versions of OCaml.")
+    (license license:bsd-2)))
 
 (define-public ocaml-stdlib-shims
   (package
@@ -6657,7 +6794,12 @@ the OCaml code.")
              (substitute* "test/ppx_import_support/test.ml"
                (("\\(Failure") "Failure")
                (("  \"(Some ppx-es.*)\")" _ m)
-                (string-append " \"" m "\"."))))))))
+                (string-append " \"" m "\".")))))
+         (add-after 'fix-test-format 'fix-egrep
+           (lambda _
+             ;; egrep is obsolescent; using grep -E
+             (substitute* "test/expansion_context/run.t"
+               (("egrep") "grep -E")))))))
     (propagated-inputs
      (list ocaml-compiler-libs
            ocaml-ppx-derivers
@@ -9222,7 +9364,12 @@ variants.")
                             "test/bin/mdx-test/misc/no-such-prelude/test.expected")
                (("`") "'")
                (("COMMAND") "[COMMAND]")
-               (("\\.\\.\\.") "…")))))))
+               (("\\.\\.\\.") "…"))))
+         (add-after 'fix-test-format 'fix-egrep
+           (lambda _
+             ;; egrep is obsolescent; using grep -E
+             (substitute* "test/bin/mdx-test/expect/padding/test-case.md"
+               (("egrep") "grep -E")))))))
     (propagated-inputs
      (list ocaml-fmt
            ocaml-astring
@@ -10091,24 +10238,30 @@ SHA384, SHA512, Blake2b, Blake2s and RIPEMD160.")
     (name "ocaml-bibtex2html")
     (version "1.99")
     (source
-      (origin
-        (method url-fetch)
-        (uri "https://www.lri.fr/~filliatr/ftp/bibtex2html/bibtex2html-1.99.tar.gz")
-        (sha256 (base32 "07gzrs4lfrkvbn48cgn2gn6c7cx3jsanakkrb2irj0gmjzfxl96j"))))
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://www.lri.fr/~filliatr/ftp/bibtex2html/"
+                           "bibtex2html-"  version ".tar.gz"))
+       (sha256
+        (base32
+         "07gzrs4lfrkvbn48cgn2gn6c7cx3jsanakkrb2irj0gmjzfxl96j"))))
     (build-system ocaml-build-system)
     (arguments
-      `(#:phases
-        (modify-phases %standard-phases
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
           (add-after 'unpack 'patch-/bin/sh
             (lambda _
               (substitute* "configure" (("/bin/sh") (which "bash")))
-              (setenv "HOME" (getcwd)) ;; mktexfmt needs writable home directory
-              #t)))))
+              ;; mktexfmt needs writable home directory.
+              (setenv "HOME" (getcwd)))))))
     (native-inputs
-     `(("which" ,which)
-       ("texlive" ,(texlive-updmap.cfg
-                    (list texlive-fonts-ec texlive-preprint
-                          texlive-hyperref texlive-bibtex)))))
+     (list (texlive-updmap.cfg
+            (list texlive-infwarerr
+                  texlive-kvoptions
+                  texlive-pdftexcmds
+                  texlive-preprint))
+           which))
     (propagated-inputs
      (list hevea))
     (home-page "https://www.lri.fr/~filliatr/bibtex2html/")

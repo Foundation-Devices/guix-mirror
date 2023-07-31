@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2021 Andrew Tropin <andrew@trop.in>
+;;; Copyright © 2021, 2023 Andrew Tropin <andrew@trop.in>
 ;;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -52,7 +52,7 @@
   home-shepherd-configuration make-home-shepherd-configuration
   home-shepherd-configuration?
   (shepherd home-shepherd-configuration-shepherd
-            (default shepherd-0.9)) ; package
+            (default shepherd-0.10)) ; package
   (auto-start? home-shepherd-configuration-auto-start?
                (default #t))
   (daemonize? home-shepherd-configuration-daemonize?
@@ -108,9 +108,10 @@ as shepherd package."
                       (or (getenv "XDG_RUNTIME_DIR")
                           (format #f "/run/user/~a" (getuid)))
                       "/shepherd/socket"))
-              (let ((log-dir (or (getenv "XDG_LOG_HOME")
-                                 (format #f "~a/.local/var/log"
-                                         (getenv "HOME")))))
+              (let* ((state-dir (or (getenv "XDG_STATE_HOME")
+                                    (format #f "~a/.local/state"
+                                            (getenv "HOME"))))
+                     (log-dir (string-append state-dir "/log")))
                 ;; TODO: Remove it, 0.9.2 creates it automatically?
                 ((@ (guix build utils) mkdir-p) log-dir)
                 (system*

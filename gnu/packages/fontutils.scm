@@ -8,13 +8,16 @@
 ;;; Copyright © 2017 Nikita <nikita@n0.is>
 ;;; Copyright © 2017, 2018, 2020–2022 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2018, 2019, 2020, 2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2019, 2020, 2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
-;;; Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Sarah Morgensen <iskarian@mgsn.dev>
 ;;; Copyright © 2022 Felipe Balbi <balbi@kernel.org>
+;;; Copyright © 2023 gemmaro <gemmaro.dev@gmail.com>
+;;; Copyright © 2023 John Kehayias <john.kehayias@protonmail.com>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -34,6 +37,7 @@
 (define-module (gnu packages fontutils)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
@@ -84,44 +88,53 @@
 
 (define-public freetype
   (package
-   (name "freetype")
-   (version "2.13.0")
-   (source
-    (origin
-      (method url-fetch)
-      (uri (string-append "mirror://savannah/freetype/freetype-"
-                          version ".tar.xz"))
-      (sha256
-       (base32 "0k32jaaz4pfhw34xwr6a38fncrpwr9fn5ij35m5w4dkn0jykmqjy"))))
-   (build-system gnu-build-system)
-   (arguments
-    ;; The use of "freetype-config" is deprecated, but other packages still
-    ;; depend on it.
-    `(#:configure-flags (list "--enable-freetype-config")
-      #:disallowed-references (,pkg-config)
+    (name "freetype")
+    (version "2.13.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://savannah/freetype/freetype-"
+                           version ".tar.xz"))
+       (sha256
+        (base32 "0k32jaaz4pfhw34xwr6a38fncrpwr9fn5ij35m5w4dkn0jykmqjy"))))
+    (build-system gnu-build-system)
+    (arguments
+     ;; The use of "freetype-config" is deprecated, but other packages still
+     ;; depend on it.
+     (list
+      #:configure-flags #~(list "--enable-freetype-config")
+      #:disallowed-references (list pkg-config)
       #:phases
-      (modify-phases %standard-phases
-        (add-after 'install 'remove-reference-to-pkg-config
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               (substitute* (string-append out "/bin/freetype-config")
-                 (((search-input-file inputs "/bin/pkg-config"))
-                   "pkg-config"))))))))
-   (native-inputs
-    (list pkg-config))
-   (propagated-inputs
-    ;; These are all in the Requires.private field of freetype2.pc.
-    ;; XXX: add harfbuzz.
-    (list libpng zlib))
-   (synopsis "Font rendering library")
-   (description
-    "Freetype is a library that can be used by applications to access the
+      #~(modify-phases %standard-phases
+          (add-after 'install 'remove-reference-to-pkg-config
+            (lambda* (#:key outputs #:allow-other-keys)
+              (substitute* (search-input-file outputs "bin/freetype-config")
+                (("/([a-zA-Z0-9/\\._-]+)/bin/([a-zA-Z0-9_-]+)?pkg-config"
+                  _ store target)
+                 "pkg-config")))))))
+    (native-inputs (list pkg-config))
+    ;; XXX: Not adding harfbuzz here, as it would introduce a dependency
+    ;; cycle.
+    (propagated-inputs (list libpng zlib))
+    (synopsis "Font rendering library")
+    (description
+     "Freetype is a library that can be used by applications to access the
 contents of font files.  It provides a uniform interface to access font files.
 It supports both bitmap and scalable formats, including TrueType, OpenType,
 Type1, CID, CFF, Windows FON/FNT, X11 PCF, and others.  It supports high-speed
 anti-aliased glyph bitmap generation with 256 gray levels.")
-   (license license:freetype)           ; some files have other licenses
-   (home-page "https://freetype.org/")))
+    (license license:freetype)          ; some files have other licenses
+    (home-page "https://freetype.org/")))
+
+;; TODO: Make this change directly in freetype in the next large rebuild cycle
+;; and remove this package.
+(define-public freetype-with-brotli
+  (package
+    (inherit freetype)
+    (name "freetype-with-brotli")
+    (propagated-inputs
+     (modify-inputs (package-propagated-inputs freetype)
+       (prepend brotli)))))
 
 (define-public opentype-sanitizer
   (package
@@ -148,23 +161,16 @@ them as it goes.")
 (define-public python-afdko
   (package
     (name "python-afdko")
-    (version "3.9.1")
+    (version "3.9.5")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "afdko" version))
        (sha256
-        (base32 "0k1204vykgx32saa495s1lgmz1dixcp8bjiv486imx77killvm02"))
-       (patches (search-patches "python-afdko-suppress-copyright-test.patch"))
+        (base32 "02c1rjx7ggbd1m9vqgsc2r28yiw66cjgvs5cq1a2fz0lkadbvrnb"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
-            (substitute*
-                "tests/buildcff2vf_data/expected_output/SHSansJPVFTest.ttx"
-              ;; Adjust expected output to match newer fonttools.  Taken from:
-              ;; https://github.com/adobe-type-tools/afdko/commit/7c526390a10e
-              (("FDSelect format=\"3\"")
-               "FDSelect format=\"0\""))
             (with-directory-excursion "c/makeotf/lib/hotconv"
               ;; Delete ANTLR-generated code.
               (for-each delete-file
@@ -181,27 +187,13 @@ them as it goes.")
               (substitute* "CMakeLists.txt"
                 (("CMAKE_CXX_STANDARD 11")
                  "CMAKE_CXX_STANDARD 17"))))
-          (add-after 'unpack 'use-system-libxml2
-            (lambda _
-              ;; XXX: These horrifying substitutions revert this upstream
-              ;; PR: <https://github.com/adobe-type-tools/afdko/pull/1527>.
-              ;; Hopefully it's only temporary..!
-              (substitute* (find-files "." "^CMakeLists.txt$")
-                (("\\(\\(NOT \\$\\{LibXml2_FOUND\\}\\) OR \
-\"\\$\\{CMAKE_SYSTEM\\}\" MATCHES \"Linux\"\\)")
-                 "(NOT ${LibXml2_FOUND})")
-                (("\\(\\(\\$\\{LibXml2_FOUND\\}\\) AND \
-\\(NOT \"\\$\\{CMAKE_SYSTEM\\}\" MATCHES \"Linux\"\\)\\)")
-                 "(${LibXml2_FOUND})"))
-                (substitute* "cmake/ExternalLibXML2.cmake"
-                  (("set\\(LIBXML2_STATIC_INCLUDE_DIR")
-                   "set(LIBXML2_INCLUDE_DIR)"))))
           (add-after 'unpack 'patch-problematic-requirements
             (lambda _
               (substitute* "requirements.txt"
                 ;; Remove lxml because the version requested here is different
                 ;; than the one propagated by the python-fonttools package.
-                (("^lxml==.*") ""))))
+                (("^lxml==.*") "")
+                (("<=4.38.0") ">=4.38.0"))))
           (add-after 'unpack 'patch-setup.py
             (lambda _
               ;; There is no use for Python-provided CMake nor Ninja binaries.
@@ -238,10 +230,7 @@ them as it goes.")
               (when tests?
                 (setenv "HOME" "/tmp")
                 (invoke "pytest" "-vv" "--dist" "loadfile" "-n"
-                        (number->string (parallel-job-count))
-                        ;; This test is known to fail on multiple architectures.
-                        ;; https://github.com/adobe-type-tools/afdko/issues/1163
-                        "-k not test_type1mm_inputs"))))
+                        (number->string (parallel-job-count))))))
           (add-after 'check 'wrap
             (assoc-ref %standard-phases 'wrap))
           (add-before 'wrap 'wrap-PATH
@@ -266,7 +255,8 @@ them as it goes.")
            python-setuptools-scm
            python-wheel))
     (inputs
-     (list java-antlr4-runtime-cpp
+     (list bash-minimal
+           java-antlr4-runtime-cpp
            libxml2
            `(,util-linux "lib")))
     (propagated-inputs
@@ -343,6 +333,42 @@ but also provides many useful font conversion and analysis facilities.
 @end table")
     (license license:asl2.0)))
 
+(define-public python-afdko-3.6.1
+  ;; This older version does not depend on Java and Antlr4.
+  (package
+    (inherit python-afdko)
+    (version "3.6.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "afdko" version))
+       (sha256
+        (base32 "0187xhgw6spzaji93fs1mnhqnq30pxhdj1p2m88673szvzpf10av"))))
+    (arguments
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-before 'build 'set-CC
+                 (lambda _
+                   (setenv "CC" "gcc"))))))
+    (native-inputs
+     (list pkg-config
+           python-pytest
+           python-setuptools-scm
+           python-wheel))
+    (inputs
+     (list bash-minimal
+           libxml2))
+    (propagated-inputs
+     (list psautohint
+           python-booleanoperations
+           python-defcon
+           python-fontmath
+           python-fonttools
+           python-lxml
+           python-tqdm
+           python-ufonormalizer
+           python-ufoprocessor))))
+
 (define-public python-cffsubr
   (package
     (name "python-cffsubr")
@@ -385,8 +411,12 @@ but also provides many useful font conversion and analysis facilities.
               (when tests?
                 (invoke "pytest" "-vv")))))))
     (native-inputs (list python-pytest python-setuptools-scm python-wheel))
-    (inputs (list python-afdko))
-    (propagated-inputs (list python-fonttools))
+
+    ;; Use version 3.6.1, which matches the bundled version and does not
+    ;; depend on Java.
+    (inputs (list python-afdko-3.6.1))
+
+    (propagated-inputs (list python-fonttools-minimal))
     (home-page "https://github.com/adobe-type-tools/cffsubr")
     (synopsis "Compact Font Format (CFF) subroutinizer")
     (description "This package provides the @command{cffsubr} command, a
@@ -397,13 +427,13 @@ Kit for OpenType (AFDKO) @command{tx} tool.")
 (define-public python-compreffor
   (package
     (name "python-compreffor")
-    (version "0.5.2")
+    (version "0.5.4")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "compreffor" version))
        (sha256
-        (base32 "0r6vlxrm73j719f5q3n6sy737p2424n7qam52am83p55j0fb9h5f"))))
+        (base32 "05gpszc8xh6wn3mdra05d6yz6ns624y67m9xs4vv8gh68m0aasrh"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -416,10 +446,10 @@ Kit for OpenType (AFDKO) @command{tx} tool.")
                 ((", \"setuptools_git_ls_files\"") "")))))))
     (native-inputs (list python-pytest python-pytest-runner
                          python-setuptools-scm))
-    (propagated-inputs (list python-fonttools))
+    (propagated-inputs (list python-fonttools-minimal))
     (home-page "https://github.com/googlefonts/compreffor")
-    (synopsis "Compact Font Format (CFF) subroutinizer for fontTools")
-    (description "This package provides a Compact Font Format (CFF)
+    (synopsis "@acronym{CFF, Compact Font Format} subroutinizer for fontTools")
+    (description "This package provides a @acronym{CFF, Compact Font Format}
 subroutinizer for fontTools.")
     (license license:asl2.0)))
 
@@ -434,7 +464,7 @@ subroutinizer for fontTools.")
        (sha256
         (base32 "1x762r7bf39g6aivfvrmq00h6f07abvs9x1xm0fz8l81vq8jz64c"))))
     (build-system python-build-system)
-    (propagated-inputs (list python-fonttools-full))
+    (propagated-inputs (list python-fonttools))
     (native-inputs
      (list python-cython
            python-defcon
@@ -453,23 +483,15 @@ converts any cubic curves to quadratic.  The most useful function is probably
 (define-public python-ufo2ft
   (package
     (name "python-ufo2ft")
-    (version "2.28.0")
+    (version "2.31.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "ufo2ft" version))
        (sha256
-        (base32 "068hm62s1iphyg66w96vgiif6ahpcsaf8fr44rk6jdf71f6fyqd5"))))
-    (build-system python-build-system)
-    (arguments
-     (list #:phases
-           #~(modify-phases %standard-phases
-               (replace 'check
-                 (lambda* (#:key tests? #:allow-other-keys)
-                   (when tests?
-                     (invoke "pytest" "-vv")))))))
-    (native-inputs
-     (list python-pytest python-setuptools-scm))
+        (base32 "1rg2997af8blvswlwif0kpz2vxrlh555gzqslz6yv9y7i7v8lphl"))))
+    (build-system pyproject-build-system)
+    (native-inputs (list python-pytest python-setuptools-scm))
     (propagated-inputs
      (list python-booleanoperations
            python-cffsubr
@@ -491,15 +513,15 @@ to generate OpenType font binaries from Unified Font Objects (UFOs).")
 (define-public python-fontmath
   (package
     (name "python-fontmath")
-    (version "0.9.2")
+    (version "0.9.3")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "fontMath" version ".zip"))
        (sha256
-        (base32 "014407hpvqdx123g06i664qrfq86bf9l621x7jllpgqw3rqir2sc"))))
+        (base32 "070v1jz5f18g15if459ppwswq4w5hzffwp1gvdc5j47bgz5qflva"))))
     (build-system python-build-system)
-    (propagated-inputs (list python-fonttools))
+    (propagated-inputs (list python-fonttools-minimal))
     (native-inputs
      (list python-setuptools-scm
            python-pytest
@@ -525,7 +547,7 @@ font, glyph, etc. mathematical operations on font data.")
         (base32 "1za15dzsnymq6d9x7xdfqwgw4a3003wj75fn2crhyidkfd2s3nd6"))))
     (build-system python-build-system)
     (arguments (list #:tests? #f))
-    (propagated-inputs (list python-fonttools))
+    (propagated-inputs (list python-fonttools-minimal))
     (native-inputs (list unzip))
     (home-page "https://github.com/robofab-developers/fontPens")
     (synopsis "Python classes implementing the pen protocol")
@@ -564,19 +586,19 @@ implementing the pen protocol for manipulating glyphs.")
   (hidden-package
    (package
      (name "python-fontparts-bootstrap")
-     (version "0.10.8")
+     (version "0.11.0")
      (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "fontParts" version ".zip"))
         (sha256
-         (base32 "0i5ww6yl9m74wnjd7gyvjkdh7m56haql4gv7lasmppdipay2209g"))))
+         (base32 "0j4h8hszky639gmfy1avmw670y80ya49kca8yc635h5ihl0c3v8x"))))
      (build-system python-build-system)
      (propagated-inputs
       (list python-booleanoperations
             python-defcon-bootstrap
             python-fontmath
-            python-fonttools))
+            python-fonttools-minimal))
      (native-inputs (list python-setuptools-scm unzip))
      (home-page "https://github.com/robotools/fontParts")
      (synopsis "Library for interacting with font parts")
@@ -660,7 +682,7 @@ to UFOs and DesignSpace files via @code{defcon} and @code{designspaceLib}.")
                    (invoke "pytest" "-vv" "tests/testusage.py")))))))
   (native-inputs (list python-pytest python-setuptools-scm))
   (propagated-inputs
-   (list python-defcon python-fonttools python-glyphslib))
+   (list python-defcon python-fonttools-minimal python-glyphslib))
   (home-page "https://github.com/googlefonts/glyphsets/")
   (synopsis "Evaluate coverage of glyph sets")
   (description
@@ -716,7 +738,8 @@ different scripts and languages.")
        (sha256
         (base32 "0r1qq45np49x14zz1zwkaayqrn7m8dn2jlipjldg2ihnmpzw29w1"))))
     (build-system python-build-system)
-    (propagated-inputs (list python-defcon python-fontmath python-fonttools))
+    (propagated-inputs (list python-defcon python-fontmath
+                             python-fonttools-minimal))
     (native-inputs (list unzip))
     (home-page "https://github.com/LettError/MutatorMath")
     (synopsis "Piecewise linear interpolation Python library")
@@ -763,9 +786,12 @@ suite of the @code{psautohint} package.")
        (uri (pypi-uri "psautohint" version))
        (sha256
         (base32 "0zzz7hy1kkkjfrrm9ly2di3xv2x1ywdqhbyqy21k670jysldw3nm"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
      (list
+      ;; The CJKSparseVar.subset.hinted.otf test fails with slightly different
+      ;; output caused by the newer fonttools version used in Guix.
+      #:test-flags #~(list "-k" "not CJKSparseVar.subset.hinted.otf")
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'unpack 'copy-font-data
@@ -775,18 +801,12 @@ suite of the @code{psautohint} package.")
                #$(this-package-native-input "psautohint-font-data")
                "tests/integration/data")
               (for-each make-file-writable
-                        (find-files "tests/integration/data"))))
-          (replace 'check
-            (lambda* (#:key tests? #:allow-other-keys)
-              (when tests?
-                (invoke "pytest" "-vv")))))))
-    (propagated-inputs (list python-fonttools))
+                        (find-files "tests/integration/data")))))))
+    (inputs (list python-fonttools))
     (native-inputs
      (list psautohint-font-data
-           python-fs
            python-pytest
            python-pytest-cov
-           python-pytest-randomly
            python-pytest-xdist
            python-setuptools-scm
            python-wheel))
@@ -885,7 +905,7 @@ paths (intersection, union, difference, xor).")
      (list python-defcon
            python-fontmath
            python-fontparts
-           python-fonttools
+           python-fonttools-minimal
            python-mutatormath))
     (native-inputs (list python-setuptools-scm unzip))
     (home-page "https://github.com/LettError/ufoProcessor")
@@ -1347,9 +1367,28 @@ applications should be.")
          "01jzhwnj1c3d68dmw15jdxly0hwkmd8ja4kw755rbkykn1ly2qyx"))))
    (build-system cmake-build-system)
    (native-inputs
-    (list python python-fonttools))
+    (list python python-fonttools-minimal))
    (inputs
     (list freetype))
+   (arguments
+    (if (system-hurd?)
+        (list
+         #:phases
+         #~(modify-phases %standard-phases
+             (replace 'check
+               ;; cmake-build-system ignores #:make-flags for make check
+               (lambda* (#:key test-target tests? parallel-tests?
+                         #:allow-other-keys)
+                 (if tests?
+                     (let ((jobs (if parallel-tests?
+                                     (number->string (parallel-job-count))
+                                     "1")))
+                       (invoke "make"
+                               (string-append
+                                "ARGS=-j " jobs " --exclude-regex ^awamicmp3$")
+                               test-target))
+                     (format #t "test suite not run~%"))))))
+        '()))
    (synopsis "Reimplementation of the SIL Graphite text processing engine")
    (description
     "Graphite2 is a reimplementation of the SIL Graphite text processing
@@ -1495,37 +1534,65 @@ definitions.")
              ("python"          ,python)
              ("zlib"            ,zlib)))
    (arguments
-    '(#:configure-flags '(;; TODO: Provide GTK+ for the Wayland-friendly GDK
-                          ;; backend, instead of the legacy X11 backend.
-                          ;; Currently it introduces a circular dependency.
-                          "-DENABLE_X11=ON")
+    (list
+     #:configure-flags #~'( ;; TODO: Provide GTK+ for the Wayland-friendly GDK
+                           ;; backend, instead of the legacy X11 backend.
+                           ;; Currently it introduces a circular dependency.
+                           "-DENABLE_X11=ON")
       #:phases
-      (modify-phases %standard-phases
-        (add-after 'unpack 'do-not-override-RPATH
-          (lambda _
-            ;; Do not attempt to set a default RPATH, as our ld-wrapper
-            ;; already does the right thing.
-            (substitute* "CMakeLists.txt"
-              (("^set_default_rpath\\(\\)")
-               ""))
-            #t))
-        (add-after 'install 'set-library-path
-          (lambda* (#:key inputs outputs #:allow-other-keys)
-            (let ((out (assoc-ref outputs "out"))
-                  (potrace (dirname
-                            (search-input-file inputs "bin/potrace"))))
-              (wrap-program (string-append out "/bin/fontforge")
-                ;; Fontforge dynamically opens libraries.
-                `("LD_LIBRARY_PATH" ":" prefix
-                  ,(map (lambda (input)
-                          (string-append (assoc-ref inputs input)
-                                         "/lib"))
-                        '("libtiff" "libjpeg" "libpng" "libungif"
-                          "libxml2" "zlib" "libspiro" "freetype"
-                          "pango" "cairo" "fontconfig")))
-                ;; Checks for potrace program at runtime
-                `("PATH" ":" prefix (,potrace)))
-              #t))))))
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'do-not-override-RPATH
+            (lambda _
+              ;; Do not attempt to set a default RPATH, as our ld-wrapper
+              ;; already does the right thing.
+              (substitute* "CMakeLists.txt"
+                (("^set_default_rpath\\(\\)")
+                 ""))
+              #t))
+          #$@(if (target-hurd?)
+                 #~((add-after 'unpack 'apply-hurd-patch
+                      (lambda _
+                        (let ((patch-file
+                               #$(local-file
+                                  (search-patch "fontforge-hurd.patch"))))
+                          (invoke "patch" "--force" "-p1" "-i" patch-file)))))
+                 #~())
+          #$@(if (system-hurd?)
+                 #~((replace 'check
+                      ;; cmake-build-system ignores #:make-flags for make check
+                      (lambda* (#:key test-target tests? parallel-tests?
+                                #:allow-other-keys)
+                        (let ((skip '("test0001_py" "test0001_pyhook")))
+                          (if tests?
+                              (let ((jobs
+                                     (if parallel-tests?
+                                         (number->string (parallel-job-count))
+                                         "1")))
+                                (invoke "make"
+                                        (string-append "ARGS=-j " jobs
+                                                       " --exclude-regex ^"
+                                                       (string-join skip "\\|")
+                                                       "$")
+                                        test-target))
+                              (format #t "test suite not run~%"))))))
+                 #~())
+          (add-after 'install 'set-library-path
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let ((out (assoc-ref outputs "out"))
+                    (potrace (dirname
+                              (search-input-file inputs "bin/potrace"))))
+                (wrap-program (string-append out "/bin/fontforge")
+                  ;; Fontforge dynamically opens libraries.
+                  `("LD_LIBRARY_PATH" ":" prefix
+                    ,(map (lambda (input)
+                            (string-append (assoc-ref inputs input)
+                                           "/lib"))
+                          '("libtiff" "libjpeg" "libpng" "libungif"
+                            "libxml2" "zlib" "libspiro" "freetype"
+                            "pango" "cairo" "fontconfig")))
+                  ;; Checks for potrace program at runtime
+                  `("PATH" ":" prefix (,potrace)))
+                #t))))))
    (synopsis "Outline font editor")
    (description
     "FontForge allows you to create and modify postscript, truetype and
@@ -1551,10 +1618,10 @@ generate bitmaps.")
     (arguments
      (substitute-keyword-arguments (package-arguments fontforge)
        ((#:configure-flags _)
-        ''())
+        #~'())
        ((#:phases phases)
-        `(modify-phases ,phases
-           (delete 'do-not-override-RPATH)))))
+        #~(modify-phases #$phases
+            (delete 'do-not-override-RPATH)))))
     (inputs
      (modify-inputs (package-inputs fontforge)
        (prepend libuninameslist)
@@ -1563,7 +1630,7 @@ generate bitmaps.")
 (define-public python-statmake
   (package
     (name "python-statmake")
-    (version "0.5.1")
+    (version "0.6.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1572,7 +1639,7 @@ generate bitmaps.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0qavzspxhwnaayj5mxq6ncjjziggabxj157ls04h2rdrpq167706"))))
+                "1k6fkzyhsfkgi599sb017wzf4jzbnp5wjg1kla1b33vgjpa7n5nw"))))
     (build-system pyproject-build-system)
     (arguments
      (list
@@ -1627,7 +1694,7 @@ with @samp{nameIDs}.")
     (build-system pyproject-build-system)
     (native-inputs
      (list python-pytest python-setuptools-scm))
-    (propagated-inputs (list python-attrs python-fonttools-full))
+    (propagated-inputs (list python-attrs python-fonttools))
     (home-page "https://github.com/fonttools/ufoLib2")
     (synopsis "Unified Font Object (UFO) font processing library")
     (description "The ufoLib2 Python library is meant to be a thin
@@ -1651,7 +1718,7 @@ API-compatible with defcon.")
        (sha256
         (base32 "0i1a306b8c42dpbplwxj6ili2aac5lwq2ir6r1jswicysvk9dqxf"))))
     (build-system python-build-system)
-    (propagated-inputs (list python-fontpens-bootstrap python-fonttools-full))
+    (propagated-inputs (list python-fontpens-bootstrap python-fonttools))
     (native-inputs
      (list python-pytest
            python-pytest-runner
@@ -1927,3 +1994,29 @@ PostScript Type 1, Type 1 Multiple Master, OpenType, and TrueType fonts.
 These tools are cfftot1, mmafm, mmpfb, otfinfo, otftotfm, t1dotlessj, t1lint,
 t1rawfm, t1reencode, t1testpage and ttftotype42.")
     (license license:gpl2+)))
+
+(define-public bdf2sfd
+  (package
+    (name "bdf2sfd")
+    (version "1.1.8")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/fcambus/bdf2sfd")
+                    (commit "1.1.8")))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0pa92gjiijp9xqnw9dcvz24s6qk11a4lp5q6s5psd6mpkhpd88zq"))))
+    (build-system cmake-build-system)
+    (home-page "https://github.com/fcambus/bdf2sfd")
+    (synopsis "BDF to SFD converter, allowing to vectorize bitmap fonts")
+    (description
+     "bdf2sfd is a
+@uref{https://en.wikipedia.org/wiki/Glyph_Bitmap_Distribution_Format,
+BDF} to @uref{https://fontforge.org/docs/techref/sfdformat.html, SFD}
+converter, allowing to vectorize bitmap fonts.  It works by converting
+each pixel of a glyph to a polygon, which produces large and
+unoptimized SFD files that should be post-processed using
+@uref{https://fontforge.org, FontForge}.")
+    (license license:bsd-2)))

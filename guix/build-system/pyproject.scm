@@ -22,18 +22,14 @@
   #:use-module (guix gexp)
   #:use-module (guix store)
   #:use-module (guix utils)
-  #:use-module (guix memoization)
   #:use-module (guix gexp)
   #:use-module (guix monads)
   #:use-module (guix packages)
-  #:use-module (guix derivations)
   #:use-module (guix search-paths)
   #:use-module (guix build-system)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
-  #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-26)
   #:export (%pyproject-build-system-modules
             default-python
             pyproject-build
@@ -59,8 +55,7 @@
     (module-ref python 'python-toolchain)))
 
 (define sanity-check.py
-  ;; TODO: Merge with sanity-check.py in the next rebuild cycle.
-  (search-auxiliary-file "python/sanity-check-next.py"))
+  (search-auxiliary-file "python/sanity-check.py"))
 
 (define* (lower name
                 #:key source inputs native-inputs outputs system target

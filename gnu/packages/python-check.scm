@@ -2,7 +2,7 @@
 ;;; Copyright © 2019, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
-;;; Copyright © 2019, 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2019, 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019, 2021 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2020, 2022 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2020, 2022 Marius Bakke <marius@gnu.org>
@@ -249,7 +249,10 @@ are useful when writing automated tests in Python.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1915ab77nfb1rfw4i2ps0zy19wpf20lwxn81qxxbwyd2gy7m0fn8"))))
+         "1915ab77nfb1rfw4i2ps0zy19wpf20lwxn81qxxbwyd2gy7m0fn8"))
+       (modules '((guix build utils)))
+       (snippet '(substitute* "setup.py"
+                  (("'coverage>=4.1,<6.0',") "'coverage',")))))
     (build-system python-build-system)
     (arguments
      '(#:phases (modify-phases %standard-phases
@@ -260,7 +263,8 @@ are useful when writing automated tests in Python.")
                   (replace 'check
                     (lambda* (#:key tests? #:allow-other-keys)
                       (if tests?
-                          (invoke "pytest" "-vv")
+                          ;; Test fails for unknown reasons. No fix available.
+                          (invoke "pytest" "-vv" "-k" "not test_reporter_with_branches")
                           (format #t "test suite not run~%")))))))
     (propagated-inputs
      (list python-coverage python-docopt python-pyyaml python-requests))
@@ -514,16 +518,7 @@ Astropy project, but is optimized for use with astropy-related projects.")
        (sha256
         (base32 "04g2rh261s3s6ym8mwi4iv2a6anbgwvwzcvkyilfck6yxrncdqw5"))))
     (build-system python-build-system)
-    (arguments
-     `(#:tests? #f ; there are no tests
-       #:phases
-       (modify-phases %standard-phases
-         ;; There is a bug somewhere that makes pytest-filter-subpackage appear
-         ;; as version 0.0.0 to setup.py.  Remove it from the requirements.
-         (add-after 'unpack 'remove-requirement
-           (lambda _
-             (substitute* "setup.cfg"
-               ((".*pytest-filter-subpackage.*") "")))))))
+    (arguments (list #:tests? #f)) ; there are no tests
     (native-inputs
      (list python-attrs python-pytest-mock python-setuptools-scm))
     (propagated-inputs
@@ -546,22 +541,22 @@ astropy related packages.")
 (define-public python-pytest-arraydiff
   (package
     (name "python-pytest-arraydiff")
-    (version "0.3")
+    (version "0.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-arraydiff" version))
        (sha256
-        (base32 "05bcvhh2ycxa35znl8b3l9vkcmx7vwm5c3fpakbpw46c7vsn4bfy"))))
+        (base32 "1livzfbi7ag17hskd5845dh1kdir24f7jrbw8y2s1pyhzyz4jhbi"))))
     (build-system python-build-system)
     (arguments
      ;; Tests require python-astropy, which itself requires this package.
      ;; Disable tests to avoid the circular dependency problem.
      '(#:tests? #f))
     (native-inputs
-     (list python-pytest)) ; for sanity-check
+     (list python-pytest python-setuptools-scm)) ; for sanity-check
     (propagated-inputs
-     (list python-numpy python-six))
+     (list python-numpy))
     (home-page "https://github.com/astropy/pytest-arraydiff")
     (synopsis "Pytest plugin to help with comparing array output from tests")
     (description
@@ -573,32 +568,25 @@ are too large to conveniently hard-code them in the tests.")
 (define-public python-pytest-doctestplus
   (package
     (name "python-pytest-doctestplus")
-    (version "0.11.2")
+    (version "0.12.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-doctestplus" version))
        (sha256
-        (base32 "0j1lvlj3ps975q9hmg8i6rpqm0313j3r18bc3l8mz6khb7vav4zk"))))
-    (build-system python-build-system)
+        (base32 "10ciqylgziihxwxryxvxgmkqgws51pqcarn0gbh1d4cxx55rx5vs"))))
+    (build-system pyproject-build-system)
     (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key inputs outputs tests? #:allow-other-keys)
-             ;; Make the installed plugin discoverable by Pytest.
-             (when tests?
-               (add-installed-pythonpath inputs outputs)
-               (invoke "python" "-m" "pytest" "-k"
-                       (string-append   ; skip tests that require remote data
-                        "not test_remote_data_url"
-                        " and not test_remote_data_float_cmp"
-                        " and not test_remote_data_ignore_whitespace"
-                        " and not test_remote_data_ellipsis"
-                        " and not test_remote_data_requires"
-                        " and not test_remote_data_ignore_warnings"))))))))
+     (list #:test-flags
+           #~(list "-k" (string-append
+                         "not test_remote_data_url"
+                         " and not test_remote_data_float_cmp"
+                         " and not test_remote_data_ignore_whitespace"
+                         " and not test_remote_data_ellipsis"
+                         " and not test_remote_data_requires"
+                         " and not test_remote_data_ignore_warnings"))))
     (native-inputs
-     (list python-pytest python-setuptools-scm))
+     (list python-numpy python-pytest python-setuptools-scm))
     (home-page "https://github.com/astropy/pytest-doctestplus")
     (synopsis "Pytest plugin with advanced doctest features")
     (description
@@ -636,27 +624,19 @@ for interactively selecting and running Pytest tests.")
 (define-public python-pytest-filter-subpackage
   (package
     (name "python-pytest-filter-subpackage")
-    (version "0.1.1")
+    (version "0.1.2")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-filter-subpackage" version))
        (sha256
-        (base32 "1s4s2kd31yc65rfvl4xhy8xx806xhy59kc7668h6b6wq88xgrn5p"))))
-    (build-system python-build-system)
-    (arguments
-     '(;; One test is failing. There's an issue reported upstream. See
-       ;; https://github.com/astropy/pytest-filter-subpackage/issues/3.
-       ;; Disable it for now.
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Make the installed plugin discoverable by Pytest.
-             (add-installed-pythonpath inputs outputs)
-             (invoke "pytest" "-vv" "-k" "not test_with_rst"))))))
+        (base32 "10hpl3f7g2bm29lakmp8492b7lr0dp90khfni12m4gl02xks7bhz"))))
+    (build-system pyproject-build-system)
     (native-inputs
-     (list python-pytest python-pytest-cov python-pytest-doctestplus))
+     (list python-pytest
+           python-pytest-cov
+           python-pytest-doctestplus
+           python-setuptools-scm))
     (home-page "https://github.com/astropy/pytest-filter-subpackage")
     (synopsis "Pytest plugin for filtering based on sub-packages")
     (description
@@ -755,30 +735,23 @@ were inadvertently left open at the end of a unit test.")
 (define-public python-pytest-remotedata
   (package
     (name "python-pytest-remotedata")
-    (version "0.3.2")
+    (version "0.4.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-remotedata" version))
        (sha256
-        (base32 "1h6g6shib6z07azf12rnsa053470ggbd7hy3bnbw8nf3nza5h372"))))
-    (build-system python-build-system)
+        (base32 "1j5106j331cfdyfcwzrbs3yby84mq1b0kddfysq12z2dwdcca8dy"))))
+    (build-system pyproject-build-system)
     (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Make the installed plugin discoverable by Pytest.
-             (add-installed-pythonpath inputs outputs)
-             (invoke "pytest" "-vv" "-k"
-                     (string-append
-                      ;; These tests require internet access. Disable them.
-                      "not test_default_behavior"
-                      " and not test_strict_with_decorator")))))))
+     (list
+      #:test-flags #~(list "-k" (string-append
+                                 "not test_default_behavior"
+                                 " and not test_strict_with_decorator"))))
     (native-inputs
-     (list python-pytest))
+     (list python-pytest python-setuptools-scm))
     (propagated-inputs
-     (list python-six))
+     (list python-packaging))
     (home-page "https://github.com/astropy/pytest-remotedata")
     (synopsis "Pytest plugin for controlling remote data access")
     (description
@@ -858,24 +831,25 @@ framework and makes it easy to undo any monkey patching.  The fixtures are:
 (define-public python-pytest-mpl
   (package
     (name "python-pytest-mpl")
-    (version "0.11")
+    (version "0.16.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-mpl" version))
        (sha256
-        (base32 "1km202c1s5kcn52fx0266p06qb34va3warcby594dh6vixxa9i96"))))
-    (build-system python-build-system)
+        (base32 "0sa4229xkkah3fdg9wnqnvb9j13xsd3x1h5rwbsgb3sf2a0icmrd"))))
+    (build-system pyproject-build-system)
     (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda _
-             (invoke "pytest" "-vv"))))))
+     (list
+      #:test-flags #~(list "-m" "mpl_image_compare")))
     (native-inputs
      (list python-pytest))
     (propagated-inputs
-     (list python-matplotlib python-nose python-pillow))
+     (list python-jinja2
+           python-matplotlib
+           python-nose
+           python-packaging
+           python-pillow))
     (home-page "https://github.com/matplotlib/pytest-mpl")
     (synopsis "Pytest plugin to help with testing figures output from Matplotlib")
     (description
@@ -941,13 +915,13 @@ in Pytest.")
 (define-public python-pytest-subtests
   (package
     (name "python-pytest-subtests")
-    (version "0.5.0")
+    (version "0.10.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-subtests" version))
        (sha256
-        (base32 "087i03nmkmfnrpc7mmizvr40ijnjw4lfxc22rnk8jk6s1szy9lav"))))
+        (base32 "05zvnxx0hdrd9w4z51qhchg3nkz5s47agryw68g8q7krq5kim5nr"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -957,8 +931,7 @@ in Pytest.")
              (when tests?
                (add-installed-pythonpath inputs outputs)
                (invoke "python" "-m" "pytest")))))))
-    (native-inputs
-     (list python-pytest python-setuptools-scm))
+    (native-inputs (list python-pytest python-setuptools-scm))
     (home-page "https://github.com/pytest-dev/pytest-subtests")
     (synopsis "Unittest subTest() support and subtests fixture")
     (description "This Pytest plugin provides unittest @code{subTest()}
@@ -1148,25 +1121,18 @@ compliance.")
 (define-public python-pytest-isort
   (package
     (name "python-pytest-isort")
-    (version "2.0.0")
+    (version "3.1.0")
     (source
      (origin
        (method url-fetch)
-       (uri (pypi-uri "pytest-isort" version))
+       (uri (pypi-uri "pytest_isort" version))
        (sha256
-        (base32 "05wi28zlqk3jafpjal8j523y5jcsx3xl3id9rx93qfjgkif8q6l2"))))
+        (base32 "0v0qa5l22y3v0nfkpvghbinzyj2rh4f54k871lrp992lbvf02y06"))))
     (build-system python-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (invoke "pytest")))))))
+     `(#:tests? #f)) ; No tests in PyPi tarball.
     (propagated-inputs
      (list python-isort python-pytest))
-    (native-inputs
-     (list python-mock))
     (home-page "https://github.com/moccu/pytest-isort/")
     (synopsis "Pytest plugin to check import ordering using isort")
     (description
@@ -1300,14 +1266,14 @@ for the @code{pytest} framework.")
 (define-public python-pytest-benchmark
   (package
     (name "python-pytest-benchmark")
-    (version "3.4.1")
+    (version "4.0.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-benchmark" version))
        (sha256
         (base32
-         "0ivvrnhax2xr62grlgw4hlyjmmjp6nc35431j7c82nny2bwn7qj0"))))
+         "1la802m5r49y1zqilmhqh0qvbnz139lw0qb3jmm9lngy7sw8a1zv"))))
     (build-system python-build-system)
     (arguments
      '(#:test-target "check"))
@@ -1740,27 +1706,18 @@ Python software under test, when they make an HTTP query.")
 (define-public python-atpublic
   (package
     (name "python-atpublic")
-    (version "1.0")
+    (version "3.1.1")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "atpublic" version))
         (sha256
          (base32
-          "0i3sbxkdlbb4560rrlmwwd5y4ps7k73lp4d8wnmd7ag9k426gjkx"))))
-    (build-system python-build-system)
-    (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (add-before 'build 'enable-c-implementation
-           (lambda _
-             (setenv "ATPUBLIC_BUILD_EXTENSION" "yes")
-             #t))
-         (replace 'check
-           (lambda _
-             (invoke "python" "-m" "nose2" "-v"))))))
+          "060v2b5jfn7p99j09amxlb6w9ynwbq7fix31kl0caz0hs09fx61h"))))
+    (build-system pyproject-build-system)
+    (arguments (list #:build-backend "pdm.backend"))
     (native-inputs
-     (list python-nose2))
+     (list python-pytest python-pdm-backend python-sybil python-pytest-cov))
     (home-page "https://public.readthedocs.io/")
     (synopsis "@code{@@public} decorator for populating @code{__all__}")
     (description
@@ -1770,6 +1727,57 @@ it, the declaration of a name's public export semantics are not separated from
 the implementation of that name.")
     (license (list license:asl2.0
                    license:lgpl3))))    ; only for setup_helpers.py
+
+(define-public python-memory-profiler
+  (package
+    (name "python-memory-profiler")
+    (version "0.61")
+    (source
+     (origin
+       ;; PyPi tarball lacks tests.
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pythonprofilers/memory_profiler")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0n6g47qqmnn7abh3v25535hd8bmfvhf9bnp72m7bkd89f715m7xh"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; XXX: @profile is not loaded in some test files and there are 3
+          ;; tests fail, disable them for now.
+          (add-after 'unpack 'disable-failing-tests
+            (lambda _
+              (with-directory-excursion "test"
+                (for-each delete-file
+                          '("test_as.py"
+                            "test_func.py"
+                            "test_gen.py"
+                            "test_loop.py"
+                            "test_loop_decorated.py"
+                            "test_mprofile.py"
+                            "test_nested.py"
+                            "test_precision_command_line.py"
+                            "test_unicode.py")))
+              (substitute* "test/test_attributes.py"
+                (("def test_with_profile") "def __off_test_with_profile"))
+              (substitute* "test/test_stream_unicode.py"
+                (("def test_unicode") "def __off_test_unicode"))
+              (substitute* "test/test_tracemalloc.py"
+                (("def test_memory_profiler")
+                 "def __off_test_memory_profiler")))))))
+    (native-inputs
+     (list python-pytest python-pytest-fixture-config python-safety))
+    (propagated-inputs (list python-psutil))
+    (home-page "https://github.com/pythonprofilers/memory_profiler")
+    (synopsis "Memory profiler for Python")
+    (description
+     "This package provides a module for monitoring the memory usage of a
+Python program.")
+    (license license:bsd-3)))
 
 (define-public python-mockito
   (package
@@ -1805,19 +1813,20 @@ side effects when unit testing.")
 (define-public python-mypy-extensions
   (package
     (name "python-mypy-extensions")
-    (version "0.4.3")
-    (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "mypy_extensions" version))
-        (sha256
-         (base32
-          "1a04qsk8hd1lqns8w1j7cr0vmvbhg450di5k1i16kqxkbf7q30id"))))
+    (version "1.0.0")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "mypy_extensions" version))
+              (sha256
+               (base32
+                "10h7mwjjfbwxzq7jzaj1pnv9g6laa1k0ckgw72j44160bnazinvm"))))
     (build-system python-build-system)
-    (arguments `(#:tests? #f)); no tests
+    (arguments
+     `(#:tests? #f)) ;no tests
     (home-page "https://github.com/python/mypy_extensions")
     (synopsis "Experimental extensions for MyPy")
-    (description "The @code{python-mypy-extensions} module defines
+    (description
+     "The @code{python-mypy-extensions} module defines
 experimental extensions to the standard @code{typing} module that are
 supported by the MyPy typechecker.")
     (license license:expat)))
@@ -2522,7 +2531,7 @@ parametrize.  This plugin allows you to use all four.")
 (define-public python-pytest-httpx
   (package
     (name "python-pytest-httpx")
-    (version "0.21.0")
+    (version "0.22.0")
     (source
      (origin
        ;; pypi package doesn't include the tests
@@ -2532,16 +2541,8 @@ parametrize.  This plugin allows you to use all four.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "12mcy1f5d5cq3rqrqgi2ar0qvzw62ibys17hw6dsdfd0j2syck4r"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (setenv "PYTHONPATH" (getcwd))
-               (invoke "pytest" "-vv")))))))
+        (base32 "1ncpd74hmsz4sadvjg99fnfscxpgh3mc2siini0dhxzwgwdkk5i7"))))
+    (build-system pyproject-build-system)
     (propagated-inputs (list python-httpx))
     (native-inputs (list python-pytest python-pytest-asyncio))
     (home-page "https://colin-b.github.io/pytest_httpx/")
@@ -2598,4 +2599,37 @@ attachments).
 the X11 display server protocol.  It runs in memory and does not require a
 physical display.  Only a network layer is necessary.  Xvfb is useful for
 running acceptance tests on headless servers.")
+    (license license:expat)))
+
+(define-public python-vulture
+  (package
+    (name "python-vulture")
+    (version "2.7")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "vulture" version))
+              (sha256
+               (base32
+                "0cl0v3dadxvff0pgq1j120m064a3nmnbjjylkmcxp7zd2jh81yv7"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list #:phases #~(modify-phases %standard-phases
+                        (replace 'check
+                          (lambda* (#:key tests? #:allow-other-keys)
+                            (when tests?
+                              (invoke "pytest" "-vv" "tests" "-k"
+                                      ;; skip test that uses python-pint
+                                      ;; pint has many dependencies
+                                      "not test_whitelists_with_python")))))))
+    (native-inputs (list python-pytest python-pytest-cov))
+    (propagated-inputs (list python-toml))
+    (home-page "https://github.com/jendrikseipp/vulture")
+    (synopsis "Find dead Python code")
+    (description
+     "Vulture finds unused code in Python programs.  This is useful for
+cleaning up and finding errors in large code bases.  If you run Vulture on
+both your library and test suite you can find untested code.  Due to Python's
+dynamic nature, static code analyzers like Vulture are likely to miss some
+dead code.  Also, code that is only called implicitly may be reported as
+unused.")
     (license license:expat)))

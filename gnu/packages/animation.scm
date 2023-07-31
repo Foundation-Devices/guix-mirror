@@ -83,7 +83,8 @@
      `(#:configure-flags
        (list
         "-Dlog=true"
-        "-Dtest=true")))
+        "-Dtest=true"
+        "-Dcpp_std=gnu++17")))
     (native-inputs
      (list googletest pkg-config))
     (synopsis "Lottie Animation Library")
@@ -260,7 +261,7 @@ contains the graphical user interface for synfig.")
          ("python" ,python-wrapper)))
       (inputs
        `(("agg" ,agg)
-         ("atk" ,atk)
+         ("at-spi2-core" ,at-spi2-core)
          ("boost" ,boost)
          ("curl" ,curl)
          ("ffmpeg" ,ffmpeg-2.8)
@@ -290,7 +291,7 @@ audio or video backends, ensuring good performance.")
 (define-public lightspark
   (package
     (name "lightspark")
-    (version "0.8.6.1")
+    (version "0.8.7")
     (source
      (origin
        (method git-fetch)
@@ -299,7 +300,7 @@ audio or video backends, ensuring good performance.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1a78l9na01pd7a77r9n8lqih893s54rllpjvrx72sh0yyal1q3gz"))))
+        (base32 "156yd79dbs6lzp5jc2zd0knw6bk0g8qdm8icp7pkcn95vfvxyzx9"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f ;requires Adobe Flex SDK, see README.tests
@@ -339,7 +340,6 @@ audio or video backends, ensuring good performance.")
            pcre2
            rtmpdump
            sdl2
-           sdl2-mixer
            zlib))
     (home-page "https://lightspark.github.io/")
     (synopsis "Flash player implementation")

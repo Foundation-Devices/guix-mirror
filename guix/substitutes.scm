@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014 Nikita Karetnikov <nikita@karetnikov.org>
 ;;; Copyright © 2018 Kyle Meyer <kyle@kyleam.com>
 ;;; Copyright © 2020 Christopher Baines <mail@cbaines.net>
@@ -25,26 +25,20 @@
   #:use-module (guix utils)
   #:use-module (guix combinators)
   #:use-module (guix config)
-  #:use-module (guix records)
   #:use-module (guix diagnostics)
   #:use-module (guix i18n)
   #:use-module (gcrypt hash)
   #:use-module (guix base32)
-  #:use-module (guix base64)
   #:use-module (guix cache)
-  #:use-module (gcrypt pk-crypto)
-  #:use-module (guix pki)
   #:use-module ((guix build utils) #:select (mkdir-p dump-port))
   #:use-module ((guix build download)
                 #:select ((open-connection-for-uri
                            . guix:open-connection-for-uri)
                           resolve-uri-reference))
+  #:autoload   (gnutls) (error->string error/premature-termination)
   #:use-module (guix progress)
-  #:use-module (ice-9 rdelim)
-  #:use-module (ice-9 regex)
   #:use-module (ice-9 match)
   #:use-module (ice-9 format)
-  #:use-module (ice-9 ftw)
   #:use-module (ice-9 binary-ports)
   #:use-module (ice-9 vlist)
   #:use-module (rnrs bytevectors)
@@ -52,8 +46,6 @@
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-19)
   #:use-module (srfi srfi-26)
-  #:use-module (srfi srfi-34)
-  #:use-module (srfi srfi-35)
   #:use-module (web uri)
   #:use-module (web request)
   #:use-module (web response)
@@ -161,6 +153,13 @@ indicates that PATH is unavailable at CACHE-URL."
                   (strerror
                    (system-error-errno `(system-error ,@args)))))
        #f)
+      (('gnutls-error error proc . rest)
+       (if (eq? error error/premature-termination)
+           (begin
+             (warning (G_ "~a: TLS connection failed: in ~a: ~a~%") host
+                      proc (error->string error))
+             #f)
+           (apply throw 'gnutls-error error proc rest)))
       (args
        (apply throw args)))))
 

@@ -23,7 +23,7 @@
 ;;; Copyright © 2020, 2021 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Leo Famulari <leo@famulari.name>
-;;; Copyright @ 2020 luhux <luhux@outlook.com>
+;;; Copyright © 2020 luhux <luhux@outlook.com>
 ;;; Copyright © 2021 Ekaitz Zarraga <ekaitz@elenq.tech>
 ;;; Copyright © 2021, 2022 Raphaël Mélotte <raphael.melotte@mind.be>
 ;;; Copyright © 2021 ikasero <ahmed@ikasero.com>
@@ -69,7 +69,6 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages check)
-  #:use-module (gnu packages cmake)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages crates-io)
   #:use-module (gnu packages crates-graphics)
@@ -245,7 +244,7 @@ keybindings have different functions.")
 (define-public asciinema
   (package
     (name "asciinema")
-    (version "2.2.0")
+    (version "2.3.0")
     (source
      (origin
        (method git-fetch)
@@ -254,7 +253,7 @@ keybindings have different functions.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0pcrghfi9p1p40d0339lcmhcv24hm1vxqr4rsdln34v385vqv14a"))))
+        (base32 "0mqn12h51nqdmn1ya7hw1l2z2893937dqq4b1zh32y6bazd807fl"))))
     (build-system pyproject-build-system)
     (arguments
      (list #:phases
@@ -843,7 +842,7 @@ eye-candy, customizable, and reasonably lightweight.")
 (define-public foot
   (package
     (name "foot")
-    (version "1.13.1")
+    (version "1.15.1")
     (home-page "https://codeberg.org/dnkl/foot")
     (source (origin
               (method git-fetch)
@@ -851,7 +850,7 @@ eye-candy, customizable, and reasonably lightweight.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0k0zbh6adwr99y9aazlyvp6s1k8zaq2j6x8kqb8q9a5qjjg56lay"))))
+                "1h2gbnfikqpgr9ylwl5wpyzgcgzfxnbi83j33rxx2ppy54yjcb30"))))
     (build-system meson-build-system)
     (arguments
      `(;; Using a "release" build is recommended both for performance, and
@@ -862,6 +861,12 @@ eye-candy, customizable, and reasonably lightweight.")
     (native-inputs
      (list ncurses ;for 'tic'
            pkg-config scdoc wayland-protocols))
+    (native-search-paths
+     ;; FIXME: This should only be located in 'ncurses'.  Nonetheless it is
+     ;; provided for usability reasons.  See <https://bugs.gnu.org/22138>.
+     (list (search-path-specification
+            (variable "TERMINFO_DIRS")
+            (files '("share/terminfo")))))
     (inputs
      (list fcft libxkbcommon wayland))
     (synopsis "Wayland-native terminal emulator")
@@ -922,9 +927,8 @@ a server/client mode.")
     (arguments
      '(#:tests? #f))                    ; no check phase
     (native-inputs
-     `(("gettext" ,gettext-minimal)
-       ("perl" ,perl)                   ; for pod2man
-       ("pkg-config" ,pkg-config)))
+     (list gettext-minimal perl ; for pod2man
+           pkg-config))
     (inputs
      (list libxft vte))
     (home-page "https://launchpad.net/sakura")
@@ -933,6 +937,41 @@ a server/client mode.")
 It's a terminal emulator with few dependencies, so you don't need a full GNOME
 desktop installed to have a decent terminal emulator.")
     (license license:gpl2)))
+
+(define-public xiate
+  (let ((commit "ae3cf30b345c64f097a747ac848e23ef5bae8b57")
+        (revision "0"))
+    (package
+      (name "xiate")
+      (version (git-version "22.12" revision commit))
+      (source (origin
+                (method git-fetch)
+                (file-name (git-file-name name version))
+                (uri (git-reference
+                      (url "https://www.uninformativ.de/git/xiate.git")
+                      (commit commit)))
+                (sha256
+                 (base32
+                  "0bc205b1gs1jvp1a2cr814l32hmlm0sgv1drfw7ykbavslfpmg2d"))))
+      (build-system gnu-build-system)
+      (arguments
+       (list #:tests? #f ;no tests
+             #:make-flags #~(list (string-append "CC="
+                                                 #$(cc-for-target))
+                                  (string-append "prefix="
+                                                 #$output))
+             #:phases #~(modify-phases %standard-phases
+                          (delete 'configure))))
+      (inputs (list gtk+ glib vte))
+      (native-inputs (list pkg-config))
+      (synopsis "Minimalist terminal emulator based on GTK+")
+      (description
+       "Xiate is a terminal emulator which tries to keep a balance
+between features and simplicity.  This is achieved by using VTE as a powerful
+backend, while UI, configuration, and code try to remain much more
+minimalistic.")
+      (home-page "https://www.uninformativ.de/git/xiate/file/README.html")
+      (license license:expat))))
 
 (define-public go-github.com-nsf-termbox-go
   (let ((commit "288510b9734e30e7966ec2f22b87c5f8e67345e3")
@@ -953,7 +992,7 @@ desktop installed to have a decent terminal emulator.")
       (arguments
        '(#:import-path "github.com/nsf/termbox-go"))
       (propagated-inputs
-       (list go-github.com-mattn-go-runewidth))
+       (list go-github-com-mattn-go-runewidth))
       (synopsis "@code{termbox} provides a minimal API for text-based user
 interfaces")
       (description
@@ -965,7 +1004,7 @@ programmer to write text-based user interfaces.")
 (define-public go-github-com-junegunn-fzf
   (package
     (name "go-github-com-junegunn-fzf")
-    (version "0.34.0")
+    (version "0.41.0")
     (source
      (origin
        (method git-fetch)
@@ -975,12 +1014,12 @@ programmer to write text-based user interfaces.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "023ksrmjg99svmkpnlh4k7gssv1sz2nl0v5b6bsr2iragvwrgkf4"))))
+         "1l9nsvziip3azyvg8wi4g3x606fh6w9vpfcbcgjdzdnp2ywqciim"))))
     (build-system go-build-system)
     (arguments
      `(#:import-path "github.com/junegunn/fzf"))
     (inputs
-     (list go-github.com-mattn-go-runewidth
+     (list go-github-com-mattn-go-runewidth
            go-github-com-mattn-go-shellwords
            go-github-com-mattn-go-isatty
            go-github-com-gdamore-tcell
@@ -1042,33 +1081,6 @@ usable with any list--including files, command history, processes and more.")
      `(,@(package-inputs go-github-com-junegunn-fzf)
        ("findutils" ,findutils)
        ("ncurses" ,ncurses)))))
-
-(define-public go-github.com-howeyc-gopass
-  (let ((commit "bf9dde6d0d2c004a008c27aaee91170c786f6db8")
-        (revision "0"))
-    (package
-      (name "go-github.com-howeyc-gopass")
-      (version (git-version "0.0.0" revision commit))
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/howeyc/gopass")
-                      (commit commit)))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "1jxzyfnqi0h1fzlsvlkn10bncic803bfhslyijcxk55mgh297g45"))))
-      (build-system go-build-system)
-      (arguments
-       '(#:import-path "github.com/howeyc/gopass"))
-      (propagated-inputs
-       (list go-golang-org-x-crypto))
-      (synopsis "Retrieve password from a terminal or piped input in Go")
-      (description
-       "@code{gopass} is a Go package for retrieving a password from user
-terminal or piped input.")
-      (home-page "https://github.com/howeyc/gopass")
-      (license license:isc))))
 
 (define-public python-pyte
   (package
@@ -1138,13 +1150,13 @@ than a terminal.")
 (define-public python-curtsies
   (package
     (name "python-curtsies")
-    (version "0.4.0")
+    (version "0.4.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "curtsies" version))
        (sha256
-        (base32 "1zj284kacv0d10ab3amkkx37hcciylkqympsksi9bwzy6g7fyafb"))))
+        (base32 "1c122vgfsvksxkd41g2vij6hjsz97ikg59snclq4af2mkhs0zlb2"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1193,7 +1205,7 @@ tmux.")
 (define-public kitty
   (package
     (name "kitty")
-    (version "0.20.3")
+    (version "0.21.2")
     (home-page "https://sw.kovidgoyal.net/kitty/")
     (source
      (origin
@@ -1203,7 +1215,8 @@ tmux.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "13qv4469q9q2xdrb77lbyw4dz491zf1qvqx4adp0dd9annnlir5c"))
+        (base32 "0y0mg8rr18mn0wzym7v48x6kl0ixd5q387kr5jhbdln55ph2jk9d"))
+       (patches (search-patches "kitty-fix-wayland-protocols.patch"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -1219,70 +1232,68 @@ tmux.")
            #t))))
     (build-system gnu-build-system)
     (native-inputs
-     `(("libdbus" ,dbus)
-       ("libgl1-mesa" ,mesa)
-       ("libxcursor" ,libxcursor)
-       ("libxi" ,libxi)
-       ("libxinerama" ,libxinerama)
-       ("libxkbcommon" ,libxkbcommon)
-       ("libxrandr" ,libxrandr)
-       ("ncurses" ,ncurses) ;; for tic command
-       ("pkg-config" ,pkg-config)
-       ("sphinx" ,python-sphinx)
-       ("wayland-protocols" ,wayland-protocols)))
+     (list dbus
+           mesa
+           libxcursor
+           libxi
+           libxinerama
+           libxkbcommon
+           libxrandr
+           ncurses ;; for tic command
+           pkg-config
+           python-sphinx
+           wayland-protocols))
     (inputs
-     `(("fontconfig" ,fontconfig)
-       ("freetype" ,freetype)
-       ("harfbuzz" ,harfbuzz)
-       ("lcms" ,lcms)
-       ("libcanberra" ,libcanberra)
-       ("libpng" ,libpng)
-       ("pygments" ,python-pygments)
-       ("python" ,python-wrapper)
-       ("wayland" ,wayland)
-       ("zlib" ,zlib)))
+     (list fontconfig
+           freetype
+           harfbuzz
+           lcms
+           libcanberra
+           libpng
+           python-pygments
+           python-wrapper
+           wayland
+           zlib))
     (arguments
-     '(#:phases (modify-phases %standard-phases
-                  (delete 'configure)   ;no configure script
-                  (replace 'build
-                    (lambda* (#:key inputs #:allow-other-keys)
-                      ;; The "kitty" sub-directory must be writable prior to
-                      ;; configuration (e.g., un-setting updates).
-                      (for-each make-file-writable (find-files "kitty"))
-
-                      (invoke "python3" "setup.py" "linux-package"
-                              ;; Do not phone home.
-                              "--update-check-interval=0"
-                              ;; Wayland backend requires EGL, which isn't
-                              ;; found out-of-the-box for some reason.
-                              (string-append "--egl-library="
-                                             (assoc-ref inputs "libgl1-mesa")
-                                             "/lib/libEGL.so.1"))))
-                  (replace 'check
-                    (lambda _
-                      ;; Fix "cannot find kitty executable" error when running
-                      ;; tests.
-                      (setenv "PATH" (string-append "linux-package/bin:"
-                                                    (getenv "PATH")))
-                      (invoke "python3" "test.py")))
-                  (add-before 'install 'rm-pycache
-                    ;; created python cache __pycache__ are non deterministic
-                    (lambda _
-                      (let ((pycaches (find-files "linux-package/"
-                                                  "__pycache__"
-                                                  #:directories? #t)))
-                        (for-each delete-file-recursively pycaches)
-                        #t)))
-                  (replace 'install
-                    (lambda _
-                      (let* ((out (assoc-ref %outputs "out"))
-                             (obin (string-append out "/bin"))
-                             (olib (string-append out "/lib"))
-                             (oshare (string-append out "/share")))
-                        (copy-recursively "linux-package/bin" obin)
-                        (copy-recursively "linux-package/share" oshare)
-                        (copy-recursively "linux-package/lib" olib)
-                        #t))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)   ;no configure script
+          (replace 'build
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; The "kitty" sub-directory must be writable prior to
+              ;; configuration (e.g., un-setting updates).
+              (for-each make-file-writable (find-files "kitty"))
+              (invoke "python3" "setup.py" "linux-package"
+                      ;; Do not phone home.
+                      "--update-check-interval=0"
+                      ;; Wayland backend requires EGL, which isn't
+                      ;; found out-of-the-box for some reason.
+                      (string-append "--egl-library="
+                                     (search-input-file inputs "/lib/libEGL.so.1")))))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                ;; Fix "cannot find kitty executable" error when running
+                ;; tests.
+                (setenv "PATH" (string-append "linux-package/bin:"
+                                              (getenv "PATH")))
+                (invoke "python3" "test.py"))))
+          (add-before 'install 'rm-pycache
+            ;; created python cache __pycache__ are non deterministic
+            (lambda _
+              (let ((pycaches (find-files "linux-package/"
+                                          "__pycache__"
+                                          #:directories? #t)))
+                (for-each delete-file-recursively pycaches))))
+          (replace 'install
+            (lambda _
+              (let* ((obin (string-append #$output "/bin"))
+                     (olib (string-append #$output "/lib"))
+                     (oshare (string-append #$output "/share")))
+                (copy-recursively "linux-package/bin" obin)
+                (copy-recursively "linux-package/share" oshare)
+                (copy-recursively "linux-package/lib" olib)))))))
     (synopsis "Fast, featureful, GPU based terminal emulator")
     (description "Kitty is a fast and featureful GPU-based terminal emulator:
 @itemize
@@ -1407,7 +1418,7 @@ terminal are replicated to the others.
 (define-public tio
   (package
     (name "tio")
-    (version "1.36")
+    (version "2.5")
     (source
      (origin
        (method url-fetch)
@@ -1415,7 +1426,7 @@ terminal are replicated to the others.
              "https://github.com/tio/tio/releases/download/v"
              version "/tio-" version ".tar.xz"))
        (sha256
-        (base32 "0z27ghxjiw7y587l49jsb0anylm08m7imqjiwr21k1frxvydswsa"))))
+        (base32 "19s41i8f3kxchlaibp7wkq8gqgbpfdn0srkf1wcfx357j3p54f86"))))
     (build-system meson-build-system)
     (native-inputs (list pkg-config))
     (inputs (list libinih))
@@ -1429,7 +1440,7 @@ basic input/output.")
 (define-public alacritty
   (package
     (name "alacritty")
-    (version "0.9.0")
+    (version "0.12.2")
     (source
      (origin
        ;; XXX: The crate at "crates.io" has limited contents.  In particular,
@@ -1440,78 +1451,73 @@ basic input/output.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "068y0b1a0m33r7a3j2xf6k602sc8062gm4d5568ynfx6w5n481lj"))))
+        (base32 "17a7v32gxsy79cj1ap71ckrypxv7i9jv4lnibg0ymcpwk9zpwxjz"))))
     (build-system cargo-build-system)
     (arguments
      `(#:install-source? #f     ; virtual manifest
        #:cargo-test-flags '("--release" "--" "--skip=config_read_eof")
        #:cargo-inputs
-       (("rust-alacritty-config-derive" ,rust-alacritty-config-derive-0.1)
-        ("rust-alacritty-terminal" ,rust-alacritty-terminal-0.15)
-        ("rust-clap" ,rust-clap-2)
+       (("rust-alacritty-config" ,rust-alacritty-config-0.1)
+        ("rust-alacritty-config-derive" ,rust-alacritty-config-derive-0.2)
+        ("rust-alacritty-terminal" ,rust-alacritty-terminal-0.19)
+        ("rust-bitflags" ,rust-bitflags-1)
+        ("rust-clap" ,rust-clap-3)
         ("rust-cocoa" ,rust-cocoa-0.24)
-        ("rust-copypasta" ,rust-copypasta-0.7)
-        ("rust-crossfont" ,rust-crossfont-0.3)
+        ("rust-copypasta" ,rust-copypasta-0.8)
+        ("rust-crossfont" ,rust-crossfont-0.5)
+        ("rust-dirs" ,rust-dirs-4)
         ("rust-embed-resource" ,rust-embed-resource-1)
         ("rust-fnv" ,rust-fnv-1)
         ("rust-gl-generator" ,rust-gl-generator-0.14)
-        ;; XXX: Adjust `add-absolute-library-references' phase when updating
-        ;; glutin input.
-        ("rust-glutin" ,rust-glutin-0.26)
+        ("rust-glutin" ,rust-glutin-0.30)
+        ("rust-libc" ,rust-libc-0.2)
         ("rust-log" ,rust-log-0.4)
-        ("rust-notify" ,rust-notify-4)
+        ("rust-notify" ,rust-notify-5)
         ("rust-objc" ,rust-objc-0.2)
-        ("rust-parking-lot" ,rust-parking-lot-0.11)
-        ("rust-png" ,rust-png-0.16)
-        ("rust-raw-window-handle" ,rust-raw-window-handle-0.3)
+        ("rust-once-cell" ,rust-once-cell-1)
+        ("rust-parking-lot" ,rust-parking-lot-0.12)
+        ("rust-png" ,rust-png-0.17)
+        ("rust-raw-window-handle" ,rust-raw-window-handle-0.5)
         ("rust-serde" ,rust-serde-1)
         ("rust-serde-json" ,rust-serde-json-1)
         ("rust-serde-yaml" ,rust-serde-yaml-0.8)
-        ("rust-time" ,rust-time-0.1)
-        ("rust-urlocator" ,rust-urlocator-0.1)
+        ("rust-unicode-width" ,rust-unicode-width-0.1)
+        ("rust-wayland-client" ,rust-wayland-client-0.29)
+        ("rust-windows-sys" ,rust-windows-sys-0.36)
+        ("rust-winit" ,rust-winit-0.28)
         ("rust-x11-dl" ,rust-x11-dl-2)
         ("rust-xdg" ,rust-xdg-2))
+       #:cargo-development-inputs
+       (("rust-clap-complete" ,rust-clap-complete-3))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'use-new-nix
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (substitute* "alacritty_terminal/Cargo.toml"
-               (("0.22.0") "^0.23.0"))))
+         (add-after 'unpack 'patch-xdg-open
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "alacritty/src/config/ui_config.rs"
+               (("xdg-open") (search-input-file inputs "/bin/xdg-open")))))
          (add-after 'configure 'add-absolute-library-references
-           (lambda* (#:key inputs cargo-inputs vendor-dir #:allow-other-keys)
-             (let* ((glutin-name ,(package-name rust-glutin-0.26))
-                    (glutin-version ,(package-version rust-glutin-0.26))
-                    (glutin-api (string-append glutin-name "-" glutin-version
-                                               ".tar.gz/src/api/"))
-                    (smithay-client-toolkit-name
-                     ,(package-name rust-smithay-client-toolkit-0.12))
-                    (smithay-client-toolkit-version
-                     ,(package-version rust-smithay-client-toolkit-0.12))
-                    (smithay-client-toolkit-src
-                     (string-append smithay-client-toolkit-name "-"
-                                    smithay-client-toolkit-version ".tar.gz/src"))
-                    (libxkbcommon (assoc-ref inputs "libxkbcommon"))
-                    (mesa (assoc-ref inputs "mesa")))
-               ;; Fix dlopen()ing some libraries on pure Wayland (no $DISPLAY):
-               ;; Failed to initialize any backend! Wayland status: NoWaylandLib
-               ;; XXX We patch transitive dependencies that aren't even direct
-               ;; inputs to this package, because of the way Guix's Rust build
-               ;; system currently works.  <http://issues.guix.gnu.org/46399>
-               ;; might fix this and allow patching them directly.
-               (substitute* (string-append vendor-dir "/"
-                                           smithay-client-toolkit-src
-                                           "/seat/keyboard/ffi.rs")
-                 (("libxkbcommon\\.so")
-                  (string-append libxkbcommon "/lib/libxkbcommon.so")))
+           (lambda* (#:key inputs vendor-dir #:allow-other-keys)
+             ;; Fix dlopen()ing some libraries on pure Wayland (no $DISPLAY):
+             ;; Failed to initialize any backend! Wayland status: NoWaylandLib
+             ;; XXX We patch transitive dependencies that aren't even direct
+             ;; inputs to this package, because of the way Guix's Rust build
+             ;; system currently works.  <http://issues.guix.gnu.org/46399>
+             ;; might fix this and allow patching them directly.
+             (substitute* (find-files vendor-dir "\\.rs$")
+               (("libEGL\\.so")
+                (search-input-file inputs "lib/libEGL.so"))
+               (("libGL\\.so")
+                (search-input-file inputs "lib/libGL.so"))
+               ;; Lots of libraries from rust-x11-dl.
+               ;; XXX: Not all X11 libraries are inside the build enclosure.
+               ;(("libX.*\\.so" all)
+               ; (search-input-file inputs (string-append "lib/" all)))
 
-               ;; Mesa is needed everywhere.
-               (substitute*
-                   (string-append vendor-dir "/" glutin-api "glx/mod.rs")
-                 (("libGL.so") (string-append mesa "/lib/libGL.so")))
-               (substitute*
-                   (string-append vendor-dir "/" glutin-api "egl/mod.rs")
-                 (("libEGL.so") (string-append mesa "/lib/libEGL.so")))
-               #t)))
+               ;; There are several libwayland libraries.
+               (("libwayland-.*\\.so" all)
+                (search-input-file inputs (string-append "lib/" all)))
+               (("libxkbcommon\\.so")
+                (search-input-file inputs "lib/libxkbcommon.so")))))
          (replace 'install
            ;; Upstream install script only takes care of executable.
            (lambda* (#:key inputs outputs #:allow-other-keys)
@@ -1549,11 +1555,9 @@ basic input/output.")
                (install-file "extra/completions/_alacritty"
                              (string-append share "/zsh/site-functions"))
                (install-file "extra/completions/alacritty.fish"
-                             (string-append share "/fish/vendor_completions.d"))
-               #t))))))
+                             (string-append share "/fish/vendor_completions.d"))))))))
     (native-inputs
-     `(("cmake" ,cmake)
-       ("ncurses" ,ncurses)
+     `(("ncurses" ,ncurses)
        ("pkg-config" ,pkg-config)
        ("python3" ,python)))
     (inputs
@@ -1568,12 +1572,7 @@ basic input/output.")
        ("libxrandr" ,libxrandr)
        ("libxxf86vm" ,libxxf86vm)
        ("mesa" ,mesa)
-       ("rust-bitflags" ,rust-bitflags-1)
-       ("rust-dirs" ,rust-dirs-3)
-       ("rust-libc" ,rust-libc-0.2)
-       ("rust-unicode-width" ,rust-unicode-width-0.1)
-       ("rust-wayland-client" ,rust-wayland-client-0.28)
-       ("rust-winapi" ,rust-winapi-0.3)
+       ("xdg-utils" ,xdg-utils)
        ("wayland" ,wayland)))
     (native-search-paths
      ;; FIXME: This should only be located in 'ncurses'.  Nonetheless it is

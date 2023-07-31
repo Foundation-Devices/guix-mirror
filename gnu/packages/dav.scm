@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015, 2016, 2017 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2018, 2019, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2018, 2019, 2022, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Tanguy Le Carrour <tanguy@bioneland.org>
@@ -24,6 +24,7 @@
 (define-module (gnu packages dav)
   #:use-module (guix build-system python)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix licenses)
   #:use-module (guix packages)
   #:use-module (guix git-download)
@@ -84,13 +85,13 @@ clients.")
 (define-public xandikos
   (package
     (name "xandikos")
-    (version "0.2.3")
+    (version "0.2.8")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "xandikos" version))
        (sha256
-        (base32 "13ikmcja9p42azb5ccqj2bw98zybna6zlflj10hqy0kvbib70l94"))))
+        (base32 "00ghmzcc37b17pp0r6d9v5vpxmz500kzxqj1k9ppcjhbbpvp9w8n"))))
     (build-system python-build-system)
     (propagated-inputs
      (list python-aiohttp
@@ -122,29 +123,32 @@ efficient syncing
 (define-public vdirsyncer
   (package
     (name "vdirsyncer")
-    (version "0.19.0")
+    (version "0.19.2")
     (source (origin
              (method url-fetch)
              (uri (pypi-uri name version))
              (sha256
               (base32
-               "0995bavlv8s9j0127ncq3yzy5p72lam9qgpswyjfanc6l01q87lf"))))
+               "1fl21m10ghrpmkqa12g0qri99cxk9879pkb60jd4b4w2mgp8q1gx"))))
     (build-system python-build-system)
     (arguments
-     `(#:tests? #f ; The test suite is very flakey.
-       #:phases (modify-phases %standard-phases
-        (replace 'check
-          (lambda* (#:key inputs outputs tests? #:allow-other-keys)
-            (add-installed-pythonpath inputs outputs)
-            (setenv "DETERMINISTIC_TESTS" "true")
-            (setenv "DAV_SERVER" "radicale")
-            (setenv "REMOTESTORAGE_SERVER" "skip")
-            (if tests?
-                (invoke "make" "test"))))
-        (add-after 'unpack 'patch-version-call
-          (lambda _
-            (substitute* "docs/conf.py"
-              (("^release.*") (string-append "release = '" ,version "'\n"))))))))
+     (list
+      #:tests? #f                       ; the test suite is very flakey
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'check
+            (lambda* (#:key inputs outputs tests? #:allow-other-keys)
+              (add-installed-pythonpath inputs outputs)
+              (setenv "DETERMINISTIC_TESTS" "true")
+              (setenv "DAV_SERVER" "radicale")
+              (setenv "REMOTESTORAGE_SERVER" "skip")
+              (if tests?
+                  (invoke "make" "test"))))
+          (add-after 'unpack 'patch-version-call
+            (lambda _
+              (substitute* "docs/conf.py"
+                (("^release.*")
+                 (string-append "release = '" #$version "'\n"))))))))
     (native-inputs
      (list python-setuptools-scm
            python-sphinx

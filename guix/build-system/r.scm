@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2017, 2018, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015-2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2021 Ludovic Courtès <ludo@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -27,7 +27,6 @@
   #:use-module (guix build-system)
   #:use-module (guix build-system gnu)
   #:use-module (ice-9 match)
-  #:use-module (srfi srfi-26)
   #:export (%r-build-system-modules
             r-build
             r-build-system
@@ -61,7 +60,7 @@ release corresponding to NAME and VERSION."
                          "/src/contrib/"
                          name "_" version ".tar.gz")
           ;; TODO: use %bioconductor-version from (guix import cran)
-          (string-append "https://bioconductor.org/packages/3.16"
+          (string-append "https://bioconductor.org/packages/3.17"
                          type-url-part
                          "/src/contrib/"
                          name "_" version ".tar.gz"))))

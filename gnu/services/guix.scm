@@ -48,6 +48,7 @@
             guix-build-coordinator-configuration-hooks
             guix-build-coordinator-configuration-parallel-hooks
             guix-build-coordinator-configuration-guile
+            guix-build-coordinator-configuration-extra-environment-variables
 
             guix-build-coordinator-service-type
 
@@ -59,6 +60,7 @@
             guix-build-coordinator-agent-configuration-authentication
             guix-build-coordinator-agent-configuration-systems
             guix-build-coordinator-agent-configuration-max-parallel-builds
+            guix-build-coordinator-agent-configuration-max-parallel-uploads
             guix-build-coordinator-agent-configuration-max-allocated-builds
             guix-build-coordinator-agent-configuration-max-1min-load-average
             guix-build-coordinator-agent-configuration-derivation-substitute-urls
@@ -131,6 +133,7 @@
             nar-herder-configuration-cached-compression-min-uses
             nar-herder-configuration-cached-compression-workers
             nar-herder-configuration-cached-compression-nar-source
+            nar-herder-configuration-extra-environment-variables
 
             nar-herder-cached-compression-configuration
             nar-herder-cached-compression-configuration?
@@ -171,7 +174,10 @@
   (parallel-hooks                  guix-build-coordinator-configuration-parallel-hooks
                                    (default '()))
   (guile                           guix-build-coordinator-configuration-guile
-                                   (default guile-3.0-latest)))
+                                   (default guile-3.0-latest))
+  (extra-environment-variables
+   guix-build-coordinator-configuration-extra-environment-variables
+   (default '())))
 
 (define-record-type* <guix-build-coordinator-agent-configuration>
   guix-build-coordinator-agent-configuration
@@ -188,6 +194,9 @@
                        (default #f))
   (max-parallel-builds
    guix-build-coordinator-agent-configuration-max-parallel-builds
+   (default 1))
+  (max-parallel-uploads
+   guix-build-coordinator-agent-configuration-max-parallel-uploads
    (default 1))
   (max-allocated-builds
    guix-build-coordinator-agent-configuration-max-allocated-builds
@@ -294,13 +303,7 @@
 
          (simple-format #t "starting the guix-build-coordinator:\n  ~A\n"
                         (current-filename))
-         (let* ((metrics-registry (make-metrics-registry
-                                   #:namespace
-                                   "guixbuildcoordinator"))
-                (datastore (database-uri->datastore
-                            #$database-uri-string
-                            #:metrics-registry metrics-registry))
-                (hooks
+         (let* ((hooks
                  (list #$@(map (match-lambda
                                  ((name . hook-gexp)
                                   #~(cons '#$name #$hook-gexp)))
@@ -311,9 +314,8 @@
                                ((name . _) (assq-ref hooks name)))
                              %default-hooks)))
                 (build-coordinator (make-build-coordinator
-                                    #:datastore datastore
+                                    #:database-uri-string #$database-uri-string
                                     #:hooks hooks-with-defaults
-                                    #:metrics-registry metrics-registry
                                     #:allocation-strategy #$allocation-strategy)))
 
            (run-coordinator-service
@@ -338,7 +340,8 @@
              allocation-strategy
              hooks
              parallel-hooks
-             guile)
+             guile
+             extra-environment-variables)
     (list
      (shepherd-service
       (documentation "Guix Build Coordinator")
@@ -369,7 +372,8 @@
                      `(,(string-append
                          "GUIX_LOCPATH=" #$glibc-utf8-locales "/lib/locale")
                        "LC_ALL=en_US.utf8"
-                       "PATH=/run/current-system/profile/bin") ; for hooks
+                       "PATH=/run/current-system/profile/bin" ; for hooks
+                       #$@extra-environment-variables)
                      #:log-file "/var/log/guix-build-coordinator/coordinator.log")
                     args))))
       (stop #~(make-kill-destructor))
@@ -427,9 +431,9 @@
 
 (define (guix-build-coordinator-agent-shepherd-services config)
   (match-record config <guix-build-coordinator-agent-configuration>
-    (package user coordinator authentication max-parallel-builds
-             max-allocated-builds
-             max-1min-load-average
+    (package user coordinator authentication
+             max-parallel-builds max-parallel-uploads
+             max-allocated-builds max-1min-load-average
              derivation-substitute-urls non-derivation-substitute-urls
              systems)
     (list
@@ -465,6 +469,10 @@
                                               token-file))))
                     #$(simple-format #f "--max-parallel-builds=~A"
                                      max-parallel-builds)
+                    #$@(if max-parallel-uploads
+                           #~(#$(simple-format #f "--max-parallel-uploads=~A"
+                                               max-parallel-uploads))
+                           #~())
                     #$@(if max-allocated-builds
                            #~(#$(simple-format #f "--max-allocated-builds=~A"
                                                max-allocated-builds))
@@ -700,11 +708,7 @@ ca-certificates.crt file in the system profile."
      (shepherd-service
       (documentation "Guix Data Service process jobs")
       (provision '(guix-data-service-process-jobs))
-      (requirement '(postgres
-                     networking
-                     ;; Require guix-data-service, as that the database
-                     ;; migrations are handled through this service
-                     guix-data-service))
+      (requirement '(postgres networking))
       (start #~(make-forkexec-constructor
                 (list
                  #$(file-append package
@@ -851,7 +855,10 @@ ca-certificates.crt file in the system profile."
    (default 2))
   (cached-compression-nar-source
    nar-herder-configuration-cached-compression-nar-source
-   (default #f)))
+   (default #f))
+  (extra-environment-variables
+   nar-herder-configuration-extra-environment-variables
+   (default '())))
 
 (define-record-type* <nar-herder-cached-compression-configuration>
   nar-herder-cached-compression-configuration
@@ -899,7 +906,8 @@ ca-certificates.crt file in the system profile."
              storage storage-limit storage-nar-removal-criteria
              ttl negative-ttl log-level
              cached-compressions cached-compression-min-uses
-             cached-compression-workers cached-compression-nar-source)
+             cached-compression-workers cached-compression-nar-source
+             extra-environment-variables)
 
     (unless (or mirror storage)
       (error "nar-herder: mirror or storage must be set"))
@@ -968,7 +976,8 @@ ca-certificates.crt file in the system profile."
                 #:environment-variables
                 `(,(string-append
                     "GUIX_LOCPATH=" #$glibc-utf8-locales "/lib/locale")
-                  "LC_ALL=en_US.utf8")
+                  "LC_ALL=en_US.utf8"
+                  #$@extra-environment-variables)
                 #:log-file "/var/log/nar-herder/server.log"))
       (stop #~(make-kill-destructor))))))
 

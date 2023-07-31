@@ -5,6 +5,7 @@
 ;;; Copyright © 2019 Andrew Miloradovsky <andrew@interpretmath.pw>
 ;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2022 Hunter Jozwiak <hunter.t.joz@gmail.com>
+;;; Copyright © 2023 Ivan Gankevich <igankevich@capybaramail.xyz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -92,66 +93,56 @@ terminals.")
 (define-public brltty
   (package
     (name "brltty")
-    (version "6.5")
+    (version "6.6")
     (source
      (origin
        (method url-fetch)
        (uri
         (string-append "https://brltty.app/archive/brltty-" version ".tar.gz"))
        (sha256
-        (base32 "1h62xzd5k0aaq2k4v3w93rizxnb8psvkxrlx62wr08ybwpspgp7z"))))
+        (base32 "1z54rin4zhg3294pq47gamzjy2c56zfkl07rx2qy2khlpyczds0k"))))
     (build-system glib-or-gtk-build-system)
     (arguments
-     `(#:tests? #f                      ; No target
-
-       ;; High parallelism may cause errors such as:
-       ;;  ranlib: ./libbrlapi_stubs.a: error reading brlapi_stubs.o: file truncated
-       #:parallel-build? #f
-
-       #:configure-flags
-       (list
-        (string-append "--with-libbraille="
-                       (assoc-ref %build-inputs "libbraille"))
-        (string-append "--with-espeak_ng="
-                       (assoc-ref %build-inputs "espeak-ng"))
-        (string-append "--with-espeak="
-                       (assoc-ref %build-inputs "espeak"))
-        (string-append "--with-flite="
-                       (assoc-ref %build-inputs "flite"))
-        ;; Required for RUNPATH validation.
-        (string-append "LDFLAGS=-Wl,-rpath="
-                       (assoc-ref %outputs "out")
-                       "/lib"))
-       #:make-flags
-       (list
-        (string-append "JAVA_JAR_DIR="
-                       (assoc-ref %outputs "out"))
-        (string-append "JAVA_JNI_DIR="
-                       (assoc-ref %outputs "out"))
-        (string-append "OCAML_DESTDIR="
-                       (assoc-ref %outputs "out")
-                       "/lib")
-        (string-append "PYTHON_PREFIX="
-                       (assoc-ref %outputs "out"))
-        "PYTHON_ROOT=/"
-        (string-append "TCL_DIR="
-                       (assoc-ref %outputs "out")
-                       "/lib")
-        "INSTALL_WRITABLE_DIRECTORY=no-thanks")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-errors
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "configure"
-               (("/sbin/ldconfig")
-                (which "true")))
-             ;; Make Python bindings use rpath.
-             (substitute* "Bindings/Python/setup.py.in"
-               (("extra_compile_args =")
-                (string-append "extra_link_args = ['-Wl,-rpath="
-                               (assoc-ref outputs "out")
-                               "/lib'], "
-                               "extra_compile_args = "))))))))
+     (list
+      #:tests? #f                ; no target
+      ;; High parallelism may cause errors such as:
+      ;;  ranlib: ./libbrlapi_stubs.a: error reading brlapi_stubs.o: file truncated
+      #:parallel-build? #f
+      #:configure-flags
+      #~(list
+         (string-append "--with-libbraille="
+                        #$(this-package-input "libbraille"))
+         (string-append "--with-espeak_ng="
+                        #$(this-package-input "espeak-ng"))
+         (string-append "--with-espeak="
+                        #$(this-package-input "espeak"))
+         (string-append "--with-flite="
+                        #$(this-package-input "flite"))
+         ;; Required for RUNPATH validation.
+         (string-append "LDFLAGS=-Wl,-rpath=" #$output "/lib"))
+      #:make-flags
+      #~(list
+         (string-append "JAVA_JAR_DIR=" #$output)
+         (string-append "JAVA_JNI_DIR=" #$output)
+         (string-append "OCAML_DESTDIR=" #$output "/lib")
+         (string-append "PYTHON_PREFIX=" #$output)
+         "PYTHON_ROOT=/"
+         (string-append "TCL_DIR=" #$output "/lib")
+         "INSTALL_WRITABLE_DIRECTORY=no-thanks")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-errors
+            (lambda _
+              (substitute* "configure"
+                (("/sbin/ldconfig")
+                 (which "true")))
+              ;; Make Python bindings use rpath.
+              (substitute* "Bindings/Python/setup.py.in"
+                (("extra_compile_args =")
+                 (string-append "extra_link_args = ['-Wl,-rpath="
+                                #$output
+                                "/lib'], "
+                                "extra_compile_args = "))))))))
     (native-inputs
      (list clisp
            python-cython
@@ -350,3 +341,38 @@ CONFIG_SPEAKUP=m
 CONFIG_SPEAKUP_SOFT=m
 @end itemize")
     (home-page "https://github.com/linux-speakup/espeakup")))
+
+(define-public mouseloupe
+  (package
+    (name "mouseloupe")
+    (version "0.6")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (string-append "mirror://sourceforge/" name "/" name "/v" version
+                            "/" name "-v" version ".tar.gz"))
+        (sha256 (base32 "0cvdkfakw7cix07j0c4iy10fkbqn6n8l1gr5dd3iy4f2d9bkza43"))))
+    (build-system gnu-build-system)
+    (arguments
+      `(#:tests? #f ; there are no tests
+        #:phases
+        (modify-phases %standard-phases
+          (delete 'configure)
+          (add-before 'build 'strtof
+            (lambda _
+              (substitute* "mouseloupe.c"
+                (("\\bstrtof\\b") "mouseloupe_strtof"))))
+          (replace 'install
+            (lambda _
+              (define out (assoc-ref %outputs "out"))
+              (install-file "mouseloupe" (string-append out "/bin"))
+              (install-file "mouseloupe.1.gz" (string-append out "/share/man/man1")))))))
+    (native-inputs
+      (list pkg-config))
+    (inputs
+      (list libx11 libxext libxcomposite libxdamage libxrender))
+    (synopsis "Screen magnifier tool for people with low vision")
+    (description "MouseLoupe is a kind of magnifying glass combined with the mouse pointer
+which allows an easy and pleasant web navigation.")
+    (home-page "https://sourceforge.net/projects/mouseloupe/")
+    (license license:gpl2+)))

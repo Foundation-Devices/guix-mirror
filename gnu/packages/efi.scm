@@ -30,6 +30,7 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix build-system gnu)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix utils)
@@ -96,14 +97,10 @@ environment presented by Intel's EFI.")
 information.")
       (license license:bsd-2))))
 
-(define-public efi_analyzer
-  ;; For a short while the package name contained an underscore.
-  (deprecated-package "efi_analyzer" efi-analyzer))
-
 (define-public sbsigntools
   (package
     (name "sbsigntools")
-    (version "0.9.4")
+    (version "0.9.5")
     (source
      (origin
        (method git-fetch)
@@ -114,34 +111,32 @@ information.")
          (recursive? #t)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1y76wy65y6k10mjl2dm5hb5ms475alr4s080xzj8y833x01xvf3m"))))
+        (base32 "060n6w0dx1mrilhdv482ncckanqz6pdv53piimiki0bm15d2fcp4"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-more-shebangs
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "lib/ccan.git/tools/create-ccan-tree"
-              (("#!/bin/bash")
-               (string-append "#!"
-                              (assoc-ref inputs "bash")
-                              "/bin/bash")))
-             #t))
-         (add-after 'unpack 'patch
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (substitute* '("configure.ac"
-                            "tests/Makefile.am")
-              (("/usr/include/efi")
-               (string-append (assoc-ref inputs "gnu-efi")
-                              "/include/efi"))
-              (("/usr/lib/gnuefi")
-               (string-append (assoc-ref inputs "gnu-efi")
-                              "/lib")))
-             #t))
-         (add-after 'unpack 'setenv
-           (lambda _
-             (setenv "CC" "gcc")
-             #t)))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-more-shebangs
+            (lambda* (#:key inputs native-inputs #:allow-other-keys)
+              (substitute* "lib/ccan.git/tools/create-ccan-tree"
+                (("#!/bin/bash")
+                 (string-append "#!"
+                                (search-input-file (or native-inputs inputs)
+                                                   "/bin/bash"))))))
+          (add-after 'unpack 'patch
+            (lambda _
+              (substitute* '("configure.ac"
+                             "tests/Makefile.am")
+                (("/usr/include/efi")
+                 (string-append #$(this-package-input "gnu-efi")
+                                "/include/efi"))
+                (("/usr/lib/gnuefi")
+                 (string-append #$(this-package-input "gnu-efi")
+                                "/lib")))))
+          (add-after 'unpack 'setenv
+            (lambda _
+              (setenv "CC" #$(cc-for-target)))))))
     (native-inputs
      (list autoconf
            automake
@@ -150,9 +145,9 @@ information.")
            pkg-config
            util-linux)) ; getopt
     (inputs
-     `(("gnu-efi" ,gnu-efi)
-       ("libuuid" ,util-linux "lib")
-       ("openssl" ,openssl)))
+     (list gnu-efi
+           `(,util-linux "lib") ; libuuid
+           openssl))
     (synopsis "EFI signing tools")
     (description "This package provides tools for signing EFI binaries.")
     (home-page "https://git.kernel.org/pub/scm/linux/kernel/git/jejb/sbsigntools.git/")

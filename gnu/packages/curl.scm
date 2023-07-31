@@ -11,9 +11,10 @@
 ;;; Copyright © 2019, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2020 Dale Mellor <guix-devel-0brg6b@rdmp.org>
-;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2020, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2021 Jean-Baptiste Volatier <jbv@pm.me>
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
+;;; Copyright © 2023 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -124,7 +125,22 @@
                 ;; The top-level "make check" does "make -C tests quiet-test", which
                 ;; is too quiet.  Use the "test" target instead, which is more
                 ;; verbose.
-                (invoke "make" "-C" "tests" "test")))))))
+                (invoke "make" "-C" "tests" "test"))))
+          #$@(if (system-hurd?)
+                 #~((add-after 'unpack 'skip-tests
+                      (lambda _
+                        (let ((port (open-file "tests/data/DISABLED" "a")))
+                          (display "526\n" port)
+                          (display "527\n" port)
+                          (display "532\n" port)
+                          (display "533\n" port)
+                          (display "537\n" port)
+                          (display "546\n" port)
+                          (display "575\n" port)
+                          (display "1021\n" port)
+                          (display "1501\n" port)
+                          (close port)))))
+                 #~()))))
     (synopsis "Command line tool for transferring data with URL syntax")
     (description
      "curl is a command line tool for transferring data with URL syntax,
@@ -137,9 +153,6 @@ tunneling, and so on.")
     (license (license:non-copyleft "file://COPYING"
                                    "See COPYING in the distribution."))
     (home-page "https://curl.haxx.se/")))
-
-(define-public curl-minimal
-  (deprecated-package "curl-minimal" curl))
 
 (define-public curl-ssh
   (package/inherit curl
@@ -372,8 +385,10 @@ asynchronously via cURL in C++.")
     (build-system go-build-system)
     (arguments
      `(#:import-path "github.com/rs/curlie"))
-    (inputs
-     (list curl go-golang-org-x-crypto go-golang-org-x-sys))
+    (inputs (list curl
+                  go-golang-org-x-crypto
+                  go-golang-org-x-sys
+                  go-golang-org-x-term))
     (home-page "https://curlie.io")
     (synopsis "The power of curl, the ease of use of httpie")
     (description "If you like the interface of HTTPie but miss the features of
@@ -382,3 +397,37 @@ curl, curlie is what you are searching for.  Curlie is a frontend to
 on features and performance.  All @code{curl} options are exposed with syntax
 sugar and output formatting inspired from @code{httpie}.")
     (license license:expat)))
+
+(define-public trurl
+  (package
+    (name "trurl")
+    (version "0.8")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/curl/trurl")
+             (commit (string-append name "-" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "19zdpjp01n7s7zgixq3irqfnx66dmqf8zyp0dlb6y7ga673lqwi8"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:test-target "test"
+      #:make-flags #~(list (string-append "CC=" #$(cc-for-target))
+                           (string-append "PREFIX=" #$output))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure))))
+    (native-inputs (list python))
+    (inputs (list curl))
+    (home-page "https://curl.se/trurl/")
+    (synopsis "Command line tool for URL parsing and manipulation")
+    (description "@code{trurl} is a command line tool that parses and
+manipulates URLs, designed to help shell script authors everywhere.
+
+It is similar in spirit to @code{tr}.  Here, @code{tr} stands for translate or
+transpose.")
+   (license (license:non-copyleft "file://COPYING"
+                                  "See COPYING in the distribution."))))

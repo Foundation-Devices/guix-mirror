@@ -142,13 +142,13 @@ to the @dfn{don't repeat yourself} (DRY) principle.")
 (define-public python-django-3.2
   (package
     (inherit python-django-4.0)
-    (version "3.2.15")
+    (version "3.2.18")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "Django" version))
               (sha256
                (base32
-                "0asqhsw73555wjnvd7769b89q9w96q2k95mcr634mw92m2qk86gp"))))
+                "1fikqpf75zjlx7dgdrrrz4212cajp6rl79rw0zzlzdifi7z8s808"))))
     (native-search-paths '())           ;no need for TZDIR
     (propagated-inputs
      (modify-inputs (package-propagated-inputs python-django-4.0)
@@ -800,14 +800,14 @@ entries, photos, book chapters, or anything else.")
 (define-public python-django-pipeline
   (package
     (name "python-django-pipeline")
-    (version "2.0.5")
+    (version "2.1.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "django-pipeline" version))
        (sha256
         (base32
-         "19vrbd5s12qw4qlg5n8ldv7zz2rs5y2sdid1i7lvgp92m71dayvc"))))
+         "194j8xihx5yr1yfrssdy6nxmx8yc999pz2ai9lg83l7izmbcx9in"))))
     (build-system python-build-system)
     (arguments
      '(#:phases
@@ -823,8 +823,10 @@ entries, photos, book chapters, or anything else.")
                (setenv "DJANGO_SETTINGS_MODULE" "tests.settings")
                (invoke "django-admin" "test" "tests"
                        "--pythonpath=.")))))))
-    (propagated-inputs
-     (list python-css-html-js-minify python-django python-slimit
+    (native-inputs
+     (list python-django
+           python-setuptools-scm
+           python-css-html-js-minify
            python-jsmin))
     (home-page
      "https://github.com/jazzband/django-pipeline")
@@ -868,13 +870,13 @@ support, and optional data-URI image and font embedding.")
 (define-public python-django-rq
   (package
     (name "python-django-rq")
-    (version "2.3.2")
+    (version "2.7.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "django-rq" version))
               (sha256
                (base32
-                "0lksnjn3q3f7y72bj2yr8870w28a5b6x0vjnd9nhpq2ah6xfz6pf"))))
+                "0aw0fi0lg80qgdp9fhjbnlhvfh2p09rgy1nj6hxpyhi37kihni2h"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -882,7 +884,7 @@ support, and optional data-URI image and font embedding.")
          (replace 'check
            (lambda _
              (invoke "redis-server" "--daemonize" "yes")
-             (invoke "django-admin.py" "test" "django_rq"
+             (invoke "django-admin" "test" "django_rq"
                      "--settings=django_rq.tests.settings"
                      "--pythonpath=."))))))
     (native-inputs

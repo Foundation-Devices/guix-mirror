@@ -35,9 +35,11 @@
 ;;; Copyright © 2022 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2022 Jai Vetrivelan <jaivetrivelan@gmail.com>
 ;;; Copyright © 2022 Jack Hill <jackhill@jackhill.us>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Giovanni Biscuolo <g@xelera.eu>
 ;;; Copyright © 2023 Giacomo Leidi <goodoldpaul@autistici.org>
+;;; Copyright © 2023 Yovan Naumovski <yovan@gorski.stream>
+;;; Copyright © 2023 gemmaro <gemmaro.dev@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -209,43 +211,29 @@ XMPP-based sessions.")
     (build-system meson-build-system)
     (outputs '("out" "doc"))
     (arguments
-     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-ncurses-path
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "meson.build"
-               (("'/usr'")
-                (string-append "'"
-                               (assoc-ref inputs "ncurses")
-                               "'")))))
-         (add-before 'configure 'patch-docbook-xml
-           (lambda* (#:key inputs #:allow-other-keys)
-             (with-directory-excursion "doc"
-               (substitute* "libgnt-docs.xml"
-                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
-                  (string-append (assoc-ref inputs "docbook-xml")
-                                 "/xml/dtd/docbook/"))))))
-         (add-after 'install 'move-doc
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (doc (assoc-ref outputs "doc")))
-               (mkdir-p (string-append doc "/share"))
-               (rename-file
-                (string-append out "/share/gtk-doc")
-                (string-append doc "/share/gtk-doc"))))))))
+     (list #:glib-or-gtk? #t         ; To wrap binaries and/or compile schemas
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'patch-ncurses-path
+                 (lambda* (#:key inputs #:allow-other-keys)
+                   (substitute* "meson.build"
+                     (("'/usr'")
+                      (string-append "'" #$(this-package-input "ncurses")
+                                     "'")))))
+               (add-after 'install 'move-doc
+                 (lambda _
+                   (mkdir-p (string-append #$output:doc "/share"))
+                   (rename-file
+                    (string-append #$output "/share/gtk-doc")
+                    (string-append #$output:doc "/share/gtk-doc")))))))
     (native-inputs
-     `(("docbook-xml" ,docbook-xml-4.1.2)
-       ("glib:bin" ,glib "bin")
-       ("gobject-introspection" ,gobject-introspection)
-       ("gtk-doc" ,gtk-doc)
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     (list ncurses))
-    (propagated-inputs
-     `(("glib" ,glib)
-       ("libxml" ,libxml2)
-       ("python" ,python-2)))
+     (list docbook-xml-4.1.2
+           `(,glib "bin")
+           gobject-introspection
+           gtk-doc
+           pkg-config))
+    (inputs (list ncurses))
+    (propagated-inputs (list glib libxml2 python-2))
     (synopsis "GLib Ncurses Toolkit")
     (description "GNT is an ncurses toolkit for creating text-mode graphical
 user interfaces in a fast and easy way.  It is based on GLib and ncurses.")
@@ -448,7 +436,8 @@ TCP sessions from existing clients.")
            python-pygments
            python-pyinotify
            python-qrcode
-           python-slixmpp))
+           python-slixmpp
+           python-typing-extensions))
     (synopsis "Console Jabber/XMPP Client")
     (description "Poezio is a free console XMPP client (the protocol on which
 the Jabber IM network is built).
@@ -473,6 +462,12 @@ powerful, standard and open protocol.")
                            version ".tar.gz"))
        (sha256
         (base32 "1x8rliydhbibmzwdbyr7pd7n87m2jmxnqkpvaalnf4154hj1hfwb"))
+       (modules '((guix build utils)))
+       (snippet
+        ;; Add missing #include that causes a build failure with glibc 2.35.
+        #~(substitute* "tests/regression/client/client.c"
+            (("_GNU_SOURCE" all)
+             (string-append all "\n#include <sys/socket.h>\n"))))
        (patches
         (search-patches "libotr-test-auth-fix.patch"))))
     (build-system gnu-build-system)
@@ -1232,6 +1227,7 @@ of xmpppy.")
            python-css-parser
            python-dbus
            python-gssapi
+           python-idna
            python-keyring
            python-nbxmpp
            python-packaging
@@ -1321,7 +1317,7 @@ Encryption to Gajim.")
 (define-public dino
   (package
     (name "dino")
-    (version "0.4.0")
+    (version "0.4.2")
     (source
      (origin
        (method url-fetch)
@@ -1329,7 +1325,7 @@ Encryption to Gajim.")
         (string-append "https://github.com/dino/dino/releases/download/v"
                        version "/dino-" version ".tar.gz"))
        (sha256
-        (base32 "115p7mjk0q68nvv8asrm6hsv0dzsz7hy2bnvhwhxmcfbilr8fq68"))))
+        (base32 "1vbyrnivibsn4jzmfb6sfq5fxhb0xh1cnhgcmg1rafq751q55cg1"))))
     (build-system cmake-build-system)
     (outputs '("out" "debug"))
     (arguments
@@ -1373,7 +1369,7 @@ Encryption to Gajim.")
            vala))
     (inputs
      (list adwaita-icon-theme
-           atk
+           at-spi2-core
            bash-minimal
            cairo
            librsvg
@@ -1461,14 +1457,14 @@ Qt-based XMPP library QXmpp.")
 (define-public prosody
   (package
     (name "prosody")
-    (version "0.12.2")
+    (version "0.12.3")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://prosody.im/downloads/source/"
                                   "prosody-" version ".tar.gz"))
               (sha256
                (base32
-                "05ma72wr6iypr62vq748jhzx8i3lmgnsjshrx6w0z7sg24jfhqmn"))))
+                "0091vc0v8xnxkpdi4qpy4dirn92y4pa09q1qssi40q7l3w1hvnim"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ;tests require "busted"
@@ -2332,7 +2328,7 @@ QMatrixClient project.")
      (list boost
            coeurl
            curl
-           json-modern-cxx
+           nlohmann-json
            libevent
            libsodium
            olm
@@ -2351,7 +2347,7 @@ for the Matrix protocol.  It is built on to of @code{Boost.Asio}.")
 (define-public nheko
   (package
     (name "nheko")
-    (version "0.11.1")
+    (version "0.11.3")
     (source
      (origin
        (method git-fetch)
@@ -2360,7 +2356,7 @@ for the Matrix protocol.  It is built on to of @code{Boost.Asio}.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0j5y5jfimmflynrg7003wr7i75b102cpv3afyp3j7z69b2apkhys"))
+        (base32 "0yjbxyba87nkpjmql7s6nv2r2i9s956zgwlfhdi4jjg96v2rgmnr"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -2415,7 +2411,7 @@ for the Matrix protocol.  It is built on to of @code{Boost.Asio}.")
            gst-plugins-base
            gst-plugins-bad              ; sdp & webrtc for voip
            gst-plugins-good-qt          ; rtpmanager for voip
-           json-modern-cxx
+           nlohmann-json
            libevent
            libnice                      ; for voip
            olm
@@ -2654,21 +2650,6 @@ support for high performance Telegram Bot creation.")
     (home-page "https://core.telegram.org/tdlib")
     (license license:boost1.0)))
 
-(define-public tdlib-1.8.0
-  (package
-    (inherit tdlib)
-    (name "tdlib-1.8.0")
-    (version "1.8.0")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/tdlib/td")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name "tdlib" version))
-              (sha256
-               (base32
-                "19psqpyh9a2kzfdhgqkirpif4x8pzy89phvi59dq155y30a3661q"))))))
-
 (define-public purple-mm-sms
   (package
     (name "purple-mm-sms")
@@ -2827,6 +2808,7 @@ validating international phone numbers.")
     (native-inputs
      (list gettext-minimal
            `(,glib "bin")
+           itstool
            pkg-config
            protobuf
            xorg-server-for-tests))
@@ -2857,7 +2839,7 @@ as well as on desktop platforms.  It's based on libpurple and ModemManager.")
 (define-public mosquitto
   (package
     (name "mosquitto")
-    (version "1.6.12")
+    (version "2.0.15")
     (source
      (origin
        (method url-fetch)
@@ -2865,10 +2847,10 @@ as well as on desktop platforms.  It's based on libpurple and ModemManager.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "1yq7y329baa1ly488rw125c3mvsnsa7kjkik602xv1xpkz8p73al"))))
+         "1ils0ckxz86gvr37k2gfl4q9gs12625dhhb7i6lcg49z5v9v2da7"))))
     (build-system cmake-build-system)
     (inputs
-     (list openssl))
+     (list openssl libxslt))
     (synopsis "Message broker")
     (description "This package provides Eclipse Mosquitto, a message broker
 that implements the MQTT protocol versions 5.0, 3.1.1 and 3.1.  Mosquitto
@@ -3106,7 +3088,13 @@ designed for experienced users.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0da1ki1v252avy27j6d7snnc0gyq0xa9fypm3qdmxhw2w79d6q36"))))
+         "0da1ki1v252avy27j6d7snnc0gyq0xa9fypm3qdmxhw2w79d6q36"))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin
+           ;; TODO: This is fixed upstream in later versions
+           (substitute* "zulip/tests/test_default_arguments.py"
+             (("optional arguments:") "options:"))))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -3274,14 +3262,14 @@ notifications.")
 (define-public pounce
   (package
     (name "pounce")
-    (version "3.0")
+    (version "3.1")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://git.causal.agency/pounce/snapshot/pounce-"
                            version ".tar.gz"))
        (sha256
-        (base32 "1w4x34bspkqvk9p7bfj0zmvmbzvxb7lxrrr3g6lrfdj9f3qzfxpp"))))
+        (base32 "0kk0jrfiwfaybr0i5xih3b0yd4i6v3bz866a7xal1j8wddalbwlp"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ;there are no tests
@@ -3293,7 +3281,7 @@ notifications.")
      (list pkg-config universal-ctags))
     (inputs
      (list libressl))
-    (home-page "https://code.causal.agency/june/pounce")
+    (home-page "https://git.causal.agency/pounce")
     (synopsis "Simple multi-client TLS-only IRC bouncer")
     (description
      "@command{pounce} is a multi-client, TLS-only IRC bouncer.  It maintains
@@ -3404,7 +3392,7 @@ Weechat communicate over the Matrix protocol.")
              (when tests?
                (invoke "pytest")))))))
     (inputs
-     (list python-websocket-client))
+     (list python-mock python-websocket-client))
     (native-inputs
      (list python-pytest))
     (home-page "https://github.com/wee-slack/wee-slack")

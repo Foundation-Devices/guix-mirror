@@ -17,6 +17,7 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (gnu services vnc)
+  #:use-module (gnu packages admin)
   #:use-module (gnu packages vnc)
   #:use-module ((gnu services) #:hide (delete))
   #:use-module (gnu system shadow)
@@ -191,7 +192,9 @@ CONFIG, a <xvnc-configuration> object."
          (name "xvnc")
          (group "xvnc")
          (system? #t)
-         (comment "User for Xvnc server"))))
+         (comment "User for Xvnc server")
+         (home-directory "/var/empty")
+         (shell (file-append shadow "/sbin/nologin")))))
 
 (define (xvnc-shepherd-service config)
   "Return a <shepherd-service> for Xvnc with CONFIG."
@@ -225,6 +228,7 @@ CONFIG, a <xvnc-configuration> object."
                        ,@(if ipv6-socket
                              (list (endpoint ipv6-socket))
                              '()))
+                     #:requirements '#$requirement
                      #:user "xvnc"
                      #:group "xvnc"))
                 #~(make-forkexec-constructor

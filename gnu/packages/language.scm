@@ -4,8 +4,10 @@
 ;;; Copyright © 2018 Nikita <nikita@n0.is>
 ;;; Copyright © 2019 Alex Vong <alexvong1995@gmail.com>
 ;;; Copyright © 2020 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2020 Julien Lepiller <julien@lepiller.eu>
+;;; Copyright © 2020, 2022 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2022 Milran <milranmike@protonmail.com>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2023 gemmaro <gemmaro.dev@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -28,6 +30,8 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages audio)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages compression)
+  #:use-module (gnu packages dbm)
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages emacs)
   #:use-module (gnu packages freedesktop)
@@ -48,6 +52,8 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages perl-check)
   #:use-module (gnu packages qt)
+  #:use-module (gnu packages ruby)
+  #:use-module (gnu packages scheme)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages serialization)
   #:use-module (gnu packages swig)
@@ -58,12 +64,14 @@
   #:use-module (gnu packages xorg)
   #:use-module (guix packages)
   #:use-module (guix build-system cmake)
+  #:use-module (guix build-system copy)
   #:use-module (guix build-system glib-or-gtk)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system perl)
   #:use-module (guix build-system qt)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix utils))
 
@@ -86,115 +94,100 @@
     (build-system glib-or-gtk-build-system)
     (outputs '("out" "gtk" "qt" "doc"))
     (arguments
-     `(#:imported-modules
-       (,@%glib-or-gtk-build-system-modules
-        (guix build cmake-build-system)
-        (guix build qt-build-system)
-        (guix build qt-utils))
-       #:modules
-       ((guix build glib-or-gtk-build-system)
-        ((guix build qt-build-system)
-         #:prefix qt:)
-        (guix build utils))
-       #:configure-flags
-       (list
-        "--with-im-config-data"
-        "--with-imsettings-data"
-        (string-append "--with-html-dir="
-                       (assoc-ref %outputs "doc")
-                       "/share/gtk-doc/html"))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'disable-qt4
-           (lambda _
-             (substitute* '("configure.ac" "modules/clients/Makefile.am")
-               (("\\[QtGui\\]")
-                "[Qt5Gui]")
-               ((" qt4")
-                ""))
-             #t))
-         (add-after 'disable-qt4 'patch-flags
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "configure.ac"
-               (("-Werror")
-                "-Wno-error"))
-             #t))
-         (add-after 'patch-flags 'patch-docbook-xml
-           (lambda* (#:key inputs #:allow-other-keys)
-             (with-directory-excursion "docs"
-               (substitute* "nimf-docs.xml"
-                 (("http://www.oasis-open.org/docbook/xml/4.3/")
-                  (string-append (assoc-ref inputs "docbook-xml-4.3")
-                                 "/xml/dtd/docbook/"))))
-             #t))
-         (add-after 'patch-docbook-xml 'patch-paths
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (substitute* "configure.ac"
-               (("/usr/share/anthy/anthy.dic")
-                (search-input-file inputs "/share/anthy/anthy.dic")))
-             (substitute* "configure.ac"
-               (("/usr/bin:\\$GTK3_LIBDIR/libgtk-3-0")
-                (string-append (assoc-ref inputs "gtk+:bin")
-                               "/bin:$GTK3_LIBDIR/libgtk-3-0"))
-               (("/usr/bin:\\$GTK2_LIBDIR/libgtk2.0-0")
-                (string-append (assoc-ref inputs "gtk+-2:bin")
-                               "/bin:$GTK2_LIBDIR/libgtk2.0-0")))
-             (substitute* "modules/clients/gtk/Makefile.am"
-               (("\\$\\(GTK3_LIBDIR\\)")
-                (string-append (assoc-ref outputs "gtk")
-                               "/lib"))
-               (("\\$\\(GTK2_LIBDIR\\)")
-                (string-append (assoc-ref outputs "gtk")
-                               "/lib")))
-             (substitute* "modules/clients/qt5/Makefile.am"
-               (("\\$\\(QT5_IM_MODULE_DIR\\)")
-                (string-append (assoc-ref outputs "qt")
-                               "/lib/qt5/plugins/inputmethods")))
-             (substitute* '("bin/nimf-settings/Makefile.am"
-                            "data/apparmor-abstractions/Makefile.am"
-                            "data/Makefile.am" "data/im-config/Makefile.am"
-                            "data/imsettings/Makefile.am")
-               (("/etc")
-                (string-append (assoc-ref outputs "out")
-                               "/etc"))
-               (("/usr/share")
-                (string-append (assoc-ref outputs "out")
-                               "/share")))
-             #t))
-         (add-after 'install 'qt-wrap
-           (assoc-ref qt:%standard-phases 'qt-wrap)))))
+     (list
+      #:imported-modules `(,@%glib-or-gtk-build-system-modules
+                           (guix build cmake-build-system)
+                           (guix build qt-build-system)
+                           (guix build qt-utils))
+      #:modules '((guix build glib-or-gtk-build-system)
+                  ((guix build qt-build-system)
+                   #:prefix qt:)
+                  (guix build utils))
+      #:configure-flags
+      #~(list "--with-im-config-data"
+              "--with-imsettings-data"
+              (string-append "--with-html-dir=" #$output:doc
+                             "/share/gtk-doc/html"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'disable-qt4
+            (lambda _
+              (substitute* '("configure.ac" "modules/clients/Makefile.am")
+                (("\\[QtGui\\]")
+                 "[Qt5Gui]")
+                ((" qt4")
+                 ""))))
+          (add-after 'disable-qt4 'patch-flags
+            (lambda _
+              (substitute* "configure.ac"
+                (("-Werror")
+                 "-Wno-error"))))
+          (add-after 'patch-flags 'patch-paths
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "configure.ac"
+                (("/usr/share/anthy/anthy.dic")
+                 (search-input-file inputs "/share/anthy/anthy.dic")))
+              (substitute* "configure.ac"
+                ;; Do not provide the PATH argument to AC_PATH_PROG; so that
+                ;; the needed binaries are looked from PATH (the default
+                ;; behavior).
+                (("\\[/usr/bin:\\$GTK3_LIBDIR/libgtk-3-0]")
+                 "")
+                (("\\[/usr/bin:\\$GTK2_LIBDIR/libgtk2.0-0]")
+                 "")
+                (("\\[/usr/bin:\\$GTK3_LIBDIR/libgtk-3-0:\
+\\$GTK2_LIBDIR/libgtk2.0-0]")
+                 ""))
+              (substitute* "modules/clients/gtk/Makefile.am"
+                (("\\$\\(GTK3_LIBDIR\\)")
+                 (string-append #$output:gtk "/lib"))
+                (("\\$\\(GTK2_LIBDIR\\)")
+                 (string-append #$output:gtk "/lib")))
+              (substitute* "modules/clients/qt5/Makefile.am"
+                (("\\$\\(QT5_IM_MODULE_DIR\\)")
+                 (string-append #$output:qt
+                                "/lib/qt5/plugins/inputmethods")))
+              (substitute* '("bin/nimf-settings/Makefile.am"
+                             "data/apparmor-abstractions/Makefile.am"
+                             "data/Makefile.am" "data/im-config/Makefile.am"
+                             "data/imsettings/Makefile.am")
+                (("/etc")
+                 (string-append #$output "/etc"))
+                (("/usr/share")
+                 (string-append #$output "/share")))))
+          (add-after 'install 'qt-wrap
+            (assoc-ref qt:%standard-phases 'qt-wrap)))))
     (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("docbook-xml-4.3" ,docbook-xml-4.3)
-       ("gettext" ,gettext-minimal)
-       ("gobject-introspection" ,gobject-introspection)
-       ("gtk+-2:bin" ,gtk+-2 "bin")
-       ("gtk+:bin" ,gtk+ "bin")
-       ("gtk-doc" ,gtk-doc/stable)
-       ("intltool" ,intltool)
-       ("libtool" ,libtool)
-       ("perl" ,perl)
-       ("pkg-config" ,pkg-config)
-       ("which" ,which)))
+     (list autoconf
+           automake
+           docbook-xml-4.3
+           gettext-minimal
+           gobject-introspection
+           `(,gtk+-2 "bin")
+           `(,gtk+ "bin")
+           gtk-doc/stable
+           intltool
+           libtool
+           perl
+           pkg-config
+           which))
     (inputs
-     `(("anthy" ,anthy)
-       ("appindicator" ,libappindicator)
-       ("gtk+-2" ,gtk+-2)
-       ("gtk+" ,gtk+)
-       ("hangul" ,libhangul)
-       ("m17n-db" ,m17n-db)
-       ("m17n-lib" ,m17n-lib)
-       ("qtbase" ,qtbase-5)
-       ("rime" ,librime)
-       ("rsvg" ,librsvg)
-       ("wayland" ,wayland)
-       ("wayland-protocols" ,wayland-protocols)
-       ("x11" ,libx11)
-       ("xkbcommon" ,libxkbcommon)
-       ("xklavier" ,libxklavier)))
-    (propagated-inputs
-     (list glib))
+     (list anthy
+           libappindicator
+           gtk+-2
+           gtk+
+           libhangul
+           m17n-db
+           m17n-lib
+           qtbase-5
+           librime
+           librsvg
+           wayland
+           wayland-protocols
+           libx11
+           libxkbcommon
+           libxklavier))
+    (propagated-inputs (list glib))
     (synopsis "Lightweight input method framework")
     (description "Nimf is a lightweight, fast and extensible input method
 framework.  This package provides a fork of the original nimf project, that
@@ -928,3 +921,257 @@ and manipulation.")
     (description
      "libskk is a library to deal with Japanese kana-to-kanji conversion method.")
     (license license:gpl3+)))
+
+(define-public skktools
+  (package
+    (name "skktools")
+    (version "1.3.4")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/skk-dev/skktools")
+                    (commit (string-append "skktools-"
+                                           (string-replace-substring version
+                                                                     "." "_")))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1zway8jsm18279xq8zlpr84iqiw373x3v0ysay74n9bjqxbl234a"))
+              (modules '((guix build utils)))
+              (snippet '(begin
+                          ;; Maybe requires jgawk
+                          (delete-file "unannotation.awk")
+                          (delete-file "convert2skk/edict2skk.awk")
+                          (delete-file "convert2skk/wnn2skk.awk")
+                          (delete-file "convert2skk/wnn2skk.sed") ;Used with wnn2skk.awk
+                          (delete-file "convert2skk/wnn2skk.sh") ;Depends on 2 files above
+                          ;; Requires jperl
+                          (delete-file "convert2skk/alpha-kana.pl")
+                          (delete-file "convert2skk/atok2skk.pl")
+                          (delete-file "convert2skk/read.me") ;Readme for jperl scripts
+                          (delete-file "convert2skk/wx2skk.pl")
+                          (delete-file-recursively "dbm")
+                          ;; Needs a lot requirements
+                          (delete-file "convert2skk/doc2skk.sh")
+                          ;; Obsolete scripts
+                          (delete-file-recursively "convert2skk/obsolete")
+                          ;; Contains syntax error
+                          (delete-file "convert2skk/pubdic2list")))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:test-target "test"
+       #:modules ((guix build gnu-build-system)
+                  ((guix build emacs-build-system)
+                   #:prefix emacs:)
+                  (guix build utils)
+                  (guix build emacs-utils))
+       #:imported-modules (,@%gnu-build-system-modules
+                           (guix build emacs-build-system)
+                           (guix build emacs-utils))
+       #:phases (modify-phases %standard-phases
+                  (add-before 'install 'fix-library-loading
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (for-each (lambda (path)
+                                  (substitute* path
+                                    (("require 'skkdictools'")
+                                     "require_relative 'skkdictools'")))
+                                (list "filters/annotation-filter.rb"
+                                      "filters/asayaKe.rb"
+                                      "filters/complete-numerative.rb"
+                                      "filters/conjugation.rb"
+                                      "filters/make-tankan-dic.rb"))))
+                  (add-after 'install 'install-scripts
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((share (string-append (assoc-ref outputs "out")
+                                                  "/share/skktools")))
+                        (install-file "filters/skkdictools.rb" share)
+                        (for-each (lambda (file)
+                                    (invoke "chmod" "755" file)
+                                    (install-file file share))
+                                  (append (find-files "." "\\.rb$")
+                                          (find-files "." "\\.scm$")
+                                          (find-files "." "\\.py$")
+                                          (find-files "convert2skk" "\\.pl")
+                                          (find-files "convert2skk" "\\.rb")
+                                          (list "convert2skk/adddummy"
+                                                "convert2skk/list2skk"
+                                                "convert2skk/removedummy"
+                                                "convert2skk/skk2list")
+                                          (find-files "filters" "\\.rb$"))))))
+                  ;; Install and make autoloads for skk-xml.el.
+                  (add-after 'install 'install-emacs-files
+                    (assoc-ref emacs:%standard-phases
+                               'install))
+                  (add-after 'install-emacs-files 'compile-emacs-files
+                    (assoc-ref emacs:%standard-phases
+                               'build))
+                  (add-after 'compile-emacs-files 'make-autoloads
+                    (assoc-ref emacs:%standard-phases
+                               'make-autoloads))
+                  (add-after 'install 'install-docs
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((doc (string-append (assoc-ref outputs "out")
+                                                "/share/doc/"
+                                                ,name "-"
+                                                ,version)))
+                        (install-file "ChangeLog" doc)
+                        (for-each (lambda (file)
+                                    (install-file file doc))
+                                  (append (find-files "READMEs")))
+                        (copy-file "filters/README.md"
+                                   (string-append doc "/README.filters.md"))
+                        (copy-file "convert2skk/README.md"
+                                   (string-append doc "/README.convert2skk.md")))))
+                  (add-after 'wrap-scripts 'check-scripts
+                    ;; Skipped tests for:
+                    ;; * skk2cdb.py: Requires cdb file
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((out (string-append (assoc-ref outputs "out")
+                                                "/share/skktools")))
+                        (for-each (lambda (args)
+                                    (apply invoke
+                                           (string-append out "/"
+                                                          (car args))
+                                           (cdr args)))
+                                  '(("abbrev-convert.rb")
+                                    ("abbrev-simplify-keys.rb")
+                                    ("adddummy")
+                                    ("annotation-filter.rb")
+                                    ("aozora2skk.rb")
+                                    ("asayaKe.rb")
+                                    ("canna2skk.rb" "/dev/null")
+                                    ("chasen2skk.rb")
+                                    ("complete-numerative.rb")
+                                    ("conjugation.rb")
+                                    ("ctdicconv.rb")
+                                    ("dic-it2skk.rb" "/dev/null")
+                                    ("ipadic2skk.rb")
+                                    ("list2skk")
+                                    ("make-tankan-dic.rb")
+                                    ("prime2skk.rb")
+                                    ("removedummy")
+                                    ("saihenkan.rb")
+                                    ("skk2list")
+                                    ("/skkdic-diff.scm" "/dev/null"
+                                     "/dev/null")
+                                    ("skk-wordpicker.rb")))))))))
+    (native-inputs (list
+                    ;; for skkdic-expr2
+                    pkg-config
+                    ;; for installing Emacs Lisp files
+                    emacs-minimal))
+    (inputs (list bdb-4.8
+                  glib ;for skkdic-expr2
+                  ;; For scripts
+                  gauche
+                  perl
+                  python-2
+                  ruby))
+    (home-page "https://github.com/skk-dev/skktools")
+    (synopsis "SKK dictionary maintenance tools")
+    (description
+     "The skktools are SKK dictionary maintenance tools.  This includes
+commands such as @command{skkdic-count}, @command{skkdic-expr}, and
+@command{skkdic-sort}.")
+    (license license:gpl2+)))
+
+(define-public mecab
+  (package
+    (name "mecab")
+    (version "0.996")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/taku910/mecab")
+                     ;; latest commit
+                     (commit "046fa78b2ed56fbd4fac312040f6d62fc1bc31e3")))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1hdv7rgn8j0ym9gsbigydwrbxa8cx2fb0qngg1ya15vvbw0lk4aa"))
+              (patches
+                (search-patches
+                  "mecab-variable-param.patch"))))
+    (build-system gnu-build-system)
+    (native-search-paths
+      (list (search-path-specification
+              (variable "MECAB_DICDIR")
+              (separator #f)
+              (files '("lib/mecab/dic")))))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'chdir
+           (lambda _
+             (chdir "mecab")))
+         (add-before 'build 'add-mecab-dicdir-variable
+           (lambda _
+             (substitute* "mecabrc.in"
+               (("dicdir = .*")
+                "dicdir = $MECAB_DICDIR"))
+             (substitute* "mecab-config.in"
+               (("echo @libdir@/mecab/dic")
+                "if [ -z \"$MECAB_DICDIR\" ]; then
+  echo @libdir@/mecab/dic
+else
+  echo \"$MECAB_DICDIR\"
+fi")))))))
+    (inputs (list libiconv))
+    (home-page "https://taku910.github.io/mecab")
+    (synopsis "Morphological analysis engine for texts")
+    (description "Mecab is a morphological analysis engine developped as a
+collaboration between the Kyoto university and Nippon Telegraph and Telephone
+Corporation.  The engine is independent of any language, dictionary or corpus.")
+    (license (list license:gpl2+ license:lgpl2.1+ license:bsd-3))))
+
+(define-public mecab-ipadic
+  (package
+    (name "mecab-ipadic")
+    (version "2.7.0")
+    (source (package-source mecab))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags
+       (list (string-append "--with-dicdir=" (assoc-ref %outputs "out")
+                            "/lib/mecab/dic")
+             "--with-charset=utf8")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'chdir
+           (lambda _
+             (chdir "mecab-ipadic")))
+         (add-before 'configure 'set-mecab-dir
+           (lambda* (#:key outputs #:allow-other-keys)
+             (setenv "MECAB_DICDIR" (string-append (assoc-ref outputs "out")
+                                                   "/lib/mecab/dic")))))))
+    (native-inputs (list mecab)); for mecab-config
+    (home-page "https://taku910.github.io/mecab")
+    (synopsis "Dictionary data for MeCab")
+    (description "This package contains dictionnary data derived from
+ipadic for use with MeCab.")
+    (license (license:non-copyleft "mecab-ipadic/COPYING"))))
+
+(define-public mecab-unidic
+  (package
+    (name "mecab-unidic")
+    (version "3.1.0")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://clrd.ninjal.ac.jp/unidic_archive/cwj/"
+                                  version "/unidic-cwj-" version ".zip"))
+              (sha256
+               (base32
+                "1z132p2q3bgchiw529j2d7dari21kn0fhkgrj3vcl0ncg2m521il"))))
+    (build-system copy-build-system)
+    (arguments
+     `(#:install-plan
+       '(("." "lib/mecab/dic"
+          #:include-regexp ("\\.bin$" "\\.def$" "\\.dic$" "dicrc")))))
+    (native-inputs (list unzip))
+    (home-page "https://clrd.ninjal.ac.jp/unidic/en/")
+    (synopsis "Dictionary data for MeCab")
+    (description "UniDic for morphological analysis is a dictionary for
+analysis with the morphological analyser MeCab, where the short units exported
+from the database are used as entries (heading terms).")
+    ;; triple-licensed (at the user’s choice)
+    (license (list license:gpl2+ license:lgpl2.1 license:bsd-3))))

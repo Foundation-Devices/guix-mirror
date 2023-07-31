@@ -29,25 +29,33 @@
 (define-module (gnu packages flashing-tools)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix download)
+  #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix utils)
   #:use-module (gnu packages)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system meson)
   #:use-module (guix build-system python)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages admin)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
+  #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages documentation)
   #:use-module (gnu packages elf)
+  #:use-module (gnu packages embedded)
   #:use-module (gnu packages flex)
   #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages gnupg)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages pciutils)
+  #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages libftdi)
@@ -58,7 +66,7 @@
 (define-public flashrom
   (package
     (name "flashrom")
-    (version "1.2")
+    (version "1.3.0")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -66,35 +74,22 @@
                     version ".tar.bz2"))
               (sha256
                (base32
-                "0ax4kqnh7kd3z120ypgp73qy1knz47l6qxsqzrfkd97mh5cdky71"))
-              (patches
-               (search-patches "flashrom-fix-building-on-aarch64.patch"))))
-    (build-system gnu-build-system)
-    (inputs (list dmidecode pciutils libusb libftdi))
-    (native-inputs (list pkg-config))
+                "08wn2j5vxzzvigflrjypgxxzjp32c76bshrlkzki5l6cad226lx0"))))
+    (build-system meson-build-system)
+    (inputs (list bash-minimal dmidecode pciutils libusb libftdi libjaylink))
+    (native-inputs (list cmocka pkg-config))
     (arguments
-     '(#:make-flags
-       (list "CC=gcc"
-             (string-append "PREFIX=" %output)
-             "CONFIG_ENABLE_LIBUSB0_PROGRAMMERS=no")
-       #:tests? #f                      ; no 'check' target
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure)            ; no configure script
-         (add-before 'build 'patch-exec-paths
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "dmi.c"
-               (("\"dmidecode\"")
-                (format #f "~S"
-                        (search-input-file inputs "/sbin/dmidecode"))))))
-         (add-before 'build 'patch-type-error
-           (lambda _
-             ;; See https://github.com/flashrom/flashrom/pull/133
-             (substitute* "libflashrom.c"
-               (("supported_boards\\[i\\].working = binfo\\[i\\].working")
-                "supported_boards[i].working = (enum flashrom_test_state)binfo[i].working")
-               (("supported_chipsets\\[i\\].status = chipset\\[i\\].status")
-                "supported_chipsets[i].status = (enum flashrom_test_state)chipset[i].status")))))))
+     (list #:configure-flags
+           #~'("-Dprogrammer=all")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'install 'wrap-program
+                 (lambda* (#:key inputs #:allow-other-keys)
+                   (let ((flashrom (string-append #$output "/sbin/flashrom")))
+                     (wrap-program flashrom
+                       `("PATH" ":" prefix
+                         (,(dirname (search-input-file
+                                     inputs "/sbin/dmidecode")))))))))))
     (home-page "https://flashrom.org/")
     (synopsis "Identify, read, write, erase, and verify ROM/flash chips")
     (description
@@ -483,30 +478,58 @@ Unifinished Extensible Firmware Interface (UEFI) images.")
 (define-public srecord
   (package
     (name "srecord")
-    (version "1.64")
+    (version "1.65.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/srecord/srecord/"
-                           version "/srecord-" version ".tar.gz"))
+                           (version-major+minor version) "/"
+                           "srecord-" version "-Source.tar.gz"))
        (sha256
-        (base32
-         "1qk75q0k5vzmm3932q9hqz2gp8n9rrdfjacsswxc02656f3l3929"))))
-    (build-system gnu-build-system)
+        (base32 "0i3n6g8i28xx8761nadm6p2nf9y31bywx0isyi0h9rawy5yd1hw1"))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin
+           ;; Fix building without Git.  Upstream tries to allow it but is buggy.
+           (substitute* "etc/configure.cmake"
+             (("\\(GIT_SHA1\\)") "(FALSE)"))
+           ;; It also tries to install the entire RUNTIME_DEPENDENCY_SET of
+           ;; each executable: libm, libc, libstc++ & more!  Get the cluehammer.
+           (substitute* "etc/packaging.cmake"
+             ((".*# Find standard library DLL.*" match)
+              "ENDFUNCTION()\n\nFUNCTION(WTF no)\n"))
+           ;; Now stop it from deliberately clobbering -DCMAKE_INSTALL_PREFIX.
+           (substitute* "CMakeLists.txt"
+             (("set\\(CMAKE_INSTALL_PREFIX") "#"))))))
+    (build-system cmake-build-system)
     (arguments
-     `(#:configure-flags
-       (list (string-append "SH="
-                            (assoc-ref %build-inputs "bash")
-                            "/bin/bash"))))
+     (list
+      #:modules '((guix build cmake-build-system)
+                  (guix build utils)
+                  (srfi srfi-26))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'check 'make-tests-executable
+            (lambda _
+              (for-each
+               (cut chmod <> #o755)
+               ;; We're in a parallel build directory to the sources and tests.
+               (find-files ".." "\\.sh$")))))))
     (inputs
      (list boost libgcrypt))
     (native-inputs
-     (list bison
-           diffutils
-           ghostscript
+     (list doxygen
+           ghostscript                ; for ps2pdf
+           graphviz                   ; the build scripts call this ‘doxygen’…
            groff
-           libtool
-           which))
+           psutils
+           ;; For the tests.
+           diffutils
+           which
+           ;; XXX Work around Guix's currently-broken psutils package.  Remove
+           ;; both and maybe (gnu packages perl) when core-updates is merged.
+           perl
+           perl-ipc-run3))
     (home-page "https://srecord.sourceforge.net/")
     (synopsis "Tools for EPROM files")
     (description "The SRecord package is a collection of powerful tools for

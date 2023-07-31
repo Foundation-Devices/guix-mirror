@@ -2,14 +2,14 @@
 ;;; Copyright © 2013, 2017-2022 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014 Ian Denhardt <ian@zenhack.net>
 ;;; Copyright © 2015, 2016 Alex Kost <alezost@gmail.com>
-;;; Copyright © 2016, 2017, 2018, 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016-2021, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2017 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2017 Nikita <nikita@n0.is>
 ;;; Copyright © 2017 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2017 nee <nee-git@hidamari.blue>
 ;;; Copyright © 2018–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018, 2019 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2019, 2022 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2019, 2022, 2023 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2019, 2020, 2022 Guy Fleury Iteriteka <gfleury@disroot.org>
 ;;; Copyright © 2019 Pierre Langlois <pierre.langlois@gmx.com>
 ;;; Copyright © 2020 Peng Mei Yu <pengmeiyu@riseup.net>
@@ -24,7 +24,7 @@
 ;;; Copyright © 2021 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2021 dissent <disseminatedissent@protonmail.com>
 ;;; Copyright © 2022 Michael Rohleder <mike@rohleder.de>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Tomasz Jeneralczyk <tj@schwi.pl>
 ;;; Copyright © 2022 Cairn <cairn@pm.me>
 ;;;
@@ -67,6 +67,7 @@
   #:use-module (gnu packages compression)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages documentation)
+  #:use-module (gnu packages djvu)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gawk)
@@ -101,6 +102,7 @@
   #:use-module (gnu packages upnp)
   #:use-module (gnu packages version-control)
   #:use-module (gnu packages video)
+  #:use-module (gnu packages vim)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xml)
@@ -110,7 +112,7 @@
 (define-public ytfzf
   (package
     (name "ytfzf")
-    (version "2.5.2")
+    (version "2.6.0")
     (home-page "https://github.com/pystardust/ytfzf")
     (source
      (origin
@@ -121,7 +123,7 @@
          (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "138rqjjyh6ar951v0v5sl1v000ja8zznn141qqw8ymx5h2z44r6w"))))
+        (base32 "19wmzpbc23515ab4v4pw792x68y7bgsqhd2pmlqiq6bp6jxfrykg"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -144,7 +146,7 @@
                         '("bash" "catimg" "chafa" "coreutils" "curl"
                           "dmenu" "fzf" "gawk" "grep" "jp2a" "jq"
                           "libnotify" "mpv" "ncurses" "python-ueberzug"
-                          "sed" "util-linux" "youtube-dl")))
+                          "sed" "util-linux" "yt-dlp")))
                 `("YTFZF_SYSTEM_ADDON_DIR" ":" =
                   ,(list (string-append #$output "/share/ytfzf/addons")))))))))
     (inputs
@@ -166,7 +168,7 @@
            python-ueberzug
            sed
            util-linux
-           youtube-dl))
+           yt-dlp))
     (synopsis "Watch PeerTube or YouTube videos from the terminal")
     (description "@code{ytfzf} is a POSIX script that helps you find PeerTube or
 YouTube videos without requiring API and opens/downloads them using mpv/ytdl.")
@@ -231,7 +233,7 @@ actions.")
 (define-public geeqie
   (package
     (name "geeqie")
-    (version "1.6")
+    (version "2.0.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -239,43 +241,31 @@ actions.")
                     (commit (string-append "v" version))))
               (sha256
                (base32
-                "1i9yd8lddp6b9s9vjjjzbpqj4bvwidxc6kiba6vdrk7dda5akyky"))
-              (file-name (git-file-name name version))
-              (patches (search-patches "geeqie-clutter.patch"))))
-    (build-system gnu-build-system)
-    (arguments
-     ;; Enable support for a "map" pane using GPS data.
-     `(#:configure-flags '("CFLAGS=-O2 -g -fcommon"
-                           "--enable-map"
-                           "--enable-gtk3")
-       #:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'correctly-locate-aux-scripts
-                    ;; The git checkout has symlinks under the auxdir
-                    ;; directory pointing to /usr/share/automake-1.16/depcomp
-                    ;; and /usr/share/automake-1.16/install-sh, which causes
-                    ;; the configure phase to fail (see:
-                    ;; https://github.com/BestImageViewer/geeqie/issues/936).
-                    (lambda* (#:key inputs #:allow-other-keys)
-                      (let ((automake (assoc-ref inputs "automake")))
-                        (delete-file "auxdir/depcomp")
-                        (symlink (car (find-files automake "depcomp"))
-                                 "auxdir/depcomp")
-                        (delete-file "auxdir/install-sh")
-                        (symlink (car (find-files automake "install-sh"))
-                                 "auxdir/install-sh")))))))
+                "199s0f3khnycr5vhk2ww3xnnasz7dzwxdl89pxjadq6rpgprfqyh"))
+              (file-name (git-file-name name version))))
+    (build-system meson-build-system)
     (inputs
-     (list clutter
-           libchamplain
-           lcms
+     (list djvulibre
            exiv2
+           ffmpegthumbnailer
+           gtk+
+           gspell
+           lcms
+           libarchive
+           libchamplain
+           libheif
+           libjpeg-turbo
            libpng
-           gtk+))
+           libraw
+           libtiff
+           poppler
+           libwebp))
     (native-inputs
-     (list autoconf
-           automake
-           `(,glib "bin") ; glib-gettextize
+     (list `(,glib "bin") ; glib-gettextize
            intltool
-           pkg-config))
+           pkg-config
+           xxd
+           yelp-tools))
     (home-page "https://www.geeqie.org/")
     (synopsis "Lightweight GTK+ based image viewer")
     (description
@@ -534,7 +524,8 @@ It supports JPEG, PNG and GIF formats.")
     (inputs (list go-github-com-disintegration-imaging
                   go-github-com-lucasb-eyer-go-colorful
                   go-golang-org-x-crypto
-                  go-golang-org-x-image))
+                  go-golang-org-x-image
+                  go-golang-org-x-term))
     (home-page "https://github.com/eliukblau/pixterm")
     (synopsis "Draw images in your ANSI terminal with true color")
     (description "PIXterm shows images directly in your terminal, recreating
@@ -677,6 +668,31 @@ including CBZ, CB7, CBT, LHA.
 For PDF support, install the @emph{mupdf} package.")
     (license license:gpl2+)))
 
+(define-public qpageview
+  (package
+    (name "qpageview")
+    (version "0.6.2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/frescobaldi/qpageview")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0xdhiglzqxyp05blp66l52nbzbpn10hmdm2idhncz6pf7qw16lsw"))))
+    (build-system python-build-system)
+    (home-page "https://qpageview.org/")
+    (synopsis "Page based document viewer widget for Qt5/PyQt5")
+    (inputs
+     (list python-pyqt qtbase-5))
+    (description
+     "@code{qpageview} provides a page based document viewer widget for Qt5
+and PyQt5.  It has a flexible architecture potentionally supporting many
+formats.  Currently, it supports SVG documents, images, and, using the
+Poppler-Qt5 binding, PDF documents.")
+    (license license:gpl3+)))
+
 (define-public qview
   (package
     (name "qview")
@@ -726,14 +742,14 @@ preloading.")
 (define-public chafa
   (package
     (name "chafa")
-    (version "1.12.4")
+    (version "1.12.5")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://hpjansson.org/chafa/releases/chafa-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "0gsp39xnra331lk0db5pfqpdmqfhf7ii3a7yywj33sknf0dbsx4p"))))
+                "1wjp75l0qbikbdbvj8nlhl1gsakhx3309k0mdww6n2jh5bar0m0g"))))
     (build-system gnu-build-system)
     (native-inputs
      (list pkg-config))
@@ -783,7 +799,7 @@ displayed in a terminal.")
            libjpeg-turbo
            libinih
            libnsgif
-           librsvg
+           (librsvg-for-system)
            libtiff
            libxkbcommon
            pango
@@ -813,14 +829,14 @@ with tiling window managers.  Features include:
 (define-public qiv
   (package
     (name "qiv")
-    (version "2.3.2")
+    (version "2.3.3")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "http://spiegl.de/qiv/download/qiv-"
                            version ".tgz"))
        (sha256
-        (base32 "1mc0f2nnas4q0d7zc9r6g4z93i32xlx0p9hl4fn5zkyml24a1q28"))
+        (base32 "011pad6gvmpphiv85yq820w3m79m3spfafarcsrhb2ylwbymy27g"))
        (modules '((guix build utils)))
        (snippet
         '(begin

@@ -28,12 +28,12 @@
 ;;; Copyright © 2020 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2020, 2021 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2020 John D. Boy <jboy@bius.moe>
-;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
-;;; Copyright © 2020, 2021, 2022 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2020, 2021, 2022, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Tanguy Le Carrour <tanguy@bioneland.org>
 ;;; Copyright © 2020, 2021, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2021 Greg Hogan <code@greghogan.com>
-;;; Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2021 Léo Le Bouter <lle-bout@zaclys.net>
 ;;; Copyright © 2021 LibreMiami <packaging-guix@libremiami.org>
@@ -47,6 +47,7 @@
 ;;; Copyright © 2022 Maxime Devos <maximedevos@telenet.be>
 ;;; Copyright © 2022 Dhruvin Gandhi <contact@dhruvin.dev>
 ;;; Copyright © 2015, 2022 David Thompson <davet@gnu.org>
+;;; Copyright © 2023 Nicolas Graves <ngraves@ngraves.fr>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -125,6 +126,7 @@
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages readline)
   #:use-module (gnu packages rsync)
+  #:use-module (gnu packages ruby)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages admin)
@@ -224,50 +226,50 @@ Python 3.3 and later, rather than on Python 2.")
 
 (define-public git
   (package
-    (name "git")
-    (version "2.39.1")
-    (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://kernel.org/software/scm/git/git-"
-                                 version ".tar.xz"))
-             (sha256
-              (base32
-               "0qf1wly7zagg23svpv533va5v213y7y3lfw76ldkf35k8w48m8s0"))))
-    (build-system gnu-build-system)
-    (native-inputs
-     `(("native-perl" ,perl)
-       ;; Add bash-minimal explicitly to ensure it comes before bash-for-tests,
-       ;; see <https://bugs.gnu.org/39513>.
-       ("bash" ,bash-minimal)
-       ("bash-for-tests" ,bash)
-       ("gettext" ,gettext-minimal)
-       ;; To build the man pages from the git sources, we would need a dependency
-       ;; on a full XML tool chain, and building it actually takes ages.  So we
-       ;; use this lazy approach and use released tarball.
-       ("git-manpages"
-        ,(origin
-           (method url-fetch)
-           (uri (string-append
-                 "mirror://kernel.org/software/scm/git/git-manpages-"
-                 version ".tar.xz"))
-           (sha256
-            (base32
-             "0xf7ki90xw77nvmnkw50xaivyfi8jddfq0h8crzi7m9zjs7aa8mm"))))
-       ;; For subtree documentation.
-       ("asciidoc" ,asciidoc)
-       ("docbook2x" ,docbook2x)
-       ("docbook-xsl" ,docbook-xsl)
-       ("libxslt" ,libxslt)
-       ("pkg-config" ,pkg-config)
-       ("texinfo" ,texinfo)
-       ("xmlto" ,xmlto)))
-    (inputs
-     `(("curl" ,curl)
-       ("expat" ,expat)
-       ("openssl" ,openssl)
-       ("perl" ,perl)
-       ("python" ,python)               ; for git-p4
-       ("zlib" ,zlib)
+   (name "git")
+   (version "2.41.0")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append "mirror://kernel.org/software/scm/git/git-"
+                                version ".tar.xz"))
+            (sha256
+             (base32
+              "0h40arw08xbpi2cbf7pvc947v963rjxz3inb2ar81zjc8byvlj77"))))
+   (build-system gnu-build-system)
+   (native-inputs
+    `(("native-perl" ,perl)
+      ;; Add bash-minimal explicitly to ensure it comes before bash-for-tests,
+      ;; see <https://bugs.gnu.org/39513>.
+      ("bash" ,bash-minimal)
+      ("bash-for-tests" ,bash)
+      ("gettext" ,gettext-minimal)
+      ;; To build the man pages from the git sources, we would need a dependency
+      ;; on a full XML tool chain, and building it actually takes ages.  So we
+      ;; use this lazy approach and use released tarball.
+      ("git-manpages"
+       ,(origin
+          (method url-fetch)
+          (uri (string-append
+                "mirror://kernel.org/software/scm/git/git-manpages-"
+                version ".tar.xz"))
+          (sha256
+           (base32
+            "0xsqakgy0s60zpa13ilj6zj420kdh8pf4v3nrp1nziwj8ja4qymw"))))
+      ;; For subtree documentation.
+      ("asciidoc" ,asciidoc)
+      ("docbook2x" ,docbook2x)
+      ("docbook-xsl" ,docbook-xsl)
+      ("libxslt" ,libxslt)
+      ("pkg-config" ,pkg-config)
+      ("texinfo" ,texinfo)
+      ("xmlto" ,xmlto)))
+   (inputs
+    `(("curl" ,curl)
+      ("expat" ,expat)
+      ("openssl" ,openssl)
+      ("perl" ,perl)
+      ("python" ,python) ; for git-p4
+      ("zlib" ,zlib)
 
        ;; For PCRE support in git grep (USE_LIBPCRE2).
        ("pcre" ,pcre2)
@@ -568,7 +570,14 @@ Python 3.3 and later, rather than on Python 2.")
                     (manpages (assoc-ref inputs "git-manpages")))
                (mkdir-p man)
                (with-directory-excursion man
-                 (invoke "tar" "xvf" manpages))))))))
+                 (invoke "tar" "xvf" manpages)))))
+         ,@(if (system-hurd?)
+               '((add-after 'unpack 'delete-tests/hurd
+                   (lambda _
+                     (delete-file "t/t0052-simple-ipc.sh")
+                     (delete-file "t/t5562-http-backend-content-length.sh")
+                     (delete-file "t/t9902-completion.sh"))))
+               '()))))
 
     (native-search-paths
      ;; For HTTPS access, Git needs a single-file certificate bundle, specified
@@ -614,46 +623,53 @@ everything from small to very large projects with speed and efficiency.")
     (arguments
      (substitute-keyword-arguments (package-arguments git)
        ((#:phases phases)
-        `(modify-phases ,phases
-           (replace 'patch-makefiles
-             (lambda _
-               (substitute* "Makefile"
-                 (("/usr/bin/perl") (which "perl")))))
-           (delete 'build-subtree)
-           (delete 'split)
-           (delete 'install-man-pages)
-           (delete 'install-info-manual)
-           (delete 'install-subtree)
-           (delete 'install-credential-netrc)
-           (delete 'install-credential-libsecret)
-           (add-after 'install 'remove-unusable-perl-commands
-             (lambda* (#:key outputs #:allow-other-keys)
-               (let* ((out     (assoc-ref outputs "out"))
-                      (bin     (string-append out "/bin"))
-                      (libexec (string-append out "/libexec")))
-                 (for-each (lambda (file)
-                             (delete-file (string-append libexec
-                                                         "/git-core/" file)))
-                           '("git-svn" "git-cvsimport" "git-archimport"
-                             "git-cvsserver" "git-request-pull"
-                             "git-add--interactive" "git-cvsexportcommit"
-                             "git-instaweb" "git-send-email"))
-                 (delete-file (string-append bin "/git-cvsserver"))
+        #~(modify-phases #$phases
+            (replace 'patch-makefiles
+              (lambda _
+                (substitute* "Makefile"
+                  (("/usr/bin/perl") (which "perl")))))
+            (delete 'build-subtree)
+            (delete 'split)
+            (delete 'install-man-pages)
+            (delete 'install-info-manual)
+            (delete 'install-subtree)
+            (delete 'install-credential-netrc)
+            (delete 'install-credential-libsecret)
+            (add-after 'install 'remove-unusable-perl-commands
+              (lambda* (#:key outputs #:allow-other-keys)
+                (let* ((out     (assoc-ref outputs "out"))
+                       (bin     (string-append out "/bin"))
+                       (libexec (string-append out "/libexec")))
+                  (for-each (lambda (file)
+                              (delete-file (string-append libexec
+                                                          "/git-core/" file)))
+                            '("git-svn" "git-cvsimport" "git-archimport"
+                              "git-cvsserver" "git-request-pull"
 
-                 ;; These templates typically depend on Perl.  Remove them.
-                 (delete-file-recursively
-                  (string-append out "/share/git-core/templates/hooks"))
+                              ;; git-add--interactive was removed in Git 2.40 but
+                              ;; this phase is inherited by older versions.
+                              #$@(if (version>=? (package-version this-package)
+                                                 "2.40.1")
+                                     #~()
+                                     #~("git-add--interactive"))
 
-                 ;; Gitweb depends on Perl as well.
-                 (delete-file-recursively
-                  (string-append out "/share/gitweb")))))))
+                              "git-cvsexportcommit"
+                              "git-instaweb" "git-send-email"))
+                  (delete-file (string-append bin "/git-cvsserver"))
+
+                  ;; These templates typically depend on Perl.  Remove them.
+                  (delete-file-recursively
+                   (string-append out "/share/git-core/templates/hooks"))
+
+                  ;; Gitweb depends on Perl as well.
+                  (delete-file-recursively
+                   (string-append out "/share/gitweb")))))))
        ((#:make-flags flags)
-        `(delete "USE_LIBPCRE2=yes" ,flags))
+        #~(delete "USE_LIBPCRE2=yes" #$flags))
        ((#:configure-flags flags)
-        `(list
-          ,@(if (%current-target-system)
-                git-cross-configure-flags
-                '())))
+        #~(list #$@(if (%current-target-system)
+                       git-cross-configure-flags
+                       '())))
        ((#:disallowed-references lst '())
         `(,perl ,@lst))))
     (outputs '("out"))
@@ -836,6 +852,12 @@ to GitHub contributions calendar.")
                    '()))
        #:phases
        (modify-phases %standard-phases
+         ,@(if (target-arm32?)
+             ;; Some tests are flaky on armhf.
+             '((add-before 'check 'pre-check
+                 (lambda _
+                   (setenv "GITTEST_FLAKY_STAT" "true"))))
+             '())
          ;; Run checks more verbosely, unless we are cross-compiling.
          (replace 'check
            (lambda* (#:key (tests? #t) #:allow-other-keys)
@@ -934,6 +956,10 @@ write native speed custom Git applications in any language with bindings.")
              #t))
          (replace 'build
            (lambda _
+             ;; Add flag to work around OpenSSL 3 incompatibility.
+             ;; See <https://github.com/AGWA/git-crypt/issues/232>.
+             (setenv "CXXFLAGS" "-DOPENSSL_API_COMPAT=0x30000000L")
+
              (invoke "make" "ENABLE_MAN=yes")))
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
@@ -1493,7 +1519,7 @@ also walk each side of a merge and test those changes individually.")
 wrappers, to be used for optional gitolite extensions."
   (package
     (name "gitolite")
-    (version "3.6.12")
+    (version "3.6.13")
     (source
      (origin
        (method git-fetch)
@@ -1502,10 +1528,10 @@ wrappers, to be used for optional gitolite extensions."
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "05xw1pmagvkrbzga5pgl3xk9qyc6b5x73f842454f3w9ijspa8zy"))))
+        (base32 "0lp4hi8pfg7k0fk0l8wzs8hxp1aspzv78nkafdbbq8m9lzwnwl7x"))))
     (build-system gnu-build-system)
     (arguments
-     (list #:tests? #f ; no tests
+     (list #:tests? #f                  ; no tests
            #:phases
            #~(modify-phases %standard-phases
                (delete 'configure)
@@ -1617,6 +1643,11 @@ control to Git repositories.")
        #:make-flags (list "GUILE_AUTO_COMPILE=0")
        #:phases
        (modify-phases %standard-phases
+         (replace 'bootstrap
+           (lambda _
+             ;; The 'bootstrap' script lacks a shebang, leading to "Exec
+             ;; format error" with glibc 2.35.
+             (invoke "autoreconf" "-vfi")))
          (add-after 'install-bin 'wrap-program
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (use-modules (guix build guile-build-system))
@@ -1656,7 +1687,7 @@ control to Git repositories.")
            guile-gcrypt
            guile-git
            guile-syntax-highlight-for-gitile
-           gnutls))
+           guile-gnutls))
     (home-page "https://git.lepiller.eu/gitile")
     (synopsis "Simple Git forge written in Guile")
     (description "Gitile is a Git forge written in Guile that lets you
@@ -1665,8 +1696,8 @@ visualize your public Git repositories on a web interface.")
 
 (define-public pre-commit
   (package
-    (name "pre-commit")
-    (version "2.20.0")
+    (name "pre-commit") ;formerly known as python-pre-commit
+    (version "3.3.3")
     (source
      (origin
        (method git-fetch)               ; no tests in PyPI release
@@ -1675,7 +1706,11 @@ visualize your public Git repositories on a web interface.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "19jcg6nfnscp87h4wmbpw6r3lc8c75zkvb6wqgavq5dh7wkyg6pq"))))
+        (base32 "1spkg3ld3s6l7wz24lcywlf1z2ywp751bcdlxjfdsln76bi9ylp8"))
+       (modules '((guix build utils)))
+       (snippet '(substitute* "setup.cfg"
+                   (("virtualenv>=20.10.0") ;our virtualenv (20.3.1) is fine
+                    "virtualenv>=20.0.8")))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1708,6 +1743,18 @@ visualize your public Git repositories on a web interface.")
                        ;; Ruby and Node tests require node and gem.
                        "--ignore=tests/languages/node_test.py"
                        "--ignore=tests/languages/ruby_test.py"
+                       ;; Skip lang-specific (network) tests added in 3.1.1
+                       "--ignore=tests/languages/conda_test.py"
+                       "--ignore=tests/languages/coursier_test.py"
+                       "--ignore=tests/languages/dart_test.py"
+                       "--ignore=tests/languages/docker_test.py"
+                       "--ignore=tests/languages/docker_image_test.py"
+                       "--ignore=tests/languages/dotnet_test.py"
+                       "--ignore=tests/languages/golang_test.py"
+                       "--ignore=tests/languages/lua_test.py"
+                       "--ignore=tests/languages/perl_test.py"
+                       "--ignore=tests/languages/rust_test.py"
+                       "--ignore=tests/languages/swift_test.py"
                        "-k"
                        (string-append
                         ;; TODO: these tests fail with AssertionError.  It may
@@ -1715,7 +1762,8 @@ visualize your public Git repositories on a web interface.")
                         "not test_install_existing_hooks_no_overwrite"
                         " and not test_uninstall_restores_legacy_hooks"
                         " and not test_installed_from_venv"
-                        " and not test_healthy_venv_creator"))))))))
+                        " and not test_healthy_venv_creator"
+                        " and not test_r_hook and not test_r_inline"))))))))
     (native-inputs
      `(("git" ,git-minimal)
        ("python-covdefaults" ,python-covdefaults)
@@ -1731,7 +1779,6 @@ visualize your public Git repositories on a web interface.")
            python-identify
            python-nodeenv
            python-pyyaml
-           python-toml
            python-virtualenv))
     (home-page "https://pre-commit.com/")
     (synopsis "Framework for managing and maintaining pre-commit hooks")
@@ -1740,6 +1787,9 @@ visualize your public Git repositories on a web interface.")
 specify a list of hooks you want and pre-commit manages the installation and
 execution of any hook written in any language before every commit.")
     (license license:expat)))
+
+(define-public python-pre-commit
+  (deprecated-package "python-pre-commit" pre-commit))
 
 (define-public mercurial
   (package
@@ -1988,76 +2038,72 @@ following features:
 (define-public subversion
   (package
     (name "subversion")
-    (version "1.14.1")
+    (version "1.14.2")
     (source (origin
-             (method url-fetch)
-             (uri (string-append "mirror://apache/subversion/"
-                                 "subversion-" version ".tar.bz2"))
-             (sha256
-              (base32
-               "1ag1hvcm9q92kgalzbbgcsq9clxnzmbj9nciz9lmabjx4lyajp9c"))))
+              (method url-fetch)
+              (uri (string-append "mirror://apache/subversion/"
+                                  "subversion-" version ".tar.bz2"))
+              (sha256
+               (base32
+                "0a6csc84hfymm8b5cnvq1n1p3rjjf33qy0z7y1k8lwkm1f6hw4y9"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:parallel-tests? #f             ; TODO Seems to cause test failures on
-                                        ; i686-linux
-       #:configure-flags '("--enable-static=no")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'configure 'patch-libtool-wrapper-ls
-           (lambda* (#:key inputs #:allow-other-keys)
-             ;; This substitution allows tests svnauthz_tests and svnlook_tests
-             ;; to pass.  These tests execute svnauthz and svnlook through
-             ;; their libtool wrapper scripts from svn hooks, whose empty
-             ;; environments cause "ls: command not found" errors.  It would be
-             ;; nice if this fix ultimately made its way into libtool.
-             (let ((coreutils (assoc-ref inputs "coreutils")))
-               (substitute* "libtool"
-                 (("\\\\`ls") (string-append "\\`" coreutils "/bin/ls")))
-               #t)))
-         (add-before 'build 'patch-test-sh
-           (lambda _
-             (substitute* "subversion/tests/libsvn_repos/repos-test.c"
-               (("#!/bin/sh") (string-append "#!" (which "sh"))))
-             #t))
-         (add-before 'check 'set-PARALLEL
-           (lambda* (#:key parallel-tests? #:allow-other-keys)
-             (if parallel-tests?
-                 (setenv "PARALLEL" (number->string (parallel-job-count)))
-                 (simple-format #t "parallel-tests? are disabled\n"))
-             #t))
-         (add-after 'install 'install-perl-bindings
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Follow the instructions from 'subversion/bindings/swig/INSTALL'.
-             (let ((out (assoc-ref outputs "out")))
-               (invoke "make" "swig-pl-lib")
-               ;; FIXME: Test failures.
-               ;; (invoke "make" "check-swig-pl")
-               (invoke "make" "install-swig-pl-lib")
+     (list
+      ;; Running the tests in parallel causes test failures on i686-linux.
+      ;; The issue was reported to users@subversion.apache.org, as suggested
+      ;; at https://subversion.apache.org/reporting-issues.
+      #:parallel-tests? #f
+      #:configure-flags #~(list "--enable-static=no")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'configure 'patch-libtool-wrapper-ls
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; This substitution allows tests svnauthz_tests and svnlook_tests
+              ;; to pass.  These tests execute svnauthz and svnlook through
+              ;; their libtool wrapper scripts from svn hooks, whose empty
+              ;; environments cause "ls: command not found" errors.  It would be
+              ;; nice if this fix ultimately made its way into libtool.
+              (substitute* "libtool"
+                (("\\\\`ls")
+                 (string-append "\\`" (search-input-file inputs "bin/ls"))))))
+          (add-before 'build 'patch-test-sh
+            (lambda _
+              (substitute* "subversion/tests/libsvn_repos/repos-test.c"
+                (("#!/bin/sh") (string-append "#!" (which "sh"))))))
+          (add-before 'check 'set-PARALLEL
+            (lambda* (#:key parallel-tests? #:allow-other-keys)
+              (if parallel-tests?
+                  (setenv "PARALLEL" (number->string (parallel-job-count)))
+                  (simple-format #t "parallel-tests? are disabled\n"))))
+          (add-after 'install 'install-perl-bindings
+            (lambda _
+              ;; Follow the instructions from 'subversion/bindings/swig/INSTALL'.
+              (invoke "make" "swig-pl-lib")
+              ;; FIXME: Test failures.
+              ;; (invoke "make" "check-swig-pl")
+              (invoke "make" "install-swig-pl-lib")
 
-               ;; Set the right installation prefix.
-               (with-directory-excursion
-                   "subversion/bindings/swig/perl/native"
-                 (invoke "perl" "Makefile.PL"
-                         "NO_PERLLOCAL=1"
-                         (string-append "PREFIX=" out))
-                 (invoke "make" "install"
-                         (string-append "OTHERLDFLAGS="
-                                        "-Wl,-rpath="
-                                        out "/lib")))))))))
+              ;; Set the right installation prefix.
+              (with-directory-excursion "subversion/bindings/swig/perl/native"
+                (invoke "perl" "Makefile.PL" "NO_PERLLOCAL=1"
+                        (string-append "PREFIX=" #$output))
+                (invoke "make" "install"
+                        (string-append "OTHERLDFLAGS=-Wl,-rpath="
+                                       #$output "/lib"))))))))
     (native-inputs
-      (list pkg-config
-            ;; For the Perl bindings.
-            swig))
+     (list pkg-config
+           ;; For the Perl bindings.
+           swig))
     (inputs
-      `(("apr" ,apr)
-        ("apr-util" ,apr-util)
-        ("lz4" ,lz4)
-        ("serf" ,serf)
-        ("perl" ,perl)
-        ("python" ,python-wrapper)
-        ("sqlite" ,sqlite)
-        ("utf8proc" ,utf8proc)
-        ("zlib" ,zlib)))
+     (list apr
+           apr-util
+           lz4
+           perl
+           python-wrapper
+           serf
+           sqlite
+           utf8proc
+           zlib))
     (home-page "https://subversion.apache.org/")
     (synopsis "Revision control system")
     (description
@@ -2577,13 +2623,13 @@ email header.")
 (define-public b4
   (package
     (name "b4")
-    (version "0.8.0")
+    (version "0.12.3")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "b4" version))
        (sha256
-        (base32 "115ysciq15sxc8fd9hf7p0f4wnd5xapcfkmq8g33y1c8nbdxclbx"))))
+        (base32 "0qpa0ahw1d86mdgs09ykq5pd0lm8083ds6j0knalw757yh31akmn"))))
     (build-system python-build-system)
     (arguments
      (list #:tests? #f                  ;no tests
@@ -2781,14 +2827,14 @@ specific files and directories.")
 (define-public src
   (package
     (name "src")
-    (version "1.29")
+    (version "1.31")
     (source (origin
               (method url-fetch)
               (uri (string-append
                     "http://www.catb.org/~esr/src/src-" version ".tar.gz"))
               (sha256
                (base32
-                "0ha287gc95vz6bdvn42pi3qibc56h1w5dshsvjvdn2zd283amksd"))))
+                "1p8f5xc6k4jrli3iimi64ng11c246qqwsw9bqrrqkrmhvqdh4kcv"))))
     (build-system gnu-build-system)
     (arguments
      '(#:make-flags
@@ -2923,10 +2969,90 @@ the smallest possible conflicts and to allow a merge to be saved, tested,
 interrupted, published, and collaborated on while in progress.")
     (license license:gpl2+)))
 
+(define-public go-github-com-git-lfs-pktline
+  (let ((commit "06e9096e28253ba5c7825cbba43f469e4efd10f0")
+        (revision "0"))
+    (package
+      (name "go-github-com-git-lfs-pktline")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri
+          (git-reference
+           (url "https://github.com/git-lfs/pktline")
+           (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "02sn3v8vrl7qjnagbnrbrjnyjvzq8cwkxmc922zyc9b2hg187kpz"))))
+      (build-system go-build-system)
+      (arguments `(#:import-path "github.com/git-lfs/pktline"))
+      (propagated-inputs (list go-github-com-stretchr-testify
+                               go-github-com-pmezard-go-difflib
+                               go-github-com-davecgh-go-spew))
+      (home-page "https://github.com/git-lfs/pktline")
+      (synopsis "Git pkt-line Go toolkit")
+      (description "This package is a Go language toolkit for reading and
+writing files using the Git pkt-line format used in various Git operations.")
+(license license:expat))))
+
+(define-public go-github-com-git-lfs-wildmatch-v2
+  (package
+    (name "go-github-com-git-lfs-wildmatch-v2")
+    (version "2.0.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/git-lfs/wildmatch")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0yg6d77d5l6v7cd8vr00y68z9aqb8qs4lidv0hkqh4fvz0ggvpln"))))
+    (build-system go-build-system)
+    (arguments
+     '(#:import-path "github.com/git-lfs/wildmatch/v2"))
+    (home-page "https://github.com/git-lfs/wildmatch")
+    (synopsis "Go implementation of Git's wildmatch")
+    (description
+     "This package is an implementation of Git's wildmatch.c-style pattern
+matching.")
+    (license license:expat)))
+
+(define-public go-github-com-git-lfs-gitobj-v2
+  (package
+    (name "go-github-com-git-lfs-gitobj-v2")
+    (version "2.1.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/git-lfs/gitobj")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1sd7y4xbx00js1g2az4nq8g5lvsm4d7nqr3v4kxy8fxrfzdm63j9"))))
+    (build-system go-build-system)
+    (arguments
+     '(#:import-path "github.com/git-lfs/gitobj/v2"))
+    (propagated-inputs (list go-github-com-stretchr-testify
+                             go-github-com-pmezard-go-difflib
+                             go-github-com-davecgh-go-spew))
+    (home-page "https://github.com/git-lfs/gitobj")
+    (synopsis "Read and write git objects")
+    (description
+     "This package reads and writes loose and packed (objects found in git
+packfiles) Git objects.  It uses the pack package to search pack index files
+and locate the corresponding delta-base chain in the appropriate pack file.
+If gitobj can't find a loose object with the appropriate SHA-1, it will search
+the repository's packfile(s) instead.  If it finds an object in a packfile, it
+will reconstruct the object along its delta-base chain and return it.")
+    (license license:expat)))
+
 (define-public git-lfs
   (package
     (name "git-lfs")
-    (version "2.13.3")
+    (version "3.3.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2935,41 +3061,97 @@ interrupted, published, and collaborated on while in progress.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0r7dmqhkhz91d3n7qfpny483x8f1n88yya22j2fvx75rgg33z2sg"))))
+                "1g268pplld04b9myhlrwc4fd8r1hvfyya5ja8wr558rar3pgsp5g"))))
     (build-system go-build-system)
     (arguments
-     `(#:import-path "github.com/git-lfs/git-lfs"
-       #:install-source? #f
-       #:phases
-       (modify-phases %standard-phases
-         (add-before 'build 'man-gen
-           ;; Without this, the binary generated in 'build
-           ;; phase won't have any embedded usage-text.
-           (lambda _
-             (with-directory-excursion "src/github.com/git-lfs/git-lfs"
-               (invoke "make" "mangen"))))
-         (add-after 'build 'build-man-pages
-           (lambda _
-             (with-directory-excursion "src/github.com/git-lfs/git-lfs"
-               (invoke "make" "man"))
-             #t))
-         (add-after 'install 'install-man-pages
-           (lambda* (#:key outputs #:allow-other-keys)
-             (with-directory-excursion "src/github.com/git-lfs/git-lfs/man"
-               (let ((out (assoc-ref outputs "out")))
-                 (for-each
-                   (lambda (manpage)
-                     (install-file manpage (string-append out "/share/man/man1")))
-                   (find-files "." "^git-lfs.*\\.1$"))))
-             #t)))))
+     (list
+      #:import-path "github.com/git-lfs/git-lfs"
+      #:install-source? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-embed-x-net
+            (lambda _
+              (delete-file-recursively "src/golang.org/x/net/publicsuffix/data")
+              (copy-recursively
+               #$(file-append (this-package-input "go-golang-org-x-net")
+                              "/src/golang.org/x/net/publicsuffix/data")
+               "src/golang.org/x/net/publicsuffix/data")))
+          (add-before 'build 'man-gen
+            ;; Without this, the binary generated in 'build
+            ;; phase won't have any embedded usage-text.
+            (lambda _
+              (with-directory-excursion "src/github.com/git-lfs/git-lfs"
+                (invoke "make" "mangen"))))
+          (add-after 'build 'build-man-pages
+            (lambda _
+              (with-directory-excursion "src/github.com/git-lfs/git-lfs"
+                (invoke "make" "man"))))
+          (add-after 'install 'install-man-pages
+            (lambda* (#:key outputs #:allow-other-keys)
+              (with-directory-excursion "src/github.com/git-lfs/git-lfs/man"
+                (for-each
+                 (lambda (manpage)
+                   (install-file manpage
+                                 (string-append #$output "/share/man/man1")))
+                 (find-files "." "^git-lfs.*\\.1$"))))))))
     ;; make `ronn` available during build for man page generation
-    (native-inputs (list ronn-ng))
+    (native-inputs (list ronn-ng git-minimal ruby-asciidoctor))
+    (propagated-inputs
+     (list go-github-com-xeipuuv-gojsonschema
+           go-github-com-xeipuuv-gojsonreference
+           go-github-com-xeipuuv-gojsonpointer
+           go-golang-org-x-net
+           go-golang.org-x-sync-semaphore
+           go-github-com-ssgelm-cookiejarparser
+           go-github-com-rubyist-tracerx
+           go-github-com-olekukonko-ts
+           go-github-com-leonelquinteros-gotext
+           go-github-com-git-lfs-wildmatch-v2
+           go-github-com-git-lfs-pktline
+           go-github-com-git-lfs-go-netrc
+           go-github-com-git-lfs-gitobj-v2
+           go-github-com-dpotapov-go-spnego
+           go-github-com-avast-retry-go
+           go-github-com-mattn-go-isatty
+           go-github-com-pkg-errors
+           go-github-com-spf13-cobra))
     (home-page "https://git-lfs.github.com/")
     (synopsis "Git extension for versioning large files")
     (description
      "Git Large File Storage (LFS) replaces large files such as audio samples,
 videos, datasets, and graphics with text pointers inside Git, while storing the
 file contents on a remote server.")
+    (license license:expat)))
+
+(define-public lfs-s3
+  (package
+    (name "lfs-s3")
+    (version "0.1.2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://git.sr.ht/~ngraves/lfs-s3")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0ncfy3lgc7dik9k71xk9l5f2llsh2jk33aaqb8dkslschc1mx4g6"))))
+    (build-system go-build-system)
+    (arguments
+     (list
+      #:import-path "git.sr.ht/~ngraves/lfs-s3"))
+    (inputs (list git-lfs))
+    (propagated-inputs
+     (list go-github-com-aws-aws-sdk-go-v2
+           go-github-com-aws-aws-sdk-go-v2-config
+           go-github-com-aws-aws-sdk-go-v2-feature-s3-manager
+           go-github-com-aws-aws-sdk-go-v2-service-s3))
+    (home-page "https://git.sr.ht/~ngraves/lfs-s3/")
+    (synopsis "Git extension for versioning large files in S3")
+    (description
+     "This package provides a custom transfer agent for Git LFS, allowing
+plain S3 bucket usage as remote storage for media files. This package uses a
+standalone agent instead of a server.")
     (license license:expat)))
 
 (define-public git-open

@@ -16,7 +16,7 @@
 ;; Copyright © 2021, 2022 Maxime Devos <maximedevos@telenet.be>
 ;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
 ;; Copyright © 2021 Andrew Tropin <andrew@trop.in>
-;; Copyright © 2021 Jonathan Brielmaier <jonathan.brielmaier@web.de>
+;; Copyright © 2021, 2023 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;; Copyright © 2022 Thiago Jung Bauermann <bauermann@kolabnow.com>
 ;;
 ;; Copying and distribution of this file, with or without modification, are
@@ -25,6 +25,295 @@
 
 (channel-news
  (version 0)
+
+ (entry (commit "1b7aabbc79969a89141aadd3d41d7a5329a3462e")
+        (title
+         (en "New @command{guix locate} command")
+         (de "Neuer Befehl @command{guix locate}")
+         (fr "Nouvelle commande @command{guix locate}"))
+        (body
+         (en "The new @command{guix locate} command lets you search for
+packages containing a given file---at long last!  For instance, to find which
+package(s) provide a file named @file{ls}, run:
+
+@example
+guix locate ls
+@end example
+
+Currently the command relies on purely local information.  It is thus unable
+to find packages that have not reached your store.  This limitation will be
+lifted in a future revision.
+
+Run @command{info \"(guix) Invoking guix locate\"} for more info.")
+         (de "Mit dem neuen Befehl @command{guix locate} können Sie nach
+Paketen suchen, die eine angegebene Datei enthalten — endlich ist es
+soweit!  Um zum Beispiel das Paket bzw.@: die Pakete zu finden, die eine
+Datei namens @file{ls} bereitstellen, führen Sie aus:
+
+@example
+guix locate ls
+@end example
+
+Derzeit benutzt der Befehl ausschließlich lokal vorliegende
+Informationen.  Daher können Sie damit nur Pakete finden, die sich in
+Ihrem Store-Verzeichnis befinden.  Diese Einschränkung werden wir in
+einer zukünftigen Version aufheben.
+
+Führen Sie @command{info \"(guix) Invoking guix locate\"} aus, um mehr zu
+erfahren.")
+         (fr "La nouvelle commande @command{guix locate} permet de chercher le
+ou les paquets contenant un fichier donné---enfin !  Par exemple, pour trouver
+quel paquet fournit un fichier nommé @file{ls}, on lance :
+
+@example
+guix locate ls
+@end example
+
+Pour le moment la commande se base uniquement sur des informations locales.
+Elle ne peut donc pas trouver des paquets absents de votre dépôt.  Cette limitation
+sera levée dans une prochaine version.
+
+Lancer @command{info \"(guix) Invoking guix locate\"} pour plus d'informations.")))
+
+ (entry (commit "ba5da5125a81307500982517e2f458d57b024668")
+        (title
+         (en "New @code{arguments} rule for @command{guix style}")
+         (de "Neue Stilregel @code{arguments} für @command{guix style}")
+         (fr "Nouvelle règle @code{arguments} pour @command{guix style}"))
+        (body
+         (en "The @command{guix style} command has a new @dfn{styling rule}
+for package definitions.  Package writers may now run the following command:
+
+@example
+guix style -L /path/to/channel -S arguments @var{package}
+@end example
+
+This command rewrites the @code{arguments} field of @var{package} so that it
+uses G-expressions instead of classical quasiquotation.
+
+Run @command{info \"(guix) Invoking guix style\"} for more info.")
+         (de "Der Befehl @command{guix style} verfügt über eine neue @dfn{Stilregel}
+für Paketdefinitionen.  Paketautoren können jetzt folgenden Befehl benutzen:
+
+@example
+guix style -L /pfad/zum/kanal -S arguments @var{Paket}
+@end example
+
+Dadurch wird das Feld @code{arguments} in @var{Paket} so umgeschrieben, dass
+G-Ausdrücke (gexps) anstelle von klassischer Quasiquotierung verwendet
+werden.
+
+Führen Sie @command{info \"(guix.de) Aufruf von guix style\"} aus, um
+mehr Informationen zu erhalten.")
+         (fr "La commande @command{guix style} a une nouvelle @dfn{règle de
+style} pour les définitions de paquets.  Les auteurices de paquets peuvent
+maintenant lancer la commande suivante :
+
+@example
+guix style -L /chemin/vers/canal -S arguments @var{paquet}
+@end example
+
+Cette commande réécrit le champ @code{arguments} de @var{paquet} pour qu'il
+utilise des G-expressions plutôt que des quasicitations classiques.
+
+Lancer @command{info \"(guix.fr) Invoquer guix style\"} pour plus
+d'informations.")))
+
+ (entry (commit "ae11fcb84ac478dfa56d322ef08890645183a087")
+        (title
+         (en "New @option{--with-configure-flag} transformation option")
+         (de "Neue Paketumwandlungsoption @option{--with-configure-flag}")
+         (fr "Nouvelle option de transformation @option{--with-configure-flag}"))
+        (body
+         (en "The new @option{--with-configure-flag} package transformation
+option lets you pass an additional configure flag to the build system of a
+package.  For instance, here is how you would pass a flag to @command{cmake},
+the build system of the @code{lapack} package:
+
+@example
+guix build lapack \\
+  --with-configure-flag=lapack=-DBUILD_SHARED_LIBS=OFF
+@end example
+
+Run @command{info \"(guix) Package Transformation Options\"} for more info.")
+         (de "Die neue Paketumwandlungsoption @option{--with-configure-flag}
+macht es möglich, dem Erstellungssystem eines Pakets eine zusätzliche
+Befehlszeilenoption für configure mitzugeben.  Zum Beispiel können Sie dem
+@command{cmake}-Erstellungssystem des @code{lapack}-Pakets eine Option mitgeben:
+
+@example
+guix build lapack \\
+  --with-configure-flag=lapack=-DBUILD_SHARED_LIBS=OFF
+@end example
+
+Führen Sie für mehr Informationen @command{info \"(guix.de)
+Paketumwandlungsoptionen\"} aus.")
+         (fr "La nouvelle option de transformation de paquets
+@option{--with-configure-flag} permet de passer un drapeau supplémentaire au
+système de construction d'un paquet.  Par exemple, voici comment on passerait
+un drapeau à @command{cmake}, le système de construction du logiciel
+@code{lapack} :
+
+@example
+guix build lapack \\
+  --with-configure-flag=lapack=-DBUILD_SHARED_LIBS=OFF
+@end example
+
+Voir @command{info \"(guix.fr) Options de transformation de paquets\"} pour
+plus de détails.")))
+
+ (entry (commit "c919bfefd98bf2e29549539b4e28e6dc2a8a6f32")
+        (title
+         (en "Core packages updated")
+         (de "Kern-Pakete aktualisiert")
+         (fr "Mise à jour des logiciels importants"))
+        (body
+         (en "Core packages have been updated, following months of hard work
+by contributors.  Noteworthy package upgrades include:
+
+@itemize
+@item glibc 2.35;
+@item Python 3.10;
+@item Perl 5.36;
+@item Mesa 22;
+@item GCC 11 is now used as the default compiler.
+@end itemize
+
+A major highlight is the introduction of the so-called @dfn{full-source
+bootstrap}: packages are all built starting from a 500-byte program called
+stage0, which is then used to build a higher-level interpreter, a basic Scheme
+interpreter and C compiler (GNU Mes), and so on, until @acronym{GCC, the GNU
+Compiler Collection} is finally built.  This is a premiere and a huge step
+forward in terms of transparency of auditability.")
+         (de "Die Pakete, die den Kern der Distribution ausmachen, haben eine
+Aktualisierung bekommen.  Dies ist das Ergebnis monatelanger harter Arbeit
+unserer Mitwirkenden.  Zu den wichtigen Paketaktualisierungen gehören:
+
+@itemize
+@item glibc 2.35,
+@item Python 3.10,
+@item Perl 5.36,
+@item Mesa 22,
+@item GCC 11 wird jetzt standardmäßig als Compiler benutzt.
+@end itemize
+
+Eine große Neuigkeit ist, dass Guix jetzt auf „Bootstrapping aus dem Quellcode
+allein“ basiert: Grundlage der Pakete ist ein 500 Byte großes Programm namens
+stage0, womit ein weiter abstrahierter Interpretierer kompiliert wird, dann ein
+grundlegender Scheme-Interpretierer und C-Compiler (GNU Mes), und so geht es
+weiter, bis endlich @acronym{GCC, die GNU Compiler Collection} erstellt wird. Es
+ist eine Premiere und ein großer Schritt nach vorne, was Transparenz und
+Auditierbarkeit angeht.")
+         (fr "Les logiciels de base ont été mis à jour, après des mois de dur
+labeur par les contributeur·rices du projet.  Parmi les mises à jour notables,
+il y a :
+
+@itemize
+@item glibc 2.35 ;
+@item Python 3.10 ;
+@item Perl 5.36 ;
+@item Mesa 22 ;
+@item GCC 11 est dorénavant le compilateur par défaut.
+@end itemize
+
+Une autre nouveauté importante est l'introduction de @dfn{l'amorçage intégral
+depuis le source} (@i{full-source bootstrap} en anglais) : les logiciels sont
+compilés en partant d'un programme de 500 octets appelé stage0, à partir
+duquel on compile un interprète de plus haut niveau, un interprète Scheme et
+un compilateur C de base (GNU Mes), et ainsi de suite, jusqu'à ce que
+@acronym{GCC, the GNU Compiler Collection} soit enfin compilé.  C'est une
+première et un grand pas en avant en termes de transparence et
+d'auditabilité.")))
+
+ (entry (commit "21564fada141bfba25d471518b293b6004244c3a")
+        (title
+         (en "Linux-libre LTS kernel updated to 6.1")
+         (de "Linux-libre LTS Kernel wird auf 6.1 aktualisiert"))
+        (body
+         (en "The default version of the @code{linux-libre-lts} kernel has been
+             updated to the 6.1 longterm release series.")
+         (de "Der standardmäßig verwendete @code{linux-libre-lts}-Kernel basiert
+              jetzt auf der 6.1-Versionsreihe (Langzeitunterstützung).")))
+
+ (entry (commit "57db09aae73e3713a10c5253758d84e1046f80dc")
+        (title
+         (en "Using Guix within @command{guix shell --container}")
+         (de "Guix innerhalb @command{guix shell --container} nutzen")
+         (fr "Utilisation de Guix dans @command{guix shell --container}"))
+        (body
+         (en "The @option{--container} (or @option{-C}) option lets you spawn
+a container---an isolated software environment.  In some cases, it is useful
+to use Guix from within the container, something that is normally not
+possible.
+
+The new @option{--nesting} (or @option{-W}) option lets you do exactly that: a
+container created with that option will let you use @command{guix} commands,
+including @command{guix shell -C}, @emph{inside} of it.
+
+The example below shows how to evaluate a @file{guix.scm} file to build a
+package from within an isolated container, which is useful if @file{guix.scm}
+is untrusted:
+
+@example
+guix shell -CW -- guix build -f guix.scm
+@end example
+
+Run @command{info \"(guix) Invoking guix shell\"} for more information.")
+         (de "Mit der Befehlszeilenoption @option{--container} (oder
+@option{-C}) können Sie Container anlegen, also isolierte
+Software-Umgebungen.  Allerdings will man manchmal Guix innerhalb eines
+Containers nutzen, was unmöglich ist, wenn Sie es normal aufrufen.
+
+Die neue Befehlszeilenoption @option{--nesting} (oder @option{-W}) ergänzt
+genau das: In einem damit angelegten Container lassen sich
+@command{guix}-Befehle, einschließlich @command{guix shell -C}, @emph{im
+Container} benutzen.
+
+Folgendes Beispiel zeigt, wie Sie eine Datei @file{guix.scm} auswerten lassen,
+um ein Paket aus dem isolierten Container heraus erstellen zu lassen. Das
+können Sie gebrauchen, wenn Sie @file{guix.scm} @emph{nicht} vertrauen:
+
+@example
+guix shell -CW -- guix build -f guix.scm
+@end example
+
+Führen Sie @command{info \"(guix.de) Aufruf von guix shell\"} aus, um mehr
+zu erfahren.")
+         (fr "L'option @option{--container} (ou @option{-C}) permet de
+démarrer un conteneur---un environnement logiciel isolé.  Dans certains cas,
+il peut être utile d'utiliser Guix à l'intérieur du conteneur, ce qui n'est
+normalement pas possible.
+
+La nouvelle option @option{--nesting} (ou @option{-W}) résoud ce problème : un
+conteneur créé avec cette option permet d'utiliser des commandes
+@command{guix} à l'intérieur, y compris @command{guix shell -C}.
+
+L'exemple ci-dessous montre comment évaluer un fichier @file{guix.scm} pour
+construire un paquet depuis un conteneur isolé, ce qui est utile si
+@file{guix.scm} n'est pas de confiance :
+
+@example
+guix shell -CW -- guix build -f guix.scm
+@end example
+
+Lancer @command{info \"(guix.fr) Invoquer guix shell\"} pour plus
+d'informations.")))
+
+ (entry (commit "0e18c5e5bcb9204c278cfc75493d3b02b746d5c3")
+        (title
+         (en "Linux-libre kernel updated to 6.2")
+         (de "Linux-libre-Kernel wird auf 6.2 aktualisiert")
+         (fr "Le noyau linux-libre est mis à jour vers la 6.2")
+         (pt "Kernel linux-libre atualizado para 6.2"))
+        (body
+         (en "The default version of the linux-libre kernel has been updated to
+              the 6.2 release series.")
+         (de "Der standardmäßig verwendete @code{linux-libre}-Kernel basiert
+              jetzt auf der 6.2-Versionsreihe.")
+         (fr "La version par défaut du noyau linux-libre est mise à jour
+              vers la série des 6.2.")
+         (pt "A versão padrão do kernel linux-libre foi atualizada para a
+              série do kernel 6.2.")))
 
  (entry (commit "598f4c509bbfec2b983a8ee246cce0a0fe45ec7f")
         (title

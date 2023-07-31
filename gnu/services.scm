@@ -6,6 +6,7 @@
 ;;; Copyright © 2021 raid5atemyhomework <raid5atemyhomework@protonmail.com>
 ;;; Copyright © 2020 Christine Lemmer-Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2020, 2021 Brice Waegeneire <brice@waegenei.re>
+;;; Copyright © 2023 Brian Cully <bjc@spork.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -39,6 +40,7 @@
   #:use-module (guix modules)
   #:use-module (guix packages)
   #:use-module (guix utils)
+  #:use-module (guix deprecation)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages hurd)
@@ -49,6 +51,7 @@
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
+  #:use-module (srfi srfi-71)
   #:use-module (ice-9 vlist)
   #:use-module (ice-9 match)
   #:autoload   (ice-9 pretty-print) (pretty-print)
@@ -122,7 +125,7 @@
 
             %boot-service
             %activation-service
-            etc-service)
+            etc-service)  ; deprecated
   #:re-export (;; Note: Re-export 'delete' to allow for proper syntax matching
                ;; in 'modify-services' forms.  See
                ;; <https://debbugs.gnu.org/cgi/bugreport.cgi?bug=26805#16>.
@@ -295,20 +298,67 @@ singleton service type NAME, of which the returned service is an instance."
                                   (description "This is a simple service."))))
     (service type value)))
 
-(define-syntax %modify-service
+(define-syntax clause-alist
   (syntax-rules (=> delete)
-    ((_ svc (delete kind) clauses ...)
-     (if (eq? (service-kind svc) kind)
-         #f
-         (%modify-service svc clauses ...)))
-    ((_ service)
-     service)
-    ((_ svc (kind param => exp ...) clauses ...)
-     (if (eq? (service-kind svc) kind)
-         (let ((param (service-value svc)))
-           (service (service-kind svc)
-                    (begin exp ...)))
-         (%modify-service svc clauses ...)))))
+    "Build an alist of clauses.  Each element has the form (KIND PROC LOC)
+where PROC is the service transformation procedure to apply for KIND, and LOC
+is the source location information."
+    ((_ (delete kind) rest ...)
+     (cons (list kind
+                 (lambda (service)
+                   #f)
+                 (current-source-location))
+           (clause-alist rest ...)))
+    ((_ (kind param => exp ...) rest ...)
+     (cons (list kind
+                 (lambda (svc)
+                   (let ((param (service-value svc)))
+                     (service (service-kind svc)
+                              (begin exp ...))))
+                 (current-source-location))
+           (clause-alist rest ...)))
+    ((_)
+     '())))
+
+(define (apply-clauses clauses services)
+  "Apply CLAUSES, an alist as returned by 'clause-alist', to SERVICES, a list
+of services.  Use each clause at most once; raise an error if a clause was not
+used."
+  (let loop ((services services)
+             (clauses clauses)
+             (result '()))
+    (match services
+      (()
+       (match clauses
+         (()                                      ;all clauses fired, good
+          (reverse result))
+         (((kind _ properties) _ ...)        ;one or more clauses didn't match
+          (raise (make-compound-condition
+                  (condition
+                   (&error-location
+                    (location (source-properties->location properties))))
+                  (formatted-message
+                   (G_ "modify-services: service '~a' not found in service list")
+                   (service-type-name kind)))))))
+      ((head . tail)
+       (let ((service clauses
+                      (fold2 (lambda (clause service remainder)
+                               (if service
+                                   (match clause
+                                     ((kind proc properties)
+                                      (if (eq? kind (service-kind service))
+                                          (values (proc service) remainder)
+                                          (values service
+                                                  (cons clause remainder)))))
+                                   (values #f (cons clause remainder))))
+                             head
+                             '()
+                             clauses)))
+         (loop tail
+               (reverse clauses)
+               (if service
+                   (cons service result)
+                   result)))))))
 
 (define-syntax modify-services
   (syntax-rules ()
@@ -341,13 +391,9 @@ Consider this example:
 
 It changes the configuration of the GUIX-SERVICE-TYPE instance, and that of
 all the MINGETTY-SERVICE-TYPE instances, and it deletes instances of the
-UDEV-SERVICE-TYPE.
-
-This is a shorthand for (filter-map (lambda (svc) ...) %base-services)."
+UDEV-SERVICE-TYPE."
     ((_ services clauses ...)
-     (filter-map (lambda (service)
-                   (%modify-service service clauses ...))
-                 services))))
+     (apply-clauses (clause-alist clauses ...) services))))
 
 
 ;;;
@@ -402,6 +448,7 @@ directory."
                                           boot-script-entry)))
                 (compose identity)
                 (extend compute-boot-script)
+                (default-value #f)
                 (description
                  "Produce the operating system's boot script, which is spawned
 by the initrd once the root file system is mounted.")))
@@ -660,6 +707,7 @@ system directory."
                                           activation-profile-entry)))
                 (compose identity)
                 (extend second-argument)
+                (default-value #f)
                 (description
                  "Run @dfn{activation} code at boot time and upon
 @command{guix system reconfigure} completion.")))
@@ -802,9 +850,11 @@ directory."
                   (service-extension system-service-type etc-entry)))
                 (compose concatenate)
                 (extend append)
+                (default-value '())
                 (description "Populate the @file{/etc} directory.")))
 
-(define (etc-service files)
+(define-deprecated (etc-service files)
+  etc-service-type
   "Return a new service of ETC-SERVICE-TYPE that populates /etc with FILES.
 FILES must be a list of name/file-like object pairs."
   (service etc-service-type files))
@@ -867,6 +917,7 @@ executables, making them setuid and/or setgid.")))
                                           packages->profile-entry)))
                 (compose concatenate)
                 (extend append)
+                (default-value '())
                 (description
                  "This is the @dfn{system profile}, available as
 @file{/run/current-system/profile}.  It contains packages that the sysadmin

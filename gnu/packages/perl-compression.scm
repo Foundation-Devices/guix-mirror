@@ -69,14 +69,14 @@ is available in this module.")
 (define-public perl-compress-raw-bzip2
   (package
     (name "perl-compress-raw-bzip2")
-    (version "2.096")
+    (version "2.204")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://cpan/authors/id/P/PM/PMQS/"
                            "Compress-Raw-Bzip2-" version ".tar.gz"))
        (sha256
-        (base32 "1glcjnbqksaviwyrprh9i4dybsb12kzfy0bx932l0xya9riyfr55"))))
+        (base32 "0s8cyw9iiba92693df26kwa6c031m4lsmqf1x2hagqp7cw74jyzf"))))
     (build-system perl-build-system)
     ;; TODO: Use our bzip2 package.
     (home-page "https://metacpan.org/release/Compress-Raw-Bzip2")
@@ -88,32 +88,17 @@ compression library.")
 (define-public perl-compress-raw-zlib
   (package
     (name "perl-compress-raw-zlib")
-    (version "2.096")
+    (version "2.204")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://cpan/authors/id/P/PM/PMQS/"
                            "Compress-Raw-Zlib-" version ".tar.gz"))
        (sha256
-        (base32 "04jrqvqsa2c655idw7skv5rhb9vx9997h4n9if5p99srq4hblk6d"))))
+        (base32 "0gyifrl5r7m1cqld62qpsg6cakvqa5csg5mhr1wyvnzsgqlz8qgi"))))
     (build-system perl-build-system)
     (inputs
      (list zlib))
-    (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (add-before
-                   'configure 'configure-zlib
-                   (lambda* (#:key inputs #:allow-other-keys)
-                     (call-with-output-file "config.in"
-                       (lambda (port)
-                         (format port "
-BUILD_ZLIB = False
-INCLUDE = ~a/include
-LIB = ~:*~a/lib
-OLD_ZLIB = False
-GZIP_OS_CODE = AUTO_DETECT"
-                                 (assoc-ref inputs "zlib"))))
-                     #t)))))
     (home-page "https://metacpan.org/release/Compress-Raw-Zlib")
     (synopsis "Low-level interface to zlib compression library")
     (description "This module provides a Perl interface to the zlib
@@ -123,14 +108,14 @@ compression library.")
 (define-public perl-io-compress
   (package
     (name "perl-io-compress")
-    (version "2.096")
+    (version "2.204")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://cpan/authors/id/P/PM/PMQS/"
                            "IO-Compress-" version ".tar.gz"))
        (sha256
-        (base32 "0wm51dib74l9baqfkfm0ixsr4cqwrgij2yc45xfhnjabvzary8cx"))))
+        (base32 "067hdan6hbyj9n0h0bzkjjsfhda7nxkzq60v6j0qcxs3hp5q8xv1"))))
     (build-system perl-build-system)
     (propagated-inputs
      ;; These two packages should be updated to this one's version first.

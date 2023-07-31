@@ -208,7 +208,8 @@ only after the 'patch-dependencies' phase."
       (jsobject-update*
        pkg-meta
        `("devDependencies" ,delete-from-jsobject (@))
-       `("dependencies" ,delete-from-jsobject (@))))))
+       `("dependencies" ,delete-from-jsobject (@))
+       `("peerDependencies" ,delete-from-jsobject (@))))))
 
 (define* (delete-lockfiles #:key inputs #:allow-other-keys)
   "Delete 'package-lock.json', 'yarn.lock', and 'npm-shrinkwrap.json', if they
@@ -223,7 +224,7 @@ exist."
 
 (define* (configure #:key outputs inputs #:allow-other-keys)
   (let ((npm (string-append (assoc-ref inputs "node") "/bin/npm")))
-    (invoke npm "--offline" "--ignore-scripts" "install")
+    (invoke npm "--offline" "--ignore-scripts" "--install-links" "install")
     #t))
 
 (define* (build #:key inputs #:allow-other-keys)
@@ -262,6 +263,7 @@ exist."
             "--offline"
             "--loglevel" "info"
             "--production"
+            "--install-links"
             "install" "../package.tgz")
     #t))
 

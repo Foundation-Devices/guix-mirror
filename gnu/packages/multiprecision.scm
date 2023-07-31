@@ -6,9 +6,10 @@
 ;;; Copyright © 2016, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2018, 2019 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Eric Bavier <bavier@member.fsf.org>
-;;; Copyright © 2018, 2019, 2021 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2018, 2019, 2021, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -126,6 +127,17 @@ It is aimed at use in, for example, cryptography and computational algebra.")
                                 ".tar.xz"))
             (sha256 (base32
                      "14yr4sf4mys64nzbgnd997l6l4n8l9vsjnnvnb0lh4jh2ggpi8q6"))))
+   (arguments
+    (list
+     #:phases (if (system-hurd?)
+                  #~(modify-phases %standard-phases
+                      (add-after 'unpack 'skip-tests
+                        (lambda _
+                          (substitute*
+                              "tests/tsprintf.c"
+                            (("(^| )main *\\(.*" all)
+                             (string-append all "{\n  exit (77);//"))))))
+                  #~%standard-phases)))
    (build-system gnu-build-system)
    (outputs '("out" "debug"))
    (propagated-inputs (list gmp))            ; <mpfr.h> refers to <gmp.h>
@@ -450,7 +462,8 @@ number generators, public key cryptography and a plethora of other routines.")
                             "download/v" version "/ltm-" version ".tar.xz"))
         (sha256
          (base32
-          "1c8q1qy88cjhdjlk3g24mra94h34c1ldvkjz0n2988c0yvn5xixp"))))
+          "1c8q1qy88cjhdjlk3g24mra94h34c1ldvkjz0n2988c0yvn5xixp"))
+        (patches (search-patches "libtommath-integer-overflow.patch"))))
     (build-system gnu-build-system)
     (arguments
      '(#:phases
@@ -469,9 +482,10 @@ number generators, public key cryptography and a plethora of other routines.")
                                          "/lib/libtommath.a"))
              #t))
          (replace 'check
-           (lambda* (#:key test-target make-flags #:allow-other-keys)
-             (apply invoke "make" test-target make-flags)
-             (invoke "sh" "test")))
+           (lambda* (#:key tests? test-target make-flags #:allow-other-keys)
+             (when tests?
+               (apply invoke "make" test-target make-flags)
+               (invoke "sh" "test"))))
          (add-after 'install 'install-static-library
            (lambda* (#:key outputs #:allow-other-keys)
              (invoke "make" "-f" "makefile.unix" "install"

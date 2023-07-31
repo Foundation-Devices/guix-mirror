@@ -1,7 +1,7 @@
 # GNU Guix --- Functional package management for GNU
 # Copyright © 2021-2023 Andrew Tropin <andrew@trop.in>
 # Copyright © 2021 Oleg Pykhalov <go.wigust@gmail.com>
-# Copyright © 2022 Ludovic Courtès <ludo@gnu.org>
+# Copyright © 2022, 2023 Ludovic Courtès <ludo@gnu.org>
 #
 # This file is part of GNU Guix.
 #
@@ -36,8 +36,8 @@ container_supported ()
     fi
 }
 
-NIX_STORE_DIR="$(guile -c '(use-modules (guix config))(display %storedir)')"
 localstatedir="$(guile -c '(use-modules (guix config))(display %localstatedir)')"
+NIX_STORE_DIR="$(guile -c '(use-modules (guix config))(display %storedir)')"
 GUIX_DAEMON_SOCKET="$localstatedir/guix/daemon-socket/socket"
 export NIX_STORE_DIR GUIX_DAEMON_SOCKET
 
@@ -94,6 +94,9 @@ trap 'chmod -Rf +w "$test_directory"; rm -rf "$test_directory"' EXIT
                    (home-bash-extension
                     (environment-variables
                       '(("PS1" . "$GUIX_ENVIRONMENT λ ")))
+                    (aliases
+                      `(("run" . "guix shell")
+                        ("path" . ,(literal-string "echo $PATH"))))
                     (bashrc
                      (list
                       (plain-file
@@ -109,7 +112,7 @@ EOF
     guix home extension-graph "home.scm" | grep 'label = "home"'
 
     # There are no Shepherd services so the one below must fail.
-    ! guix home shepherd-graph "home.scm"
+    guix home shepherd-graph "home.scm" && false
 
     if container_supported
     then
@@ -118,17 +121,17 @@ EOF
         # TODO: Make container independent from external environment variables.
         SHELL=bash
 	guix home container home.scm -- true
-	! guix home container home.scm -- false
+	guix home container home.scm -- false && false
 	test "$(guix home container home.scm -- echo '$HOME')" = "$HOME"
 	guix home container home.scm -- cat '~/.config/test.conf' | \
 	    grep "the content of"
 	guix home container home.scm -- test -h '~/.bashrc'
 	test "$(guix home container home.scm -- id -u)" = 1000
-	! guix home container home.scm -- test -f '$HOME/sample/home.scm'
+	guix home container home.scm -- test -f '$HOME/sample/home.scm' && false
 	guix home container home.scm --expose="$PWD=$HOME/sample" -- \
 	     test -f '$HOME/sample/home.scm'
-	! guix home container home.scm --expose="$PWD=$HOME/sample" -- \
-	     rm -v '$HOME/sample/home.scm'
+	guix home container home.scm --expose="$PWD=$HOME/sample" -- \
+	     rm -v '$HOME/sample/home.scm' && false
     else
 	echo "'guix home container' test SKIPPED" >&2
     fi
@@ -149,6 +152,8 @@ EOF
     test -d "${HOME}/.guix-home"
     test -h "${HOME}/.bash_profile"
     test -h "${HOME}/.bashrc"
+    grep 'alias run="guix shell"' "$HOME/.bashrc"
+    grep "alias path='echo \$PATH'" "$HOME/.bashrc"
     test "$(tail -n 2 "${HOME}/.bashrc")" == "\
 # dot-bashrc test file for guix home
 # the content of bashrc-test-config.sh"
@@ -206,8 +211,8 @@ EOF
 # the NEW content of bashrc-test-config.sh"
 
     # This file must have been removed and not backed up.
-    ! test -e "$HOME/.config/test.conf"
-    ! test -e "$HOME"/*guix-home*backup/.config/test.conf
+    test ! -e "$HOME/.config/test.conf"
+    test ! -e "$HOME"/*guix-home*backup/.config/test.conf
 
     test "$(cat "$(configuration_file)")" == "$(cat home.scm)"
     test "$(canonical_file_name)" == "$(readlink "${HOME}/.guix-home")"

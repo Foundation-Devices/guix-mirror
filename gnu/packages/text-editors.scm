@@ -22,6 +22,8 @@
 ;;; Copyright © 2022 zamfofex <zamfofex@twdb.moe>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
 ;;; Copyright © 2022 Andy Tai <atai@atai.org>
+;;; Copyright © 2023 Eidvilas Markevičius <markeviciuseidvilas@gmail.com>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -56,6 +58,7 @@
   #:use-module (gnu packages aspell)
   #:use-module (gnu packages assembly)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages base)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages code)
@@ -64,6 +67,7 @@
   #:use-module (gnu packages curl)
   #:use-module (gnu packages datastructures)
   #:use-module (gnu packages documentation)
+  #:use-module (gnu packages enchant)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gettext)
@@ -171,7 +175,7 @@ based command language.")
 (define-public kakoune
   (package
     (name "kakoune")
-    (version "2021.11.08")
+    (version "2022.10.31")
     (source
      (origin
        (method url-fetch)
@@ -179,7 +183,7 @@ based command language.")
                            "releases/download/v" version "/"
                            "kakoune-" version ".tar.bz2"))
        (sha256
-        (base32 "1x5mvmpf0rgmr2xdw5wjn4hr6qd8yvj0zx588fi324x1knfqhc5a"))))
+        (base32 "12z5wka649xycclbs94bfy2yyln2172dz0zycxsxr384r5i7ncgv"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags
@@ -390,7 +394,7 @@ bindings and many of the powerful features of GNU Emacs.")
            clang-11               ;XXX: must be the same version as Mesas LLVM
            gtkmm-3
            gtksourceviewmm
-           json-modern-cxx
+           nlohmann-json
            libgit2
            universal-ctags))
     (synopsis "Lightweight C++ IDE")
@@ -429,7 +433,7 @@ compiled, requires few libraries, and starts up quickly.")
     (license license:gpl2+)))
 
 (define-public l3afpad
-  (let ((commit "5235c9e13bbf0d31a902c6776918c2d7cdbb61ff")
+  (let ((commit "16f22222116b78b7f6a6fd83289937cdaabed624")
         (revision "0"))
     (package
       (name "l3afpad")
@@ -442,8 +446,20 @@ compiled, requires few libraries, and starts up quickly.")
                        (commit commit)))
                 (sha256
                  (base32
-                  "1alyghm2wpakzdfag0g4g8gb1h9l4wdg7mnhq8bk0iq5ryqia16a"))))
+                  "0q55351lvvlw9bi35l49mxa43g4fv110pwprzkk9m5li77vb0bcp"))))
       (build-system glib-or-gtk-build-system)
+      (arguments
+        (list
+         #:phases
+         #~(modify-phases %standard-phases
+            (add-after 'install 'install-documentation
+              (lambda* (#:key outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (doc (string-append out "/share/doc/" #$name "-"
+                                           #$(package-version this-package)))
+                       (man (string-append out "/share/man/man1")))
+                  (install-file "l3afpad.1" man)
+                  (install-file "README" doc)))))))
       (native-inputs
        (list intltool autoconf automake pkg-config))
       (inputs
@@ -709,7 +725,7 @@ environment with Markdown markup.")
 (define-public manuskript
   (package
     (name "manuskript")
-    (version "0.14.0")
+    (version "0.15.0")
     (source
      (origin
        (method git-fetch)
@@ -718,7 +734,7 @@ environment with Markdown markup.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0qhr9bkq4yl2qjainpsv7blzcji2q9ic9zcynawmhfqy3rmf8qlr"))))
+        (base32 "0d1r62s1qidspck0b1zf8dibyjn9g72agbkjcica4bvfylnbqz9z"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -773,7 +789,13 @@ environment with Markdown markup.")
                    #:icon "manuskript"
                    #:categories "Office;WordProcessor;"))))))))
     (inputs
-     (list pandoc python-lxml python-markdown python-pyqt qtsvg-5))
+     (list bash-minimal
+           pandoc
+           python-lxml
+           python-markdown
+           python-pyenchant
+           python-pyqt
+           qtsvg-5))
     (home-page "http://www.theologeek.ch/manuskript/")
     (synopsis "Tool for writers")
     (description "Manuskript provides a rich environment to help
@@ -993,14 +1015,14 @@ The basic features of Text Pieces are:
 (define-public scintilla
   (package
     (name "scintilla")
-    (version "5.3.2")
+    (version "5.3.4")
     (source
      (origin
        (method url-fetch)
-       (uri (let ((v (apply string-append (string-split version #\.))))
-              (string-append "https://www.scintilla.org/scintilla" v ".tgz")))
+       (uri (string-append "https://www.scintilla.org/scintilla"
+                           (string-delete #\. version) ".tgz"))
        (sha256
-        (base32 "16jskdc0762iwpy4s75vmp27qds32pnpaj09h48c6qg3rmvrgslh"))))
+        (base32 "0inbhzqdikisvnbdzn8153p1apbghxjzkkzji9i8zsdpyapb209z"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1020,11 +1042,9 @@ The basic features of Text Pieces are:
                 (for-each (lambda (f) (install-file f lib))
                           (find-files "bin/" "\\.so$"))
                 (for-each (lambda (f) (install-file f inc))
-                          (find-files "include/" "."))))))))
-    (native-inputs
-     (list pkg-config python-wrapper))
-    (inputs
-     (list gtk+))
+                          (find-files "include/" "\\.h$"))))))))
+    (native-inputs (list pkg-config python-wrapper))
+    (inputs (list gtk+))
     (home-page "https://www.scintilla.org/")
     (synopsis "Code editor for GTK+")
     (description "Scintilla is a source code editing component for
@@ -1035,6 +1055,66 @@ indicators, code completion and call tips.  Styling choices are more
 open than with many editors: Scintilla lets you use proportional
 fonts, bold and italics, multiple foreground and background colours,
 and multiple fonts.")
+    (license license:hpnd)))
+
+(define-public lexilla
+  (package
+    (name "lexilla")
+    (version "5.2.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://www.scintilla.org/lexilla"
+                           (string-delete #\. version) ".tgz"))
+       (sha256
+        (base32
+         "0sc3z6y82h1vq8aaydp119kymzvrv0p1xvy56r5j996jl6zxikk4"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:make-flags #~(list (string-append "CXX=" #$(cxx-for-target))
+                           (string-append "SCINTILLA_INCLUDE="
+                                          #$(this-package-input "scintilla")
+                                          "/include"))
+      #:test-target "test"
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'build
+            (lambda args
+              (with-directory-excursion "src"
+                (apply (assoc-ref %standard-phases 'build) args))))
+          (add-after 'build 'patch-more-shebangs
+            (lambda _
+              ;; Patch these bash shebangs to avoid them failing the tests.
+              (substitute* '("test/examples/bash/x.bsh.folded"
+                             "test/examples/bash/x.bsh.styled")
+                (("/usr/bin/env bash")
+                 (which "bash")))))
+          (replace 'check
+            (lambda args
+              (with-directory-excursion "test"
+                (apply (assoc-ref %standard-phases 'check) args))))
+          (add-after 'unpack 'fix-deps.mak
+            (lambda _
+              (substitute* "src/deps.mak"
+                (("../../scintilla")
+                 #$(this-package-input "scintilla")))))
+          (delete 'configure)           ;no configure script
+          (replace 'install
+            ;; Upstream provides no install script.
+            (lambda _
+              (let ((lib (string-append #$output "/lib"))
+                    (inc (string-append #$output "/include")))
+                (for-each (lambda (f) (install-file f lib))
+                          (find-files "bin/" "\\.so$"))
+                (for-each (lambda (f) (install-file f inc))
+                          (find-files "include/" "\\.h$"))))))))
+    (native-inputs (list python))
+    (inputs (list scintilla))
+    (home-page "https://www.scintilla.org/Lexilla.html")
+    (synopsis "Language lexers for Scintilla")
+    (description "Lexilla is a library of language lexers that can be
+used with the Scintilla editing component.")
     (license license:hpnd)))
 
 (define-public geany
@@ -1385,14 +1465,14 @@ highlighting for dozens of languages.  Jed is very small and fast.")
 (define-public xnedit
   (package
     (name "xnedit")
-    (version "1.4.1")
+    (version "1.5.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://sourceforge/xnedit/" name "-"
                                   version ".tar.gz"))
               (sha256
                (base32
-                "0fw3li7hr47hckm9pl1njx30lfr6cx2p094ir8zmgr91hyxidgld"))))
+                "09wvhg7rywfj7njl2fkzdhgwlgxw358423yiv2ay3k5zhbysxfik"))))
 
     (build-system gnu-build-system)
     (arguments

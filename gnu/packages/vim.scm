@@ -79,7 +79,7 @@
 (define-public vim
   (package
     (name "vim")
-    (version "9.0.1303")
+    (version "9.0.1672")
     (source (origin
              (method git-fetch)
              (uri (git-reference
@@ -88,7 +88,7 @@
              (file-name (git-file-name name version))
              (sha256
               (base32
-               "16difqsdl3v9irjiaj2zqiyn5q94r70ws4i1ygrrcpzk6127mk2q"))))
+               "1cl4a7rzks0ll0b8y0ffrbin622k0qww3l0nz9kb0mz2favw0b9q"))))
     (build-system gnu-build-system)
     (arguments
      `(#:test-target "test"
@@ -132,6 +132,9 @@
              ;; non-trivial due to the special format used, so skip the test.
              (substitute* "src/testdir/test_messages.vim"
                ((".*Test_echo_verbose_system.*" line)
+                (string-append line "return\n")))
+             (substitute* "src/testdir/test_normal.vim"
+               ((".*Test_mouse_shape_after_cancelling_gr.*" line)
                 (string-append line "return\n")))
              (substitute* "src/testdir/test_terminal.vim"
                ((".*Test_open_term_from_cmd.*" line)
@@ -221,13 +224,6 @@ with the editor vim.")))
              "--disable-selinux"
              "--enable-gui")
        ,@(substitute-keyword-arguments (package-arguments vim)
-           ;; This flag fixes the following error:
-           ;; .../libpython3.7m.a(pyexpat.o): undefined reference to symbol 'XML_FreeContentModel'
-           ;; .../libexpat.so.1: error adding symbols: DSO missing from command line
-           ((#:make-flags flags)
-            `(append
-              (list "LDFLAGS=-lexpat")
-              ,flags))
            ((#:phases phases)
             `(modify-phases ,phases
                (add-before 'check 'start-xserver
@@ -243,7 +239,7 @@ with the editor vim.")))
        (prepend pkg-config xorg-server-for-tests)))
     (inputs
      `(("acl" ,acl)
-       ("atk" ,atk)
+       ("at-spi2-core" ,at-spi2-core)
        ("attr" ,attr)
        ("cairo" ,cairo)
        ("fontconfig" ,fontconfig)
@@ -693,7 +689,7 @@ are detected, the user is notified.")))
 (define-public neovim
   (package
     (name "neovim")
-    (version "0.8.3")
+    (version "0.9.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -702,7 +698,7 @@ are detected, the user is notified.")))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1zff73yxbnxym6sn43xk6r0zc2ncingsib81v9g39ibrcinpwaa9"))))
+                "18dsl9fjcqvcqffny6jmcxwx5a7d13aykn310hbgghny8l11rw3c"))))
     (build-system cmake-build-system)
     (arguments
      (list #:modules
@@ -751,8 +747,8 @@ are detected, the user is notified.")))
                  (lambda _
                    ;; nvim remembers its build options, including the compiler with
                    ;; its complete path.  This adds gcc to the closure of nvim, which
-                   ;; doubles its size.  We remove the refirence here.
-                   (substitute* "cmake/GetCompileFlags.cmake"
+                   ;; doubles its size.  We remove the reference here.
+                   (substitute* "cmake.config/versiondef.h.in"
                      (("\\$\\{CMAKE_C_COMPILER\\}") "/gnu/store/.../bin/gcc"))
                    #t)))))
     (inputs (list libuv-for-luv
@@ -832,7 +828,7 @@ and support for fonts with ligatures.")
 (define-public vifm
   (package
     (name "vifm")
-    (version "0.12.1")
+    (version "0.13")
     (source
       (origin
         (method url-fetch)
@@ -843,7 +839,7 @@ and support for fonts with ligatures.")
                               "vifm-" version ".tar.bz2")))
         (sha256
          (base32
-          "122ncp319xisxjxcy33bshjib6905bb0aaz0xjdfkkycplz83qlg"))))
+          "0xahsjdimpqv75jlfnbh0d2mxn21s53xrv37x6npch3rk9s974hd"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags '("--disable-build-timestamp")
@@ -851,14 +847,14 @@ and support for fonts with ligatures.")
        (modify-phases %standard-phases
          (add-after 'patch-source-shebangs 'patch-test-shebangs
            (lambda _
-             (substitute* (cons* "src/background.c"
+             (substitute* (cons* "data/vim/plugin/vifm.vim"
                                  "src/cfg/config.c"
                                  (find-files "tests" "\\.c$"))
                (("/bin/sh") (which "sh"))
                (("/bin/bash") (which "bash")))
              ;; This test segfaults
              (substitute* "tests/Makefile"
-               (("misc") ""))))
+               ((" menus misc") ""))))
           (add-after 'install 'install-vim-plugin-files
             (lambda* (#:key outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
@@ -950,16 +946,16 @@ a nested nvim process.")
 (define-public vim-guix-vim
   (package
     (name "vim-guix-vim")
-    (version "0.3.1")
+    (version "0.4.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
-                     (url "https://gitlab.com/Efraim/guix.vim")
+                     (url "https://git.sr.ht/~efraim/guix.vim")
                      (commit version)))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "080ni4z23qdr8rkrswjqfqfrrcnpn7qdgrg14glwji46wzvwxqyx"))))
+                "013yn2n2nsspk12bldkc9xn4z4kjx9rvracbllc8i1nngldckxd0"))))
     (build-system copy-build-system)
     (arguments
      '(#:install-plan
@@ -971,7 +967,7 @@ a nested nvim process.")
          ("ftplugin" "share/vim/vimfiles/")
          ("plugin" "share/vim/vimfiles/")
          ("syntax" "share/vim/vimfiles/"))))
-    (home-page "https://gitlab.com/Efraim/guix.vim")
+    (home-page "https://git.sr.ht/~efraim/guix.vim")
     (synopsis "Guix integration in Vim")
     (description "This package provides support for GNU Guix in Vim.")
     (license license:vim)))

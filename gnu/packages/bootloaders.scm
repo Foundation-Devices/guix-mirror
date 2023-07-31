@@ -1,12 +1,12 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2019, 2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015, 2018 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2016-2018, 2021-2023 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2016, 2017 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2016, 2017 David Craven <david@craven.ch>
-;;; Copyright © 2017, 2018, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2017, 2018, 2020-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018–2022 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019 nee <nee@cock.li>
 ;;; Copyright © 2019 Mathieu Othacehe <m.othacehe@gmail.com>
@@ -17,7 +17,7 @@
 ;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2022 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
 ;;; Copyright © 2021 Stefan <stefan-guix@vodafonemail.de>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -215,8 +215,8 @@
        ;; file system will be readable by GRUB without rebooting.
        ,@(if (member (or (%current-target-system)
                          (%current-system))
-                     (package-supported-systems fuse))
-             `(("fuse" ,fuse))
+                     (package-supported-systems fuse-2))
+             `(("fuse" ,fuse-2))
              '())
 
        ("freetype" ,freetype)
@@ -305,6 +305,10 @@ menu to select one of the installed operating systems.")
     (inputs
      (modify-inputs (package-inputs grub)
        (prepend efibootmgr mtools)))
+    (native-inputs
+     ;; The tests are skipped in this package so we remove some test dependencies.
+     (modify-inputs (package-native-inputs grub)
+       (delete "parted" "qemu" "xorriso")))
     (arguments
      `(;; TODO: Tests need a UEFI firmware for qemu. There is one at
        ;; https://github.com/tianocore/edk2/tree/master/OvmfPkg .
@@ -644,23 +648,23 @@ tree binary files.  These are board description files used by Linux and BSD.")
 (define u-boot
   (package
     (name "u-boot")
-    (version "2022.10")
+    (version "2023.07.02")
     (source (origin
               (patches
                (list %u-boot-rockchip-inno-usb-patch
                      %u-boot-allow-disabling-openssl-patch
                      %u-boot-sifive-prevent-relocating-initrd-fdt
                      %u-boot-rk3399-enable-emmc-phy-patch
-                     (search-patch "u-boot-infodocs-target.patch")
-                     (search-patch "u-boot-patman-guix-integration.patch")))
+                     (search-patch "u-boot-fix-build-python-3.10.patch")
+                     (search-patch "u-boot-fix-u-boot-lib-build.patch")))
               (method url-fetch)
               (uri (string-append
                     "https://ftp.denx.de/pub/u-boot/"
                     "u-boot-" version ".tar.bz2"))
               (sha256
                (base32
-                "1y5x8vxdgsqdqlsvq01mn8lmw53fqairkhvhhjx83hjva0m4id2h"))))
-    (build-system  gnu-build-system)
+                "1m91w3fpywllkwm000dqsw3294j0szs1lz6qbgwv1aql3ic4hskb"))))
+    (build-system gnu-build-system)
     (native-inputs
      (list bison
            dtc
@@ -671,6 +675,7 @@ tree binary files.  These are board description files used by Linux and BSD.")
            perl
            pkg-config                   ;for 'make menuconfig'
            python
+           python-pyelftools
            swig
            (list util-linux "lib")))
     (home-page "https://www.denx.de/wiki/U-Boot/")
@@ -721,7 +726,12 @@ Info manual.")))
     (name "u-boot-tools")
     (native-inputs
      (modify-inputs (package-native-inputs u-boot)
-       (prepend python-coverage python-pycryptodomex python-pytest sdl2)))
+       (prepend python-coverage
+                python-filelock
+                python-pycryptodomex
+                python-pytest
+                python-pytest-xdist
+                sdl2)))
     (arguments
      `(#:make-flags '("HOSTCC=gcc")
        #:test-target "tcheck"
@@ -734,7 +744,7 @@ Info manual.")))
                (("/bin/false") (which "false")))
              (substitute* "tools/dtoc/fdt_util.py"
                (("'cc'") "'gcc'"))
-             (substitute* "tools/patman/test_util.py"
+             (substitute* "tools/u_boot_pylib/test_util.py"
                ;; python3-coverage is simply called coverage in guix.
                (("python3-coverage") "coverage")
 
@@ -772,7 +782,16 @@ def test_ctrl_c"))
                            ;; See https://bugs.gnu.org/34717 for
                            ;; details.
                            (("CONFIG_FIT_SIGNATURE=y")
-                            "CONFIG_FIT_SIGNATURE=n\nCONFIG_UT_LIB_ASN1=n\nCONFIG_TOOLS_LIBCRYPTO=n")
+                            "CONFIG_FIT_SIGNATURE=n
+CONFIG_UT_LIB_ASN1=n
+CONFIG_TOOLS_LIBCRYPTO=n")
+                           ;; Catch instances of implied CONFIG_FIG_SIGNATURE
+                           ;; with VPL targets
+                           (("CONFIG_SANDBOX_VPL=y")
+                            "CONFIG_SANDBOX_VPL=y
+CONFIG_FIT_SIGNATURE=n
+CONFIG_VPL_FIT_SIGNATURE=n
+CONFIG_TOOLS_LIBCRYPTO=n")
                            ;; This test requires a sound system, which is un-used
                            ;; in u-boot-tools.
                            (("CONFIG_SOUND=y") "CONFIG_SOUND=n")))
@@ -823,6 +842,26 @@ def test_ctrl_c"))
                   "  This package provides board-independent tools "
                   "of U-Boot."))))
 
+(define-public python-u-boot-pylib
+  (package
+    (inherit u-boot)
+    (name "python-u-boot-pylib")
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'chdir
+            (lambda _
+              (chdir "tools/u_boot_pylib")))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (invoke "./u_boot_pylib")))))))
+    (synopsis "U-Boot Python library")
+    (description "This package provides common Python code used by some of the
+commands part of the U-Boot project, such as Patman.")))
+
 ;;; This is packaged separately, as it can be used in other contexts than for
 ;;; U-Boot development.
 (define-public patman
@@ -837,10 +876,13 @@ def test_ctrl_c"))
       #:tests? #f
       #:phases
       #~(modify-phases %standard-phases
+          ;; Patman fails to run during 'sanity-check phase, as it needs to be
+          ;; run within a git directory.
+          (delete 'sanity-check)
           (add-after 'unpack 'chdir
             (lambda _
               (chdir "tools/patman"))))))
-    (inputs (list python-pygit2 python-requests))
+    (inputs (list python-pygit2 python-requests python-u-boot-pylib))
     (synopsis "Patch automation tool")
     (description "Patman is a patch automation script which:
 @itemize
@@ -992,7 +1034,7 @@ removed so that it fits within common partitioning schemes.")))
 (define-public u-boot-am335x-evm
   (make-u-boot-package "am335x_evm" "arm-linux-gnueabihf"))
 
-(define*-public (make-u-boot-sunxi64-package board triplet
+(define*-public (make-u-boot-sunxi64-package board triplet scp-firmware
                                              #:key defconfig configs)
   (let ((base (make-u-boot-package
                board triplet #:defconfig defconfig #:configs configs)))
@@ -1004,20 +1046,27 @@ removed so that it fits within common partitioning schemes.")))
           #~(modify-phases #$phases
               (add-after 'unpack 'set-environment
                 (lambda* (#:key native-inputs inputs #:allow-other-keys)
+                  (setenv "SCP" (search-input-file
+                                 native-inputs "libexec/scp.bin"))
                   (setenv "BL31" (search-input-file inputs "bl31.bin"))))))))
+      (native-inputs
+       (modify-inputs (package-native-inputs base)
+         (append (force scp-firmware))))
       (inputs
        (modify-inputs (package-inputs base)
          (append arm-trusted-firmware-sun50i-a64))))))
 
 (define-public u-boot-pine64-plus
-  (make-u-boot-sunxi64-package "pine64_plus" "aarch64-linux-gnu"))
+  (make-u-boot-sunxi64-package "pine64_plus" "aarch64-linux-gnu"
+                               (delay crust-pine64-plus)))
 
 (define-public u-boot-pine64-lts
-  (make-u-boot-sunxi64-package "pine64-lts" "aarch64-linux-gnu"))
+  (make-u-boot-sunxi64-package "pine64-lts" "aarch64-linux-gnu"
+                               (delay crust-pine64-plus)))
 
 (define-public u-boot-pinebook
   (make-u-boot-sunxi64-package
-   "pinebook" "aarch64-linux-gnu"
+   "pinebook" "aarch64-linux-gnu" (delay crust-pinebook)
    ;; Fix regression with LCD video output introduced in 2020.01
    ;; https://patchwork.ozlabs.org/patch/1225130/
    #:configs '("CONFIG_VIDEO_BPP32=y")))
@@ -1099,7 +1148,7 @@ partition."))
               (delete 'strip)
               (delete 'validate-runpath)))))
       (inputs
-       (modify-inputs (package-native-inputs base)
+       (modify-inputs (package-inputs base)
          (append arm-trusted-firmware-rk3399))))))
 
 (define-public u-boot-qemu-arm
@@ -1165,7 +1214,20 @@ Documentation} for more information (for example by running @samp{info
                 (append sdl2))))))
 
 (define-public u-boot-sifive-unleashed
-  (make-u-boot-package "sifive_unleashed" "riscv64-linux-gnu"))
+  (let ((base (make-u-boot-package "sifive_unleashed" "riscv64-linux-gnu")))
+    (package
+      (inherit base)
+      (arguments
+       (substitute-keyword-arguments (package-arguments base)
+         ((#:phases phases)
+          #~(modify-phases #$phases
+              (add-after 'unpack 'set-environment
+                (lambda* (#:key inputs #:allow-other-keys)
+                  (setenv "OPENSBI" (search-input-file inputs
+                                                       "fw_dynamic.bin"))))))))
+      (inputs
+       (modify-inputs (package-inputs base)
+         (append opensbi-generic))))))
 
 (define-public u-boot-sifive-unmatched
   (let ((base (make-u-boot-package "sifive_unmatched" "riscv64-linux-gnu")))
@@ -1225,7 +1287,11 @@ Documentation} for more information (for example by running @samp{info
                                                "CONFIG_SATA_SIL=y"
                                                "CONFIG_SCSI=y"
                                                "CONFIG_SCSI_AHCI=y"
-                                               "CONFIG_DM_SCSI=y"))))
+                                               "CONFIG_DM_SCSI=y"
+                                               ;; Disable SPL FIT signatures,
+                                               ;; due to GPLv2 and Openssl
+                                               ;; license incompatibilities
+                                               "# CONFIG_SPL_FIT_SIGNATURE is not set"))))
     (package
       (inherit base)
       (arguments
@@ -1479,10 +1545,13 @@ grub-efi-netboot-removable-bootloader.")
                      "U_BOOT_DATE \"Jan 01 1969\"")
                     (("U_BOOT_TIME \"%T\"")
                      "U_BOOT_TIME \"00:00:00\""))))
-              (add-before 'build 'adjust-for-gcc10
+              (add-before 'build 'adjust-for-current-gcc
                 (lambda _
-                  (copy-file "include/linux/compiler-gcc6.h"
-                             "include/linux/compiler-gcc10.h")
+                  (let ((gcc-major-version #$(version-major
+                                              (package-version gcc))))
+                    (copy-file "include/linux/compiler-gcc6.h"
+                               (string-append "include/linux/compiler-gcc"
+                                              gcc-major-version ".h")))
                   (substitute* "arch/arm/Makefile"
                     (("march=armv5")
                      "march=armv5te"))))
@@ -1706,20 +1775,21 @@ order to add a suitable bootloader menu entry.")
   ;;
   ;; TODO: Bump this timestamp at each modifications of the package (not only
   ;; for updates) by running: date +%s.
-  (let ((timestamp "1671715380"))
+  (let ((timestamp "1678285400")
+        (commit "9e1f7a3659071004f4b8c76f2593da6287f0d575")
+        (revision "1"))
     (package
       (name "ipxe")
-      (version "1.21.1")
+      (version (git-version "1.21.1" revision commit))
       (source (origin
                 (method git-fetch)
                 (uri (git-reference
                       (url "https://github.com/ipxe/ipxe")
-                      (commit (string-append "v" version))))
+                      (commit commit)))
                 (file-name (git-file-name name version))
-                (patches (search-patches "ipxe-reproducible-geniso.patch"))
                 (sha256
                  (base32
-                  "1pkf1n1c0rdlzfls8fvjvi1sd9xjd9ijqlyz3wigr70ijcv6x8i9"))))
+                  "1fp4bgwzy923m11dkkhk9dik7al7shzmmpqhp339z786z8bjzmkb"))))
       (build-system gnu-build-system)
       (arguments
        (list
@@ -1753,15 +1823,6 @@ order to add a suitable bootloader menu entry.")
             (list "ECHO_E_BIN_ECHO=echo"
                   "ECHO_E_BIN_ECHO_E=echo -e"
 
-                  ;; cdrtools' mkisofs will silently ignore a missing isolinux.bin!
-                  ;; Luckily xorriso is more strict.
-                  #$@(if (or (target-x86-64?) (target-x86?))
-                         '((string-append "ISOLINUX_BIN=" syslinux
-                                          "/share/syslinux/isolinux.bin")
-                           (string-append "SYSLINUX_MBR_DISK_PATH=" syslinux
-                                          "/share/syslinux/isohdpfx.bin"))
-                         '())
-
                   ;; Build reproducibly.
                   (string-append "BUILD_ID_CMD=echo -n " (build-id #$output))
                   (string-append "BUILD_TIMESTAMP=" #$timestamp)
@@ -1788,6 +1849,24 @@ order to add a suitable bootloader menu entry.")
                    (string-append "#define " option))
                   (("^#undef.*(DOWNLOAD_PROTO_NFS.*)" _ option)
                    (string-append "#define " option)))))
+            ;; It is not entirely clear why these fail to compile.
+            (add-after 'enter-source-directory 'skip-i386-tap-linux
+              (lambda _
+                (substitute* "Makefile"
+                  (("bin-i386-linux/tap.linux") "")
+                  (("bin-i386-linux/tests.linux") ""))))
+            #$@(if (target-x86?)
+                 #~((add-after 'enter-source-directory 'set-syslinux-path
+                      ;; cdrtools' mkisofs will silently ignore a missing isolinux.bin!
+                      ;; Luckily xorriso is more strict.
+                      (lambda* (#:key inputs #:allow-other-keys)
+                        (substitute* "util/genfsimg"
+                          (("\t/usr/lib/syslinux " all)
+                           (string-append
+                             "\t" #$(this-package-native-input "syslinux")
+                             "/share/syslinux \\\n"
+                             all))))))
+                 #~())
             (delete 'configure)         ; no configure script
             (replace 'install
               (lambda _
@@ -1813,10 +1892,10 @@ order to add a suitable bootloader menu entry.")
               (lambda _ (chdir ".."))))
         #:tests? #f))                  ; no test suite
       (native-inputs
-       (append (if (or (target-x86-64?) (target-x86?))
-                   ;; Syslinux only supports i686 and x86_64.
-                   (list syslinux)
-                   '())
+       (append (if (target-x86?)
+                 ;; Syslinux only supports i686 and x86_64.
+                 (list syslinux)
+                 '())
                (list perl xorriso)))
       (home-page "https://ipxe.org")
       (synopsis "PXE-compliant network boot firmware")

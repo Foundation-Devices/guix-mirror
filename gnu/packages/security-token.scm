@@ -5,7 +5,7 @@
 ;;; Copyright © 2016 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2017 Thomas Danckaert <post@thomasdanckaert.be>
 ;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2017, 2019 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2017, 2019, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2018, 2019 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2018 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2020 Raphaël Mélotte <raphael.melotte@mind.be>
@@ -14,9 +14,13 @@
 ;;; Copyright © 2021 Sergey Trofimov <sarg@sarg.org.ru>
 ;;; Copyright © 2021 Dhruvin Gandhi <contact@dhruvin.dev>
 ;;; Copyright © 2021 Ahmad Jarara <git@ajarara.io>
-;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
+;;; Copyright © 2022, 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2022 Petr Hodina <phodina@protonmail.com>
 ;;; Copyright © 2022 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
+;;; Copyright © 2023 Jake Leporte <jakeleporte@outlook.com>
+;;; Copyright © 2023 Timotej Lazar <timotej.lazar@araneo.si>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2023 Pierre Langlois <pierre.langlois@gmx.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -45,9 +49,11 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system glib-or-gtk)
+  #:use-module (guix build-system pyproject)
   #:use-module (guix build-system python)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
@@ -76,6 +82,7 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages swig)
@@ -122,7 +129,7 @@ readers and is needed to communicate with such devices through the
 (define-public eid-mw
   (package
     (name "eid-mw")
-    (version "5.1.8")
+    (version "5.1.10")
     (source
      (origin
        (method git-fetch)
@@ -131,7 +138,7 @@ readers and is needed to communicate with such devices through the
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "11jf828ag8y5iykcfjmjc3n8g5mchpl3fxkr110civ3qqbdiw882"))))
+        (base32 "14nx0hdpv0w5wwsg3894g8pzxlzgp9ryd38k4djhcsyarvzfwynr"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
      (list autoconf
@@ -208,7 +215,8 @@ the low-level development kit for the Yubico YubiKey authentication device.")
                     "softhsm-" version ".tar.gz"))
               (sha256
                (base32
-                "1wkmyi6n3z2pak1cj5yk6v6bv9w0m24skycya48iikab0mrr8931"))))
+                "1wkmyi6n3z2pak1cj5yk6v6bv9w0m24skycya48iikab0mrr8931"))
+              (patches (search-patches "softhsm-fix-openssl3-tests.patch"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags '("--disable-gost"))) ; TODO Missing the OpenSSL
@@ -254,6 +262,62 @@ from a client application and provide access to the desired reader.")
     (license (list license:bsd-3                ; pcsc-lite
                    license:isc                  ; src/strlcat.c src/strlcpy.c
                    license:gpl3+))))            ; src/spy/*
+
+(define-public pcsc-tools
+  (package
+    (name "pcsc-tools")
+    (version "1.6.2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://salsa.debian.org/rousseau/pcsc-tools.git/")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "16kvw8y5289fp6y3z8l5w61gfrk872kd500a27sgr5k5dpr9vfbk"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'patch-data-paths
+                 (lambda _
+                   (substitute* "ATR_analysis"
+                     (((string-append
+                        "\"/usr/local/pcsc/smartcard_list.txt\", "
+                        "\"/usr/share/pcsc/smartcard_list.txt\", "
+                        "\"/usr/local/share/pcsc/smartcard_list.txt\""))
+                      (string-append "\"" #$output
+                                     "/share/pcsc/smartcard_list.txt\"")))
+                   (substitute* "ATR_analysis.1p"
+                     (("^(\\.IR \\./) ,\n$" _ cwd)
+                      (string-append cwd "\n"))
+                     (("^\\.I /usr/local/pcsc/\n$")
+                      "")
+                     (("/usr/share/pcsc/\n$")
+                      (string-append #$output "/share/pcsc/\n")))))
+               (add-after 'patch-shebangs 'wrap-programs
+                 (lambda _
+                   (for-each
+                    (lambda (prog)
+                      (wrap-program (string-append #$output "/bin/" prog)
+                        `("PERL5LIB" = (,(getenv "PERL5LIB")))))
+                    '("ATR_analysis" "gscriptor" "scriptor"))
+                   (wrap-program (string-append #$output "/bin/gscriptor")
+                     `("GI_TYPELIB_PATH" = (,(getenv "GI_TYPELIB_PATH")))))))))
+    (native-inputs (list autoconf automake libtool gnu-gettext pkg-config))
+    (inputs (list bash-minimal          ;for wrap-program
+                  perl
+                  perl-gtk3
+                  pcsc-lite
+                  perl-pcsc))
+    (synopsis "Smart cards and PC/SC tools")
+    (description "This package provides the @command{pcsc_scan},
+@command{ATR_analysis}, @command{scriptor}, and @command{gscriptor} commands,
+which are useful tools to test a PC/SC driver, card or reader or send commands
+in a friendly environment (text or graphical user interface).")
+    (home-page "https://pcsc-tools.apdu.fr/")
+    (license license:gpl2+)))
 
 (define-public ykclient
   (package
@@ -328,25 +392,26 @@ authentication, encryption and digital signatures.  OpenSC implements the PKCS
 (define-public yubico-piv-tool
   (package
     (name "yubico-piv-tool")
-    (version "1.6.1")
+    (version "2.3.1")
     (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://developers.yubico.com/yubico-piv-tool/Releases/"
-                    name "-" version ".tar.gz"))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/Yubico/yubico-piv-tool/")
+                    (commit (string-append name "-" version))))
+              (file-name (git-file-name name version))
               (sha256
                (base32
-                "10xgdc51xvszkxmsvqnbjs8ixxz7rfnfahh3wn8glllynmszbhwi"))))
-    (build-system gnu-build-system)
+                "0gxrn2yzs907h22233s2337j5zb8mvygvk0z2macl4rf8w6qf4vk"))))
+    (build-system cmake-build-system)
     (inputs
      (list gengetopt perl pcsc-lite openssl))
     (native-inputs
-     (list doxygen
+     (list check
+           doxygen
            graphviz
            help2man
-           check
-           texlive-bin
-           pkg-config))
+           pkg-config
+           (texlive-updmap.cfg)))
     (home-page "https://developers.yubico.com/yubico-piv-tool/")
     (synopsis "Interact with the PIV application on a YubiKey")
     (description
@@ -400,7 +465,7 @@ retrieve a YubiKey's serial number, and so forth.")
 (define-public python-pyscard
   (package
     (name "python-pyscard")
-    (version "1.9.9")
+    (version "2.0.7")
     (source (origin
               (method url-fetch)
               ;; The maintainer publishes releases on various sites, but
@@ -410,7 +475,7 @@ retrieve a YubiKey's serial number, and so forth.")
                     version "/pyscard-" version ".tar.gz"))
               (sha256
                (base32
-                "082cjkbxadaz2jb4rbhr0mkrirzlqyqhcf3r823qb0q1k50ybgg6"))))
+                "1gy1hmzrhfa7bqs132v89pchm9q3rpnqf3a6225vwpx7bx959017"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -418,24 +483,21 @@ retrieve a YubiKey's serial number, and so forth.")
          ;; Tell pyscard where to find the PCSC include directory.
          (add-after 'unpack 'patch-platform-include-dirs
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((pcsc-include-dir (string-append
-                                      (assoc-ref inputs "pcsc-lite")
-                                      "/include/PCSC")))
+             (let ((pcsc-include-dir (search-input-directory
+                                      inputs "/include/PCSC")))
                (substitute* "setup.py"
                  (("platform_include_dirs = \\[.*?\\]")
                   (string-append
-                   "platform_include_dirs = ['" pcsc-include-dir "']")))
-               #t)))
+                   "platform_include_dirs = ['" pcsc-include-dir "']"))))))
          ;; pyscard wants to dlopen libpcsclite, so tell it where it is.
          (add-after 'unpack 'patch-dlopen
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "smartcard/scard/winscarddll.c"
                (("lib = \"libpcsclite\\.so\\.1\";")
-                (simple-format #f
-                               "lib = \"~a\";"
-                               (search-input-file inputs
-                                                  "/lib/libpcsclite.so.1"))))
-             #t)))))
+                (simple-format
+                 #f
+                 "lib = \"~a\";"
+                 (search-input-file inputs "/lib/libpcsclite.so.1")))))))))
     (inputs
      (list pcsc-lite))
     (native-inputs
@@ -522,30 +584,19 @@ Notable features:
                 "0vrivl1dwql6nfi48z6dy56fwy2z13d7abgahgrs2mcmqng7hra2"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags
-       (list "--enable-gtk-doc"
-             (string-append "--with-udevrulesdir="
-                            (assoc-ref %outputs "out")
-                            "/lib/udev/rules.d"))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-docbook-xml
-           (lambda* (#:key inputs #:allow-other-keys)
-             ;; Avoid a network connection attempt during the build.
-             (substitute* "gtk-doc/u2f-host-docs.xml"
-               (("http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd")
-                (string-append (assoc-ref inputs "docbook-xml")
-                               "/xml/dtd/docbook/docbookx.dtd")))
-             #t)))))
-    (inputs
-     (list json-c-0.13 hidapi))
+     (list #:configure-flags
+           #~(list "--enable-gtk-doc"
+                   (string-append "--with-udevrulesdir=" #$output
+                                  "/lib/udev/rules.d"))))
+    (inputs (list json-c-0.13 hidapi))
     (native-inputs
      (list help2man
            gengetopt
            pkg-config
            gtk-doc
            docbook-xml-4.3
-           eudev))
+           eudev
+           libxml2))                    ;for XML_CATALOG_FILES
     (home-page "https://developers.yubico.com/libu2f-host/")
     ;; TRANSLATORS: The U2F protocol has a "server side" and a "host side".
     (synopsis "U2F host-side C library and tool")
@@ -633,7 +684,7 @@ your existing infrastructure.")
 (define-public python-fido2
   (package
     (name "python-fido2")
-    (version "0.9.3")
+    (version "1.1.1")
     (source (origin
               (method url-fetch)
               (uri
@@ -642,31 +693,30 @@ your existing infrastructure.")
                 version "/fido2-" version ".tar.gz"))
               (sha256
                (base32
-                "1v366h449f8q74jkmy1291ffj2345nm7cdsipgqvgz4w22k8jpml"))
+                "1hwz0xagkmy6hhcyfl66dxf2vfa69lqqqjrv70vw7harik59bi2x"))
               (snippet
                ;; Remove bundled dependency.
                '(delete-file "fido2/public_suffix_list.dat"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
-     `(;; This attempts to access
-       ;; /System/Library/Frameworks/IOKit.framework/IOKit
-       ;; The recommendation is to use tox for testing.
-       #:tests? #false
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'install-public-suffix-list
-           (lambda* (#:key inputs #:allow-other-keys)
-             (copy-file
-              (search-input-file inputs
-                                 (string-append
-                                  "/share/public-suffix-list-"
-                                  ,(package-version public-suffix-list)
-                                  "/public_suffix_list.dat"))
-              "fido2/public_suffix_list.dat"))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'install-public-suffix-list
+            (lambda* (#:key inputs #:allow-other-keys)
+              (copy-file
+               (search-input-file inputs
+                                  (string-append
+                                   "/share/public-suffix-list-"
+                                   #$(package-version public-suffix-list)
+                                   "/public_suffix_list.dat"))
+               "fido2/public_suffix_list.dat"))))))
     (propagated-inputs
-     (list python-cryptography python-six))
+     (list python-cryptography python-pyscard))
     (native-inputs
-     (list python-mock python-pyfakefs public-suffix-list))
+     (list python-poetry-core
+           python-pytest
+           public-suffix-list))
     (home-page "https://github.com/Yubico/python-fido2")
     (synopsis "Python library for communicating with FIDO devices over USB")
     (description
@@ -688,33 +738,31 @@ implementing a Relying Party.")
 (define-public python-yubikey-manager
   (package
     (name "python-yubikey-manager")
-    (version "4.0.7")
+    (version "5.1.1")
     (source (origin
               (method url-fetch)
               (uri (string-append
                     "https://developers.yubico.com/yubikey-manager/Releases"
-                    "/yubikey-manager-" version ".tar.gz"))
+                    "/yubikey_manager-" version ".tar.gz"))
               (sha256
                (base32
-                "0kzwal7i4kyywm4f5zh8b823mh0ih2nsh5c0c4dfn4vw3j5dnwlr"))))
-    (build-system python-build-system)
-    (arguments
-     '(;; This attempts to access
-       ;; /System/Library/Frameworks/IOKit.framework/IOKit
-       ;; The recommendation is to use tox for testing.
-       #:tests? #false))
+                "1kma08rxvpzn2gf8b9vxyyb2pvrakm7hhpdmbnb54nwbdnbxp1v4"))))
+    (build-system pyproject-build-system)
     (propagated-inputs
-     (list python-six
-           python-pyscard
-           python-pyusb
-           python-click
+     (list python-click
            python-cryptography
+           python-fido2
+           python-keyring
            python-pyopenssl
-           python-fido2))
+           python-pyscard
+           python-pyusb))
     (inputs
      (list pcsc-lite))
     (native-inputs
-     (list swig python-mock))
+     (list python-makefun
+           python-poetry-core
+           python-pytest
+           swig))
     (home-page "https://developers.yubico.com/yubikey-manager/")
     (synopsis "Command line tool and library for configuring a YubiKey")
     (description
@@ -969,3 +1017,33 @@ It supports the following type of cards:
 It also has limited support for Mifare Classic compatible cards (Thalys card)")
     (license license:gpl3+)
     (home-page "http://pannetrat.com/Cardpeek")))
+
+(define-public pcsc-cyberjack
+  (package
+    (name "pcsc-cyberjack")
+    (version "3.99.5final.sp15")
+    (source
+     (origin
+       (method url-fetch)
+       (uri "https://support.reiner-sct.de/downloads/LINUX/V3.99.5_SP15/pcsc-cyberjack_3.99.5final.SP15.tar.bz2")
+       (sha256
+        (base32 "0yj6plgb245r218v6lgdabb3422hxyrw8rrpf5b8fwah4j1w5dxc"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:configure-flags
+      #~(list (string-append "--with-usbdropdir=" #$output "/pcsc/drivers")
+              (string-append "--bindir=" #$output:tools "/bin"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-tools
+            (lambda _ (invoke "make" "-C" "tools/cjflash" "install"))))))
+    (native-inputs (list pkg-config))
+    (inputs (list pcsc-lite libusb))
+    (outputs '("out" "tools"))
+    (synopsis "PC/SC driver for cyberJack chipcard readers")
+    (description
+     "This package includes the IFD driver for the cyberJack
+contactless (RFID) and contact USB chipcard readers.")
+    (home-page "http://www.reiner-sct.com/")
+    (license license:lgpl2.1+)))

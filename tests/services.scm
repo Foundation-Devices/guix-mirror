@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015-2019, 2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2015-2019, 2022, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -285,5 +285,89 @@
        (match (lookup-service-types 'system)
          ((one) one)
          (x x))))
+
+(test-equal "modify-services: do nothing"
+  '(1 2 3)                              ;note: service order must be preserved
+  (let* ((t1 (service-type (name 't1)
+                           (extensions '())
+                           (description "")))
+         (t2 (service-type (name 't2)
+                           (extensions '())
+                           (description "")))
+         (t3 (service-type (name 't3)
+                           (extensions '())
+                           (description "")))
+         (services (list (service t1 1) (service t2 2) (service t3 3))))
+    (map service-value
+         (modify-services services))))
+
+(test-equal "modify-services: delete service"
+  '(1 4)                                ;note: service order must be preserved
+  (let* ((t1 (service-type (name 't1)
+                           (extensions '())
+                           (description "")))
+         (t2 (service-type (name 't2)
+                           (extensions '())
+                           (description "")))
+         (t3 (service-type (name 't3)
+                           (extensions '())
+                           (description "")))
+         (t4 (service-type (name 't4)
+                           (extensions '())
+                           (description "")))
+         (services (list (service t1 1) (service t2 2)
+                         (service t3 3) (service t4 4))))
+    (map service-value
+         (modify-services services
+           (delete t3)
+           (delete t2)))))
+
+(test-error "modify-services: delete non-existing service"
+  #t
+  (let* ((t1 (service-type (name 't1)
+                           (extensions '())
+                           (description "")))
+         (t2 (service-type (name 't2)
+                           (extensions '())
+                           (description "")))
+         (t3 (service-type (name 't2)
+                           (extensions '())
+                           (description "")))
+         (services (list (service t1 1) (service t2 2))))
+    (modify-services services
+      (delete t3))))
+
+(test-equal "modify-services: change value"
+  '(11 2 33)                            ;note: service order must be preserved
+  (let* ((t1 (service-type (name 't1)
+                           (extensions '())
+                           (description "")))
+         (t2 (service-type (name 't2)
+                           (extensions '())
+                           (description "")))
+         (t3 (service-type (name 't3)
+                           (extensions '())
+                           (description "")))
+         (services (list (service t1 1) (service t2 2) (service t3 3))))
+    (map service-value
+         (modify-services services
+           (t1 value => 11)
+           (t3 value => 33)))))
+
+(test-error "modify-services: change value for non-existing service"
+  #t
+  (let* ((t1 (service-type (name 't1)
+                           (extensions '())
+                           (description "")))
+         (t2 (service-type (name 't2)
+                           (extensions '())
+                           (description "")))
+         (t3 (service-type (name 't3)
+                           (extensions '())
+                           (description "")))
+         (services (list (service t1 1) (service t3 3))))
+    (map service-value
+         (modify-services services
+           (t2 value => 22)))))
 
 (test-end)

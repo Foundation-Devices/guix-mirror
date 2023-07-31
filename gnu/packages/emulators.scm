@@ -17,6 +17,8 @@
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Guillaume Le Vaillant <glv@posteo.net>
+;;; Copyright © 2023 c4droid <c4droid@foxmail.com>
+;;; Copyright © 2023 Yovan Naumovski <yovan@gorski.stream>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -114,14 +116,14 @@
 (define-public vice
   (package
     (name "vice")
-    (version "3.6")
+    (version "3.7.1")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/vice-emu/releases/"
                            "vice-" version ".tar.gz"))
        (sha256
-        (base32 "1zfkl9j40v2417l1fmczdvl9yzh81jlpcy5cl2svjzb2rrffbgv5"))))
+        (base32 "165b1ixrarcqy1rl06yhaf46ni3j8lrbn8f3zf5nkc2d0bk12f3y"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags '("--disable-html-docs"
@@ -723,7 +725,7 @@ The following systems are supported:
 (define-public mgba
   (package
     (name "mgba")
-    (version "0.10.1")
+    (version "0.10.2")
     (source
      (origin
        (method git-fetch)
@@ -732,7 +734,8 @@ The following systems are supported:
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0pqfjsr9q61a3mgmvqxxkalxb838k46q9ilz31frpcvvndif0sm1"))
+        (base32
+         "1wwpjcblp2c1svab4z1if5xb7707wsy6zw590lwdz9za35i0h37q"))
        (modules '((guix build utils)))
        (snippet
         ;; Make sure we don't use the bundled software.
@@ -748,8 +751,7 @@ The following systems are supported:
        #:configure-flags
        (list "-DUSE_LZMA=OFF"           ;do not use bundled LZMA
              "-DUSE_LIBZIP=OFF")))      ;use "zlib" instead
-    (native-inputs
-     (list pkg-config qttools-5))
+    (native-inputs (list pkg-config qttools-5))
     (inputs
      (list ffmpeg
            libedit
@@ -1420,7 +1422,7 @@ as RetroArch.")
 (define-public retroarch
   (package
     (name "retroarch")
-    (version "1.9.11")
+    (version "1.15.0")
     (source
      (origin
        (method git-fetch)
@@ -1429,9 +1431,7 @@ as RetroArch.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0hd77kw1f655s40qcz1righdhd9czqyy40rf7gigdag1bkchdx6z"))
-       (patches
-        (search-patches "retroarch-LIBRETRO_DIRECTORY.patch"))))
+        (base32 "1ii31mc7wfd386rzyxqk8nmx5a13f9iqz47991z4zx0d8gqcchzg"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no tests
@@ -1449,13 +1449,6 @@ as RetroArch.")
                (substitute* "gfx/common/wayland/generate_wayland_protos.sh"
                  (("/usr/local/share/wayland-protocols")
                  (string-append wayland-protocols "/share/wayland-protocols")))
-               (substitute* "qb/qb.libs.sh"
-                 (("/bin/true") (which "true")))
-
-               ;; Use shared zlib.
-               (substitute* '("libretro-common/file/archive_file_zlib.c"
-                              "libretro-common/streams/trans_stream_zlib.c")
-                 (("<compat/zlib.h>") "<zlib.h>"))
 
                ;; The configure script does not yet accept the extra arguments
                ;; (like ‘CONFIG_SHELL=’) passed by the default configure phase.
@@ -1469,7 +1462,7 @@ as RetroArch.")
                  ;; Non-free software are available through the core updater,
                  ;; disable it.  See <https://issues.guix.gnu.org/38360>.
                  "--disable-update_cores"
-                 "--disable-builtinminiupnpc")))))))
+                 "--disable-builtinzlib")))))))
     (inputs
      `(("alsa-lib" ,alsa-lib)
        ("ffmpeg" ,ffmpeg-4)
@@ -1480,7 +1473,6 @@ as RetroArch.")
        ("libxrandr" ,libxrandr)
        ("libxv" ,libxv)
        ("mesa" ,mesa)
-       ("miniupnpc" ,miniupnpc)
        ("openal" ,openal)
        ("pulseaudio" ,pulseaudio)
        ("python" ,python)
@@ -1561,14 +1553,14 @@ that compiles to WebAssembly.")
 (define-public scummvm
   (package
     (name "scummvm")
-    (version "2.6.1")
+    (version "2.7.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://downloads.scummvm.org/frs/scummvm/" version
                            "/scummvm-" version ".tar.xz"))
        (sha256
-        (base32 "1s8psdn3a3hqvvfgmlfxrqqdw8hbr0zyrvirzsnzh6yxmgpvkbwg"))))
+        (base32 "14wrrzai25mh8qra3lsfibx8z6f96cqbnmsfh9kyhkvpc7yiyjs4"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1768,7 +1760,7 @@ This is a part of the TiLP project.")
 (define-public mame
   (package
     (name "mame")
-    (version "0.251")
+    (version "0.252")
     (source
      (origin
        (method git-fetch)
@@ -1777,7 +1769,7 @@ This is a part of the TiLP project.")
              (commit (apply string-append "mame" (string-split version #\.)))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "102p6kz4ph9m0sxsyavqhjzg00gmnq8m5mnd5sf14c61d2jc0vzk"))
+        (base32 "07qhcm1v47sy2wj30nx3cbhvcbgki0cl83gabr0miiw60fhgyn6j"))
        (modules '((guix build utils)))
        (snippet
         ;; Remove bundled libraries.
@@ -2282,7 +2274,7 @@ framework based on QEMU.")
 (define-public ppsspp
   (package
     (name "ppsspp")
-    (version "1.12.3")
+    (version "1.14.4")
     (source
      (origin
        (method git-fetch)
@@ -2290,7 +2282,7 @@ framework based on QEMU.")
              (url "https://github.com/hrydgard/ppsspp")
              (commit (string-append "v" version))))
        (sha256
-        (base32 "1p6pmp0lhqhk9h5r9xsjicd0zn08bwx3y8533npps96ixwbm2y15"))
+        (base32 "1l80zs1khph4a3g3hnh91awafmyy6wdcayb81xnflkzmpv3bwq8i"))
        (file-name (git-file-name name version))
        (patches
         (search-patches "ppsspp-disable-upgrade-and-gold.patch"))
@@ -2322,10 +2314,8 @@ framework based on QEMU.")
            (substitute* "CMakeLists.txt"
              ;; Drop unnecessary includes and targets.
              (("include_directories\\(ext/glslang\\)") "")
-             (("include_directories\\(ext/xxhash\\)") "")
-             (("include_directories\\(ext/cityhash\\)") "")
-             (("include_directories\\(ext/zstd.*") "")
-             (("libzstd_static") "zstd")
+             (("target_include_directories\\(.*ext/xxhash\\)") "")
+             (("target_include_directories\\(.*ext/cityhash\\)") "")
              (("set_target_properties\\(cityhash .*\\)") "")
              ;; Fix linking to GLEW.
              (("TARGET Ext::GLEW") "true")
@@ -2392,9 +2382,11 @@ elseif(FALSE)"))
     (arguments
      (list
       #:out-of-source? #f
-      #:configure-flags #~(list "-DUSE_DISCORD=OFF"
+      #:configure-flags #~(list "-DARMIPS_USE_STD_FILESYSTEM=ON" ; from armips
+                                "-DUSE_DISCORD=OFF"
                                 "-DUSE_SYSTEM_FFMPEG=ON"
                                 "-DUSE_SYSTEM_LIBZIP=ON"
+                                "-DUSE_SYSTEM_ZSTD=ON"
                                 ;; for testing
                                 "-DUNITTEST=ON" "-DHEADLESS=ON")
       #:phases
@@ -2402,37 +2394,7 @@ elseif(FALSE)"))
           (add-after 'unpack 'add-external-sources
             (lambda* (#:key inputs #:allow-other-keys)
               ;; TODO: unbundle armips.
-              (copy-recursively #$(package-source armips) "ext/armips")
-              ;; Some tests are externalised, so we add them here.
-              (copy-recursively
-               #$(let ((commit "1047400eaec6bcbdb2a64d326375ef6a6617c4ac"))
-                   (origin
-                     (method git-fetch)
-                     (uri (git-reference
-                           (url "https://github.com/hrydgard/pspautotests")
-                           (commit commit)))
-                     (sha256
-                      (base32 "0nxv1lskcr8zbg6nrfai21mxsw0n5vaqhbsa41c3cxfyx5c4w2pg"))
-                     (file-name (git-file-name "pspautotests" commit))))
-               "pspautotests")))
-          (add-after 'unpack 'fix-unittest-build
-            (lambda _
-              (substitute* "CMakeLists.txt"
-                (("unittest/TestVertexJit.cpp" all)
-                 (string-append all " unittest/TestShaderGenerators.cpp")))
-              (substitute* "unittest/TestVertexJit.cpp"
-                (("#include \"unittest/UnitTest.h\"" all)
-                 (string-append all "\n#include <cmath>")))))
-          (replace 'check
-            (lambda* (#:key tests? #:allow-other-keys)
-              (when tests?
-                (for-each
-                 (lambda (t) (invoke "./unitTest" t))
-                 '("Arm64Emitter" "ArmEmitter" "X64Emitter" "VertexJit" "Asin"
-                   "SinCos" "VFPUSinCos" "MathUtil" "Parsers" "Jit"
-                   "MatrixTranspose" "ParseLBN" "QuickTexHash" "CLZ"
-                   #|"ShaderGenerators"|#))
-                (invoke "python3" "test.py" "-g"))))
+              (copy-recursively #$(package-source armips) "ext/armips")))
           (replace 'install
             (lambda* (#:key inputs outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
@@ -2548,7 +2510,7 @@ on a Commodore C64, C128 etc.")
     (license license:zlib)))
 
 (define-public uxn
-  (let ((commit "1b2049e238df96f32335edf1c6db35bd09f8b42d")
+  (let ((commit "83237c9641490d303a42c81ca247314d11055dea")
         (revision "1"))
     (package
       (name "uxn")
@@ -2561,7 +2523,7 @@ on a Commodore C64, C128 etc.")
                 (file-name (string-append name "-" version))
                 (sha256
                  (base32
-                  "0d3hy1db1mfk2l7q7wdxvp1z0vkmyyb9pdp81d9zm58ylpxaq2cp"))))
+                  "159qfz66k1jc43jhyl8by3yiphsr2dyiyclw1x7mkr3zciwc29z3"))))
       (build-system gnu-build-system)
       (arguments
        (list #:tests? #f ;no tests
@@ -2589,4 +2551,43 @@ on a Commodore C64, C128 etc.")
       (description
        "This package provides an assembler and emulator for the Uxn
 stack-machine, written in ANSI C.  Graphical output is implemented using SDL2.")
+      (license license:expat))))
+
+(define-public emu8051
+  (let ((commit "5dc681275151c4a5d7b85ec9ff4ceb1b25abd5a8")
+        (revision "1"))
+    (package
+      (name "emu8051")
+      (version (git-version "0.1" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/jarikomppa/emu8051")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1xxmkcwvd5fjnhwbricafg4xvxvr8dxhfanyfp4rbksw37dgk2fx"))
+                (modules '((guix build utils)))
+                (snippet #~(begin
+                             ;; Replace LDFLAGS -lcurses to -lncurses
+                             (substitute* "Makefile"
+                               (("-lcurses") "-lncurses"))))))
+      (build-system gnu-build-system)
+      (arguments
+       (list #:tests? #f ;No test suite
+             #:make-flags #~(list (string-append "CC="
+                                                 #$(cc-for-target)))
+             #:phases
+             #~(modify-phases %standard-phases
+                 (delete 'configure)    ;No ./configure script
+                 (replace 'install
+                   ;; No installation procedure
+                   (lambda _
+                     (install-file "emu"
+                                   (string-append #$output "/bin")))))))
+      (inputs (list ncurses))
+      (home-page "https://github.com/jarikomppa/emu8051")
+      (synopsis "8051/8052 emulator with curses-based UI")
+      (description "emu8051 is a simulator of the 8051/8052 microcontrollers.")
       (license license:expat))))

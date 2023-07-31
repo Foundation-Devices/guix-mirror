@@ -4,10 +4,11 @@
 ;;; Copyright © 2016 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2017 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2017, 2019 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2019, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2019, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019, 2021 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2020 Prafulla Giri <pratheblackdiamond@gmail.com>
 ;;; Copyright © 2020 Christopher Lam <christopher.lck@gmail.com>
+;;; Copyright © 2023 gemmaro <gemmaro.dev@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -28,6 +29,7 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages check)
   #:use-module (gnu packages cmake)
@@ -64,14 +66,14 @@
   ;; directory.
   (package
     (name "gnucash")
-    (version "4.11")
+    (version "5.3")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/gnucash/gnucash%20%28stable%29/"
                            version "/gnucash-" version ".tar.bz2"))
        (sha256
-        (base32 "069b216dkpjs9hp32s4bhi6f76lbc81qvbmjmz0dxq3v1piys57q"))))
+        (base32 "0npilq0spalpg1ma956j7vlbn0yc5f0z5imy4kbyksl5ql4cnn0l"))))
     (outputs '("out" "doc" "debug" "python"))
     (build-system cmake-build-system)
     (arguments
@@ -87,6 +89,11 @@
                   (guix build utils))
       #:phases
       #~(modify-phases %standard-phases
+          (add-after 'unpack 'disable-online-test
+            (lambda _
+              (call-with-output-file "libgnucash/app-utils/test/CMakeLists.txt"
+                (lambda (port)
+                  (display "set(CTEST_CUSTOM_TESTS_IGNORE online_wiggle)" port)))))
           (add-after 'unpack 'set-env-vars
             (lambda* (#:key inputs #:allow-other-keys)
               ;; At least one test is time-related and requires this
@@ -95,12 +102,6 @@
               (substitute* "CMakeLists.txt"
                 (("set\\(SHELL /bin/bash\\)")
                  (string-append "set(SHELL " (which "bash") ")")))))
-          ;; After wrapping gnc-fq-check and gnc-fq-helper we can no longer
-          ;; execute them with perl, so execute them directly instead.
-          (add-after 'unpack 'fix-finance-quote-check
-            (lambda _
-              (substitute* "gnucash/price-quotes.scm"
-                (("\"perl\" \"-w\" ") ""))))
           ;; The qof test requires the en_US, en_GB, and fr_FR locales.
           (add-before 'check 'install-locales
             (lambda _
@@ -114,8 +115,8 @@
               (mkdir-p (string-append #$output:doc "/share"))
               (symlink (string-append
                         #$(this-package-native-input "gnucash-docs")
-                        "/share/gnome")
-                       (string-append #$output:doc "/share/gnome"))))
+                        "/share/help")
+                       (string-append #$output:doc "/share/help"))))
           (add-after 'install 'split-python-bindings
             (lambda _
               (let ((python-bindings (string-append
@@ -155,9 +156,7 @@
                                            (assoc l (package-inputs this-package)))
                                          '("perl-finance-quote")))))))))
                '("gnucash"
-                 "gnc-fq-check"
-                 "gnc-fq-helper"
-                 "gnc-fq-dump"))))
+                 "gnc-fq-update"))))
           (add-after 'install 'glib-or-gtk-compile-schemas
             (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-compile-schemas))
           (add-after 'install 'glib-or-gtk-wrap
@@ -172,6 +171,7 @@
            swig))
     (inputs
      (list aqbanking
+           bash-minimal
            boost
            glib
            gtk+
@@ -184,6 +184,7 @@
            libxslt
            perl-date-manip
            perl-finance-quote
+           perl-json-parse
            python
            tzdata-for-tests
            webkitgtk-with-libsoup2))
@@ -213,11 +214,13 @@ installed as well as Yelp, the Gnome help browser.")
       (source
        (origin
          (method url-fetch)
+         ;; The filename for version 5.3 is gnucash-docs-5.2.tar.gz, not
+         ;; gnucash-docs-5.3.tar.gz.
          (uri (string-append
                "mirror://sourceforge/gnucash/gnucash%20%28stable%29/"
-               version "/gnucash-docs-" version revision ".tar.gz"))
+               version "/gnucash-docs-5.2" revision ".tar.gz"))
          (sha256
-          (base32 "162qq8p76grczdnsd4qbpxn1d8ap6l2n1a00a601v5hij7rqwfx8"))))
+          (base32 "16xlxwdgc0w4cg9kxg4w2f1y974cb16wq2c9icq5qrh3nj0nbsxr"))))
       (build-system cmake-build-system)
       ;; These are native-inputs because they are only required for building the
       ;; documentation.
@@ -265,7 +268,7 @@ to be read using the GNOME Yelp program.")
      (list libgcrypt gnutls openssl gtk+))
     (native-inputs
      (list pkg-config))
-    (home-page "https://www.aquamaniac.de/sites/aqbanking/index.php")
+    (home-page "https://www.aquamaniac.de")
     (synopsis "Utility library for networking and security applications")
     (description
      "This package provides a helper library for networking and security
@@ -304,7 +307,7 @@ applications and libraries.  It is used by AqBanking.")
      (list gmp xmlsec gnutls))
     (native-inputs
      (list pkg-config gettext-minimal libltdl))
-    (home-page "https://www.aquamaniac.de/sites/aqbanking/index.php")
+    (home-page "https://www.aquamaniac.de")
     (synopsis "Interface for online banking tasks")
     (description
      "AqBanking is a modular and generic interface to online banking tasks,

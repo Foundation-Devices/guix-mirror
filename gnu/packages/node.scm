@@ -7,10 +7,11 @@
 ;;; Copyright © 2018 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018-2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020, 2021 Pierre Langlois <pierre.langlois@gmx.com>
-;;; Copyright © 2020 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2020, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2021 Simon Tournier <zimon.toutoune@gmail.com>
 ;;; Copyright © 2021 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2021, 2022 Philip McGrath <philip@philipmcgrath.com>
+;;; Copyright © 2022 Hilton Chain <hako@ultrarare.space>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -668,7 +669,7 @@ parser definition into a C output.")
 (define-public llhttp-bootstrap
   (package
     (name "llhttp")
-    (version "2.1.4")
+    (version "6.0.10")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -677,8 +678,7 @@ parser definition into a C output.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "115mwyds9655p76lhglxg2blc1ksgrix6zhigaxnc2q6syy3pa6x"))
-              (patches (search-patches "llhttp-bootstrap-CVE-2020-8287.patch"))
+                "0izwqa77y007xdi0bj3ccw821n19rz89mz4hx4lg99fwkwylr6x8"))
               (modules '((guix build utils)))
               (snippet
                '(begin
@@ -738,29 +738,32 @@ source files.")
 (define-public node-lts
   (package
     (inherit node)
-    (version "14.19.3")
+    (version "18.16.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://nodejs.org/dist/v" version
-                                  "/node-v" version ".tar.xz"))
+                                  "/node-v" version ".tar.gz"))
               (sha256
                (base32
-                "15691j5zhiikyamiwwd7f282g6d9acfhq91nrwx54xya38gmpx2w"))
+                "0vcc132z7lkxnw5clmiz6sp6ccmw35pyb69hczphrig5frfmqkva"))
               (modules '((guix build utils)))
               (snippet
-               `(begin
+               '(begin
+                  ;; openssl.cnf is required for build.
+                  (for-each delete-file-recursively
+                            (find-files "deps/openssl"
+                                        (lambda (file stat)
+                                          (not (string-contains file "nodejs-openssl.cnf")))))
                   ;; Remove bundled software, where possible
                   (for-each delete-file-recursively
                             '("deps/cares"
                               "deps/icu-small"
                               "deps/nghttp2"
-                              "deps/openssl"
                               "deps/zlib"))
                   (substitute* "Makefile"
                     ;; Remove references to bundled software.
                     (("deps/uv/uv.gyp") "")
-                    (("deps/zlib/zlib.gyp") ""))
-                  #t))))
+                    (("deps/zlib/zlib.gyp") ""))))))
     (arguments
      (substitute-keyword-arguments (package-arguments node)
        ((#:configure-flags configure-flags)
@@ -770,7 +773,9 @@ source files.")
            "--shared-openssl"
            "--shared-zlib"
            "--shared-brotli"
-           "--with-intl=system-icu"))
+           "--with-intl=system-icu"
+           ;;Needed for correct snapshot checksums
+           "--v8-enable-snapshot-compression"))
        ((#:phases phases)
         `(modify-phases ,phases
            (replace 'set-bootstrap-host-rpath
@@ -803,23 +808,31 @@ source files.")
                                    libuv "/lib:"
                                    zlib "/lib"
                                    "'],"))))))
+           (add-after 'patch-hardcoded-program-references
+                      'patch-additional-hardcoded-program-references
+             (lambda* (#:key inputs #:allow-other-keys)
+               (substitute* "test/parallel/test-stdin-from-file-spawn.js"
+                 (("'/bin/sh'") (string-append
+                                 "'" (search-input-file inputs "/bin/sh")
+                                 "'")))))
            (replace 'delete-problematic-tests
              (lambda* (#:key inputs #:allow-other-keys)
                ;; FIXME: These tests fail in the build container, but they don't
                ;; seem to be indicative of real problems in practice.
                (for-each delete-file
-                         '("test/parallel/test-cluster-master-error.js"
-                           "test/parallel/test-cluster-master-kill.js"))
+                         '("test/parallel/test-cluster-primary-error.js"
+                           "test/parallel/test-cluster-primary-kill.js"))
 
                ;; These require a DNS resolver.
                (for-each delete-file
                          '("test/parallel/test-dns.js"
-                           "test/parallel/test-dns-lookupService-promises.js"))
+                           "test/parallel/test-dns-lookupService-promises.js"
+                           "test/parallel/test-net-socket-connect-without-cb.js"
+                           "test/parallel/test-tcp-wrap-listen.js"))
 
                ;; These tests require networking.
                (for-each delete-file
-                         '("test/parallel/test-https-agent-unref-socket.js"
-                           "test/parallel/test-corepack-yarn-install.js"))
+                         '("test/parallel/test-https-agent-unref-socket.js"))
 
                ;; This test is timing-sensitive, and fails sporadically on
                ;; slow, busy, or even very fast machines.
@@ -861,15 +874,44 @@ source files.")
                  (copy-file (string-append llhttp "/src/http.c")
                             "deps/llhttp/src/http.c")
                  (copy-file (string-append llhttp "/include/llhttp.h")
-                            "deps/llhttp/include/llhttp.h"))))))))
+                            "deps/llhttp/include/llhttp.h"))))
+           ;; npm installs dependencies by copying their files over a tar
+           ;; stream.  A file with more than one hardlink is marked as a
+           ;; "Link".  pacote/lib/fetcher.js calls node-tar's extractor with a
+           ;; filter that ignores any "Link" entries.  This means that
+           ;; dependending on the number of hardlinks on files in a node-*
+           ;; package *some* of its files may not be installed when generating
+           ;; another package's "node_modules" directory.  The build output
+           ;; would differ depending on irrelevant file system state.
+           ;;
+           ;; To avoid this, we patch node-tar to treat files with hardlinks
+           ;; the same as any other file, so that node-tar has no choice but
+           ;; to extract all of them --- independent of pacote's filter.
+           ;;
+           ;; Why not patch pacote's filter instead?  This has led to subtle
+           ;; differences in where the files are installed, so it's easier to
+           ;; just ensure that files with hardlinks are always treated as
+           ;; regular files.
+           ;;
+           ;; Discussion:
+           ;;   https://lists.gnu.org/archive/html/guix-devel/2023-07/msg00040.html
+           ;; Upstream bug report:
+           ;;   https://github.com/npm/pacote/issues/285
+           (add-after 'install 'ignore-number-of-hardlinks
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let ((file (string-append (assoc-ref outputs "out")
+                                          "/lib/node_modules/npm/node_modules"
+                                          "/tar/lib/write-entry.js")))
+                 (substitute* file
+                   (("this.stat.nlink > 1") "false")))))))))
     (native-inputs
      (list ;; Runtime dependencies for binaries used as a bootstrap.
            c-ares-for-node
            brotli
            icu4c
-           libuv-for-node
-           `(,nghttp2-for-node "lib")
-           openssl-1.1
+           libuv
+           `(,nghttp2 "lib")
+           openssl
            zlib
            ;; Regular build-time dependencies.
            perl
@@ -882,22 +924,22 @@ source files.")
            coreutils
            c-ares-for-node
            icu4c
-           libuv-for-node
+           libuv
            llhttp-bootstrap
            brotli
-           `(,nghttp2-for-node "lib")
-           openssl-1.1
-           python-wrapper ;; for node-gyp (supports python3)
+           `(,nghttp2 "lib")
+           openssl
            zlib))))
 
 (define-public libnode
-  (package/inherit node
+  (package/inherit node-lts
     (name "libnode")
     (arguments
-     (substitute-keyword-arguments (package-arguments node)
+     (substitute-keyword-arguments (package-arguments node-lts)
        ((#:configure-flags flags ''())
         `(cons* "--shared" "--without-npm" ,flags))
        ((#:phases phases '%standard-phases)
         `(modify-phases ,phases
            (delete 'install-npmrc)
-           (delete 'patch-nested-shebangs)))))))
+           (delete 'patch-nested-shebangs)
+           (delete 'ignore-number-of-hardlinks)))))))

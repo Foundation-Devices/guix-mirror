@@ -14,6 +14,7 @@
 # Copyright © 2018 Oleg Pykhalov <go.wigust@gmail.com>
 # Copyright © 2018 Alex Vong <alexvong1995@gmail.com>
 # Copyright © 2019 Efraim Flashner <efraim@flashner.co.il>
+# Copyright © 2020, 2021, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 # Copyright © 2021 Chris Marusich <cmmarusich@gmail.com>
 # Copyright © 2021 Andrew Tropin <andrew@trop.in>
 #
@@ -140,6 +141,7 @@ MODULES =					\
   guix/platforms/riscv.scm                      \
   guix/platforms/x86.scm                        \
   guix/build-system.scm				\
+  guix/build-system/agda.scm                    \
   guix/build-system/android-ndk.scm		\
   guix/build-system/ant.scm			\
   guix/build-system/cargo.scm			\
@@ -195,6 +197,7 @@ MODULES =					\
   guix/diagnostics.scm				\
   guix/ui.scm					\
   guix/status.scm				\
+  guix/build/agda-build-system.scm              \
   guix/build/android-ndk-build-system.scm	\
   guix/build/ant-build-system.scm		\
   guix/build/download.scm			\
@@ -303,6 +306,7 @@ MODULES =					\
   guix/scripts/archive.scm			\
   guix/scripts/import.scm			\
   guix/scripts/package.scm			\
+  guix/scripts/locate.scm			\
   guix/scripts/install.scm			\
   guix/scripts/remove.scm			\
   guix/scripts/upgrade.scm			\
@@ -329,6 +333,7 @@ MODULES =					\
   guix/scripts/lint.scm				\
   guix/scripts/challenge.scm			\
   guix/scripts/import/crate.scm			\
+  guix/scripts/import/cpan.scm			\
   guix/scripts/import/cran.scm			\
   guix/scripts/import/egg.scm   		\
   guix/scripts/import/elm.scm			\
@@ -405,6 +410,12 @@ AUX_FILES =						\
   gnu/packages/aux-files/chromium/master-preferences.json		\
   gnu/packages/aux-files/emacs/guix-emacs.el		\
   gnu/packages/aux-files/guix.vim			\
+  gnu/packages/aux-files/linux-libre/6.4-i686.conf	\
+  gnu/packages/aux-files/linux-libre/6.4-x86_64.conf	\
+  gnu/packages/aux-files/linux-libre/6.3-arm.conf	\
+  gnu/packages/aux-files/linux-libre/6.3-arm64.conf	\
+  gnu/packages/aux-files/linux-libre/6.3-i686.conf	\
+  gnu/packages/aux-files/linux-libre/6.3-x86_64.conf	\
   gnu/packages/aux-files/linux-libre/6.1-arm.conf	\
   gnu/packages/aux-files/linux-libre/6.1-arm64.conf	\
   gnu/packages/aux-files/linux-libre/6.1-i686.conf	\
@@ -430,10 +441,11 @@ AUX_FILES =						\
   gnu/packages/aux-files/linux-libre/4.14-x86_64.conf	\
   gnu/packages/aux-files/pack-audit.c			\
   gnu/packages/aux-files/python/sanity-check.py		\
-  gnu/packages/aux-files/python/sanity-check-next.py	\
   gnu/packages/aux-files/python/sitecustomize.py	\
   gnu/packages/aux-files/renpy/renpy.in	\
-  gnu/packages/aux-files/run-in-namespace.c
+  gnu/packages/aux-files/run-in-namespace.c		\
+  gnu/packages/aux-files/xml/patch-catalog-xml.xsl	\
+  gnu/packages/aux-files/xml/docbook-xml/catalog-4.1.2.xml
 
 # Templates, examples.
 EXAMPLES =					\
@@ -546,6 +558,7 @@ SCM_TESTS =					\
   tests/services/lightdm.scm			\
   tests/services/linux.scm			\
   tests/services/telephony.scm			\
+  tests/services/vpn.scm			\
   tests/sets.scm				\
   tests/size.scm				\
   tests/status.scm				\
@@ -586,6 +599,7 @@ SH_TESTS =					\
   tests/guix-gc.sh				\
   tests/guix-git-authenticate.sh		\
   tests/guix-hash.sh				\
+  tests/guix-locate.sh				\
   tests/guix-pack.sh				\
   tests/guix-pack-localstatedir.sh		\
   tests/guix-pack-relocatable.sh		\
@@ -1105,6 +1119,19 @@ cuirass-jobs: $(GOBJECTS)
 .PHONY: assert-final-inputs-self-contained check-channel-news
 .PHONY: clean-go make-go as-derivation authenticate
 .PHONY: update-guix-package update-NEWS cuirass-jobs release
+
+# Git auto-configuration.
+.git/hooks/pre-push: etc/git/pre-push
+	$(AM_V_at)if test -d .git; then \
+	cp etc/git/pre-push .git/hooks/pre-push; \
+	fi
+
+.git/config: etc/git/gitconfig
+	$(AM_V_at)if command -v git >/dev/null && test -d .git; then \
+	git config --add include.path ../etc/git/gitconfig; \
+	fi
+
+nodist_noinst_DATA = .git/hooks/pre-push .git/config
 
 # Downloading up-to-date PO files.
 

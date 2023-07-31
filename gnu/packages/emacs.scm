@@ -12,8 +12,8 @@
 ;;; Copyright © 2017, 2019, 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2017 Alex Vong <alexvong1995@gmail.com>
 ;;; Copyright © 2017, 2018 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2017 Jan Nieuwenhuizen <janneke@gnu.org>
-;;; Copyright © 2018 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2017, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2018, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2018, 2019, 2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019 Jesse John Gildersleve <jessejohngildersleve@zohomail.eu>
@@ -24,6 +24,7 @@
 ;;; Copyright © 2020 Morgan Smith <Morgan.J.Smith@outlook.com>
 ;;; Copyright © 2022 Zhu Zihao <all_but_last@163.com>
 ;;; Copyright © 2023 Declan Tsien <declantsien@riseup.net>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -309,7 +310,7 @@
 
            ;; For native compilation
            binutils
-           glibc
+           (libc-for-target)
            libgccjit
 
            ;; Required for "core" functionality, such as dired and compression.
@@ -344,9 +345,7 @@
            ;; must also provide zlib as an input.
            libpng
            zlib
-           (if (target-x86-64?)
-               librsvg
-               librsvg-2.40)
+           (librsvg-for-system)
            libxpm
            libxml2
            libice
@@ -392,86 +391,72 @@ languages.")
     (license license:gpl3+)))
 
 (define-public emacs-next
-  (let ((commit "f1f571e72ae10285762d3a941e56f7c4048272af")
-        (revision "1"))
-    (package
-      (inherit emacs)
-      (name "emacs-next")
-      (version (git-version "29.0.60" revision commit))
-      (source
-       (origin
-         (inherit (package-source emacs))
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://git.savannah.gnu.org/git/emacs.git/")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         ;; emacs-source-date-epoch.patch is no longer necessary
-         (patches (search-patches "emacs-exec-path.patch"
-                                  "emacs-fix-scheme-indent-function.patch"
-                                  "emacs-native-comp-driver-options.patch"))
-         (sha256
-          (base32
-           "1rildbxq53yvc2rllg2qccgxzbbnr6qbija0lyqacsy8dlzaysch"))))
-      (inputs
-       (modify-inputs (package-inputs emacs)
-         (prepend sqlite)))
-      (native-inputs
-       (modify-inputs (package-native-inputs emacs)
-         (prepend autoconf))))))
+  (package
+    (inherit emacs)
+    (name "emacs-next")
+    (version "29.0.92")
+    (source
+     (origin
+       (inherit (package-source emacs))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://git.savannah.gnu.org/git/emacs.git/")
+             (commit (string-append "emacs-" version))))
+       (file-name (git-file-name name version))
+       ;; emacs-source-date-epoch.patch is no longer necessary
+       (patches (search-patches "emacs-exec-path.patch"
+                                "emacs-fix-scheme-indent-function.patch"
+                                "emacs-native-comp-driver-options.patch"))
+       (sha256
+        (base32
+         "1h3p325859svcy43iv7wr27dp68049j9d44jq5akcynqdkxz4jjn"))))
+    (inputs
+     (modify-inputs (package-inputs emacs)
+       (prepend sqlite)))
+    (native-inputs
+     (modify-inputs (package-native-inputs emacs)
+       (prepend autoconf)))))
 
 (define-public emacs-next-tree-sitter
-  (let ((commit "ac7ec87a7a0db887e4ae7fe9005aea517958b778")
-        (revision "0"))
-    (package
-      (inherit emacs)
-      (name "emacs-next-tree-sitter")
-      (version (git-version "30.0.50" revision commit))
-      (source
-       (origin
-         (inherit (package-source emacs))
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://git.savannah.gnu.org/git/emacs.git/")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         ;; emacs-source-date-epoch.patch is no longer necessary
-         (patches (search-patches "emacs-exec-path.patch"
-                                  "emacs-fix-scheme-indent-function.patch"
-                                  "emacs-native-comp-driver-options.patch"))
-         (sha256
-          (base32
-           "1akq6dbllwwqwx21wnwnv6aax1nsi2ypbd7j3i79sw62s3gf399z"))))
-      (inputs
-       (modify-inputs (package-inputs emacs)
-         (prepend sqlite tree-sitter)))
-      (native-inputs
-       (modify-inputs (package-native-inputs emacs)
-         (prepend autoconf))))))
+  (package
+    (inherit emacs-next)
+    (name "emacs-next-tree-sitter")
+    (inputs
+     (modify-inputs (package-inputs emacs-next)
+       (prepend sqlite tree-sitter)))
+    (synopsis "Emacs text editor with @code{tree-sitter} support")
+    (description "This Emacs build supports tree-sitter.")))
 
 (define-public emacs-next-pgtk
   (package
-    (inherit emacs-next)
+    (inherit emacs-next-tree-sitter)
     (name "emacs-next-pgtk")
     (source
      (origin
-       (inherit (package-source emacs-next))
+       (inherit (package-source emacs-next-tree-sitter))
        (patches
         (append (search-patches "emacs-pgtk-super-key-fix.patch")
-                (origin-patches (package-source emacs-next))))))
+                (origin-patches (package-source emacs-next-tree-sitter))))))
     (arguments
-     (substitute-keyword-arguments (package-arguments emacs-next)
+     (substitute-keyword-arguments (package-arguments emacs-next-tree-sitter)
        ((#:configure-flags flags #~'())
-        #~(cons* "--with-pgtk" "--with-xwidgets" #$flags))))
-    (propagated-inputs
-     (list gsettings-desktop-schemas glib-networking))
+        #~(cons* "--with-pgtk" #$flags))))
+    (synopsis "Emacs text editor with @code{pgtk} and @code{tree-sitter} support")
+    (description "This Emacs build implements graphical UI purely in terms
+of GTK and supports tree-sitter.")))
+
+(define-public emacs-next-pgtk-xwidgets
+  (package
+    (inherit emacs-next-pgtk)
+    (name "emacs-next-pgtk-xwidgets")
+    (synopsis "Emacs text editor with @code{xwidgets} and @code{pgtk} support")
+    (arguments
+     (substitute-keyword-arguments (package-arguments emacs-next-pgtk)
+       ((#:configure-flags flags #~'())
+        #~(cons "--with-xwidgets" #$flags))))
     (inputs
-     (modify-inputs (package-inputs emacs-next)
-       (prepend webkitgtk-with-libsoup2)))
-    (home-page "https://github.com/masm11/emacs")
-    (synopsis "Emacs text editor with @code{pgtk} and @code{xwidgets} support")
-    (description "This Emacs build implements graphical UI purely in terms of
-GTK and also enables xwidgets.")))
+     (modify-inputs (package-inputs emacs-next-pgtk)
+       (prepend gsettings-desktop-schemas webkitgtk-with-libsoup2)))))
 
 (define-public emacs-minimal
   ;; This is the version that you should use as an input to packages that just
@@ -641,7 +626,7 @@ editor (with wide ints)" )
         (base32
          "0vfw7z9i2s9np6nmx1d4dlsywm044rkaqarn7akffmb6bf1j6zv5"))))
     (build-system gnu-build-system)
-    (inputs
+    (native-inputs
      `(("gettext" ,gettext-minimal)))
     (arguments
      `(#:configure-flags
@@ -674,8 +659,16 @@ This package contains the library database.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "0jp61y09xqj10mclpip48qlfhniw8gwy8b28cbzxy8hq8pkwmfkq"))))
+         "0jp61y09xqj10mclpip48qlfhniw8gwy8b28cbzxy8hq8pkwmfkq"))
+       (patches (search-patches "m17n-lib-1.8.0-use-pkg-config-for-freetype.patch"))))
     (build-system gnu-build-system)
+    (native-inputs
+     (if (%current-target-system)
+         (list pkg-config
+               libtool
+               gettext-minimal
+               autoconf automake)
+         '()))
     (inputs
      (list fribidi
            gd
@@ -684,7 +677,20 @@ This package contains the library database.")
            libxml2
            m17n-db))
     (arguments
-     `(#:parallel-build? #f))
+     `(#:parallel-build? #f
+       ,@(if (%current-target-system)
+             '(#:phases
+               (modify-phases %standard-phases
+                 ;; AC_FUNC_MALLOC and AC_FUNC_REALLOC usually unneeded
+                 ;; see https://lists.gnu.org/archive/html/autoconf/2003-02/msg00017.html
+                 (add-after 'unpack 'fix-rpl_malloc
+                   (lambda _
+                     (substitute* "configure.ac"
+                       (("AC_FUNC_MALLOC") "")
+                       (("AC_FUNC_REALLOC") ""))
+                     ;; let bootstrap phase run.
+                     (delete-file "./configure")))))
+             '())))
     ;; With `guix lint' the home-page URI returns a small page saying
     ;; that your browser does not handle frames. This triggers the "URI
     ;; returns suspiciously small file" warning.

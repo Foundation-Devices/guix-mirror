@@ -171,7 +171,7 @@ etc. via a Web interface.  Features include:
 (define-public zabbix-agentd
   (package
     (name "zabbix-agentd")
-    (version "6.0.12")
+    (version "6.0.14")
     (source
      (origin
        (method url-fetch)
@@ -179,7 +179,7 @@ etc. via a Web interface.  Features include:
              "https://cdn.zabbix.com/zabbix/sources/stable/"
              (version-major+minor version) "/zabbix-" version ".tar.gz"))
        (sha256
-        (base32 "04083aa63bzfg5jp958nypbqr0hlcbhj73whlinr1ri3x1z0caz7"))
+        (base32 "0n6fqa9vbhh2syxii7ds2x6dnplrgrj98by1zl0ij1wfbnbxa6k3"))
        (modules '((guix build utils)))
        (snippet
         '(substitute* '("src/zabbix_proxy/proxy.c"
@@ -289,7 +289,7 @@ solution (server-side)")))
 (define-public zabbix-cli
   (package
     (name "zabbix-cli")
-    (version "2.3.0")
+    (version "2.3.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -298,7 +298,7 @@ solution (server-side)")))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1p8xkq3mxg476srwrgqax76vjzji0rjx32njmgnpa409vaqrbj5p"))))
+                "1al3gwbnh0wbal5gq2apq27kh61q8dz355k4w8kx073b4y4nz1wb"))))
     (build-system pyproject-build-system)
     (arguments
      (list #:phases
@@ -591,7 +591,7 @@ devices.")
 (define-public fswatch
   (package
     (name "fswatch")
-    (version "1.16.0")
+    (version "1.17.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -600,7 +600,7 @@ devices.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1zsvc8arza2ypnnmv4m0qfpnldmy1zh10q6wss05ibmanslfj2ql"))))
+                "15bk2adv1ycqn3rxvpvapwrlzsxw8fvcahqiglfkibwb9ss7s8dh"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf automake gettext-minimal libtool))
@@ -681,7 +681,7 @@ the recorded data over time.")
 (define-public fatrace
   (package
     (name "fatrace")
-    (version "0.16.3")
+    (version "0.17.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -690,7 +690,7 @@ the recorded data over time.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1bxz6v1z0icp716jnv3knjyqp8bv6xnkz8gqd8z3g2b6yxj5xff3"))))
+                "067pj0z4np4mmhlin9411zpwwbfmn38ykvmxw35fnidf3kxcq49i"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -791,7 +791,7 @@ provides a simple Python client for the StatsD daemon.")
 (define-public batsignal
   (package
     (name "batsignal")
-    (version "1.6.0")
+    (version "1.6.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -800,7 +800,7 @@ provides a simple Python client for the StatsD daemon.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0b1j6mljnqgxwr3id3r9shzhsjk5r0qdh9cxkvy1dm4kzbyc4dxq"))))
+                "0f8jabql70nxkslgxd8pcfllqy4bnbf1c19rcri0dp054aszk637"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags
@@ -829,4 +829,3 @@ user-configured power thresholds.  This can be used to force powering off a
 laptop when the battery gets below critical levels, instead of damaging the
 battery.")
     (license license:isc)))
-

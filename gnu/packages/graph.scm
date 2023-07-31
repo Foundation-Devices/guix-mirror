@@ -6,7 +6,7 @@
 ;;; Copyright © 2019 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2020 Alexander Krotov <krotov@iitp.ru>
 ;;; Copyright © 2020 Pierre Langlois <pierre.langlos@gmx.com>
-;;; Copyright © 2021 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2021, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Alexandre Hannud Abdo <abdo@member.fsf.org>
 ;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Marius Bakke <marius@gnu.org>
@@ -218,7 +218,7 @@ lines.")
 (define-public python-plotly
   (package
     (name "python-plotly")
-    (version "5.6.0")
+    (version "5.14.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -227,27 +227,38 @@ lines.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0kc9v5ampq2paw6sls6zdchvqvis7b1z8xhdvlhz5xxdr1vj5xnn"))))
+                "12iy5cswn5c0590fvl87nr6vfyhvbxymrldh4c7dfm2gn6h8z8w0"))))
     (build-system python-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
           (add-before 'build 'skip-npm
             ;; npm is not packaged so build without it
             (lambda _
               (setenv "SKIP_NPM" "T")))
-         (add-after 'unpack 'chdir
-           (lambda _
-             (chdir "packages/python/plotly")
-             #t))
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (invoke "pytest" "-x" "plotly/tests/test_core")
-               (invoke "pytest" "-x" "plotly/tests/test_io")
-               ;; FIXME: Add optional dependencies and enable their tests.
-               ;; (invoke "pytest" "-x" "plotly/tests/test_optional")
-               (invoke "pytest" "_plotly_utils/tests")))))))
+          (add-after 'unpack 'fix-version
+            ;; TODO: Versioneer in Guix gets its release version from the
+            ;; parent directory, but the plotly package is located inside a
+            ;; depth 3 subdirectory.  Try to use versioneer if possible.
+            (lambda _
+              (substitute* "packages/python/plotly/setup.py"
+                (("version=versioneer.get_version\\(),")
+                 (format #f "version=~s," #$version)))
+              (substitute* "packages/python/plotly/plotly/version.py"
+                (("__version__ = get_versions\\(\\)\\[\"version\"\\]")
+                 (format #f "__version__ = ~s" #$version)))))
+          (add-after 'fix-version 'chdir
+            (lambda _
+              (chdir "packages/python/plotly")))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (invoke "pytest" "-x" "plotly/tests/test_core")
+                (invoke "pytest" "-x" "plotly/tests/test_io")
+                ;; FIXME: Add optional dependencies and enable their tests.
+                ;; (invoke "pytest" "-x" "plotly/tests/test_optional")
+                (invoke "pytest" "_plotly_utils/tests")))))))
     (native-inputs
      (list python-ipywidgets python-pytest python-xarray))
     (propagated-inputs
@@ -285,8 +296,16 @@ subplots, multiple-axes, polar charts, and bubble charts.")
           python-pytz
           python-requests
           python-six))
-    (arguments
-     '(#:tests? #f)))) ; The tests are not distributed in the release
+   (arguments
+    (list
+     #:tests? #false ;The tests are not distributed in the release
+     #:phases
+     '(modify-phases %standard-phases
+        (add-after 'unpack 'python-compatibility
+          (lambda _
+            (substitute* "plotly/grid_objs/grid_objs.py"
+              (("from collections import MutableSequence")
+               "from collections.abc import MutableSequence")))))))))
 
 (define-public python-louvain
   (package
@@ -605,7 +624,7 @@ transformed into common image formats for display or printing.")
 (define-public python-graph-tool
   (package
     (name "python-graph-tool")
-    (version "2.45")
+    (version "2.46")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -613,7 +632,7 @@ transformed into common image formats for display or printing.")
                     version ".tar.bz2"))
               (sha256
                (base32
-                "0s46qqg454kwq2px7x1a4ckryclkxnrz1r7gj6bv40nsrynafbgr"))))
+                "0x9jgnq9xcja3q954y7nhdzd374p4h203pymxh51b6lqqbq0hm9h"))))
     (build-system gnu-build-system)
     (arguments
      `(#:imported-modules (,@%gnu-build-system-modules

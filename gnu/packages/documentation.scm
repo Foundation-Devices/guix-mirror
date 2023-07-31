@@ -12,6 +12,7 @@
 ;;; Copyright © 2020, 2021 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2021, 2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.counoyer@gmail.com>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -40,6 +41,7 @@
   #:use-module (guix build-system python)
   #:use-module (guix build-system qt)
   #:use-module (guix deprecation)
+  #:use-module (guix utils)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages backup)
@@ -140,8 +142,7 @@ pages in HTML.")
                            (("XMLLINT = 'xmllint'")
                             (string-append "XMLLINT = '" xmllint "'"))
                            (("XSLTPROC = 'xsltproc'")
-                            (string-append "XSLTPROC = '" xsltproc "'")))
-                         #t)))
+                            (string-append "XSLTPROC = '" xsltproc "'"))))))
          ;; Make asciidoc use the local docbook-xsl package instead of fetching
          ;; it from the internet at run-time.
          (add-before 'install 'make-local-docbook-xsl
@@ -153,20 +154,16 @@ release/xsl/current")
                            "xsl:import href=\""
                            (string-append (assoc-ref inputs "docbook-xsl")
                                           "/xml/xsl/docbook-xsl-"
-                                          ,(package-version docbook-xsl)))))
-                       #t))
+                                          ,(package-version docbook-xsl)))))))
          ;; Do the same for docbook-xml.
          (add-before 'install 'make-local-docbook-xml
                      (lambda* (#:key inputs #:allow-other-keys)
                        (substitute* "docbook45.conf"
                          (("http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd")
                           (string-append (assoc-ref inputs "docbook-xml")
-                                         "/xml/dtd/docbook/docbookx.dtd")))
-                       #t)))))
-    (native-inputs
-     (list autoconf))
-    (inputs
-     (list python docbook-xml docbook-xsl libxml2 libxslt))
+                                         "/xml/dtd/docbook/docbookx.dtd"))))))))
+    (native-inputs (list autoconf))
+    (inputs (list python docbook-xml-4.5 docbook-xsl libxml2 libxslt))
     (home-page "https://asciidoc.org/")
     (synopsis "Text-based document generation system")
     (description
@@ -229,7 +226,15 @@ markup) can be customized and extended by the user.")
               (let ((/bin/sh (search-input-file inputs "/bin/sh")))
                 (substitute* "src/portable.cpp"
                   (("/bin/sh")
-                   /bin/sh))))))))
+                   /bin/sh)))))
+          #$@(if (target-hurd?)
+                 #~((add-after 'unpack 'apply-patch
+                      (lambda _
+                        (let ((patch-file
+                               #$(local-file
+                                  (search-patch "doxygen-hurd.patch"))))
+                          (invoke "patch" "--force" "-p1" "-i" patch-file)))))
+                 #~()))))
     (synopsis "Generate documentation from annotated sources")
     (description "Doxygen is the de facto standard tool for generating
 documentation from annotated C++ sources, but it also supports other popular
@@ -301,7 +306,8 @@ objects.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1ma5gwy93m1djd3zdlnqfrwhgr8ic1qbsz5kkrb9f987ax40lfkd"))))
+                "1ma5gwy93m1djd3zdlnqfrwhgr8ic1qbsz5kkrb9f987ax40lfkd"))
+              (patches (search-patches "python-docrepr-fix-tests.patch"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -374,7 +380,7 @@ the Net to search for documents which are not on the local system.")
     (license lgpl2.1+)))
 
 (define-public zeal
-  (let ((commit "d3c5521c501d24050f578348ff1b9d68244b992c")
+  (let ((commit "1cfa7c637f745be9d98777f06b4f8dec90892bf2")
         (revision "1"))
     (package
       (name "zeal")
@@ -387,7 +393,7 @@ the Net to search for documents which are not on the local system.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1ky2qi2cmjckc51lm3i28815ixgqdm36j7smixxr16jxpmbqs6sl"))))
+          (base32 "1m7pp3cwc21x03718vhwfd9j2n8md3hv5dp10s234vcsd755s7a3"))))
       (build-system qt-build-system)
       (arguments
        `(#:tests? #f                    ;no tests

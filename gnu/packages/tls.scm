@@ -5,7 +5,7 @@
 ;;; Copyright © 2013, 2015 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2015 David Thompson <davet@gnu.org>
 ;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2016, 2017, 2019, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2017, 2019, 2021-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016, 2017, 2018 Nikita <nikita@n0.is>
 ;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2017 Ricardo Wurmus <rekado@elephly.net>
@@ -14,7 +14,7 @@
 ;;; Copyright © 2017 Rutger Helling <rhelling@mykolab.com>
 ;;; Copyright © 2018 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2019 Mathieu Othacehe <m.othacehe@gmail.com>
-;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2020, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020, 2021, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Solene Rapenne <solene@perso.pw>
 ;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
@@ -65,7 +65,6 @@
   #:use-module (gnu packages gawk)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages guile)
-  #:use-module (gnu packages hurd)
   #:use-module (gnu packages libbsd)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages libidn)
@@ -153,12 +152,12 @@ in intelligent transportation networks.")
     (build-system gnu-build-system)
     (native-inputs
      (append (list pkg-config)
-             (if (hurd-target?)
+             (if (target-hurd?)
                  (list autoconf automake gettext-minimal libtool)
                  '())))
     (inputs
      (append (list libffi libtasn1)
-             (if (hurd-target?)
+             (if (target-hurd?)
                  (list libbsd)
                  '())))
     (arguments
@@ -167,7 +166,7 @@ in intelligent transportation networks.")
            ;; find them.  See <https://issues.guix.gnu.org/49957>.
            #~'("--with-trust-paths=/etc/ssl/certs/ca-certificates.crt")
            #:phases #~(modify-phases %standard-phases
-                        #$@(if (hurd-target?)
+                        #$@(if (target-hurd?)
                                #~((add-after 'unpack 'apply-hurd-patch
                                     (lambda* (#:key inputs #:allow-other-keys)
                                       (define patch
@@ -216,9 +215,9 @@ living in the same process.")
     (build-system gnu-build-system)
     (arguments
      (list #:tests? (not (or (%current-target-system)
-                             (hurd-target?)))
+                             (target-hurd?)))
            ;; Ensure we don't keep a reference to the tools used for testing.
-           #:disallowed-references (if (hurd-target?)
+           #:disallowed-references (if (target-hurd?)
                                        '()
                                        (list net-tools iproute socat))
            #:configure-flags
@@ -252,7 +251,14 @@ living in the same process.")
                  (lambda _
                    (substitute* "tests/fastopen.sh"
                      (("^unset RETCODE")
-                      "exit 77\n"))))      ;skip
+                      "exit 77\n"))))   ;skip
+               #$@(if (target-ppc32?)
+                      ;; https://gitlab.com/gnutls/gnutls/-/issues/1354
+                      ;; Extend the test timeout from the default of 20 * 1000
+                      #~((add-after 'unpack 'increase-test-timeout
+                           (lambda _
+                             (setenv "GNUTLS_TEST_TIMEOUT" "60000"))))
+                      #~())
                (add-after 'install 'move-doc
                  (lambda* (#:key outputs #:allow-other-keys)
                    ;; Copy the 4.1 MiB of section 3 man pages to "doc".
@@ -263,18 +269,18 @@ living in the same process.")
                      (mkdir-p mandir)
                      (copy-recursively oldman mandir)
                      (delete-file-recursively oldman)))))))
-    (outputs '("out"                              ;4.4 MiB
+    (outputs '("out"                    ;4.4 MiB
                "debug"
-               "doc"))                            ;4.1 MiB of man pages
+               "doc"))                  ;4.1 MiB of man pages
     (native-inputs
      (append (list pkg-config texinfo which
-                   util-linux)                    ;one test needs 'setsid'
-             (if (hurd-target?)
+                   util-linux)          ;one test needs 'setsid'
+             (if (target-hurd?)
                  '()
                  (list net-tools
-                       iproute                    ;for 'ss'
-                       socat                      ;several tests rely on it
-                       datefudge))))              ;tests rely on 'datefudge'
+                       iproute          ;for 'ss'
+                       socat            ;several tests rely on it
+                       datefudge))))    ;tests rely on 'datefudge'
     (inputs (list libunistring))
     (propagated-inputs
      ;; These are all in the 'Requires.private' field of gnutls.pc.
@@ -312,17 +318,19 @@ required structures.")
     ;; This package supersedes the Guile bindings that came with GnuTLS until
     ;; version 3.7.8 included.
     (name "guile-gnutls")
-    (version "3.7.11")
+    (version "3.7.12")
     (home-page "https://gitlab.com/gnutls/guile/")
     (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url home-page)
-                    (commit (string-append "v" version))))
+              ;; url-fetch is used here to avoid a circular dependency with
+              ;; git-download, see https://issues.guix.gnu.org/63331
+              (method url-fetch)
+              (uri (string-append
+                    "https://gitlab.com/gnutls/guile/uploads/"
+                    "3fe12c208bdc6155c5116cf5eac7a2ad"
+                    "/guile-gnutls-" version ".tar.gz"))
               (sha256
                (base32
-                "06d7v3i0d9ayp7zqk1rsy4z0wfpq69n0r54f1xrppb9gn7q9iva6"))
-              (file-name (git-file-name name version))
+                "0dp3zsbnwgb4q4p8n6i5vnlwq52v5hp8f5c44ngyag89fcaz2fjx"))
               (patches (search-patches "gnutls-cross.patch"))))
     (build-system gnu-build-system)
     (arguments
@@ -336,28 +344,13 @@ required structures.")
               (string-append "--with-guile-site-ccache-dir="
                              "$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache")
               (string-append "--with-guile-extension-dir="
-                             "$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/extensions"))
-      #:phases
-      #~(modify-phases %standard-phases
-          (add-after 'unpack 'patch-more-shebangs
-            (lambda _
-              (for-each patch-shebang
-                        '("autopull.sh" "autogen.sh"))))
-          (replace 'bootstrap
-            (lambda _
-              (invoke "bash" "./bootstrap" "--no-git"))))))
+                             "$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/extensions"))))
     (native-inputs
-     (list autoconf
-           automake
-           libtool
+     (list libtool
            pkg-config
            texinfo
            gnutls
-           guile-3.0              ;XXX: 'guile-snarf' invokes the native 'cpp'
-           (gnulib-checkout
-            #:version "2022-12-06"
-            #:commit "440b528b1d81dd31b2a2e4dde20d5c837c147811"
-            #:hash (base32 "15mq43abbnkbamchc9lynrvrd5ql8qacgyx2ph4kkngxf1bz3pqy"))))
+           guile-3.0))            ;XXX: 'guile-snarf' invokes the native 'cpp'
     (inputs
      (list gnutls
            guile-3.0))
@@ -395,6 +388,9 @@ OpenSSL for TARGET."
       (let ((kernel
              (cond ((target-hurd? target)
                     "hurd")
+                   ((and (target-linux? target)
+                         (target-riscv64? target))
+                    "linux64")
                    ((target-linux? target)
                     "linux")
                    (else
@@ -418,8 +414,9 @@ OpenSSL for TARGET."
               ((and (target-powerpc? target)
                     (target-64bit? target))
                "ppc64")
+              ((target-riscv64? target)
+               "riscv64")
               ((target-64bit? target)
-               ;; linux64-riscv64 isn't recognized until 3.0.0.
                "generic64")
               (else
                (error "unsupported openssl target architecture")))))
@@ -472,6 +469,13 @@ OpenSSL for TARGET."
                         (setenv "CONFIGURE_TARGET_ARCH"
                                 #$(target->openssl-target
                                    (%current-target-system))))))
+                 #~())
+          #$@(if (target-hurd?)
+                 #~((add-after 'unpack 'patch-configure
+                      (lambda _
+                        (substitute* "config"
+                          (("case \"\\$GUESSOS\" in.*" all)
+                           (string-append all "hurd-x86*) OUT=hurd-x86;;\n"))))))
                  #~())
           (replace 'configure
             (lambda* (#:key configure-flags #:allow-other-keys)
@@ -588,7 +592,15 @@ OpenSSL for TARGET."
               (lambda* (#:key native-inputs inputs #:allow-other-keys)
                 (setenv "HASHBANGPERL"
                         (search-input-file (or native-inputs inputs)
-                                           "/bin/perl"))))))))
+                                           "/bin/perl"))))
+            #$@(if (target-hurd?)
+                   #~((delete 'patch-configure))
+                   #~())))
+       ((#:configure-flags flags #~'())
+        (if (system-hurd?)
+            #~(append #$flags '("hurd-x86")) ;must not be used when
+                                             ;cross-compiling!
+            flags))))
     (license license:asl2.0)))
 
 (define-public openssl openssl-3.0)
@@ -689,13 +701,13 @@ netcat implementation that supports TLS.")
   (package
     (name "python-acme")
     ;; Remember to update the hash of certbot when updating python-acme.
-    (version "1.28.0")
+    (version "2.3.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "acme" version))
               (sha256
                (base32
-                "12fmw4g63pzbrmmrkk6hgg0k5px6jyx3scv9fmn60h21387jv0hz"))))
+                "1z6293g4pyxvx5w7v07j8wnaxyr7srsqfqvgly888b8k52fq9ipa"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -747,7 +759,7 @@ netcat implementation that supports TLS.")
               (uri (pypi-uri "certbot" version))
               (sha256
                (base32
-                "0p4cpakx1kc8lczlgxqryr2asnyrvw6p5wmkamkjqdsf3z7xhm2b"))))
+                "12nd9nmdj3bf1xlvhj1ln473xbyv4qzxf6qhz0djbca7jl59zlwk"))))
     (build-system python-build-system)
     (arguments
      `(,@(substitute-keyword-arguments (package-arguments python-acme)
@@ -775,13 +787,11 @@ netcat implementation that supports TLS.")
     (propagated-inputs
      (list python-acme
            python-cryptography
-           python-zope-interface
            python-pyrfc3339
            python-pyopenssl
            python-configobj
            python-configargparse
            python-distro
-           python-zope-component
            python-parsedatetime
            python-psutil
            python-requests
@@ -833,7 +843,7 @@ servers or clients for more complicated applications.")
 (define-public perl-crypt-openssl-rsa
  (package
   (name "perl-crypt-openssl-rsa")
-  (version "0.31")
+  (version "0.33")
   (source
     (origin
       (method url-fetch)
@@ -843,7 +853,7 @@ servers or clients for more complicated applications.")
              ".tar.gz"))
       (sha256
         (base32
-          "0djl5i6kibl7862b6ih29q8dhg5zpwzq77q9j8hp6xngshx40ws1"))))
+          "0r6qxx2nyvdsv859zl8vz17ndj1a4xvrknbafhjh6m3gdl7n7gmx"))))
   (build-system perl-build-system)
   (native-inputs
    (list perl-crypt-openssl-guess))
@@ -1224,7 +1234,20 @@ ciphers such as ChaCha20, Curve25519, NTRU, and Blake2b.")
     (arguments
      '(#:test-target "run_minimal_tests"
        #:configure-flags
-       '("-DBUILD_SHARED_LIBS=ON")))
+       '("-DBUILD_SHARED_LIBS=ON")
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? test-target parallel-tests? #:allow-other-keys)
+             (when tests?
+               ;; SSLTest.HostMatching fails due to an expired certificate.
+               ;; Fake the time to be that of the release.
+               (invoke "faketime" "2022-05-23"
+                       "make" test-target
+                       "-j" (if parallel-tests?
+                                (number->string (parallel-job-count))
+                                "1"))))))))
+    (native-inputs (list libfaketime))
     (synopsis "General purpose cryptographic library")
     (description "AWS libcrypto (aws-lc) contains portable C implementations
 of algorithms needed for TLS and common applications, and includes optimized

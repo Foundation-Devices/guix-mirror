@@ -118,7 +118,7 @@ interfacing MPD in the C, C++ & Objective C languages.")
 (define-public mpd
   (package
     (name "mpd")
-    (version "0.23.12")
+    (version "0.23.13")
     (source (origin
               (method url-fetch)
               (uri
@@ -127,12 +127,13 @@ interfacing MPD in the C, C++ & Objective C languages.")
                               "/mpd-" version ".tar.xz"))
               (sha256
                (base32
-                "1rq2hyfvwwri3sivab747csza2i096y7m8563rl5mhpchhiadz5p"))))
+                "06fmy68lfrsi5y03l53dnwcynqhwh5f5vhdpbsr8lzmvzgk02sx9"))))
     (build-system meson-build-system)
     (arguments
      (list
       #:configure-flags #~(list "-Ddocumentation=enabled"
-                                "-Dsystemd=enabled")
+                                "-Dsystemd=enabled"
+                                "-Dtest=true")
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'unpack 'enable-elogind
@@ -145,7 +146,15 @@ interfacing MPD in the C, C++ & Objective C languages.")
                 (("systemd_dep = declare_dependency" all)
                  (string-append "_" all)))
               (substitute* "meson.build"
-                (("systemd_dep,") "systemd_dep, _systemd_dep,")))))))
+                (("systemd_dep,") "systemd_dep, _systemd_dep,"))))
+          (add-after 'install 'split-package
+            (lambda _
+              ;; The HTML manual accounts for over 40% of the disk
+              ;; space used by the package.
+              (let* ((old (string-append #$output "/share/doc"))
+                     (new (string-append #$output:doc "/share/doc")))
+                (mkdir-p (dirname new))
+                (rename-file old new)))))))
     (inputs (append
              (if (target-linux?) (list liburing) '())
              (list ao
@@ -182,7 +191,13 @@ interfacing MPD in the C, C++ & Objective C languages.")
                    yajl
                    zlib
                    zziplib)))
-    (native-inputs (list cmake pkg-config python-sphinx))
+    (native-inputs (list pkg-config python-sphinx googletest
+                         ;; See test/meson.build for information about these
+                         ;; additional dependencies.
+                         ;;
+                         ;; Used when zziplib feature is enabled.
+                         zip))
+    (outputs (list "out" "doc"))
     ;; Missing optional inputs:
     ;;   libcdio_paranoia
     ;;   libmms
@@ -246,7 +261,7 @@ player daemon.")
 (define-public ncmpc
   (package
     (name "ncmpc")
-    (version "0.47")
+    (version "0.48")
     (source (origin
               (method url-fetch)
               (uri
@@ -255,7 +270,7 @@ player daemon.")
                               "/ncmpc-" version ".tar.xz"))
               (sha256
                (base32
-                "1714saz8m6y2chby0c1qh3vgqc3srlr1jq98vhzmjykcpjqj7nk1"))))
+                "035rd64a70qiv334bgs9z2hqnvzldkwdvxay2hmdx5l0a5zd5cml"))))
     (build-system meson-build-system)
     (inputs (list boost pcre libmpdclient ncurses))
     (native-inputs
@@ -561,7 +576,7 @@ album-experience.")
 (define-public mpdevil
   (package
     (name "mpdevil")
-    (version "1.10.0")
+    (version "1.10.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -569,7 +584,7 @@ album-experience.")
                     (commit (string-append "v" version))))
               (file-name (git-file-name name version))
               (sha256
-               (base32 "04dzxyv176w5sm4j85j7fbh42nk9wsyz5s005kj9cjwsrzrnxlbk"))))
+               (base32 "0ghmw3xiz567qd1iv1ggkv6zl1jb5d40mz27npk2zvlpikmqpc6c"))))
     (build-system meson-build-system)
     (arguments
      (list
@@ -588,7 +603,7 @@ album-experience.")
                   python-mpd2
                   python-pycairo
                   python-pygobject))
-    (native-inputs (list `(,glib "bin")))
+    (native-inputs (list gettext-minimal `(,glib "bin")))
     (home-page "https://github.com/SoongNoonien/mpdevil")
     (synopsis "Music browser for the MPD")
     (description "mpdevil is a music browser for the Music Player Daemon (MPD),
@@ -600,7 +615,7 @@ mpdevil loads all tags and covers on demand.")
 (define-public mympd
   (package
     (name "mympd")
-    (version "10.2.4")
+    (version "10.3.3")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -609,14 +624,17 @@ mpdevil loads all tags and covers on demand.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0544vx9x103394mz2x92ycfj5lh59xrzcvagi4q0jb9b1hh44s6p"))))
+                "1n8z3rscrw7k097q5z1d59mrryy7b8m0zdfhi767a1qpa121m8if"))))
     (build-system cmake-build-system)
     (arguments
-     (list #:tests? #f)) ; no test target
-    (native-inputs (list jq perl))
+     (list
+      #:configure-flags
+      #~(list "-DMYMPD_STRIP_BINARY=OFF")  ; handled by 'strip phase
+      #:tests? #f)) ; no test target
+    (native-inputs (list jq perl pkg-config))
     (inputs (list flac libid3tag lua openssl pcre2))
     (home-page "https://jcorporation.github.io/")
     (synopsis "Web-based MPD client")
-    (description "MyMPD is a mobile-friendly web client for the MPD music
-player daemon.")
+    (description "MyMPD is a mobile-friendly web client for the Music Player
+Daemon (MPD).")
     (license license:gpl3+)))

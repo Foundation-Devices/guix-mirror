@@ -4,6 +4,7 @@
 ;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 Timotej Lazar <timotej.lazar@araneo.si>
 ;;; Copyright © 2021, 2022 Remco van 't Veer <remco@remworks.net>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -26,16 +27,19 @@
   #:use-module (guix download)
   #:use-module (guix gexp)
   #:use-module (guix git-download)
+  #:use-module (guix modules)
   #:use-module (guix utils)
   #:use-module (guix build utils)
   #:use-module (guix build-system gnu)
   #:use-module (gnu packages)
   #:use-module (gnu packages)
   #:use-module (gnu packages adns)
+  #:use-module (gnu packages algebra)
   #:use-module (gnu packages augeas)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages check)
+  #:use-module (gnu packages compression)
   #:use-module (gnu packages crypto)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages cyrus-sasl)
@@ -81,37 +85,18 @@
      `(#:configure-flags
        ;; The net tool is used to update the stored machine key for samba.
        (list (string-append "--with-samba-data-tool="
-                            (assoc-ref %build-inputs "samba") "/bin/net"))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'use-local-docbook
-           ;; Patch Makefile and docs to use local docbook resources.
-           (lambda _
-             (let* ((docbook-xml (assoc-ref %build-inputs "docbook-xml"))
-                    (docbook-xsl (assoc-ref %build-inputs "docbook-xsl"))
-                    (xsldir (string-append docbook-xsl "/xml/xsl/docbook-xsl-"
-                                           ,(package-version docbook-xsl))))
-                    (with-directory-excursion "doc"
-                      (substitute*
-                          '("Makefile.am" "adcli.xml" "adcli-devel.xml" "adcli-docs.xml")
-                        (("http://docbook.sourceforge.net/release/xsl/current(/[^\"]*)" _ path)
-                         (string-append xsldir path))
-                        (("http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd")
-                         (string-append docbook-xml "/xml/dtd/docbook/docbookx.dtd")))
-                      (substitute* "Makefile.am"
-                        (("\\$\\(XMLTO\\)" xmlto)
-                         (string-append xmlto " --searchpath " xsldir "/html"))))))))))
+                            (search-input-file %build-inputs "bin/net")))))
     (native-inputs
      (list autoconf
            automake
-           docbook-xml
+           docbook-xml-4.3
            docbook-xsl
            libtool
+           libxml2                      ;for XML_CATALOG_FILES
            libxslt
-           util-linux ; For `rev` command used in tests.
+           util-linux                   ;For `rev` command used in tests.
            xmlto))
-    (inputs
-     (list cyrus-sasl mit-krb5 samba openldap))
+    (inputs (list cyrus-sasl mit-krb5 samba openldap zlib))
     (home-page "https://gitlab.freedesktop.org/realmd/adcli/")
     (synopsis "Helper library and tools for Active Directory client operations")
     (description "@command{adcli} is a command‐line tool to join a computer to
@@ -154,7 +139,7 @@ fundamental object types for C.")
 (define-public sssd
   (package
     (name "sssd")
-    (version "2.8.1")
+    (version "2.9.1")
     (source
      (origin
        (method git-fetch)
@@ -163,11 +148,13 @@ fundamental object types for C.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "19vn2a1r33q6fnw7jmfv3s4kirnviz0rgq0w6wzx6h008iysidsd"))
+        (base32 "159hpd49nq3256j46lanbycx8hrj517s1pvxrflxsdqcdyix59rr"))
        (patches (search-patches "sssd-system-directories.patch"))))
     (build-system gnu-build-system)
     (arguments
      (list
+      #:imported-modules (source-module-closure
+                          '((guix build python-build-system)))
       #:make-flags
       #~(list (string-append "CFLAGS=-DRENEWAL_PROG_PATH=\\\""
                              #$(this-package-input "adcli") "/sbin/adcli"
@@ -201,6 +188,8 @@ fundamental object types for C.")
                              "/xml/dtd/docbook/catalog.xml"))
       #:phases
       #~(modify-phases %standard-phases
+          (add-after 'unpack 'ensure-no-mtimes-pre-1980
+            (@@ (guix build python-build-system) ensure-no-mtimes-pre-1980))
           (add-after 'patch-source-shebangs 'patch-more-shebangs
             (lambda _
               (substitute* '("src/tools/analyzer/sss_analyze"
@@ -283,14 +272,15 @@ fundamental object types for C.")
            p11-kit ; for PKCS#11 support
            pcre2
            popt
-           python
-           samba
+           python ; for wrap-program phase
+           samba/pinned
            talloc
            tdb
            tevent))
     (native-inputs
      (list autoconf
            automake
+           bc ; for tests
            check ; for tests
            cmocka ; for tests
            docbook-xml
@@ -303,6 +293,7 @@ fundamental object types for C.")
            libxslt
            openssh ; for tests
            pkg-config
+           python-toolchain
            po4a
            softhsm ; for tests
            `(,util-linux "lib"))) ; for uuid.h, reqired for KCM

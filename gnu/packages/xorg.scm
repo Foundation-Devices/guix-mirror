@@ -24,7 +24,7 @@
 ;;; Copyright © 2020 Liliana Marie Prikler <liliana.prikler@gmail.com>
 ;;; Copyright © 2020 Florian Pelz <pelzflorian@pelzflorian.de>
 ;;; Copyright © 2020, 2021 Michael Rohleder <mike@rohleder.de>
-;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Jean-Baptiste Note <jean-baptiste.note@m4x.org>
 ;;; Copyright © 2021 Matthew James Kraai <kraai@ftbfs.org>
 ;;; Copyright © 2021 Nicolò Balzarotti <nicolo@nixo.xyz>
@@ -34,6 +34,8 @@
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;; Copyright © 2021 Lu Hui <luhux76@gmail.com>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -467,33 +469,15 @@ Resources file.")
     (description "Xorg font encoding files.")
     (license license:public-domain)))
 
-(define (%xorg-font-origin font version hash)
-  (origin
-    (method url-fetch)
-    (uri (string-append "mirror://xorg/individual/font/" font "-"
-                        version ".tar.bz2"))
-    (sha256 hash)
-    (modules '((guix build utils)))
-    (snippet
-     ;; Do not include timestamps in '.pcf.gz' files.
-     '(begin
-        (substitute* "Makefile.in"
-          (("^COMPRESS = (.*)$" _ rest)
-           (string-append "COMPRESS = " (string-trim-right rest)
-                          " --no-name\n")))
-        #t))))
-
-(define-syntax-rule (xorg-font-origin font version hash)
-  "Expand to the 'origin' form for the given Xorg font package."
-  (%xorg-font-origin font version (base32 hash)))
-
 (define-public font-adobe100dpi
   (package
     (name "font-adobe100dpi")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             "font-adobe-100dpi" version
-             "0m60f5bd0caambrk8ksknb5dks7wzsg7g7xaf0j21jxmx8rq9h5j"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-adobe-100dpi-" version ".tar.xz"))
+              (sha256 "1kwwbaiqnfm3pcysy9gw0g9xhpgmhjcd6clp7zajhqq5br2gyymn")))
     (build-system gnu-build-system)
     (inputs
       (list bdftopcf font-util mkfontdir))
@@ -512,10 +496,12 @@ Resources file.")
 (define-public font-adobe75dpi
   (package
     (name "font-adobe75dpi")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             "font-adobe-75dpi" version
-             "02advcv9lyxpvrjv8bjh1b797lzg6jvhipclz49z8r8y98g4l0n6"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-adobe-75dpi-" version ".tar.xz"))
+              (sha256 "04drk4wi176524lxjwfrnkr3dwz1hysabqfajpj6klfypqnsd08j")))
     (build-system gnu-build-system)
     (inputs
       (list bdftopcf font-util mkfontdir))
@@ -537,10 +523,12 @@ Resources file.")
 (define-public font-alias
   (package
     (name "font-alias")
-    (version "1.0.4")
-    (source (xorg-font-origin
-             name version
-             "0xjjjindczv3g7m1597l0x19zz75xy70wh5garghz61fpzl1l4gk"))
+    (version "1.0.5")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-alias-" version ".tar.xz"))
+              (sha256 "0vkb5mybc0fjfq29lgf5w1b536bwifzkyj8ad9iy7q3kpcby52cz")))
     (build-system gnu-build-system)
     (native-inputs (list pkg-config))
     (arguments
@@ -570,10 +558,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-arabic-misc
   (package
     (name "font-arabic-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "1x246dfnxnmflzf0qzy62k8jdpkb6jkgspcjgbk8jcq9lw99npah"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-arabic-misc-" version ".tar.xz"))
+              (sha256 "0rrlcqbyx9y7hnhbkjir8rs6jkfqyalj1zvhr8niv2n7a8dydzs6")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -597,10 +587,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-cronyx-cyrillic
   (package
     (name "font-cronyx-cyrillic")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "0ai1v4n61k8j9x2a1knvfbl2xjxk3xxmqaq3p9vpqrspc69k31kf"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-cronyx-cyrillic-" version ".tar.xz"))
+              (sha256 "12dpsvif85z1m6jvq9g91lmzj0rll5rh3871mbvdpzyb1p7821yw")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -620,10 +612,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-dec-misc
   (package
     (name "font-dec-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "0yzza0l4zwyy7accr1s8ab7fjqkpwggqydbm2vc19scdby5xz7g1"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-dec-misc-" version ".tar.xz"))
+              (sha256 "1xqs2qg21h5xg519810hw4bvykjdpf0xgk0xwp0bxy4g3lh6inc2")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -640,10 +634,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-isas-misc
   (package
     (name "font-isas-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "0rx8q02rkx673a7skkpnvfkg28i8gmqzgf25s9yi0lar915sn92q"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-isas-misc-" version ".tar.xz"))
+              (sha256 "1z1qqi64hbp297f6ryiswa4ikfn7mcwnb8nadyglni6swsxrbra7")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -660,10 +656,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-micro-misc
   (package
     (name "font-micro-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "1dldxlh54zq1yzfnrh83j5vm0k4ijprrs5yl18gm3n9j1z0q2cws"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-micro-misc-" version ".tar.xz"))
+              (sha256 "0hzryqyml0bzzw91vqdmzdlb7dm18jmyz0mxy6plks3sppbbkq1f")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -677,10 +675,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-misc-cyrillic
   (package
     (name "font-misc-cyrillic")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "0q2ybxs8wvylvw95j6x9i800rismsmx4b587alwbfqiw6biy63z4"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-misc-cyrillic-" version ".tar.xz"))
+              (sha256 "14z9x174fidjn65clkd2y1l6pxspmvphizap9a8h2h06adzil0kn")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -694,10 +694,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-misc-ethiopic
   (package
     (name "font-misc-ethiopic")
-    (version "1.0.4")
-    (source (xorg-font-origin
-             name version
-             "1q2azkdwc4x3kh53xclwpf9q654k70lhiyns1cjq594wvxnhz339"))
+    (version "1.0.5")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-misc-ethiopic-" version ".tar.xz"))
+              (sha256 "04mnd620s9wkdid9wnf181yh5vf0n7l096nc3z4zdvm1w7kafja7")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir mkfontscale))
@@ -714,10 +716,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-misc-misc
   (package
     (name "font-misc-misc")
-    (version "1.1.2")
-    (source (xorg-font-origin
-             name version
-             "150pq6n8n984fah34n3k133kggn9v0c5k07igv29sxp1wi07krxq"))
+    (version "1.1.3")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-misc-misc-" version ".tar.xz"))
+              (sha256 "1vcgc6lbc53fqaz8alhxcb6f231hhvj9hn2nkzg1mclbymhy7avr")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir font-util bdftopcf))
@@ -734,10 +738,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-mutt-misc
   (package
     (name "font-mutt-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "13qghgr1zzpv64m0p42195k1kc77pksiv059fdvijz1n6kdplpxx"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-mutt-misc-" version ".tar.xz"))
+              (sha256 "095vd33kqd157j6xi4sjxwdsjpwpgqliifa8nkybq8rcw7s5j8xi")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -751,10 +757,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-schumacher-misc
   (package
     (name "font-schumacher-misc")
-    (version "1.1.2")
-    (source (xorg-font-origin
-             name version
-             "0nkym3n48b4v36y4s927bbkjnsmicajarnf6vlp7wxp0as304i74"))
+    (version "1.1.3")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-schumacher-misc-" version ".tar.xz"))
+              (sha256 "0w40lr214n39al449fnm4k1bpyj3fjrhz2yxqd6a6m8yvc69z14b")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir font-util bdftopcf))
@@ -771,10 +779,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-screen-cyrillic
   (package
     (name "font-screen-cyrillic")
-    (version "1.0.4")
-    (source (xorg-font-origin
-             name version
-             "0yayf1qlv7irf58nngddz2f1q04qkpr5jwp4aja2j5gyvzl32hl2"))
+    (version "1.0.5")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-screen-cyrillic-" version ".tar.xz"))
+              (sha256 "1h75zn1rp7bdv6av4cnrajpaq6fkd7dx1lc7aijpw32qrnw8nxcg")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -788,10 +798,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-sony-misc
   (package
     (name "font-sony-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "1xfgcx4gsgik5mkgkca31fj3w72jw9iw76qyrajrsz1lp8ka6hr0"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-sony-misc-" version ".tar.xz"))
+              (sha256 "0swlhjmmagrfkip4i9yq7cr56hains1j41mjs05nxc6c7y19zc76")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -805,10 +817,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-sun-misc
   (package
     (name "font-sun-misc")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "1q6jcqrffg9q5f5raivzwx9ffvf7r11g6g0b125na1bhpz5ly7s8"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-sun-misc-" version ".tar.xz"))
+              (sha256 "17yvhk1hlajm3q57r09q8830zz7cnckrg8hgzajgyyljdl8xv16x")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -841,10 +855,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-winitzki-cyrillic
   (package
     (name "font-winitzki-cyrillic")
-    (version "1.0.3")
-    (source (xorg-font-origin
-             name version
-             "181n1bgq8vxfxqicmy1jpm1hnr6gwn1kdhl6hr4frjigs1ikpldb"))
+    (version "1.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-winitzki-cyrillic-" version ".tar.xz"))
+              (sha256 "1a4pz8f7hz6nn9xirz2k1j81ykl3lwrpi1ydmzipciy15l984v9v")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir bdftopcf))
@@ -858,10 +874,12 @@ For example: @code{6x10}, @code{9x15bold}, etc.")
 (define-public font-xfree86-type1
   (package
     (name "font-xfree86-type1")
-    (version "1.0.4")
-    (source (xorg-font-origin
-             name version
-             "0jp3zc0qfdaqfkgzrb44vi9vi0a8ygb35wp082yz7rvvxhmg9sya"))
+    (version "1.0.5")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://xorg/individual/font/"
+                                  "font-xfree86-type1-" version ".tar.xz"))
+              (sha256 "0ds8xbgxy9h0bqn2p38vylfzn8cqkp7n51kwmw1c18ayi9w2qg59")))
     (build-system gnu-build-system)
     (inputs
       (list mkfontdir mkfontscale))
@@ -1144,6 +1162,22 @@ themselves.")
     (synopsis "Xorg PCI access library")
     (description "Xorg Generic PCI access library.")
     (license license:x11)))
+
+(define-public libpciaccess-0.17
+  (package
+    (inherit libpciaccess)
+    (name "libpciaccess")
+    (version "0.17")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://xorg/individual/lib/libpciaccess-"
+             version
+             ".tar.xz"))
+       (sha256
+        (base32
+         "0wsvv5d05maqbidvnavka7n0fnql55m4jix5wwlk14blr6ikna3l"))))))
 
 (define-public libpthread-stubs
   (package
@@ -3709,15 +3743,15 @@ extension to the X11 protocol.  It includes:
 (define-public xkeyboard-config
   (package
     (name "xkeyboard-config")
-    (version "2.36")
+    (version "2.38")
     (source (origin
               (method url-fetch)
               (uri (string-append
-                    "mirror://xorg/individual/data/xkeyboard-config/"
+                    "ftp://ftp.freedesktop.org/pub/xorg//individual/data/xkeyboard-config/"
                     "xkeyboard-config-" version ".tar.xz"))
               (sha256
                (base32
-                "158m7r6ga7w12ry35q6d0z6hilbpj9h7ilw56h55478n58lv26qz"))))
+                "0wn8asnbz111194ksi2mysa6ikn4kqgd9rpfydl8icc6mcdsk406"))))
     (build-system meson-build-system)
     (inputs (list libx11 xkbcomp-intermediate))
     (native-inputs (list gettext-minimal libxslt perl pkg-config python))
@@ -4493,13 +4527,30 @@ cannot be adequately worked around on the client side of the wire.")
             "012jpyj7xfm653a9jcfqbzxyywdmwb2b5wr1dwylx14f3f54jma6"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:configure-flags '("--disable-static")))
+     `(#:configure-flags '("--disable-static")
+       ,@(if (and (target-riscv64?)
+                  (%current-target-system))
+             `(#:phases
+               (modify-phases %standard-phases
+                 (add-after 'unpack 'update-config
+                   (lambda* (#:key native-inputs inputs #:allow-other-keys)
+                     (for-each (lambda (file)
+                                 (install-file
+                                  (search-input-file
+                                   (or native-inputs inputs)
+                                   (string-append "/bin/" file)) "."))
+                               '("config.guess" "config.sub"))))))
+             '())))
     (propagated-inputs
      (list libxi xorgproto))
     (inputs
-      (list libx11))
+     (list libx11))
     (native-inputs
-      (list pkg-config))
+     (append (if (and (target-riscv64?)
+                      (%current-target-system))
+               (list config)
+               '())
+             (list pkg-config)))
     (home-page "https://www.x.org/wiki/")
     (synopsis "Xorg library for Xtest and Record extensions")
     (description
@@ -5620,11 +5671,29 @@ The XCB util-renderutil module provides the following library:
                "0gra7hfyxajic4mjd63cpqvd20si53j1q3rbdlkqkahfciwq3gr8"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:configure-flags '("--disable-static")))
+     `(#:configure-flags '("--disable-static")
+       ,@(if (and (target-riscv64?)
+                  (%current-target-system))
+           `(#:phases
+             (modify-phases %standard-phases
+               (add-after 'unpack 'update-config-scripts
+                 (lambda* (#:key inputs native-inputs #:allow-other-keys)
+                   ;; Replace outdated config.guess and config.sub.
+                   (for-each (lambda (file)
+                               (install-file
+                                (search-input-file
+                                 (or native-inputs inputs)
+                                 (string-append "/bin/" file)) "."))
+                             '("config.guess" "config.sub"))))))
+           '())))
     (propagated-inputs
      (list libxcb))
     (native-inputs
-     (list m4 pkg-config))
+     (append (if (and (target-riscv64?)
+                      (%current-target-system))
+               (list config)
+               '())
+             (list m4 pkg-config)))
     (home-page "https://cgit.freedesktop.org/xcb/util-wm/")
     (synopsis "Client and window-manager helpers for ICCCM and EWMH")
     (description
@@ -5723,14 +5792,14 @@ Extension.")
 (define-public xclock
   (package
     (name "xclock")
-    (version "1.0.9")
+    (version "1.1.1")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.x.org/releases/individual/app/"
-                           "xclock-" version ".tar.bz2"))
+                           "xclock-" version ".tar.xz"))
        (sha256
-        (base32 "1fr3q4rszgx7x2zxy2ip592a3fgx20hfwac49p2l5b7jqsr1ying"))))
+        (base32 "0b3l1zwz2b1cn46f8pd480b835j9anadf929vqpll107iyzylz6z"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -6007,125 +6076,125 @@ basic eye-candy effects.")
 (define-public xpra
   (package
     (name "xpra")
-    (version "4.4.3")
+    (version "4.4.6")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.xpra.org/src/xpra-"
                            version ".tar.xz"))
        (sha256
-        (base32 "03ypmkh5f1ygag3wnq776dn8gpy3aq8f0xv40ab5rjisix7lgfwg"))
+        (base32 "0d3s13wqbn9jwqp4i55mn4chgjkrckq3jx4jrq1bcjjz5agzfrq5"))
        (patches (search-patches "xpra-4.2-systemd-run.patch"
                                 "xpra-4.2-install_libs.patch"))))
     (build-system python-build-system)
-    ;; see also http://xpra.org/trac/wiki/Dependencies
-    (inputs `(("bash-minimal" ,bash-minimal)    ; for wrap-program
-              ;; Essential dependencies.
-              ("libjpeg" ,libjpeg-turbo)
-              ("libwebp" ,libwebp)
-              ("ffmpeg" ,ffmpeg)
-              ("libx11" ,libx11)
-              ("libxrandr" ,libxrandr)
-              ("libxtst" ,libxtst)
-              ("libxfixes" ,libxfixes)
-              ("libxkbfile" ,libxkbfile)
-              ("libxcomposite" ,libxcomposite)
-              ("libxdamage" ,libxdamage)
-              ("libxext" ,libxext)
-              ("libxres" ,libxres)
-              ("lz4" ,lz4)
-              ("gtk+" ,gtk+)
-              ("python-pycairo" ,python-pycairo)
-              ("python-pygobject" ,python-pygobject)
-              ("xauth" ,xauth)
-              ("xorg-server" ,xorg-server)
-              ("xf86-video-dummy" ,xf86-video-dummy)
-              ("xf86-input-mouse" ,xf86-input-mouse)
-              ("xf86-input-keyboard" ,xf86-input-keyboard)
-              ("python-pillow" ,python-pillow)
-              ;; Optional dependencies.
-              ("libx264" ,libx264)
-              ("x265" ,x265)
-              ("libvpx" ,libvpx)
-              ("python-rencode" ,python-rencode) ; For speed.
-              ("python-numpy" ,python-numpy)
-              ("python-pyopengl" ,python-pyopengl) ; Drawing acceleration.
-              ("python-pyopengl-accelerate" ,python-pyopengl-accelerate) ; Same.
-              ("python-paramiko" ,python-paramiko) ; Tunneling over SSH.
-              ("python-dbus" ,python-dbus) ; For desktop notifications.
-              ("dbus" ,dbus)               ; For dbus-launch command.
-              ("python-lz4" ,python-lz4) ; Faster compression than zlib.
-              ("python-netifaces" ,python-netifaces)))
+    (inputs
+     (list bash-minimal                 ; for wrap-program
+           ;; Essential dependencies.
+           libjpeg-turbo
+           libwebp
+           ffmpeg
+           libx11
+           libxrandr
+           libxtst
+           libxfixes
+           libxkbfile
+           libxcomposite
+           libxdamage
+           libxext
+           libxres
+           lz4
+           gtk+
+           python-pycairo
+           python-pygobject
+           xauth
+           xorg-server
+           xf86-video-dummy
+           xf86-input-mouse
+           xf86-input-keyboard
+           python-pillow
+           ;; Optional dependencies.
+           libx264
+           x265
+           libvpx
+           python-rencode               ; For speed.
+           python-numpy
+           python-pyopengl              ; Drawing acceleration.
+           python-pyopengl-accelerate   ; Same.
+           python-paramiko              ; Tunneling over SSH.
+           python-dbus                  ; For desktop notifications.
+           dbus                         ; For dbus-launch command.
+           python-lz4                   ; Faster compression than zlib.
+           python-netifaces))
     (native-inputs (list pkg-config pandoc python-cython))
     (arguments
-     `(#:configure-flags '("--without-Xdummy"
-						   "--without-Xdummy_wrapper"
-                           "--with-opengl"
-                           "--without-debug"
-                           "--without-strict") ; Ignore compiler warnings.
-       #:modules ((guix build python-build-system)
+     (list
+      #:configure-flags #~(list "--without-Xdummy"
+                                "--without-Xdummy_wrapper"
+                                "--with-opengl"
+                                "--without-debug"
+                                "--without-strict") ; Ignore compiler warnings.
+      #:modules '((guix build python-build-system)
                   (guix build utils))
-       #:tests? #f ; Do not run test-cases. This would rebuild all modules and
-                                        ; they seem to require python2.
-       #:phases
-       (modify-phases %standard-phases
-         ;; Must pass the same flags as 'install, otherwise enabled modules may
-         ;; not be built.
-         (replace 'build
-           (lambda* (#:key configure-flags #:allow-other-keys)
-             (apply invoke (append (list "python" "setup.py" "build")
-                                   configure-flags))))
-         (add-before 'install 'fix-paths
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Fix binary paths.
-             (substitute* '("xpra/scripts/config.py" "xpra/x11/vfb_util.py")
-               (("\"Xvfb\"")
-                (string-append "\"" (assoc-ref inputs "xorg-server") "/bin/Xvfb\""))
-               (("\"Xorg\"")
-                (string-append "\"" (assoc-ref inputs "xorg-server") "/bin/Xorg\""))
-               (("\"xauth\"")
-                (string-append "\"" (assoc-ref inputs "xauth") "/bin/xauth\"")))
-             ;; Fix directory of config files.
-             (substitute* '("xpra/scripts/config.py" "xpra/platform/xposix/paths.py")
-               (("\"/etc/xpra/?\"")
-                (string-append "\"" (assoc-ref outputs "out") "/etc/xpra/\"")))
-             ;; XXX: Stolen from (gnu packages linux)
-             (define (append-to-file name body)
-               (let ((file (open-file name "a")))
-                 (display body file)
-                 (close-port file)))
-             ;; Add Xorg module paths.
-             (append-to-file
-              "fs/etc/xpra/xorg.conf"
-              (string-append "\nSection \"Files\"\nModulePath \""
-                             (assoc-ref inputs "xf86-video-dummy") "/lib/xorg/modules,"
-                             (assoc-ref inputs "xf86-input-mouse") "/lib/xorg/modules,"
-                             (assoc-ref inputs "xf86-input-keyboard") "/lib/xorg/modules,"
-                             (assoc-ref inputs "xorg-server") "/lib/xorg/modules\"\n"
-                             "EndSection\n\n"))
-             (substitute* '("xpra/scripts/config.py"
-                            "fs/etc/xpra/conf.d/60_server.conf.in"
-                            "tests/unittests/unit/server/mixins/notification_test.py")
-               ;; The trailing -- is intentional, so we only replace it inside
-               ;; a command line.
-               (("dbus-launch --")
-                (string-append (search-input-file inputs "/bin/dbus-launch")
-                               " --")))
-             ;; /run/user does not exist on guix system
-             (substitute* "./xpra/scripts/config.py"
-               (("socket-dir.*: \"\",")
-                "socket-dir\"        : \"~/.xpra\","))
-             #t))
-         ;; GTK3 will not be found, if GI can’t find its typelibs.
-         (add-after
-             'install 'wrap-program
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((prog (string-append (assoc-ref outputs "out")
-                                        "/bin/xpra")))
-               ;; XXX: only export typelibs in inputs
-               (wrap-program prog
-                 `("GI_TYPELIB_PATH" = (,(getenv "GI_TYPELIB_PATH"))))
-               #t))))))
+      ;; Do not run test-cases.  This would rebuild all modules and they seem
+      ;; to require python2.
+      #:tests? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; Must pass the same flags as 'install, otherwise enabled modules may
+          ;; not be built.
+          (replace 'build
+            (lambda* (#:key configure-flags #:allow-other-keys)
+              (apply invoke (append (list "python" "setup.py" "build")
+                                    configure-flags))))
+          (add-before 'install 'fix-paths
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; Fix binary paths.
+              (substitute* '("xpra/scripts/config.py"
+                             "xpra/x11/vfb_util.py")
+                (("\"Xvfb\"")
+                 (format #f "~s" (search-input-file inputs "bin/Xvfb")))
+                (("\"Xorg\"")
+                 (format #f "~s" (search-input-file inputs "bin/Xorg")))
+                (("\"xauth\"")
+                 (format #f "~s" (search-input-file inputs "bin/xauth"))))
+              ;; Fix directory of config files.
+              (substitute* '("xpra/scripts/config.py"
+                             "xpra/platform/xposix/paths.py")
+                (("\"/etc/xpra/?\"")
+                 (string-append "\"" #$output "/etc/xpra/\"")))
+              ;; XXX: Stolen from (gnu packages linux)
+              (define (append-to-file name body)
+                (let ((file (open-file name "a")))
+                  (display body file)
+                  (close-port file)))
+              ;; Add Xorg module paths.
+              (append-to-file
+               "fs/etc/xpra/xorg.conf"
+               (string-append
+                "\nSection \"Files\"\nModulePath \""
+                #$(this-package-input "xf86-video-dummy") "/lib/xorg/modules,"
+                #$(this-package-input "xf86-input-mouse") "/lib/xorg/modules,"
+                #$(this-package-input "xf86-input-keyboard") "/lib/xorg/modules,"
+                #$(this-package-input "xorg-server") "/lib/xorg/modules\"\n"
+                "EndSection\n\n"))
+              (substitute* '("xpra/scripts/config.py"
+                             "fs/etc/xpra/conf.d/60_server.conf.in"
+                             "tests/unittests/unit/server/mixins/notification_test.py")
+                ;; The trailing -- is intentional, so we only replace it inside
+                ;; a command line.
+                (("dbus-launch --")
+                 (string-append (search-input-file inputs "/bin/dbus-launch")
+                                " --")))
+              ;; /run/user does not exist on guix system.
+              (substitute* "./xpra/scripts/config.py"
+                (("socket-dir.*: \"\",")
+                 "socket-dir\"        : \"~/.xpra\","))))
+          ;; GTK3 will not be found, if GI can’t find its typelibs.
+          (add-after 'install 'wrap-program
+            (lambda* (#:key outputs #:allow-other-keys)
+              ;; XXX: only export typelibs in inputs
+              (wrap-program (search-input-file outputs "bin/xpra")
+                `("GI_TYPELIB_PATH" = (,(getenv "GI_TYPELIB_PATH")))))))))
     (home-page "https://www.xpra.org/")
     (synopsis "Remote access to individual applications or full desktops")
     (description "Xpra is a persistent remote display server and client for

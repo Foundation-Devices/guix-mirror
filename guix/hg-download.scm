@@ -25,7 +25,6 @@
   #:use-module (guix records)
   #:use-module (guix modules)
   #:use-module (guix packages)
-  #:autoload   (guix build-system gnu) (standard-packages)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
   #:use-module (ice-9 match)
@@ -73,14 +72,14 @@ HASH-ALGO (a symbol).  Use NAME as the file name, or a generic name if #f."
       ("tar" ,(module-ref (resolve-interface '(gnu packages base))
                           'tar))))
 
-  (define guile-zlib
-    (module-ref (resolve-interface '(gnu packages guile)) 'guile-zlib))
+  (define guile-lzlib
+    (module-ref (resolve-interface '(gnu packages guile)) 'guile-lzlib))
 
   (define guile-json
     (module-ref (resolve-interface '(gnu packages guile)) 'guile-json-4))
 
   (define gnutls
-    (module-ref (resolve-interface '(gnu packages tls)) 'gnutls))
+    (module-ref (resolve-interface '(gnu packages tls)) 'guile-gnutls))
 
   (define modules
     (delete '(guix config)
@@ -91,7 +90,7 @@ HASH-ALGO (a symbol).  Use NAME as the file name, or a generic name if #f."
   (define build
     (with-imported-modules modules
       (with-extensions (list guile-json gnutls ;for (guix swh)
-                             guile-zlib)
+                             guile-lzlib)
         #~(begin
             (use-modules (guix build hg)
                          (guix build utils) ;for `set-path-environment-variable'

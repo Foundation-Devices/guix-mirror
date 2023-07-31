@@ -22,6 +22,7 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix gexp)
   #:use-module (guix packages)
+  #:use-module (gnu packages)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages guile)
@@ -31,14 +32,14 @@
 (define-public dezyne
   (package
     (name "dezyne")
-    (version "2.17.1")
+    (version "2.17.3")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://dezyne.org/download/dezyne/"
                            name "-" version ".tar.gz"))
        (sha256
-        (base32 "008svf32sy80c98nax3xkvxb0b93xgh9xjvw5ygzkq8zflr3ihm8"))))
+        (base32 "0x2aqfvbxhiwxj6vm17g7dkxwj8skcs9pg3a3l1x9pxy7v22wxd7"))))
     (inputs (list bash-minimal
                   guile-3.0-latest
                   guile-json-4

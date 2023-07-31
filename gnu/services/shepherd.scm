@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013-2016, 2018-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2016, 2018-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2018 Carlo Zancanaro <carlo@zancanaro.id.au>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
@@ -27,8 +27,9 @@
   #:use-module (guix store)
   #:use-module (guix records)
   #:use-module (guix packages)
-  #:use-module (guix derivations)                 ;imported-modules, etc.
   #:use-module (guix utils)
+  #:use-module ((guix diagnostics)
+                #:select (define-with-syntax-properties formatted-message))
   #:use-module (gnu services)
   #:use-module (gnu services herd)
   #:use-module (gnu packages admin)
@@ -91,7 +92,7 @@
   shepherd-configuration make-shepherd-configuration
   shepherd-configuration?
   (shepherd shepherd-configuration-shepherd
-            (default shepherd-0.9)) ; file-like
+            (default shepherd-0.10)) ; file-like
   (services shepherd-configuration-services
             (default '()))) ; list of <shepherd-service>
 
@@ -186,12 +187,25 @@ DEFAULT is given, use it as the service's default value."
     ((guix build utils) #:hide (delete))
     (guix build syscalls)))
 
+(define-with-syntax-properties (validate-provision (provision properties))
+  (match provision
+    (((? symbol?) ..1) provision)
+    (_
+     (raise
+      (make-compound-condition
+       (condition
+        (&error-location
+         (location (source-properties->location properties))))
+       (formatted-message
+        (G_ "'provision' must be a non-empty list of symbols")))))))
+
 (define-record-type* <shepherd-service>
   shepherd-service make-shepherd-service
   shepherd-service?
   (documentation shepherd-service-documentation        ;string
                  (default "[No documentation.]"))
-  (provision     shepherd-service-provision)           ;list of symbols
+  (provision     shepherd-service-provision            ;list of symbols
+                 (sanitize validate-provision))
   (requirement   shepherd-service-requirement          ;list of symbols
                  (default '()))
   (one-shot?     shepherd-service-one-shot?            ;Boolean

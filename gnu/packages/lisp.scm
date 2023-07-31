@@ -6,7 +6,7 @@
 ;;; Copyright © 2016, 2017 Nikita <nikita@n0.is>
 ;;; Copyright © 2016, 2017 Andy Patterson <ajpatter@uwaterloo.ca>
 ;;; Copyright © 2017, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2017-2019, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2017-2019, 2022, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2017, 2019–2022 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Benjamin Slade <slade@jnanam.net>
 ;;; Copyright © 2018 Alex Vong <alexvong1995@gmail.com>
@@ -14,7 +14,7 @@
 ;;; Copyright © 2018, 2019 Pierre Langlois <pierre.langlois@gmx.com>
 ;;; Copyright © 2019, 2020 Katherine Cox-Buday <cox.katherine.e@gmail.com>
 ;;; Copyright © 2019 Jesse Gildersleve <jessejohngildersleve@protonmail.com>
-;;; Copyright © 2019, 2020, 2021, 2022 Guillaume Le Vaillant <glv@posteo.net>
+;;; Copyright © 2019-2023 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2020 Zhu Zihao <all_but_last@163.com>
 ;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
@@ -23,6 +23,7 @@
 ;;; Copyright © 2022 Joeke de Graaf <joeke@posteo.net>
 ;;; Copyright © 2021, 2022 jgart <jgart@dismail.de>
 ;;; Copyright © 2022 ( <paren@disroot.org>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -57,6 +58,7 @@
   #:use-module (guix build-system haskell)
   #:use-module (guix build-system trivial)
   #:use-module (gnu packages admin)
+  #:use-module (gnu packages algebra)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bdw-gc)
@@ -83,6 +85,7 @@
   #:use-module (gnu packages maths)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages notcurses)
   #:use-module (gnu packages onc-rpc)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages readline)
@@ -93,7 +96,8 @@
   #:use-module (gnu packages tls)
   #:use-module (gnu packages version-control)
   #:use-module (gnu packages xorg)
-  #:use-module (ice-9 match))
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1))
 
 (define-public cl-asdf
   (package
@@ -139,117 +143,124 @@ Definition Facility.")
     (license license:expat)))
 
 (define-public gcl
-  (let ((commit "ff7ef981765cc0efdb4b1db27c292f5c11a72753")
-        (revision "3")) ;Guix package revision
-    (package
-      (name "gcl")
-      (version (git-version "2.6.12" revision commit))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://git.savannah.gnu.org/r/gcl.git")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32 "0z64fxxcaial2i1s1hms8r095dm1ff3wd8ivwdx894a3yln9c0an"))))
-      (build-system gnu-build-system)
-      (arguments
-       `(#:parallel-build? #f  ; The build system seems not to be thread safe.
-         #:test-target "ansi-tests/test_results"
-         #:configure-flags ,#~(list
-                               "--enable-ansi" ; required by the maxima package
-                               (string-append "CFLAGS=-I"
-                                              #$(this-package-input "libtirpc")
-                                              "/include/tirpc")
-                               (string-append "LDFLAGS=-L"
-                                              #$(this-package-input "libtirpc")
-                                              "/lib")
-                               "LIBS=-ltirpc")
-         #:make-flags ,#~(let ((gcc (search-input-file %build-inputs "/bin/gcc")))
-                           (list (string-append "GCL_CC=" gcc)
-                                 (string-append "CC=" gcc)))
-         #:phases
-         (modify-phases %standard-phases
-           (add-after 'unpack 'realpath-workaround
-             ;; Calls to the realpath function can set errno even if the return
-             ;; value of the function indicates that there is no error, which
-             ;; make massert consider that there was an error.
-             (lambda _
-               (substitute* "gcl/o/main.c"
-                 (("massert\\(realpath\\(s,o\\)\\);" all)
-                  "massert((realpath(s, o) != NULL) && ((errno = 0) == 0));"))))
-           (add-after 'unpack 'fix-makefile
-             ;; The "final" target doesn't exist.
-             (lambda _
-               (substitute* "gcl/makefile"
-                 (("\\$\\(MAKE\\) -C \\$\\(PORTDIR\\) final")
-                  "$(MAKE) -C $(PORTDIR)"))))
-           (add-before 'configure 'pre-conf
-             (lambda* (#:key inputs #:allow-other-keys)
-               (chdir "gcl")
-               (substitute*
-                   (append
-                    '("pcl/impl/kcl/makefile.akcl"
-                      "add-defs"
-                      "unixport/makefile.dos"
-                      "add-defs.bat"
-                      "gcl-tk/makefile.prev"
-                      "add-defs1")
-                    (find-files "h" "\\.defs"))
-                 (("SHELL=/bin/bash")
-                  (string-append "SHELL=" (which "bash")))
-                 (("SHELL=/bin/sh")
-                  (string-append "SHELL=" (which "sh"))))
-               (substitute* "h/linux.defs"
-                 (("#CC") "CC")
-                 (("-fwritable-strings") "")
-                 (("-Werror") ""))
-               (substitute* "lsp/gcl_top.lsp"
-                 (("\"cc\"")
-                  (string-append "\"" (assoc-ref %build-inputs "gcc")
-                                 "/bin/gcc\""))
-                 (("\\(or \\(get-path \\*cc\\*\\) \\*cc\\*\\)") "*cc*")
-                 (("\"ld\"")
-                  (string-append "\"" (assoc-ref %build-inputs "binutils")
-                                 "/bin/ld\""))
-                 (("\\(or \\(get-path \\*ld\\*\\) \\*ld\\*\\)") "*ld*")
-                 (("\\(get-path \"objdump --source \"\\)")
-                  (string-append "\"" (assoc-ref %build-inputs "binutils")
-                                 "/bin/objdump --source \"")))
-               #t))
-           (add-after 'install 'wrap
-             (lambda* (#:key inputs outputs #:allow-other-keys)
-               (let* ((gcl (assoc-ref outputs "out"))
-                      (input-path (lambda (lib path)
-                                    (string-append
-                                     (assoc-ref inputs lib) path)))
-                      (binaries '("binutils")))
-                 ;; GCC and the GNU binutils are necessary for GCL to be
-                 ;; able to compile Lisp functions and programs (this is
-                 ;; a standard feature in Common Lisp). While the
-                 ;; the location of GCC is specified in the make-flags,
-                 ;; the GNU binutils must be available in GCL's $PATH.
-                 (wrap-program (string-append gcl "/bin/gcl")
-                   `("PATH" prefix ,(map (lambda (binary)
-                                           (input-path binary "/bin"))
-                                         binaries))))
-               #t))
-           ;; drop strip phase to make maxima build, see
-           ;; https://www.ma.utexas.edu/pipermail/maxima/2008/009769.html
-           (delete 'strip))))
-      (inputs
-       (list bash-minimal gmp libtirpc readline))
-      (native-inputs
-       (list m4 texinfo))
-      (home-page "https://www.gnu.org/software/gcl/")
-      (synopsis "Common Lisp implementation")
-      (description "GCL is an implementation of the Common Lisp language.  It
+  (package
+    (name "gcl")
+    (version "2.6.14")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://git.savannah.gnu.org/r/gcl.git")
+             (commit (string-append "Version_"
+                                    (string-map (lambda (c)
+                                                  (if (char=? c #\.) #\_ c))
+                                                version)))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1b9m02rfnyflsr8n57v7llxz5m3mi7ip3ypwdww4pdhbgh0lzyg7"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:parallel-build? #f  ; The build system seems not to be thread safe.
+      #:test-target "ansi-tests/test_results"
+      #:configure-flags #~(list
+                           "--enable-ansi" ; required by the maxima package
+                           (string-append "CFLAGS=-I"
+                                          #$(this-package-input "libtirpc")
+                                          "/include/tirpc")
+                           (string-append "LDFLAGS=-L"
+                                          #$(this-package-input "libtirpc")
+                                          "/lib")
+                           "LIBS=-ltirpc")
+      #:make-flags #~(let ((gcc (search-input-file %build-inputs "/bin/gcc")))
+                       (list (string-append "GCL_CC=" gcc)
+                             (string-append "CC=" gcc)))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'realpath-workaround
+            ;; Calls to the realpath function can set errno even if the return
+            ;; value of the function indicates that there is no error, which
+            ;; make massert consider that there was an error.
+            (lambda _
+              (substitute* "gcl/o/main.c"
+                (("massert\\(realpath\\(s,o\\)\\);" all)
+                 "massert((realpath(s, o) != NULL) && ((errno = 0) == 0));"))))
+          (add-after 'unpack 'fix-missing-enum
+            (lambda _
+              ;; The 'disassembler_style' enum is not defined anywhere,
+              ;; and the parameter is not used...
+              (substitute* "gcl/o/main.c"
+                (("my_fprintf_styled\\(void \\*v,enum disassembler_style,")
+                 "my_fprintf_styled(void *v,int disassembler_style,"))))
+          (add-after 'unpack 'fix-makefile
+            ;; The "final" target doesn't exist.
+            (lambda _
+              (substitute* "gcl/makefile"
+                (("\\$\\(MAKE\\) -C \\$\\(PORTDIR\\) final")
+                 "$(MAKE) -C $(PORTDIR)"))))
+          (add-before 'configure 'pre-conf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (chdir "gcl")
+              (substitute*
+                  (append
+                   '("pcl/impl/kcl/makefile.akcl"
+                     "add-defs"
+                     "unixport/makefile.dos"
+                     "add-defs.bat"
+                     "gcl-tk/makefile.prev"
+                     "add-defs1")
+                   (find-files "h" "\\.defs"))
+                (("SHELL=/bin/bash")
+                 (string-append "SHELL=" (which "bash")))
+                (("SHELL=/bin/sh")
+                 (string-append "SHELL=" (which "sh"))))
+              (substitute* "h/linux.defs"
+                (("#CC") "CC")
+                (("-fwritable-strings") "")
+                (("-Werror") ""))
+              (substitute* "lsp/gcl_top.lsp"
+                (("\"cc\"")
+                 (string-append "\"" (assoc-ref %build-inputs "gcc")
+                                "/bin/gcc\""))
+                (("\\(or \\(get-path \\*cc\\*\\) \\*cc\\*\\)") "*cc*")
+                (("\"ld\"")
+                 (string-append "\"" (assoc-ref %build-inputs "binutils")
+                                "/bin/ld\""))
+                (("\\(or \\(get-path \\*ld\\*\\) \\*ld\\*\\)") "*ld*")
+                (("\\(get-path \"objdump --source \"\\)")
+                 (string-append "\"" (assoc-ref %build-inputs "binutils")
+                                "/bin/objdump --source \"")))))
+          (add-after 'install 'wrap
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((gcl #$output)
+                     (input-path (lambda (lib path)
+                                   (string-append
+                                    (assoc-ref inputs lib) path)))
+                     (binaries '("binutils")))
+                ;; GCC and the GNU binutils are necessary for GCL to be
+                ;; able to compile Lisp functions and programs (this is
+                ;; a standard feature in Common Lisp). While the
+                ;; the location of GCC is specified in the make-flags,
+                ;; the GNU binutils must be available in GCL's $PATH.
+                (wrap-program (string-append gcl "/bin/gcl")
+                  `("PATH" prefix ,(map (lambda (binary)
+                                          (input-path binary "/bin"))
+                                        binaries))))))
+          ;; drop strip phase to make maxima build, see
+          ;; https://www.ma.utexas.edu/pipermail/maxima/2008/009769.html
+          (delete 'strip))))
+    (inputs
+     (list bash-minimal gmp libtirpc readline))
+    (native-inputs
+     (list m4 texinfo))
+    (home-page "https://www.gnu.org/software/gcl/")
+    (synopsis "Common Lisp implementation")
+    (description "GCL is an implementation of the Common Lisp language.  It
 features the ability to compile to native object code and to load native
 object code modules directly into its lisp core.  It also features a
 stratified garbage collection strategy, a source-level debugger and a built-in
 interface to the Tk widget system.")
-      (license license:lgpl2.0+))))
+    (license license:lgpl2.0+)))
 
 (define-public ecl
   (package
@@ -421,14 +432,22 @@ an interpreter, a compiler, a debugger, and much more.")
 (define-public sbcl
   (package
     (name "sbcl")
-    (version "2.2.11")
+    (version "2.3.5")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/sbcl/sbcl/" version "/sbcl-"
                            version "-source.tar.bz2"))
        (sha256
-        (base32 "1pwnhjp0fmkcgq11a6hj36gw8k05qramspgdbj28063k2s0dc1rn"))))
+        (base32 "11ji5n65l31249r0v7hm0wc0yk2ila0y746nj36xn1cxrwh0gjc9"))
+       (modules '((guix build utils)))
+       ;; backport from upstream.
+       (patches (search-patches "sbcl-riscv-Make-contribs-build-again.patch"))
+       (snippet
+        '(begin
+           ;; Don't force ARMv5.
+           (substitute* "src/runtime/Config.arm-linux"
+             (("-march=armv5t") ""))))))
     (build-system gnu-build-system)
     (outputs '("out" "doc"))
     (native-inputs
@@ -462,7 +481,7 @@ an interpreter, a compiler, a debugger, and much more.")
            ed
            inetutils         ;for hostname(1)
            texinfo
-           (texlive-updmap.cfg (list texlive-tex-texinfo))
+           (texlive-updmap.cfg (list texlive-texinfo))
            which))
     (inputs
      (list gmp                          ; for sb-gmp
@@ -474,13 +493,6 @@ an interpreter, a compiler, a debugger, and much more.")
                   (srfi srfi-1))
        #:phases
        (modify-phases %standard-phases
-         ,@(if (target-arm32?)
-             ;; TODO: Move to snippet in staging.
-             `((add-after 'unpack 'dont-force-armv5
-                 (lambda _
-                   (substitute* "src/runtime/Config.arm-linux"
-                     (("-march=armv5") "")))))
-             '())
          (delete 'configure)
          (add-after 'unpack 'fix-build-id
            ;; One of the build scripts makes a build id using the current date.
@@ -981,7 +993,7 @@ the HTML documentation of TXR.")
 (define-public txr
   (package
     (name "txr")
-    (version "284")
+    (version "289")
     (source
      (origin
        (method git-fetch)
@@ -990,64 +1002,63 @@ the HTML documentation of TXR.")
              (commit (string-append "txr-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1v6dq1q98v3jdx7g67k15njkpp49iwf30n29rrhwng3b3njqm75g"))))
+        (base32 "1jcz5iggp4mz5bzgnifr4xdpvz0sxa8cminynhdcs2jqr073xy8b"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags
-       (list ,(string-append "cc=" (cc-for-target))
-             (string-append "--prefix=" (assoc-ref %outputs "out")))
-       #:test-target "tests"
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-license-installation
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "Makefile"
-               (("INSTALL(,.*LICENSE,.*)\\$\\(datadir\\)" _ match)
-                (string-append "INSTALL" match
-                               (assoc-ref outputs "out")
-                               "/share/doc/" ,name "-" ,version)))))
-         (delete 'install-license-files)
-         (add-after 'unpack 'inhibit-doc-syms-generation
-           (lambda _
-             (substitute* "genman.txr"
-               ;; Exit from genman.txr before it tries to write to
-               ;; stdlib/doc-syms.tl, which is anyway kept up to date with
-               ;; each release (and is already compiled to stdlib/doc-syms.tlo
-               ;; when genman.txr is run).
-               (("^@\\(output \"stdlib/doc-syms\\.tl\"\\).*" line)
-                (string-append "@(do (exit))\n" line)))))
-         (add-after 'unpack 'fix-paths
-           (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "stream.c"
-               (("/bin/sh")
-                (string-append (assoc-ref inputs "bash") "/bin/bash")))))
-         (add-after 'unpack 'fix-tests
-           (lambda _
-             (substitute* (list "tests/017/realpath.tl"
-                                "tests/017/realpath.expected")
-               (("/usr/bin") "/"))))
-         (replace 'configure
-           ;; ./configure is a hand-written script that can't handle standard
-           ;; autotools arguments like CONFIG_SHELL.
-           (lambda* (#:key configure-flags #:allow-other-keys)
-             (setenv "txr_shell" (which "bash"))
-             (apply invoke "./configure" configure-flags)))
-         (add-after 'build 'build-doc
-           (lambda _
-             (setenv "GS_GENERATE_UUIDS" "0")
-             (invoke "make" "txr-manpage.html" "txr-manpage.pdf")))
-         (add-after 'install 'install-doc
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((doc (string-append (assoc-ref outputs "out")
-                                       "/share/doc/" ,name "-" ,version)))
-               (for-each (lambda (f) (install-file f doc))
-                         '("txr-manpage.html" "txr-manpage.pdf")))))
-         (add-after 'install 'install-vim-files
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out    (assoc-ref outputs "out"))
-                    (syntax (string-append out "/share/vim/vimfiles/syntax")))
-               (install-file "tl.vim" syntax)
-               (install-file "txr.vim" syntax)))))))
+     (list #:configure-flags
+           #~(list (string-append "cc=" #$(cc-for-target))
+                   (string-append "--prefix=" #$output))
+           #:test-target "tests"
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'fix-license-installation
+                 (lambda _
+                   (substitute* "Makefile"
+                     (("INSTALL(,.*LICENSE,.*)\\$\\(datadir\\)" _ match)
+                      (string-append "INSTALL" match #$output
+                                     "/share/doc/" #$name "-" #$version)))))
+               (delete 'install-license-files)
+               (add-after 'unpack 'inhibit-doc-syms-generation
+                 (lambda _
+                   (substitute* "genman.txr"
+                     ;; Exit from genman.txr before it tries to write to
+                     ;; stdlib/doc-syms.tl, which is anyway kept up to date
+                     ;; with each release (and is already compiled to
+                     ;; stdlib/doc-syms.tlo when genman.txr is run).
+                     (("^@\\(output \"stdlib/doc-syms\\.tl\"\\).*" line)
+                      (string-append "@(do (exit))\n" line)))))
+               (add-after 'unpack 'fix-paths
+                 (lambda* (#:key inputs #:allow-other-keys)
+                   (substitute* "stream.c"
+                     (("/bin/sh")
+                      (search-input-file inputs "/bin/bash")))))
+               (add-after 'unpack 'fix-tests
+                 (lambda _
+                   (substitute* (list "tests/017/realpath.tl"
+                                      "tests/017/realpath.expected")
+                     (("/usr/bin") "/"))))
+               (replace 'configure
+                 ;; ./configure is a hand-written script that can't handle
+                 ;; standard autotools arguments like CONFIG_SHELL.
+                 (lambda* (#:key configure-flags #:allow-other-keys)
+                   (setenv "txr_shell" (which "bash"))
+                   (apply invoke "./configure" configure-flags)))
+               (add-after 'build 'build-doc
+                 (lambda _
+                   (setenv "GS_GENERATE_UUIDS" "0")
+                   (invoke "make" "txr-manpage.html" "txr-manpage.pdf")))
+               (add-after 'install 'install-doc
+                 (lambda _
+                   (let ((doc (string-append #$output "/share/doc/"
+                                             #$name "-" #$version)))
+                     (for-each (lambda (f) (install-file f doc))
+                               '("txr-manpage.html" "txr-manpage.pdf")))))
+               (add-after 'install 'install-vim-files
+                 (lambda _
+                   (let ((syntax (string-append #$output
+                                                "/share/vim/vimfiles/syntax")))
+                     (install-file "tl.vim" syntax)
+                     (install-file "txr.vim" syntax)))))))
     (native-inputs
      ;; Required to build the documentation.
      (list ghostscript
@@ -1066,7 +1077,7 @@ extraction language referred to as the TXR Pattern Language (sometimes just
 used for everything from \"one liner\" data transformation tasks at the
 command line, to data scanning and extracting scripts, to full application
 development in a wide-range of areas.")
-    (home-page "https://nongnu.org/txr/")
+    (home-page "https://www.nongnu.org/txr/")
     (license license:bsd-2)))
 
 (define picolisp32
@@ -1229,7 +1240,7 @@ including a built-in database engine and a GUI system.")
 (define-public janet
   (package
     (name "janet")
-    (version "1.26.0")
+    (version "1.27.0")
     (source
      (origin
        (method git-fetch)
@@ -1238,7 +1249,7 @@ including a built-in database engine and a GUI system.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1ghxchyxhcjs0vfzisafc27v05im4kya1jg827l4q2h92ras17x3"))))
+        (base32 "0fd5z9xviwfv635wxil20qjjigb275p3ns9cvxhfx27ca8kkphsj"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags
@@ -1304,7 +1315,7 @@ assembler, PEG) is less than 1MB.")
                                   (dirname
                                    (search-input-file
                                     inputs "include/stdlib.h"))))))
-  
+
                      (for-each wrap-carp-program
                                (list "carp"
                                      "carp-header-parse")))))))
@@ -1330,10 +1341,11 @@ C.  It features inferred static typing, macros, automatic memory
 management without a garbage collector, a REPL, and straightforward
 integration with code written in C.")
       (license license:asl2.0))))
+
 (define-public lisp-repl-core-dumper
   (package
     (name "lisp-repl-core-dumper")
-    (version "0.7.0")
+    (version "0.8.0")
     (source
      (origin
        (method git-fetch)
@@ -1342,7 +1354,7 @@ integration with code written in C.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0yfsyxj462yi3bx587yssp4gwb54jdm6fjk9q93gjrfv8a65ilp7"))))
+        (base32 "04c12gi5izpkv8ha98z9qdkbmyrsq6ga060adrx53da8z31gnhk1"))))
     (build-system copy-build-system)
     (arguments
      '(#:install-plan
@@ -1421,7 +1433,7 @@ executable Common Lisp image.  It is similar to cl-launch and hu.dwim.build.")
 (define-public eisl
   (package
     (name "eisl")
-    (version "2.65")
+    (version "3.00")
     (source
      (origin
        (method git-fetch)
@@ -1430,7 +1442,7 @@ executable Common Lisp image.  It is similar to cl-launch and hu.dwim.build.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1cnis1v70k4wmvw1gmvj3l9qajzncaa9ka8rx67vx12bgrr0811g"))))
+        (base32 "0nppbzfdx4cjy72b4n0yk177i7063a0nhsrs9b1y45y4avbrbl00"))))
     (build-system gnu-build-system)
     (inputs
      (list bash-minimal freeglut gdbm libiconv ncurses tcl tk))
@@ -1448,8 +1460,8 @@ executable Common Lisp image.  It is similar to cl-launch and hu.dwim.build.")
                      (("\"cc ")
                       "\"gcc "))
                    (substitute* "library/tcltk.lsp"
-                     (("c-include \"<tcl/tcl\\.h>\"")
-                      "c-include \"<tcl.h>\"")
+                     (("include <tcl/tcl\\.h>")
+                      "include <tcl.h>")
                      (("c-option \"-ltcl -ltk\" linux")
                       "c-option \"-ltcl8.6 -ltk8.6\" linux"))))
                (delete 'configure)
@@ -1472,3 +1484,131 @@ includes a compiler as well as an interpreter.")
                    license:expat ;; cii/LICENSE
                    license:gpl2+ ;; nana/gdb/test.c and others under nana/
                    license:bsd-3)))) ;; bench/*
+
+(define-public s7-bootstrap
+  ;; Need s7-bootstrap to build libc_s7.so (for the REPL) and run tests
+  (let ((commit "a5b4bb49f8bcd7c33ae2366065fc8c254b734460") ;no releases
+        (revision "0"))
+    (hidden-package
+     (package
+       (name "s7-bootstrap")
+       (version (git-version "23.3" revision commit))
+       (source (origin
+                 (method git-fetch)
+                 (uri (git-reference
+                       (url "https://cm-gitlab.stanford.edu/bil/s7.git")
+                       (commit commit)))
+                 (file-name (git-file-name name version))
+                 (sha256
+                  (base32
+                   "03n1axdlypzmbgzrhlwfqwa1xiw36hi25j2hwc7vw77mz90cd9f8"))))
+       (build-system gnu-build-system)
+       (arguments
+        (list #:tests? #f ;no tests in bootstrap
+              #:phases #~(modify-phases %standard-phases
+                           (delete 'configure) ;no configure
+                           (replace 'build
+                             (lambda _
+                               ;; using build commands from s7 home page
+                               (display "[BUILD] repl\n")
+                               (invoke #$(cc-for-target) "s7.c" "-o" "repl"
+                                       "-I." "-O2" "-g"
+                                       "-DWITH_MAIN"
+                                       (string-append
+                                        "-DS7_LOAD_PATH=\""
+                                        #$output "/share/s7/scm\"")
+                                       "-ldl" "-lm"
+                                       "-Wl,-export-dynamic")
+                               (display "[BUILD] nrepl\n")
+                               (invoke #$(cc-for-target) "s7.c" "-o" "nrepl"
+                                       "-I." "-O2" "-g"
+                                       "-DWITH_MAIN" "-DWITH_NOTCURSES"
+                                       (string-append
+                                        "-DS7_LOAD_PATH=\""
+                                        #$output "/share/s7/scm\"")
+                                       "-ldl" "-lm" "-lnotcurses-core"
+                                       "-Wl,-export-dynamic")
+                               (display "[BUILD] libarb_s7.so\n")
+                               (invoke #$(cc-for-target) "libarb_s7.c"
+                                       "-I." "-O2" "-g"
+                                       "-shared" "-o" "libarb_s7.so"
+                                       "-larb" "-lflint" "-lmpc" "-fPIC")
+                               (display "[BUILD] libnotcurses_s7.so\n")
+                               (invoke #$(cc-for-target) "notcurses_s7.c"
+                                       "-I." "-O2" "-g"
+                                       "-shared" "-o" "libnotcurses_s7.so"
+                                       "-lnotcurses-core" "-fPIC")
+                               ;; Need s7.o and ffitest for tests
+                               (display "[BUILD] s7.o\n")
+                               (invoke #$(cc-for-target) "-c" "s7.c" "-o"
+                                       "s7.o" "-I." "-O2"  "-ldl" "-lm")
+                               (display "[BUILD] ffitest\n")
+                               (invoke #$(cc-for-target) "-o" "ffitest"
+                                       "ffitest.c" "-g2" "s7.o" "-lm" "-I."
+                                       "-ldl" "-Wl,-export-dynamic")))
+                           (add-before 'check 'install-scm
+                             ;; scm files need to be installed before testing
+                             (lambda _
+                               (for-each (lambda (x)
+                                           (install-file
+                                            x (string-append
+                                               #$output "/share/s7/scm/")))
+                                         (find-files "." "\\.scm"))))
+                           (replace 'install
+                             (lambda _
+                               (let ((bin (string-append #$output "/bin"))
+                                     (share (string-append #$output
+                                                           "/share/s7/"))
+                                     (doc (string-append #$output
+                                                         "/share/doc/s7/"))
+                                     (lib (string-append #$output "/lib"))
+                                     (inc (string-append #$output "/include/")))
+                                 (install-file "repl" bin)
+                                 (install-file "nrepl" bin)
+                                 (install-file "ffitest" bin)
+                                 (install-file "libarb_s7.so" lib)
+                                 (install-file "libnotcurses_s7.so" lib)
+                                 (install-file "s7.c" share)
+                                 (install-file "s7.h" inc)
+                                 (install-file "s7.html" doc)))))))
+       (inputs (list arb flint mpc notcurses))
+       (home-page "https://ccrma.stanford.edu/software/snd/snd/s7.html")
+       (synopsis "Scheme interpreter intended as an extension language")
+       (description
+        "s7 is a Scheme interpreter intended as an extension language for
+other applications.  It exists as just two files, @code{s7.c} and @code{s7.h},
+that may be copied into the source tree of another application.  There are no
+libraries, no run-time init files, and no configuration scripts.  It can also
+be built as a stand-alone REPL interpreter.")
+       (license license:bsd-0)))))
+
+(define-public s7
+  (package
+    (inherit s7-bootstrap)
+    (name "s7")
+    (arguments
+     (substitute-keyword-arguments
+       (strip-keyword-arguments
+         '(#:tests?)
+         (package-arguments s7-bootstrap))
+       ((#:phases phases)
+        #~(modify-phases #$phases
+            (add-after 'unpack 'patch
+              (lambda _
+                (substitute* "s7.c"
+                  (("libc_s7.so")
+                   (string-append #$output "/lib/libc_s7.so")))))
+            (add-after 'build 'build-full
+              (lambda _
+                (invoke "repl" "./libc.scm")))
+            (replace 'check
+              (lambda* (#:key tests? #:allow-other-keys)
+                (when tests?
+                  (invoke "repl" "./s7test.scm"))))
+            (add-after 'install 'install-full
+              (lambda _
+                (install-file "libc_s7.so"
+                              (string-append #$output "/lib/"))
+                (delete-file (string-append #$output "/bin/ffitest"))))))))
+    (native-inputs (list s7-bootstrap))
+    (properties (alist-delete 'hidden? (package-properties s7-bootstrap)))))

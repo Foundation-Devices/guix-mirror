@@ -3,7 +3,7 @@
 ;;; Copyright © 2013, 2015, 2017, 2018, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016-2023 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2014, 2018 Mark H Weaver <mhw@netris.org>
-;;; Copyright © 2016, 2018, 2019, 2021 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2016, 2018, 2019, 2021, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017, 2020-2022 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Marius Bakke <mbakke@fastmail.com>
@@ -12,7 +12,7 @@
 ;;; Copyright © 2020 Björn Höfling <bjoern.hoefling@bjoernhoefling.de>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2020 Vincent Legoll <vincent.legoll@gmail.com>
-;;; Copyright © 2020, 2021 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2021, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Lars-Dominik Braun <ldb@leibniz-psychology.org>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
@@ -34,6 +34,7 @@
 (define-module (gnu packages algebra)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages check)
@@ -58,6 +59,7 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages readline)
+  #:use-module (gnu packages ruby)
   #:use-module (gnu packages shells)
   #:use-module (gnu packages tex)
   #:use-module (gnu packages texinfo)
@@ -131,7 +133,7 @@ greatest common divisor operations.")
 (define-public cm
   (package
    (name "cm")
-   (version "0.4.1")
+   (version "0.4.2")
    (source (origin
             (method url-fetch)
             (uri (string-append
@@ -139,7 +141,7 @@ greatest common divisor operations.")
                   version ".tar.gz"))
             (sha256
              (base32
-              "1avaw6a7lyc2833gr9b7zpk4blvrrrkz8r62sv1grh9xc9i4zg07"))))
+              "1c6m00wiw3rs5f0lq6c80rdr3dzklsvh69l8w3s7bj2r6yha6qbw"))))
    (build-system gnu-build-system)
    (propagated-inputs
      (list mpfrcx zlib)) ; Header files included from cm_common.h.
@@ -224,7 +226,7 @@ the real span of the lattice.")
 (define-public pari-gp
   (package
     (name "pari-gp")
-    (version "2.15.2")
+    (version "2.15.4")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -232,10 +234,9 @@ the real span of the lattice.")
                     version ".tar.gz"))
               (sha256
                (base32
-                "1pg0przhb3cgyn0rwkx2mx7a7fpy6bxxl72bk98pca723q8jhimh"))))
+                "03swii601kxnphl6v7wv0rh2xn4rz6xbljzvfw5v9py6w3z5nm63"))))
     (build-system gnu-build-system)
-    (native-inputs (list (texlive-updmap.cfg
-                          (list texlive-amsfonts))))
+    (native-inputs (list (texlive-updmap.cfg)))
     (inputs (list gmp libx11 perl readline))
     (arguments
      '(#:make-flags '("all")
@@ -327,7 +328,7 @@ precision.")
 (define-public giac
   (package
     (name "giac")
-    (version "1.9.0-37")
+    (version "1.9.0-45")
     (source
      (origin
        (method url-fetch)
@@ -339,7 +340,7 @@ precision.")
                            "~parisse/debian/dists/stable/main/source/"
                            "giac_" version ".tar.gz"))
        (sha256
-        (base32 "0ch18wp6b3nr0zg31961rxng2mbw5mj76s00jf5qz7jdxl65s27n"))))
+        (base32 "0yxsl1vvwcbpwcmzp9v9rfm9djmapab0nhb3gs7zmjv5yvzbgj4d"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -358,8 +359,8 @@ precision.")
             ;; FIXME: Tests failing.  Not sure why.
             (lambda _
               (substitute* "check/Makefile.in"
-                (("chk_fhan4") "")
-                (("chk_fhan11") ""))))
+                (("chk_fhan(4|11)") "")
+                (("chk_fhan(14|21)") "")))) ;fail specifically on i686
           (add-after 'install 'fix-doc
             (lambda _
               ;; Most French documentation has a non-commercial license, so we
@@ -404,7 +405,7 @@ precision.")
            hevea
            python-wrapper
            readline
-           texlive-tiny))
+           (texlive-updmap.cfg)))
     (home-page "https://www-fourier.ujf-grenoble.fr/~parisse/giac.html")
     (synopsis "Computer algebra system")
     (description
@@ -935,7 +936,7 @@ algorithms from the FORTRAN library MINPACK.")
 (define-public symengine
   (package
     (name "symengine")
-    (version "0.9.0")
+    (version "0.10.1")
     (source
      (origin
        (method git-fetch)
@@ -944,7 +945,7 @@ algorithms from the FORTRAN library MINPACK.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "17b6byrhk0bgvarqmg92nrrqhzll9as6x1smghmyq2h9xc373ap4"))))
+        (base32 "0qy5w5msq0zy7drbhdy0vx451zglha8jm5s4zzmvmsja5yyv8fx9"))))
     (build-system cmake-build-system)
     (arguments
      '(#:configure-flags
@@ -1146,9 +1147,12 @@ features, and more.")
        (substitute-keyword-arguments (package-arguments eigen)
          ((#:phases phases)
           `(modify-phases ,phases
-             (delete 'disable-some-tests)))))
-      (native-inputs
-       (list gcc-7)))))
+             (delete 'disable-some-tests)
+             ;; This test cannot be compiled
+             (add-after 'unpack 'gcc-compatibility
+               (lambda _
+                 (substitute* "test/CMakeLists.txt"
+                   (("ei_add_test\\(stddeque") "#")))))))))))
 
 (define-public eigen-for-tensorflow-lite
   ;; This commit was taken from
@@ -1185,7 +1189,7 @@ features, and more.")
 (define-public xtensor
   (package
     (name "xtensor")
-    (version "0.24.0")
+    (version "0.24.6")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1193,7 +1197,7 @@ features, and more.")
                     (commit version)))
               (sha256
                (base32
-                "14fpzwdq26p2fqdrmc78hny9pp09k9c53jnwlh7f8x54ikzm23c2"))
+                "0gf5m5p61981pv7yh5425lcv8dci948ri37hn1zlli7xg54x0g3i"))
               (file-name (git-file-name name version))))
     (build-system cmake-build-system)
     (native-inputs
@@ -1257,7 +1261,7 @@ xtensor provides:
 (define-public gap
   (package
     (name "gap")
-    (version "4.11.1")
+    (version "4.12.2")
     (source
      (origin
        (method url-fetch)
@@ -1267,14 +1271,13 @@ xtensor provides:
                            version
                            ".tar.gz"))
        (sha256
-        (base32 "01535s81h254zcs84zi95xqmhvvn6fn9qss8761myxc2gpdcadb6"))
+        (base32 "1a47slldnjq6mib69k3g8lqw6nyxdrwdd3gfjhj252mpbrs0h8v7"))
        (modules '((guix build utils) (ice-9 ftw) (srfi srfi-1)))
        (snippet
         '(begin
-           ;; Delete the external gmp and zlib libraries
-           ;; and a subdirectory not needed for our build.
+           ;; Delete bundled external libraries.
            (for-each delete-file-recursively
-                     '("extern" "hpcgap"))
+                     '("extern" "hpcgap/extern"))
            ;; Delete a failing test.
            ;; FIXME: This might be fixed in the next release, see
            ;; https://github.com/gap-system/gap/issues/3292
@@ -1288,47 +1291,69 @@ xtensor provides:
                  (scandir ".")
                  '("." ".."
                    ;; Necessary packages.
-                   "GAPDoc-"
-                   "primgrp-"
-                   "SmallGrp-"   ; artistic2.0
-                   "transgrp"    ; artistic2.0 for data,
-                                 ; gpl2 or gpl3 for code
+                   "gapdoc"
+                   "primgrp"
+                   "smallgrp"   ; artistic2.0
+                   "transgrp"   ; artistic2.0 for data,
+                                ; gpl2 or gpl3 for code
                    ;; Optional packages.
-                   "alnuth-"
-                   "AutoDoc-"
-                   "automata-"
-                   "autpgrp-"
-                   "crime-"
-                   "crisp-"      ; bsd-2
-                   "ctbllib"     ; gpl3+
+                   "4ti2interface"
+                   "alnuth"
+                   "autodoc"
+                   "automata"
+                   "autpgrp"
+                   "cap"
+                   "crime"
+                   "crisp"      ; bsd-2
+                   "ctbllib"    ; gpl3+
                    "datastructures"
-                   "FactInt-"
+                   "examplesforhomalg"
+                   "factint"
                    "fga"
                    "format"
-                   "groupoids-"
+                   "gauss"
+                   "gaussforhomalg"
+                   "generalizedmorphismsforcap"
+                   "gradedmodules"
+                   "gradedringforhomalg"
+                   "groupoids"
                    "guarana"
-                   "idrel-"
-                   "images-"     ; mpl2.0
-                   "IntPic-"
-                   "io-"         ; gpl3+
-                   "irredsol-"   ; bsd-2
-                   "laguna-"
-                   "liering-"
-                   "MapClass-"
-                   "nilmat-"
-                   "NumericalSgps-"
-                   "OpenMath-"
-                   "orb-"        ; gpl3+
-                   "polenta-"
-                   "polycyclic-"
-                   "radiroot-"
-                   "repsn-"
-                   "resclasses-"
+                   "homalg"
+                   "homalgtocas"
+                   "idrel"
+                   "images"     ; mpl2.0
+                   "intpic"
+                   "io"         ; gpl3+
+                   "ioforhomalg"
+                   "irredsol"   ; bsd-2
+                   "laguna"
+                   "liering"
+                   "linearalgebraforcap"
+                   "localizeringforhomalg"
+                   "mapclass"
+                   "matricesforhomalg"
+                   "modulepresentationsforcap"
+                   "modules"
+                   "monoidalcategories"
+                   "nconvex"
+                   "nilmat"
+                   "numericalsgps"
+                   "openmath"
+                   "orb"        ; gpl3+
+                   "polenta"
+                   "polycyclic"
+                   "radiroot"
+                   "recog"      ; gpl3+
+                   "repsn"
+                   "resclasses"
+                   "ringsforhomalg"
+                   "sco"
                    "simpcomp"
-                   "sophus-"
-                   "tomlib-"
-                   "unipot-"
-                   "utils-"))))))))
+                   "sophus"
+                   "tomlib"
+                   "toolsforhomalg"
+                   "unipot"
+                   "utils"))))))))
     (build-system gnu-build-system)
     (inputs
      (list gmp readline zlib))
@@ -1351,41 +1376,10 @@ xtensor provides:
            (lambda _
              (with-directory-excursion "doc"
                (invoke "./make_doc"))))
-         (replace 'install
+         (add-after 'install 'install-packages
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
-                    (bin (string-append out "/bin"))
-                    (prog (string-append bin "/gap"))
-                    (prog-real (string-append bin "/.gap-real"))
                     (share (string-append out "/share/gap")))
-               ;; Install only the gap binary; the gac compiler is left
-               ;; for maybe later. "Wrap" it in a shell script that calls
-               ;; the binary with the correct parameter.
-               ;; The make target install-bin is supposed to do that, but
-               ;; is not currently working.
-               (mkdir-p bin)
-               (copy-file "gap" prog-real)
-               (call-with-output-file prog
-                 (lambda (port)
-                   (format port
-                           "#!~a~%exec ~a -l ~a \"$@\"~%"
-                           (which "bash")
-                           prog-real
-                           share)))
-               (chmod prog #o755)
-               ;; Install the headers and library, which are needed by Sage.
-               (invoke "make" "install-headers")
-               (install-file "gen/config.h"
-                             (string-append out "/include/gap"))
-               (invoke "make" "install-libgap")
-               ;; Remove information on the build directory from sysinfo.gap.
-               (substitute* "sysinfo.gap"
-                 (("GAP_BIN_DIR=\".*\"") "GAP_BIN_DIR=\"\"")
-                 (("GAP_LIB_DIR=\".*\"") "GAP_LIB_DIR=\"\"")
-                 (("GAP_CPPFLAGS=\".*\"") "GAP_CPPFLAGS=\"\""))
-               (invoke "make" "install-gaproot")
-               ;; Copy the directory of compiled packages; the make target
-               ;; install-pkg is currently empty.
                (copy-recursively "pkg" (string-append share "/pkg"))))))))
     (home-page "https://www.gap-system.org/")
     (synopsis
@@ -1828,3 +1822,81 @@ mathematical floating-point libraries (libm).  Amongst other features,
 it offers a certified infinity norm, an automatic polynomial
 implementer, and a fast Remez algorithm.")
    (license license:cecill-c)))
+
+(define-public form
+  ;; using this commit as it removes some invalid/ambiguous license info
+  (let ((commit "e7c52d3b07abe21f21718f5e70ee138e856f15ac")
+        (revision "0"))
+    (package
+      (name "form")
+      (version (git-version "4.3.0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/vermaseren/form")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "15pjpn5s8d3sva18syhyymh5v1dijchk0xkf6d0m7cl2sj3qxxxq"))))
+      (build-system gnu-build-system)
+      (arguments
+       (list #:configure-flags #~'("--enable-native=no")
+             #:phases #~(modify-phases %standard-phases
+                          (add-after 'unpack 'patch-src
+                            (lambda _
+                              (substitute* "check/examples.frm"
+                                ;; skip test that causes memory leak and fails
+                                (("#pend_if valgrind\\?")
+                                 "#pend_if 0"))
+                              (substitute* "sources/extcmd.c"
+                                (("/bin/sh")
+                                 (string-append
+                                  #$(this-package-input "bash-minimal")
+                                  "/bin/sh")))))
+                          (add-after 'build 'build-doxygen
+                            (lambda _
+                              (with-directory-excursion "doc/doxygen"
+                                (invoke "make" "html"))))
+                          (add-after 'install 'install-docs
+                            (lambda _
+                              (let ((doc (string-append
+                                          #$output "/share/doc/" #$name "-"
+                                          #$version "/html")))
+                                (mkdir-p doc)
+                                (copy-recursively "doc/doxygen/html" doc)))))))
+      (native-inputs (list autoconf automake doxygen ruby))
+      (inputs (list bash-minimal))
+      (home-page "https://www.nikhef.nl/~form/")
+      (synopsis "Symbolic manipulation system for very big expressions")
+      (description
+       "FORM is a symbolic manipulation system.  It reads symbolic expressions
+from files and executes symbolic/algebraic transformations upon them.  The
+answers are returned in a textual mathematical representation.  The size of
+the considered expressions in FORM is only limited by the available disk space
+and not by the available RAM.")
+      ;; XXX: Ignore this CVE to work around a name clash with the unrelated
+      ;; "neos/forms" package.
+      (properties '((lint-hidden-cve . ("CVE-2021-32697"))))
+      ;; x86_64 only due to test failures on other platforms.
+      ;; Developers say other platforms are not "tier 1" supported:
+      ;; https://github.com/vermaseren/form/issues/426
+      (supported-systems '("x86_64-linux"))
+      (license license:gpl3+))))
+
+(define-public parform
+  (package
+    (inherit form)
+    (name "parform")
+    (arguments
+     (substitute-keyword-arguments (package-arguments form)
+       ((#:configure-flags flags)
+        #~(cons* "--enable-parform=yes" #$flags))
+       ((#:phases phases)
+        #~(modify-phases #$phases
+            (add-before 'check 'mpi-setup
+              #$%openmpi-setup)))))
+    (inputs (list bash-minimal openmpi))
+    (description (string-append (package-description form)
+                                "  This package also includes
+@code{parform}, a version of FORM parallelized using OpenMPI."))))

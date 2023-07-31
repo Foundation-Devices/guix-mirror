@@ -374,7 +374,9 @@ return #f and #f."
   (define (key->file key)
     (string-append (%profile-cache-directory) "/" key))
 
-  (let loop ((opts opts)
+  ;; A given key such as 'system might appear more than once in OPTS, so
+  ;; process it backwards so the last occurrence "wins".
+  (let loop ((opts (reverse opts))
              (system (%current-system))
              (file #f)
              (specs '()))
@@ -389,6 +391,8 @@ return #f and #f."
        (if (not file)
            (loop rest system file (cons spec specs))
            (values #f #f)))
+      ((('nesting? . #t) . rest)
+       (loop rest system file (append specs '("nested guix"))))
       ((('load . ('package candidate)) . rest)
        (if (and (not file) (null? specs))
            (loop rest system candidate specs)

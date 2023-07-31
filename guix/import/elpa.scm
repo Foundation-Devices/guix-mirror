@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015 Federico Beffa <beffa@fbengineering.ch>
-;;; Copyright © 2015, 2016, 2017, 2018, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2015-2018, 2020-2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2018 Oleg Pykhalov <go.wigust@gmail.com>
 ;;; Copyright © 2020 Martin Becze <mjbecze@riseup.net>
 ;;; Copyright © 2020 Ricardo Wurmus <rekado@elephly.net>
@@ -36,20 +36,18 @@
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
+  #:use-module (guix i18n)
   #:use-module (guix diagnostics)
   #:use-module ((guix download) #:select (download-to-store))
   #:use-module (guix import utils)
   #:use-module (guix http-client)
   #:use-module (guix git)
   #:use-module (guix hash)
-  #:use-module ((guix serialization) #:select (write-file))
   #:use-module (guix store)
-  #:use-module (guix ui)
   #:use-module (guix base32)
   #:use-module (guix upstream)
   #:use-module (guix packages)
   #:use-module (guix memoization)
-  #:use-module ((guix utils) #:select (call-with-temporary-output-file))
   #:export (elpa->guix-package
             guix-package->elpa-name
             %elpa-updater
@@ -270,9 +268,28 @@ the package named PACKAGE-NAME."
     ('gitlab (git-repository->origin recipe (gitlab-repo->url (assq-ref recipe ':repo))))
     ('git    (git-repository->origin recipe (assq-ref recipe ':url)))
     (#f #f)   ; if we're not using melpa then this stops us printing a warning
-    (_ (warning (G_ "Unsupported MELPA fetcher: ~a, falling back to unstable MELPA source.~%")
+    (_ (warning (G_ "unsupported MELPA fetcher: ~a, falling back to unstable MELPA source~%")
                 (assq-ref recipe ':fetcher))
        #f)))
+
+(define (elpa-dependency->upstream-input dependency)
+  "Convert DEPENDENCY, an sexp as returned by 'elpa-package-inputs', into an
+<upstream-input>."
+  (match dependency
+    ((name version)
+     (and (not (emacs-standard-library? (symbol->string name)))
+          (upstream-input
+           (name (symbol->string name))
+           (downstream-name (elpa-guix-name name))
+           (type 'propagated)
+           (min-version (if (pair? version)
+                            (string-join (map number->string version) ".")
+                            #f))
+           (max-version (match version
+                          (() #f)
+                          ((_) #f)
+                          ((_ _) #f)
+                          (_ min-version))))))))
 
 (define default-files-spec
   ;; This contains more than just the things contained in %default-include and
@@ -378,7 +395,8 @@ type '<elpa-package>'."
       (license ,license))
    dependencies-names))
 
-(define* (elpa->guix-package name #:key (repo 'gnu) version)
+(define* (elpa->guix-package name #:key (repo 'gnu) version
+                             #:allow-other-keys)
   "Fetch the package NAME from REPO and produce a Guix package S-expression."
   (match (fetch-elpa-package name repo)
     (#false
@@ -408,7 +426,7 @@ type '<elpa-package>'."
   (define repo (elpa-repository package))
 
   (when version
-    (error
+    (raise
      (formatted-message
       (G_ "~a updater doesn't support updating to a specific version, sorry.")
       "elpa")))
@@ -422,12 +440,19 @@ type '<elpa-package>'."
                         (elpa-version->string raw-version))))
             (url     (match info
                        ((_ raw-version reqs synopsis kind . rest)
-                        (package-source-url kind name version repo)))))
+                        (package-source-url kind name version repo))))
+            (inputs  (match info
+                       ((name raw-version reqs . _)
+                        (filter-map elpa-dependency->upstream-input
+                                    (if (eq? 'nil reqs)
+                                        '()
+                                        reqs))))))
        (upstream-source
         (package (package-name package))
         (version version)
         (urls (list url))
-        (signature-urls (list (string-append url ".sig"))))))))
+        (signature-urls (list (string-append url ".sig")))
+        (inputs inputs))))))
 
 (define elpa-repository
   (memoize
@@ -436,13 +461,15 @@ type '<elpa-package>'."
                       (and uri
                            (cond
                             ((string=? (uri-host uri) "elpa.gnu.org")
-                             'gnu)
+                             (if (eq? (uri-scheme uri) 'http)
+                                 'gnu/http        ;for testing
+                                 'gnu))
                             ((string=? (uri-host uri) "elpa.nongnu.org")
                              'nongnu)
                             (else #f))))))))
 
 (define (package-from-elpa-repository? package)
-  (member (elpa-repository package) '(gnu nongnu)))
+  (member (elpa-repository package) '(gnu gnu/http nongnu)))
 
 (define %elpa-updater
   ;; The ELPA updater.  We restrict it to packages hosted on elpa.gnu.org
@@ -457,8 +484,11 @@ type '<elpa-package>'."
 
 (define* (elpa-recursive-import package-name #:optional (repo 'gnu))
   (recursive-import package-name
-                    #:repo repo
-                    #:repo->guix-package elpa->guix-package
+                    #:repo->guix-package
+                    (lambda (name . rest)
+                      (apply elpa->guix-package name
+                             #:repo repo
+                             rest))
                     #:guix-name elpa-guix-name))
 
 ;;; elpa.scm ends here

@@ -4,6 +4,7 @@
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020, 2021, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2022 Hartmut Goebel <h.goebel@crazy-compilers.com>
+;;; Copyright © 2022 Efraim Flashner <efraim@flashner.co.il>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -36,7 +37,7 @@
 (define-public less
   (package
     (name "less")
-    (version "590")
+    (version "608")
     (source
      (origin
        (method url-fetch)
@@ -46,7 +47,7 @@
                                  version ".tar.gz")))
        (patches (search-patches "less-hurd-path-max.patch"))
        (sha256
-        (base32 "044fl3izmsi8n1vqzsqdp65q0qyyn5kmsg4sk7id0mxzx15zbbba"))))
+        (base32 "02f2d9d6hyf03va28ip620gjc6rf4aikmdyk47h7frqj18pbx6m6"))))
     (build-system gnu-build-system)
     (inputs (list ncurses))
     (home-page "https://www.gnu.org/software/less/")
@@ -62,7 +63,7 @@ text editors.")
 (define-public lesspipe
   (package
     (name "lesspipe")
-    (version "2.07")
+    (version "2.08")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -71,7 +72,7 @@ text editors.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0xci0c575hklb5y6vybvb48938fslb9zw3mlisvspx1p3fplyzrg"))))
+                "00kswzbyys4j5l10y3c3cinrgf0mkzjn1ilqdvs1mkbxlzk33pwc"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -111,7 +112,7 @@ text editors.")
                    (string-append file " -")))))))))
     (inputs
      (list file
-           ncurses  ;; for tput
+           ncurses                      ; for tput
            perl-archive-zip))
     (native-inputs (list perl))
     (home-page "https://github.com/wofr06/lesspipe")

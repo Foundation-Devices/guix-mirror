@@ -5,7 +5,7 @@
 ;;; Copyright © 2015 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2016 Jelle Licht <jlicht@fsfe.org>
 ;;; Copyright © 2016 Alex Griffin <a@ajgrf.com>
-;;; Copyright © 2016, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2018, 2019, 2020, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Nikita <nikita@n0.is>
 ;;; Copyright © 2016, 2020 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2017 Eric Bavier <bavier@member.fsf.org>
@@ -57,6 +57,7 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages golang)
@@ -69,6 +70,7 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-check)
+  #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages readline)
   #:use-module (gnu packages ruby)
@@ -79,14 +81,14 @@
 (define-public dos2unix
   (package
     (name "dos2unix")
-    (version "7.4.4")
+    (version "7.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://waterlan.home.xs4all.nl/dos2unix/"
                            "dos2unix-" version ".tar.gz"))
        (sha256
-        (base32 "0vj3wix17vl7a85hg673qqyrhw9sbq0xiadbbij7v0nm1gdl3a18"))))
+        (base32 "1bwmxgb6z9pgaq1lqvjnhnijiiyxw293lk70ng164k913v802fvs"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags
@@ -247,7 +249,7 @@ encoding, supporting Unicode version 9.0.0.")
               (sha256
                (base32 "1g77s8g9443dd92f82pbkim7rk51s7xdwa3mxpzb1lcw8ryxvvg3"))))
           ;; For tests
-          ("ruby" ,ruby)))))))
+          ("ruby" ,ruby-2.7)))))))
 
 (define-public libconfuse
   (package
@@ -527,6 +529,20 @@ character-by-character.
                (base32
                 "1rqynfxl1zxwk4b42sniz9xlw285aidcrsfih51p8dy0rbb6clal"))))
     (build-system gnu-build-system)
+    (arguments
+     (list
+       #:phases
+       #~(modify-phases %standard-phases
+           (add-after 'unpack 'update-config-scripts
+             (lambda* (#:key native-inputs inputs #:allow-other-keys)
+               (for-each (lambda (file)
+                           (install-file
+                             (search-input-file
+                               (or native-inputs inputs)
+                               (string-append "/bin/" file)) "aux-build"))
+                         '("config.guess" "config.sub")))))))
+    (native-inputs
+     (list config))
     (synopsis "C/C++ configuration file library")
     (description
      "Libconfig is a simple library for manipulating structured configuration
@@ -590,7 +606,9 @@ regular expression object can be specified.")
     (version "0.37")
     (source (origin
               (method url-fetch)
-              (uri (string-append "http://www.winfield.demon.nl/linux"
+              ;; Development stopped in 2005; as of 2023 the home page 404s.
+              (uri (string-append "https://web.archive.org/web/20200621222738/"
+                                  "http://www.winfield.demon.nl/linux"
                                   "/antiword-" version ".tar.gz"))
               (sha256
                (base32
@@ -618,7 +636,8 @@ regular expression object can be specified.")
          (replace 'install
            (lambda* (#:key make-flags #:allow-other-keys)
              (apply invoke "make" `("global_install" ,@make-flags)))))))
-    (home-page "http://www.winfield.demon.nl/")
+    (home-page (string-append "https://web.archive.org/web/20220121050627/"
+                              "http://www.winfield.demon.nl"))
     (synopsis "Microsoft Word document reader")
     (description "Antiword is an application for displaying Microsoft Word
 documents.  It can also convert the document to PostScript or XML.  Only
@@ -711,7 +730,8 @@ in a portable way.")
                            "dbacl-" version ".tar.gz"))
        (sha256
         (base32 "1gas0112wqjvwn9qg3hxnawk7h3prr0w9b2h68f3p1ifd1kzn3gz"))
-       (patches (search-patches "dbacl-include-locale.h.patch"))))
+       (patches (search-patches "dbacl-include-locale.h.patch"
+                                "dbacl-icheck-multiple-definitions.patch"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags
@@ -990,34 +1010,6 @@ and Cython.")
      "txt2tags is a document generator.  It reads a text file with minimal
 markup and converts it to multiple formats.")
     (license license:gpl2)))
-
-(define-public go-github.com-mattn-go-runewidth
-  (let ((commit "703b5e6b11ae25aeb2af9ebb5d5fdf8fa2575211")
-        (version "0.0.4")
-        (revision "1"))
-    (package
-      (name "go-github.com-mattn-go-runewidth")
-      (version (git-version version revision commit))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/mattn/runewidth")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32
-           "0znpyz71gajx3g0j2zp63nhjj2c07g16885vxv4ykwnrfmzbgk4w"))))
-      (build-system go-build-system)
-      (arguments
-       '(#:import-path "github.com/mattn/go-runewidth"))
-      (synopsis "@code{runewidth} provides Go functions to work with string widths")
-      (description
-       "The @code{runewidth} library provides Go functions for padding,
-measuring and checking the width of strings, with support for East Asian
-text.")
-      (home-page "https://github.com/mattn/runewidth")
-      (license license:expat))))
 
 (define-public docx2txt
   (package
@@ -1521,3 +1513,58 @@ hackers and programmers by being fast, ignoring VCS directories, letting a user
 easily specify file types, match highlighting, Perl-Compatible Regular
 Expressions, and being faster to type than grep.")
     (license license:artistic2.0)))
+
+(define-public python-panflute
+  (package
+    (name "python-panflute")
+    (version "2.3.0")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "panflute" version))
+              (sha256
+               (base32
+                "1jk5b2sp1h4drkjrg2ks77d0ca6j043n2myvacm77nfc93y9vzff"))))
+    (build-system python-build-system)
+    (propagated-inputs (list python-click python-pyyaml))
+    (native-inputs (list python-configparser
+                         python-coverage
+                         python-flake8
+                         python-pandocfilters
+                         python-pytest
+                         python-pytest-cov
+                         python-requests))
+    (home-page "http://scorreia.com/software/panflute/")
+    (synopsis "Pythonic Pandoc filters")
+    (description
+     "Panflute is a Python package that makes Pandoc filters fun to
+write.  It is a pythonic alternative to John MacFarlane's pandocfilters, from
+which it is heavily inspired.")
+    (license license:bsd-3)))
+
+(define-public pandoc-include
+  (package
+    (name "pandoc-include")
+    (version "1.2.0")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "pandoc-include" version))
+              (sha256
+               (base32
+                "01nrbzs85mrd7jcflicsz0bmfnzi6wsy0ii262xl01zsabqd7n91"))))
+    (build-system python-build-system)
+    (propagated-inputs (list python-natsort python-panflute))
+    (home-page "https://github.com/DCsunset/pandoc-include")
+    (synopsis "Pandoc filter to allow file and header includes")
+    (description "@code{pandoc-include} extends Pandoc to support:
+
+@enumerate
+@item include as raw blocks
+@item indent and dedent included contents
+@item partial include
+@item code include
+@item Unix style pathname
+@item recursive include
+@item Yaml header merging
+@item header include
+@end enumerate")
+    (license license:expat)))

@@ -60,7 +60,7 @@
         ("rust-tempfile" ,rust-tempfile-3))))
     (native-inputs (list pkg-config))
     (inputs
-     (list atk glib))
+     (list at-spi2-core glib))
     (home-page "https://gtk-rs.org/")
     (synopsis "FFI bindings to libatk-1")
     (description "FFI bindings to libatk-1")
@@ -90,7 +90,7 @@
         ("rust-tempfile" ,rust-tempfile-3))))
     (native-inputs (list pkg-config))
     (inputs
-     (list atk glib))))
+     (list at-spi2-core glib))))
 
 (define-public rust-atk-sys-0.9
   (package
@@ -138,7 +138,7 @@
        #:cargo-development-inputs
        (("rust-gir-format-check" ,rust-gir-format-check-0.1))))
     (inputs
-     (list atk glib))
+     (list at-spi2-core glib))
     (home-page "https://gtk-rs.org/")
     (synopsis "Rust bindings for the ATK library")
     (description "Rust bindings for the ATK library")
@@ -1469,7 +1469,7 @@
        (("rust-gir-format-check" ,rust-gir-format-check-0.1))))
     (native-inputs (list pkg-config))
     (inputs
-     (list atk cairo glib gtk+ pango))
+     (list at-spi2-core cairo glib gtk+ pango))
     (home-page "https://gtk-rs.org/")
     (synopsis "Rust bindings for the GTK+ 3 library")
     (description "This package provides Rust bindings for the GTK+ 3 library.")
@@ -1901,37 +1901,6 @@ library.")
      "Rust bindings for the PangoCairo library.")
     (license license:expat)))
 
-(define-public rust-pangocairo-0.9
-  (package
-    (inherit rust-pangocairo-0.15)
-    (name "rust-pangocairo")
-    (version "0.9.0")
-    (source
-      (origin
-        (method url-fetch)
-        (uri (crate-uri "pangocairo" version))
-        (file-name
-         (string-append name "-" version ".tar.gz"))
-        (sha256
-         (base32
-          "0bap3h78hdqdyln58349qjjbcv45m8a0a16c4n9fprdj1my0gldx"))))
-    (build-system cargo-build-system)
-    (arguments
-     `(#:cargo-inputs
-       (("rust-bitflags" ,rust-bitflags-1)
-        ("rust-cairo-rs" ,rust-cairo-rs-0.8)
-        ("rust-cairo-sys-rs" ,rust-cairo-sys-rs-0.9)
-        ("rust-glib" ,rust-glib-0.9)
-        ("rust-glib-sys" ,rust-glib-sys-0.9)
-        ("rust-gobject-sys" ,rust-gobject-sys-0.9)
-        ("rust-libc" ,rust-libc-0.2)
-        ("rust-pango" ,rust-pango-0.8)
-        ("rust-pango-sys" ,rust-pango-sys-0.9)
-        ("rust-pangocairo-sys" ,rust-pangocairo-sys-0.10)
-        ("rust-gtk-rs-lgpl-docs" ,rust-gtk-rs-lgpl-docs-0.1))
-       #:cargo-development-inputs
-       (("rust-gir-format-check" ,rust-gir-format-check-0.1))))))
-
 (define-public rust-pangocairo-sys-0.15
   (package
     (name "rust-pangocairo-sys")
@@ -1965,32 +1934,6 @@ library.")
     (synopsis "FFI bindings to libgtk-3")
     (description "This package provides FFI bindings to libgtk-3.")
     (license license:expat)))
-
-(define-public rust-pangocairo-sys-0.10
-  (package
-    (inherit rust-pangocairo-sys-0.15)
-    (name "rust-pangocairo-sys")
-    (version "0.10.1")
-    (source
-      (origin
-        (method url-fetch)
-        (uri (crate-uri "pangocairo-sys" version))
-        (file-name
-         (string-append name "-" version ".tar.gz"))
-        (sha256
-         (base32
-          "1zlyf5vajarnxg5034b8qa5w5zajv96lfvlgiki26svpmcqip4m3"))))
-    (build-system cargo-build-system)
-    (arguments
-     `(#:cargo-inputs
-       (("rust-cairo-sys-rs" ,rust-cairo-sys-rs-0.9)
-        ("rust-glib-sys" ,rust-glib-sys-0.9)
-        ("rust-libc" ,rust-libc-0.2)
-        ("rust-pango-sys" ,rust-pango-sys-0.9)
-        ("rust-pkg-config" ,rust-pkg-config-0.3))
-       #:cargo-development-inputs
-       (("rust-shell-words" ,rust-shell-words-0.1)
-        ("rust-tempfile" ,rust-tempfile-3))))))
 
 (define-public rust-soup-sys-0.10
   (package

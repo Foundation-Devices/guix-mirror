@@ -58,8 +58,8 @@
   #:use-module ((guix search-paths) #:select ($SSL_CERT_DIR)))
 
 (define-public cuirass
-  (let ((commit "1341725f2cbb886e0960c6fad13444e3cfe36c13")
-        (revision "13"))
+  (let ((commit "b82596778bf653a572b5fcd483388226b29b96f3")
+        (revision "16"))
     (package
       (name "cuirass")
       (version (git-version "1.1.0" revision commit))
@@ -72,7 +72,7 @@
          (file-name (git-file-name name version))
          (sha256
           (base32
-           "0l928hd84ky9l4d1nfdkzc4jvghvxia4j6gflliydvfiyfiw87b3"))))
+           "1246cs3bmpkp8jis0xxasmrpq622p1ds3s0payrv5bxng9j6dbfp"))))
       (build-system gnu-build-system)
       (arguments
        `(#:modules ((guix build utils)
@@ -95,16 +95,6 @@
               (call-with-output-file ".tarball-version"
                 (lambda (port)
                   (display ,version port)))))
-           (add-before 'check 'set-PATH-for-tests
-             (lambda* (#:key inputs #:allow-other-keys)
-               (let ((pg (assoc-ref inputs "ephemeralpg"))
-                     (path (getenv "PATH")))
-                 (setenv "PATH" (string-append pg "/bin:" path)))))
-           ;; Disable the remote tests that require a Guix daemon connection.
-           (add-before 'check 'disable-remote-tests
-             (lambda _
-               (substitute* "Makefile.am"
-                 (("tests/remote.scm") ""))))
            (add-after 'install 'wrap-program
              (lambda* (#:key inputs outputs #:allow-other-keys)
                ;; Wrap the 'cuirass' command to refer to the right modules.
@@ -119,7 +109,7 @@
                       (fibers (assoc-ref inputs "guile-fibers"))
                       (zlib   (assoc-ref inputs "guile-zlib"))
                       (matd   (assoc-ref inputs "guile-mastodon"))
-                      (tls    (assoc-ref inputs "gnutls"))
+                      (tls    (assoc-ref inputs "guile-gnutls"))
                       (mail   (assoc-ref inputs "mailutils"))
                       (guix   (assoc-ref inputs "guix"))
                       (deps   (list avahi gcrypt json zmq squee git bytes
@@ -152,7 +142,7 @@
       (inputs
        (list guile-3.0-latest
              guile-avahi
-             guile-fibers
+             guile-fibers-1.3
              guile-gcrypt
              guile-json-4
              guile-simple-zmq
@@ -160,7 +150,7 @@
              guile-git
              guile-zlib
              guile-mastodon
-             gnutls
+             guile-gnutls
              mailutils
              ;; FIXME: this is propagated by "guile-git", but it needs to be among
              ;; the inputs to add it to GUILE_LOAD_PATH.

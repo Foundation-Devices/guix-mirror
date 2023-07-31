@@ -28,7 +28,6 @@
   #:use-module ((guix build-system gnu) #:prefix gnu:)
   #:use-module ((guix build-system ocaml) #:prefix ocaml:)
   #:use-module (guix packages)
-  #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:export (%dune-build-system-modules
             dune-build

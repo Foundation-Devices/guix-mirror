@@ -20,7 +20,7 @@
 ;;; Copyright © 2020-2022 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Timotej Lazar <timotej.lazar@araneo.si>
-;;; Copyright © 2020, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;; Copyright © 2022 Paul A. Patience <paul@apatience.com>
 ;;; Copyright © 2022 Petr Hodina <phodina@protonmail.com>
@@ -68,6 +68,7 @@
   #:use-module (gnu packages fonts)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages game-development)
+  #:use-module (gnu packages gcc)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages gl)
@@ -78,6 +79,7 @@
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages image)
   #:use-module (gnu packages javascript)
+  #:use-module (gnu packages kde-frameworks)
   #:use-module (gnu packages lesstif)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages linux)
@@ -90,6 +92,7 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages photo)
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages pretty-print)
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
@@ -110,6 +113,86 @@
   #:use-module (gnu packages xml)
   #:use-module (gnu packages xorg)
   #:use-module (srfi srfi-1))
+
+(define-public capypdf
+  (package
+    (name "capypdf")
+    (version "0.4.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/jpakkane/capypdf")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32 "1kn46n3j5fygivmd6ldnv8vdwfv48ffaizq61yy4z9w2jm6fgxim"))))
+    (build-system meson-build-system)
+    (arguments
+     (list #:meson meson/newer
+           #:test-options '(list "plainc")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'add-missing-header
+                 (lambda _
+                   (substitute* "src/pdfgen.cpp"
+                     (("#include <cassert>" all)
+                      (string-append all "\n#include <unistd.h>")))))
+               (add-after 'unpack 'fix-glib-application-flags
+                 (lambda _
+                   ;; XXX: remove when bumping glib
+                   (substitute* "src/pdfviewer.cpp"
+                     (("G_APPLICATION_DEFAULT_FLAGS")
+                      "G_APPLICATION_FLAGS_NONE")))))))
+    (inputs (list fmt
+                  freetype
+                  gtk
+                  lcms
+                  libjpeg-turbo
+                  libpng
+                  zlib))
+    (native-inputs (list font-google-noto
+                         gcc-12
+                         ghostscript
+                         pkg-config
+                         python
+                         python-pillow))
+    (home-page "https://github.com/jpakkane/a4pdf")
+    (synopsis "Color-managed PDF generator")
+    (description "A4PDF is a low-level libray for generating PDF files.
+It does not have a document model and instead uses PDF primitives
+directly.  It uses LittleCMS for color management but otherwise does not
+convert data in any way.")
+    (license license:asl2.0)))
+
+(define-public a4pdf
+  (deprecated-package "a4pdf" capypdf))
+
+(define-public diffpdf
+  (let ((commit "ba68231d3d05e0cb3a2d4a4fca8b70d4044f4303")
+        (revision "1"))
+    (package
+      (name "diffpdf")
+      (version (git-version "2.1.3.1" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://gitlab.com/eang/diffpdf")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1vwgv28b291lrcs9fljnlbnicv16lwj4vvl4bz6w3ldp9n5isjmf"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:tests? #f))
+      (inputs (list qtbase-5 qttools-5 poppler-qt5))
+      (native-inputs (list pkg-config extra-cmake-modules))
+      (home-page "http://www.qtrac.eu/diffpdf-foss.html")
+      (synopsis "Compare two PDF files")
+      (description
+       "@command{diffpdf} lets you compare PDF files, offering three
+comparison modes: words, characters, and appearance.")
+      (license license:gpl2))))
 
 (define-public extractpdfmark
   (package
@@ -137,7 +220,7 @@
            gettext-minimal
            ghostscript
            pkg-config
-           texlive-tiny))
+           (texlive-updmap.cfg)))
     (inputs
      (list poppler))
     (home-page "https://github.com/trueroad/extractpdfmark")
@@ -320,26 +403,6 @@ When present, Poppler is able to correctly render CJK and Cyrillic text.")
     (license (list license:bsd-3
                    license:gpl2))))
 
-;; XXX: Remove it on core-updates.  It is only needed for evince 42.3 that
-;; requires a recent poppler.
-(define-public poppler-next
-  (package
-    (inherit poppler)
-    (name "poppler-next")
-    (version "22.09.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://poppler.freedesktop.org/poppler-"
-                                  version ".tar.xz"))
-              (sha256
-               (base32
-                "0bhyli95h3dkirjc0ibh08s4nim6rn7f38sbfzdwln8k454gga6p"))))
-    (native-inputs
-     (list pkg-config
-           `(,glib "bin") ; glib-mkenums, etc.
-           gobject-introspection
-           python)) ))
-
 (define-public poppler-qt5
   (package/inherit poppler
    (name "poppler-qt5")
@@ -392,7 +455,7 @@ Poppler PDF rendering library.")
 (define-public libharu
   (package
     (name "libharu")
-    (version "2.4.2")
+    (version "2.4.3")
     (source
      (origin
        (method git-fetch)
@@ -401,7 +464,7 @@ Poppler PDF rendering library.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1jwzqvv81zf5f7zssyixhyjirlp9ddwkbaabd177syb1bxljlsdc"))))
+        (base32 "00b89zqf0bxslx03ginzqdjg84zfmblq13p5f4xm0h05j7aq7ixz"))))
     (build-system cmake-build-system)
     (arguments
      (list #:tests? #f                  ; No tests
@@ -426,13 +489,13 @@ reading and editing of existing PDF files.")
 (define-public xpdf
   (package
    (name "xpdf")
-   (version "4.03")
+   (version "4.04")
    (source
     (origin
       (method url-fetch)
       (uri (string-append "https://dl.xpdfreader.com/xpdf-" version ".tar.gz"))
       (sha256
-       (base32 "0ip81c9vy0igjnasl9iv2lz214fb01vvvdzbvjmgwc63fi1jgr0g"))))
+       (base32 "1pmsark94xza8q31wvfvp8n7l3c4qfd4ggj09i98y13npzy27kk3"))))
    (build-system cmake-build-system)
    (inputs (list cups freetype libpng qtbase-5 zlib))
    (arguments
@@ -761,28 +824,25 @@ and based on PDF specification 1.7.")
 (define-public mupdf
   (package
     (name "mupdf")
-    (version "1.21.1")
+    (version "1.22.2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://mupdf.com/downloads/archive/"
-                           "mupdf-" version "-source.tar.lz"))
+                           "mupdf-" version "-source.tar.gz"))
        (sha256
-        (base32 "0876sn5nd8vyw9d3d3bmripm119jy6734rs0ywppqzvccy839936"))
-       (modules '((guix build utils)))
+        (base32 "1dxybd4fzjdmkpwd984yj511nmjxjbpj00yccycfm37gwvs6mijl"))
+       (modules '((guix build utils)
+                  (ice-9 ftw)
+                  (srfi srfi-1)))
        (snippet
-        #~(begin
-            ;; Remove bundled software.  Keep patched variants.
-            (let* ((keep (list "extract" "freeglut" "lcms2"))
-                   (from "thirdparty")
-                   (kept (string-append from "~temp")))
-              (mkdir-p kept)
-              (for-each (lambda (file)
-                          (rename-file (string-append from "/" file)
-                                       (string-append kept "/" file)))
-                        keep)
-              (delete-file-recursively from)
-              (rename-file kept from))))))
+        ;; Remove bundled software.  Keep patched variants.
+        #~(with-directory-excursion "thirdparty"
+            (let ((keep '("README" "extract" "freeglut" "lcms2")))
+              (for-each delete-file-recursively
+                        (lset-difference string=?
+                                         (scandir ".")
+                                         (cons* "." ".." keep))))))))
     (build-system gnu-build-system)
     (inputs
      (list curl
@@ -986,8 +1046,7 @@ using a stylus.")
            libzip
            lua
            poppler
-           portaudio
-           texlive-bin))
+           portaudio))
     (home-page "https://github.com/xournalpp/xournalpp")
     (synopsis "Handwriting notetaking software with PDF annotation support")
     (description "Xournal++ is a hand note taking software written in
@@ -1580,7 +1639,7 @@ manipulating PDF documents from the command line.  It supports
            python-cairosvg
            python-cffi
            python-cssselect2
-           python-fonttools-full
+           python-fonttools
            python-html5lib
            python-pillow
            python-pydyf

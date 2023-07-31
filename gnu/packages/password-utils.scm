@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015 Steve Sprang <scs@stevesprang.com>
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2015-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2015 Aljosha Papsch <misc@rpapsch.de>
 ;;; Copyright © 2016 Christine Lemmer-Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2016 Jessica Tallon <tsyesika@tsyesika.se>
@@ -75,6 +75,7 @@
   #:use-module (gnu packages authentication)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages crypto)
@@ -102,6 +103,7 @@
   #:use-module (gnu packages opencl)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
@@ -114,6 +116,7 @@
   #:use-module (gnu packages tls)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages version-control)
+  #:use-module (gnu packages web)
   #:use-module (gnu packages wxwidgets)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xorg)
@@ -142,7 +145,7 @@ human.")
 (define-public keepassxc
   (package
     (name "keepassxc")
-    (version "2.7.4")
+    (version "2.7.5")
     (source
      (origin
        (method url-fetch)
@@ -150,7 +153,7 @@ human.")
                            "/releases/download/" version "/keepassxc-"
                            version "-src.tar.xz"))
        (sha256
-        (base32 "1knywp38byq0jq9vdyp1ykha9prh09k1y5srwwkr6f503nb5402n"))))
+        (base32 "03002fncllr658mgl5s6an5wnh0a333qnkxad6aw85hqj004iqpd"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -206,7 +209,7 @@ human.")
            readline
            yubikey-personalization      ; XC_YUBIKEY
            zlib))
-    (home-page "https://www.keepassxc.org")
+    (home-page "https://keepassxc.org")
     (synopsis "Password manager")
     (description "KeePassXC is a password manager or safe which helps you to
 manage your passwords in a secure way.  You can put all your passwords in one
@@ -304,6 +307,58 @@ platforms.")
 Counterpane's Passwordsafe.")
       (license license:gpl2+))))
 
+(define-public otpclient
+  (package
+    (name "otpclient")
+    (version "3.1.9")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/paolostivanin/OTPClient")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0n5h76zwchdp3nbiczcfcg9sr0hbfs1npwq26x78rz8jf6md898m"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list
+      #:modules `(((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
+                  (guix build cmake-build-system)
+                  (guix build utils))
+      #:imported-modules `((guix build glib-or-gtk-build-system)
+                           ,@%cmake-build-system-modules)
+      #:tests? #f                        ; No tests
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'generate-gdk-pixbuf-loaders-cache-file
+            (assoc-ref glib-or-gtk:%standard-phases
+                       'generate-gdk-pixbuf-loaders-cache-file))
+          (add-after 'wrap 'glib-or-gtk-compile-schemas
+            (assoc-ref glib-or-gtk:%standard-phases
+                       'glib-or-gtk-compile-schemas))
+          (add-after 'wrap 'glib-or-gtk-wrap
+            (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap)))))
+    (inputs (list adwaita-icon-theme
+                  libcotp
+                  libgcrypt
+                  libsecret
+                  libzip
+                  hicolor-icon-theme
+                  gtk+
+                  jansson
+                  protobuf
+                  protobuf-c
+                  qrencode
+                  zbar))
+    (native-inputs (list pkg-config protobuf))
+    (home-page "https://github.com/paolostivanin/OTPClient")
+    (synopsis "Two-factor authentication client")
+    (description "OTPClient is a GTK+-based @acronym{OTP, One Time Password}
+client, supporting @acronym{TOTP, Time-based one time passwords} and
+@acronym{HOTP,HMAC-based one time passwords}.")
+    (license license:gpl3)))
+
 (define-public shroud
   (package
     (name "shroud")
@@ -352,49 +407,47 @@ applications, there is xclip integration." )
     (license license:gpl3+)))
 
 (define-public ssh-to-age
-  (let* ((commit "37365ce80fa64d8794855ec3c63cc9a071799fea")
-         (revision "0"))
-    (package
-      (name "ssh-to-age")
-      (version (git-version "1.0.2" revision commit))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/Mic92/ssh-to-age")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32 "1fk2vxa854jnnffcw4q3vm1445jk1ck1v3p4mr9fh04yz06g7d28"))))
-      (build-system go-build-system)
-      (arguments
-       '(#:import-path "github.com/Mic92/ssh-to-age/cmd/ssh-to-age"
-         #:unpack-path "github.com/Mic92/ssh-to-age"))
-      (inputs (list go-golang-org-x-crypto
-                    go-filippo-io-edwards25519
-                    go-filippo-io-age))
-      (home-page "https://github.com/Mic92/ssh-to-age")
-      (synopsis "Convert SSH @code{ed25519} keys to @code{age} keys.")
-      (description "This package provides a simple command-line tool to
+  (package
+    (name "ssh-to-age")
+    (version "1.1.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/Mic92/ssh-to-age")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "09rhga9iqmyyq8pkprydy8y15qhzqvbpgzvs681rcyllf8szrj73"))))
+    (build-system go-build-system)
+    (arguments
+     '(#:import-path "github.com/Mic92/ssh-to-age/cmd/ssh-to-age"
+       #:unpack-path "github.com/Mic92/ssh-to-age"))
+    (inputs (list go-golang-org-x-crypto
+                  go-filippo-io-edwards25519
+                  go-filippo-io-age))
+    (home-page "https://github.com/Mic92/ssh-to-age")
+    (synopsis "Convert SSH @code{ed25519} keys to @code{age} keys.")
+    (description "This package provides a simple command-line tool to
 convert SSH @code{ed25519} keys to @code{age} keys.")
-      (license license:expat))))
+    (license license:expat)))
 
 (define-public yapet
   (package
     (name "yapet")
-    (version "2.5")
+    (version "2.6")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://yapet.guengel.ch/downloads/yapet-"
                            version ".tar.xz"))
        (sha256
-        (base32 "0hpibsdry259cmvps35isr6jn9cd9fsk3r1h0ppjx9zxfrpqwldg"))))
+        (base32 "00k38n5vlxl73m11pp1v50fqf702lv86hzwgj0qca6qxqz4i3jjl"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
        (list (string-append "--docdir=" (assoc-ref %outputs "out")
-                            "/share/doc",name "-" ,version))))
+                            "/share/doc/" ,name "-" ,version))))
     (inputs
      (list argon2 ncurses openssl))
     (native-inputs
@@ -477,6 +530,45 @@ them out, at the source.")
      "Libpwquality is a library for password quality checking and generation of
 random passwords that pass the checks.")
     (license license:gpl2+)))
+
+(define-public passwdqc
+  (package
+    (name "passwdqc")
+    (version "2.0.3")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://www.openwall.com/passwdqc/passwdqc"
+                                  "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1x4c92b3i5wmxh2111lynyndalpkryvan4wybqchd7rn96yg9c2k"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f                       ; no tests provided
+      #:make-flags
+      #~(list (string-append "CC=" #$(cc-for-target))
+              (string-append "DESTDIR=" #$output) ; no $prefix support
+              "BINDIR=/bin"
+              "DEVEL_LIBDIR=/lib"
+              "SHARED_LIBDIR_REL=."
+              "INCLUDEDIR=/include"
+              "MANDIR=/share/man"
+              (string-append "LDFLAGS=-Wl,-rpath=" #$output "/lib"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure))))        ;no configure script
+    (inputs (list linux-pam))
+    (home-page "https://www.openwall.com/passwdqc/")
+    (synopsis
+     "Password/passphrase strength checking and policy enforcement toolset")
+    (description
+     "Passwdqc is a password/passphrase strength checking and policy
+enforcement toolset, including an optional PAM module, @code{pam_passwdqc},
+command-line programs (@command{pwqcheck}, @command{pwqfilter}, and
+@command{pwqgen}), and a library, @code{libpasswdqc}.")
+    (license (list license:bsd-3        ;manual pages
+                   license:bsd-1))))    ;code
 
 (define-public assword
   (package
@@ -565,6 +657,12 @@ any X11 window.")
                                  "${PASSWORD_STORE_SYSTEM_EXTENSION_DIR:-"
                                  extension-dir
                                  "}\"\n"))))))
+         (add-before 'install 'patch-program-name
+           ;; Use pass not .pass-real in tmpdir and cmd_usage
+           (lambda _
+             (substitute* "src/password-store.sh"
+               (("^PROGRAM=.*$")
+                "PROGRAM=\"pass\"\n"))))
          (add-before 'install 'patch-passmenu-path
            ;; FIXME Wayland support requires ydotool and dmenu-wl packages
            ;; We are ignoring part of the script that gets executed if
@@ -634,7 +732,7 @@ through the pass command.")
   (package
     (inherit password-store)
     (name "pass-age")
-    (version "1.7.4a0")
+    (version "1.7.4a1")
     (source
      (origin
        (method git-fetch)
@@ -643,7 +741,7 @@ through the pass command.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "17899whffnpqqx9x1nx2b8bfxbxlh1pwlglqa0kznl0cn6sb37ql"))))
+        (base32 "0g8x2zivid18qf1czq1yqychmbdzxzs83rg8a5b392m2rzxlrx08"))))
     (build-system copy-build-system)
     (arguments
      '(#:modules
@@ -861,7 +959,7 @@ using password-store through rofi interface:
 (define-public tessen
   (package
     (name "tessen")
-    (version "2.1.2")
+    (version "2.2.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -870,7 +968,7 @@ using password-store through rofi interface:
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "01jaxakq847k3v2wid8fzhcmq8mraxz0q1j87s1jv75l1gy4qiij"))))
+                "0v0mkdwwxpy23fm5dqspp9c77b5ifcj7fsi8xhjrkrv1vqwmh67j"))))
     (build-system gnu-build-system)
     (arguments
      (list #:tests?
@@ -887,20 +985,20 @@ using password-store through rofi interface:
                      (("xdg-open") (search-input-file inputs "/bin/xdg-open")))))
                (delete 'configure)) ;no configure script
            #:make-flags
-           #~(list (string-append "PREFIX="
-                                  #$output))))
+           #~(list (string-append "DESTDIR=" #$output)
+                   "PREFIX=''")))
     (native-inputs (list scdoc))
     (inputs (list libnotify wl-clipboard wtype xdg-utils))
     (home-page "https://github.com/ayushnix/tessen")
     (synopsis "Frontend for password-store and gopass")
     (description "Tessen is a bash script that can autotype and copy data
 from password-store and gopass files.")
-    (license license:gpl2+)))
+    (license license:gpl2)))
 
 (define-public browserpass-native
   (package
     (name "browserpass-native")
-    (version "3.0.7")
+    (version "3.1.0")
     (source
      (origin
        (method git-fetch)
@@ -909,54 +1007,44 @@ from password-store and gopass files.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32
-         "1jkjslbbac49xjyjkc2b07phdm3i64z40kh6h55cl22dxjmpp1nb"))))
+        (base32 "1if72k526sqqxnw250qwxvzwvh1w0k8ag4p4xq3442b22hywx72i"))))
     (build-system go-build-system)
     (arguments
-     `(#:import-path "github.com/browserpass/browserpass-native"
-       #:install-source? #f
-       #:phases
-       (modify-phases %standard-phases
-         (add-before 'build 'patch-makefile
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               ;; This doesn't go in #:make-flags because the Makefile itself
-               ;; gets installed.
-               (substitute*
-                   "src/github.com/browserpass/browserpass-native/Makefile"
-                 (("PREFIX \\?= /usr")
-                  (string-append "PREFIX ?= " out)))
-               #t)))
-         (add-before 'build 'configure
-           (lambda _
-               (with-directory-excursion
-                   "src/github.com/browserpass/browserpass-native"
-                 (invoke "make" "configure"))
-             #t))
-         (replace 'build
-           (lambda _
-               (with-directory-excursion
-                   "src/github.com/browserpass/browserpass-native"
-                 (invoke "make"))
-             #t))
-         (replace 'install
-           (lambda _
-             (with-directory-excursion
-                 "src/github.com/browserpass/browserpass-native"
-               (invoke "make" "install"))
-             #t))
-         (add-after 'install 'wrap-executable
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out"))
-                   (gnupg (assoc-ref inputs "gnupg")))
-               (wrap-program (string-append out "/bin/browserpass")
-                 `("PATH" ":" prefix
-                   (,(string-append gnupg "/bin"))))
-               #t))))))
+     (list #:import-path "github.com/browserpass/browserpass-native"
+           #:install-source? #f
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-before 'build 'patch-makefile
+                 (lambda _
+                   ;; This doesn't go in #:make-flags because the Makefile
+                   ;; itself gets installed.
+                   (substitute* "src/github.com/browserpass/browserpass-native/Makefile"
+                     (("PREFIX \\?= /usr")
+                      (string-append "PREFIX ?= " #$output)))))
+               (add-before 'build 'configure
+                 (lambda _
+                   (with-directory-excursion
+                       "src/github.com/browserpass/browserpass-native"
+                     (invoke "make" "configure"))))
+               (replace 'build
+                 (lambda _
+                   (with-directory-excursion
+                       "src/github.com/browserpass/browserpass-native"
+                     (invoke "make"))))
+               (replace 'install
+                 (lambda _
+                   (with-directory-excursion
+                       "src/github.com/browserpass/browserpass-native"
+                     (invoke "make" "install"))))
+               (add-after 'install 'wrap-executable
+                 (lambda _
+                   (wrap-program (string-append #$output "/bin/browserpass")
+                     `("PATH" ":" prefix
+                       (,(string-append #$(this-package-input "gnupg") "/bin")))))))))
     (native-inputs
      (list which))
     (inputs
-     (list gnupg go-github-com-mattn-go-zglob
+     (list bash-minimal gnupg go-github-com-mattn-go-zglob
            go-github-com-rifflock-lfshook go-github-com-sirupsen-logrus
            go-golang-org-x-sys))
     (home-page "https://github.com/browserpass/browserpass-native")
@@ -1355,7 +1443,7 @@ group them into chains.")
 (define-public hydra
   (package
     (name "hydra")
-    (version "9.4")
+    (version "9.5")
     (home-page "https://github.com/vanhauser-thc/thc-hydra")
     (source (origin
               (method git-fetch)
@@ -1365,7 +1453,7 @@ group them into chains.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0dbx7yaqf4nl63pi8wmr19cxnp5v4w7fsd369krdy8hlc8k0qjgr"))))
+                "0pg4alaznygngdzn4k6p540g059w7mpiakchsp0526f1b9s33lw1"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f ;no test suite

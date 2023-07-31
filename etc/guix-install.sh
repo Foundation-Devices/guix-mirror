@@ -9,8 +9,9 @@
 # Copyright © 2020 Daniel Brooks <db48x@db48x.net>
 # Copyright © 2021 Jakub Kądziołka <kuba@kadziolka.net>
 # Copyright © 2021 Chris Marusich <cmmarusich@gmail.com>
-# Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+# Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 # Copyright © 2022 Prafulla Giri <prafulla.giri@protonmail.com>
+# Copyright © 2023 Andrew Tropin <andrew@trop.in>
 #
 # This file is part of GNU Guix.
 #
@@ -352,15 +353,18 @@ sys_create_store()
 
     _debug "--- [ ${FUNCNAME[0]} ] ---"
 
-    if [[ -z $GUIX_ALLOW_OVERWRITE && (-e /var/guix || -e /gnu) ]]; then
-        die "A previous Guix installation was found.  Refusing to overwrite."
-    else
-        _msg "${WAR}Overwriting existing installation!"
+    if [[ -e /var/guix && -e /gnu ]]; then
+        if [ -n "$GUIX_ALLOW_OVERWRITE" ]; then
+            _msg "${WAR}Overwriting existing installation!"
+        else
+            die "A previous Guix installation was found.  Refusing to overwrite."
+        fi
     fi
 
     cd "$tmp_path"
     _msg "${INF}Installing /var/guix and /gnu..."
-    tar --extract --file "$pkg" -C /
+    # Strip (skip) the leading ‘.’ component, which fails on read-only ‘/’.
+    tar --extract --strip-components=1 --file "$pkg" -C /
 
     _msg "${INF}Linking the root user's profile"
     mkdir -p ~root/.config/guix
@@ -430,36 +434,27 @@ sys_enable_guix_daemon()
                 _msg "${PAS}enabled Guix daemon via upstart"
             ;;
         systemd)
-            { # systemd .mount units must be named after the target directory.
-              # Here we assume a hard-coded name of /gnu/store.
-              # XXX Work around <https://issues.guix.gnu.org/41356> until next release.
-              if [ -f ~root/.config/guix/current/lib/systemd/system/gnu-store.mount ]; then
-                  cp ~root/.config/guix/current/lib/systemd/system/gnu-store.mount \
-                     /etc/systemd/system/;
-                  chmod 664 /etc/systemd/system/gnu-store.mount;
-                  systemctl daemon-reload &&
-                      systemctl enable gnu-store.mount;
-              fi
+            { install_unit()
+              {
+                  local dest="/etc/systemd/system/$1"
+                  rm -f "$dest"
+                  cp ~root/.config/guix/current/lib/systemd/system/"$1" "$dest"
+                  chmod 664 "$dest"
+                  systemctl daemon-reload
+                  systemctl enable "$1"
+              }
 
-              cp ~root/.config/guix/current/lib/systemd/system/guix-daemon.service \
-                 /etc/systemd/system/;
-              chmod 664 /etc/systemd/system/guix-daemon.service;
-
-              # Work around <https://bugs.gnu.org/36074>, present in 1.0.1.
-              sed -i /etc/systemd/system/guix-daemon.service \
-                  -e "s/GUIX_LOCPATH='/'GUIX_LOCPATH=/";
-
-              # Work around <https://bugs.gnu.org/35671>, present in 1.0.1.
-              if ! grep en_US /etc/systemd/system/guix-daemon.service >/dev/null;
-              then sed -i /etc/systemd/system/guix-daemon.service \
-                       -e 's/^Environment=\(.*\)$/Environment=\1 LC_ALL=en_US.UTF-8';
-              fi;
+              install_unit guix-daemon.service
 
               configure_substitute_discovery \
                   /etc/systemd/system/guix-daemon.service
 
+              # Install after guix-daemon.service to avoid a harmless warning.
+              # systemd .mount units must be named after the target directory.
+              # Here we assume a hard-coded name of /gnu/store.
+              install_unit gnu-store.mount
+
               systemctl daemon-reload &&
-                  systemctl enable guix-daemon &&
                   systemctl start  guix-daemon; } &&
                 _msg "${PAS}enabled Guix daemon via systemd"
             ;;
@@ -549,15 +544,19 @@ export PATH="$_GUIX_PROFILE/bin${PATH:+:}$PATH"
 # searches 'Info-default-directory-list'.
 export INFOPATH="$_GUIX_PROFILE/share/info:$INFOPATH"
 
-# GUIX_PROFILE: User's default profile
-# Prefer the one from 'guix home' if it exists.
+# GUIX_PROFILE: User's default profile and home profile
+GUIX_PROFILE="$HOME/.guix-profile"
+[ -f "$GUIX_PROFILE/etc/profile" ] && . "$GUIX_PROFILE/etc/profile"
+[ -L "$GUIX_PROFILE" ] || \
+GUIX_LOCPATH="$GUIX_PROFILE/lib/locale:${GUIX_LOCPATH:+:}$GUIX_LOCPATH"
+
 GUIX_PROFILE="$HOME/.guix-home/profile"
-[ -L $GUIX_PROFILE ] || GUIX_PROFILE="$HOME/.guix-profile"
-[ -L $GUIX_PROFILE ] || return
-GUIX_LOCPATH="$GUIX_PROFILE/lib/locale"
+[ -f "$GUIX_PROFILE/etc/profile" ] && . "$GUIX_PROFILE/etc/profile"
+[ -L "$GUIX_PROFILE" ] || \
+GUIX_LOCPATH="$GUIX_PROFILE/lib/locale:${GUIX_LOCPATH:+:}$GUIX_LOCPATH"
+
 export GUIX_LOCPATH
 
-[ -f "$GUIX_PROFILE/etc/profile" ] && . "$GUIX_PROFILE/etc/profile"
 EOF
 }
 
@@ -582,7 +581,8 @@ sys_create_shell_completion()
 
 sys_customize_bashrc()
 {
-    prompt_yes_no "Customize users Bash shell prompt for Guix?" || return
+    prompt_yes_no "Customize users Bash shell prompt for Guix?" || return 0
+
     for bashrc in /home/*/.bashrc /root/.bashrc; do
         test -f "$bashrc" || continue
         grep -Fq '$GUIX_ENVIRONMENT' "$bashrc" && continue
@@ -597,6 +597,30 @@ fi
 ' >> "$bashrc"
     done
     _msg "${PAS}Bash shell prompt successfully customized for Guix"
+}
+
+sys_maybe_setup_selinux()
+{
+    if ! [ -f /sys/fs/selinux/policy ]
+    then
+	return
+    fi
+
+    local c
+    for c in semodule restorecon
+    do
+        if ! command -v "$c" &>/dev/null
+	then
+	    return
+	fi
+    done
+
+    prompt_yes_no "Install SELinux policy that might be required to run guix-daemon?" \
+	|| return 0
+
+    local var_guix=/var/guix/profiles/per-user/root/current-guix
+    semodule -i "${var_guix}/share/selinux/guix-daemon.cil"
+    restorecon -R /gnu /var/guix
 }
 
 welcome()
@@ -674,6 +698,7 @@ main()
 
     sys_create_store "${GUIX_BINARY_FILE_NAME}" "${tmp_path}"
     sys_create_build_user
+    sys_maybe_setup_selinux
     sys_enable_guix_daemon
     sys_authorize_build_farms
     sys_create_init_profile

@@ -1,10 +1,11 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2016, 2017, 2019, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2017, 2019-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018, 2019, 2021 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2022 Luis Felipe López Acevedo <luis.felipe.la@protonmail.com>
 ;;; Copyright © 2022 Liliana Marie Prikler <liliana.prikler@gmail.com>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -223,14 +224,14 @@ cards.")
 (define-public newsboat
   (package
     (name "newsboat")
-    (version "2.29")
+    (version "2.31")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://newsboat.org/releases/" version
                            "/newsboat-" version ".tar.xz"))
        (sha256
-        (base32 "0szx4pivkaja8v399m6v7ycp1xprm4cz7n5z929g4j191hg81f8q"))))
+        (base32 "1nn1akjc3l29gcr0n6g7y39qvmbw8vf5sfmnxd794sgmbki7vbsb"))))
     (build-system cargo-build-system)
     (native-inputs
      `(("gettext" ,gettext-minimal)
@@ -256,14 +257,14 @@ cards.")
        #:install-source? #f
        #:cargo-inputs
        (("rust-backtrace" ,rust-backtrace-0.3)
-        ("rust-bitflags" ,rust-bitflags-1)
+        ("rust-bitflags" ,rust-bitflags-2)
         ("rust-chrono" ,rust-chrono-0.4)
         ("rust-curl-sys" ,rust-curl-sys-0.4)
         ("rust-cxx" ,rust-cxx-1)
         ("rust-cxx-build" ,rust-cxx-build-1)
         ("rust-fastrand" ,rust-fastrand-1)
         ("rust-gettext-rs" ,rust-gettext-rs-0.7)
-        ("rust-lexopt" ,rust-lexopt-0.2)
+        ("rust-lexopt" ,rust-lexopt-0.3)
         ("rust-libc" ,rust-libc-0.2)
         ("rust-md5" ,rust-md5-0.7)
         ("rust-natord" ,rust-natord-1)
@@ -508,12 +509,40 @@ a simple interface that makes it easy to organize and browse feeds.")
     (license (list license:expat
                    license:gpl3+))))    ; tuir/packages/praw
 
+(define-public morss
+  (package
+    (name "morss")
+    (version "20221213.2216")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "morss" version))
+              (sha256
+               (base32
+                "1mvxxhzmraxjnw0vz60zkl4d8xp7lw0fs0z537zfhmj1lj9ap4cp"))))
+    (build-system python-build-system)
+    (arguments
+     ;; Tests are not available in the PyPI release and the Git release
+     ;; is lagging behind.  Additionally, tests use the network.
+     (list #:tests? #f
+           ;; Sanity check fails to find the module 'bs4', but it's available
+           ;; in the python-beautifulsoup4 dependency.
+           #:phases #~(modify-phases %standard-phases
+                        (delete 'sanity-check))))
+    (propagated-inputs (list python-beautifulsoup4 python-chardet
+                             python-dateutil python-lxml))
+    (home-page "https://morss.it/")
+    (synopsis "Get full-text RSS feeds")
+    (description "Morss' goal is to get full-text RSS feeds out of striped
+RSS feeds, commonly available on the internet.  It also makes it possible
+to create RSS feeds for websites that don't provide any.")
+    (license license:agpl3+)))
+
 (define-public syndication-domination
   (let ((revision "1")
-        (commit "f64caabd6f46be14fdb92085971a7f2d6fa5e61e"))
+        (commit "75920321062d682437f3fb0319dad227d8b18f6c"))
     (package
       (name "syndication-domination")
-      (version (git-version "0.0" revision commit))
+      (version (git-version "1.0" revision commit))
       (source (origin
                 (method git-fetch)
                 (uri (git-reference
@@ -521,10 +550,8 @@ a simple interface that makes it easy to organize and browse feeds.")
                       (commit commit)))
                 (file-name (git-file-name name version))
                 (sha256
-                 (base32 "1i0llzzm3lc2kw7rjhb46c7wlknsb6r9bdrf61chi2pk6hpjyscv"))))
+                 (base32 "1fl362920n6nz4x9wihyzbr82d9cy60sknhmajj62whd5gs49sbw"))))
       (build-system meson-build-system)
-      (arguments
-       (list #:meson meson-0.63))
       (inputs (list fmt tidy-html pybind11 python pugixml))
       (native-inputs (list cmake pkg-config)) ; need cmake to find pybind11
       (home-page "https://gitlab.com/gabmus/syndication-domination")
@@ -536,7 +563,7 @@ parser.  It is \"not fit for use at this point\", but gfeeds uses it anyway.")
 (define-public gfeeds
   (package
     (name "gfeeds")
-    (version "1.0.3")
+    (version "2.2.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -545,7 +572,7 @@ parser.  It is \"not fit for use at this point\", but gfeeds uses it anyway.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1lkvhff7pl1y4brqsix6sar5yl8flyhfp3w96fx0klhk3586bvhg"))))
+                "0p2hyjif9yhpc6r3ig7fdxpb2q8s9g42mz38svsc38gq7hb13b2w"))))
     (build-system meson-build-system)
     (arguments
      (list
@@ -557,12 +584,12 @@ parser.  It is \"not fit for use at this point\", but gfeeds uses it anyway.")
                 (("mpv") (search-input-file inputs "/bin/mpv")))))
           (add-after 'unpack 'skip-icon-cache
             (lambda _
-              (substitute* "meson_post_install.py"
-                (("gtk-update-icon-cache") "true"))))
+              (substitute* "meson.build"
+                (("gtk_update_icon_cache: true")
+                 "gtk_update_icon_cache: false"))))
           (add-after 'install 'wrap-gfeeds
             (lambda* (#:key outputs #:allow-other-keys)
-              (wrap-program (string-append
-                             (assoc-ref outputs "out") "/bin/gfeeds")
+              (wrap-program (search-input-file outputs "/bin/gfeeds")
                 `("PYTHONPATH" ":" prefix (,(getenv "GUIX_PYTHONPATH")))
                 `("GI_TYPELIB_PATH" ":" prefix (,(getenv "GI_TYPELIB_PATH")))
                 `("XDG_DATA_DIRS" ":" prefix (,(getenv "XDG_DATA_DIRS")))))))))
@@ -570,6 +597,7 @@ parser.  It is \"not fit for use at this point\", but gfeeds uses it anyway.")
      (list `(,glib "bin")
            blueprint-compiler
            gobject-introspection
+           gettext-minimal
            pkg-config))
     (inputs
      (list bash-minimal

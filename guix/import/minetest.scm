@@ -19,24 +19,18 @@
 
 (define-module (guix import minetest)
   #:use-module (ice-9 match)
-  #:use-module (ice-9 receive)
   #:use-module (ice-9 threads)
   #:use-module (ice-9 hash-table)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-2)
-  #:use-module (srfi srfi-11)
-  #:use-module (srfi srfi-26)
+  #:use-module (srfi srfi-34)
   #:use-module (guix diagnostics)
   #:use-module ((guix packages) #:prefix package:)
   #:use-module (guix upstream)
-  #:use-module (guix utils)
-  #:use-module (guix ui)
   #:use-module (guix i18n)
   #:use-module (guix memoization)
   #:use-module (guix serialization)
   #:use-module (guix import utils)
   #:use-module (guix import json)
-  #:use-module ((gcrypt hash) #:select (open-sha256-port port-sha256))
   #:use-module (json)
   #:use-module (guix base32)
   #:use-module (guix git)
@@ -499,7 +493,7 @@ or #false if the latest release couldn't be determined."
   (define source (package:package-source pkg))
 
   (when version
-    (error
+    (raise
      (formatted-message
       (G_ "~a updater doesn't support updating to a specific version, sorry.")
       "minetest")))

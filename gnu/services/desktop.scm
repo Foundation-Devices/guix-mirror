@@ -14,6 +14,7 @@
 ;;; Copyright © 2020 Reza Alizadeh Majd <r.majd@pantherx.org>
 ;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2021, 2022 muradm <mail@muradm.net>
+;;; Copyright © 2023 Bruno Victal <mirai@makinata.eu>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -97,7 +98,7 @@
 
             udisks-configuration
             udisks-configuration?
-            udisks-service
+            udisks-service  ; deprecated
             udisks-service-type
 
             colord-service-type
@@ -106,17 +107,17 @@
             geoclue-configuration
             geoclue-configuration?
             %standard-geoclue-applications
-            geoclue-service
+            geoclue-service  ; deprecated
             geoclue-service-type
 
             bluetooth-service-type
             bluetooth-configuration
             bluetooth-configuration?
-            bluetooth-service
+            bluetooth-service  ; deprecated
 
             elogind-configuration
             elogind-configuration?
-            elogind-service
+            elogind-service  ; deprecated
             elogind-service-type
 
             %gdm-file-system
@@ -126,7 +127,7 @@
             fontconfig-file-system-service
 
             accountsservice-service-type
-            accountsservice-service
+            accountsservice-service  ; deprecated
 
             cups-pk-helper-service-type
             sane-service-type
@@ -154,7 +155,8 @@
             xfce-desktop-service
             xfce-desktop-service-type
 
-            x11-socket-directory-service
+            x11-socket-directory-service ;deprecated
+            x11-socket-directory-service-type
 
             enlightenment-desktop-configuration
             enlightenment-desktop-configuration?
@@ -318,19 +320,6 @@ used by GNOME.")
 ;;; GeoClue D-Bus service.
 ;;;
 
-;; TODO: Export.
-(define-record-type* <geoclue-configuration>
-  geoclue-configuration make-geoclue-configuration
-  geoclue-configuration?
-  (geoclue geoclue-configuration-geoclue
-           (default geoclue))
-  (whitelist geoclue-configuration-whitelist)
-  (wifi-geolocation-url geoclue-configuration-wifi-geolocation-url)
-  (submit-data? geoclue-configuration-submit-data?)
-  (wifi-submission-url geoclue-configuration-wifi-submission-url)
-  (submission-nick geoclue-configuration-submission-nick)
-  (applications geoclue-configuration-applications))
-
 (define* (geoclue-application name #:key (allowed? #t) system? (users '()))
   "Configure default GeoClue access permissions for an application.  NAME is
 the Desktop ID of the application, without the .desktop part.  If ALLOWED? is
@@ -349,6 +338,28 @@ users are allowed."
   (list (geoclue-application "gnome-datetime-panel" #:system? #t)
         (geoclue-application "epiphany" #:system? #f)
         (geoclue-application "firefox" #:system? #f)))
+
+;; TODO: Use define-configuration and export accessors.
+(define-record-type* <geoclue-configuration>
+  geoclue-configuration make-geoclue-configuration
+  geoclue-configuration?
+  (geoclue geoclue-configuration-geoclue
+           (default geoclue))
+  (whitelist geoclue-configuration-whitelist
+             (default '()))
+  (wifi-geolocation-url
+   geoclue-configuration-wifi-geolocation-url
+   ;; Mozilla geolocation service:
+   (default "https://location.services.mozilla.com/v1/geolocate?key=geoclue"))
+  (submit-data? geoclue-configuration-submit-data?
+                (default #f))
+  (wifi-submission-url
+   geoclue-configuration-wifi-submission-url
+   (default "https://location.services.mozilla.com/v1/submit?key=geoclue"))
+  (submission-nick geoclue-configuration-submission-nick
+                   (default "geoclue"))
+  (applications geoclue-configuration-applications
+                (default %standard-geoclue-applications)))
 
 (define* (geoclue-configuration-file config)
   "Return a geoclue configuration file."
@@ -395,18 +406,21 @@ users are allowed."
                 (description "Run the @command{geoclue} location service.
 This service provides a D-Bus interface to allow applications to request
 access to a user's physical location, and optionally to add information to
-online location databases.")))
+online location databases.")
+                (default-value (geoclue-configuration))))
 
-(define* (geoclue-service #:key (geoclue geoclue)
-                          (whitelist '())
-                          (wifi-geolocation-url
-                           ;; Mozilla geolocation service:
-                           "https://location.services.mozilla.com/v1/geolocate?key=geoclue")
-                          (submit-data? #f)
-                          (wifi-submission-url
-                           "https://location.services.mozilla.com/v1/submit?key=geoclue")
-                          (submission-nick "geoclue")
-                          (applications %standard-geoclue-applications))
+(define-deprecated
+  (geoclue-service #:key (geoclue geoclue)
+                   (whitelist '())
+                   (wifi-geolocation-url
+                    ;; Mozilla geolocation service:
+                    "https://location.services.mozilla.com/v1/geolocate?key=geoclue")
+                   (submit-data? #f)
+                   (wifi-submission-url
+                    "https://location.services.mozilla.com/v1/submit?key=geoclue")
+                   (submission-nick "geoclue")
+                   (applications %standard-geoclue-applications))
+  geoclue-service-type
   "Return a service that runs the @command{geoclue} location service.  This
 service provides a D-Bus interface to allow applications to request access to
 a user's physical location, and optionally to add information to online
@@ -848,7 +862,8 @@ site} for more information."
    (description "Run the @command{bluetoothd} daemon, which manages all the
 Bluetooth devices and provides a number of D-Bus interfaces.")))
 
-(define* (bluetooth-service #:key (bluez bluez) (auto-enable? #f))
+(define-deprecated (bluetooth-service #:key (bluez bluez) (auto-enable? #f))
+  bluetooth-service-type
   "Return a service that runs the @command{bluetoothd} daemon, which manages
 all the Bluetooth devices and provides a number of D-Bus interfaces.  When
 AUTO-ENABLE? is true, the bluetooth controller is powered automatically at
@@ -945,9 +960,11 @@ screens and scanners.")))
                   (description "Run UDisks, a @dfn{disk management} daemon
 that provides user interfaces with notifications and ways to mount/unmount
 disks.  Programs that talk to UDisks include the @command{udisksctl} command,
-part of UDisks, and GNOME Disks."))))
+part of UDisks, and GNOME Disks.")
+                  (default-value (udisks-configuration)))))
 
-(define* (udisks-service #:key (udisks udisks))
+(define-deprecated (udisks-service #:key (udisks udisks))
+  udisks-service-type
   "Return a service for @uref{http://udisks.freedesktop.org/docs/latest/,
 UDisks}, a @dfn{disk management} daemon that provides user interfaces with
 notifications and ways to mount/unmount disks.  Programs that talk to UDisks
@@ -978,11 +995,7 @@ include the @command{udisksctl} command, part of UDisks, and GNOME Disks."
   (handle-suspend-key               elogind-handle-suspend-key
                                     (default 'suspend))
   (handle-hibernate-key             elogind-handle-hibernate-key
-                                    ;; (default 'hibernate)
-                                    ;; XXX Ignore it for now, since we don't
-                                    ;; yet handle resume-from-hibernation in
-                                    ;; our initrd.
-                                    (default 'ignore))
+                                    (default 'hibernate))
   (handle-lid-switch                elogind-handle-lid-switch
                                     (default 'suspend))
   (handle-lid-switch-docked         elogind-handle-lid-switch-docked
@@ -1174,10 +1187,13 @@ seats.)"
      (module (file-append (elogind-package config)
                           "/lib/security/pam_elogind.so"))))
 
-  (list (lambda (pam)
-          (pam-service
-           (inherit pam)
-           (session (cons pam-elogind (pam-service-session pam)))))))
+  (list (pam-extension
+         (transformer
+          (lambda (pam)
+            (pam-service
+             (inherit pam)
+             (session (cons pam-elogind (pam-service-session pam))))))
+         (shepherd-requirements '(elogind)))))
 
 (define (elogind-shepherd-service config)
   "Return a Shepherd service to start elogind according to @var{config}."
@@ -1230,7 +1246,8 @@ allow other system components to know the set of logged-in users as well as
 their session types (graphical, console, remote, etc.).  It can also clean up
 after users when they log out.")))
 
-(define* (elogind-service #:key (config (elogind-configuration)))
+(define-deprecated (elogind-service #:key (config (elogind-configuration)))
+  elogind-service-type
   "Return a service that runs the @command{elogind} login and seat management
 service.  The @command{elogind} service integrates with PAM to allow other
 system components to know the set of logged-in users as well as their session
@@ -1298,7 +1315,9 @@ over D-Bus that can list available accounts, change their passwords, and so
 on.  AccountsService integrates with PolicyKit to enable unprivileged users to
 acquire the capability to modify their system configuration.")))
 
-(define* (accountsservice-service #:key (accountsservice accountsservice))
+(define-deprecated
+  (accountsservice-service #:key (accountsservice accountsservice))
+  accountsservice-service-type
   "Return a service that runs AccountsService, a system service that
 can list available accounts, change their passwords, and so on.
 AccountsService integrates with PolicyKit to enable unprivileged users to
@@ -1379,18 +1398,7 @@ rules."
                     '("gnome-settings-daemon"
                       "gnome-control-center"
                       "gnome-system-monitor"
-                      "gvfs"
-                      ;; spice-gtk provides polkit actions for USB redirection
-                      ;; in GNOME Boxes.
-                      ("gnome-boxes" "spice-gtk")))))
-
-(define (gnome-setuid-programs config)
-  "Return the list of GNOME setuid programs."
-  (let* ((gnome (gnome-desktop-configuration-gnome config))
-         (spice-gtk (gnome-package gnome '("gnome-boxes" "spice-gtk"))))
-    (map file-like->setuid-program
-         (list (file-append spice-gtk
-                            "/libexec/spice-client-glib-usb-acl-helper")))))
+                      "gvfs"))))
 
 (define gnome-desktop-service-type
   (service-type
@@ -1400,22 +1408,15 @@ rules."
                              gnome-udev-rules)
           (service-extension polkit-service-type
                              gnome-polkit-settings)
-          (service-extension setuid-program-service-type
-                             gnome-setuid-programs)
           (service-extension profile-service-type
                              (compose list gnome-desktop-configuration-gnome))))
    (default-value (gnome-desktop-configuration))
    (description "Run the GNOME desktop environment.")))
 
-(define-deprecated (gnome-desktop-service #:key (config
-                                                 (gnome-desktop-configuration)))
-  gnome-desktop-service-type
-  "Return a service that adds the @code{gnome} package to the system profile,
-and extends polkit with the actions from @code{gnome-settings-daemon}."
-  (service gnome-desktop-service-type config))
-
-;; MATE Desktop service.
-;; TODO: Add mate-screensaver.
+
+;;;
+;;; MATE Desktop service.
+;;; TODO: Add mate-screensaver.
 
 (define-record-type* <mate-desktop-configuration> mate-desktop-configuration
   make-mate-desktop-configuration
@@ -1444,14 +1445,6 @@ and extends polkit with the actions from @code{gnome-settings-daemon}."
                                       mate-package))))
    (default-value (mate-desktop-configuration))
    (description "Run the MATE desktop environment.")))
-
-(define-deprecated (mate-desktop-service #:key
-                                         (config
-                                          (mate-desktop-configuration)))
-  mate-desktop-service-type
-  "Return a service that adds the @code{mate} package to the system profile,
-and extends polkit with the actions from @code{mate-settings-daemon}."
-  (service mate-desktop-service-type config))
 
 
 ;;;
@@ -1483,16 +1476,7 @@ rules."
    (default-value (xfce-desktop-configuration))
    (description "Run the Xfce desktop environment.")))
 
-(define-deprecated (xfce-desktop-service #:key (config
-                                                (xfce-desktop-configuration)))
-  xfce-desktop-service-type
-  "Return a service that adds the @code{xfce} package to the system profile,
-and extends polkit with the ability for @code{thunar} to manipulate the file
-system as root from within a user session, after the user has authenticated
-with the administrator's password."
-  (service xfce-desktop-service-type config))
-
-+
+
 ;;;
 ;;; Lxqt desktop service.
 ;;;
@@ -1559,18 +1543,38 @@ rules."
 ;;; X11 socket directory service
 ;;;
 
-(define x11-socket-directory-service
+(define x11-socket-directory-service-type
+  (let ((x11-socket-directory-shepherd-service
+         (shepherd-service
+          (documentation "Create @file{/tmp/.X11-unix} for XWayland.")
+          (requirement '(file-systems))
+          (provision '(x11-socket-directory))
+          (one-shot? #t)
+          (start #~(lambda _
+                     (let ((directory "/tmp/.X11-unix"))
+                       (mkdir-p directory)
+                       (chmod directory #o1777)))))))
+    (service-type
+     (name 'x11-socket-directory-service)
+     (extensions
+      (list
+       (service-extension shepherd-root-service-type
+                          (compose
+                           list
+                           (const x11-socket-directory-shepherd-service)))))
+     (default-value #f) ; no default value required
+     (description
+      "Create @file{/tmp/.X11-unix} for XWayland.  When using X11, libxcb
+takes care of creating that directory however, when using XWayland, we
+need to create it beforehand."))))
+
+(define-deprecated x11-socket-directory-service
+  x11-socket-directory-service-type
   ;; Return a service that creates /tmp/.X11-unix.  When using X11, libxcb
   ;; takes care of creating that directory.  However, when using XWayland, we
   ;; need to create beforehand.  Thus, create it unconditionally here.
-  (simple-service 'x11-socket-directory
-                  activation-service-type
-                  (with-imported-modules '((guix build utils))
-                    #~(begin
-                        (use-modules (guix build utils))
-                        (let ((directory "/tmp/.X11-unix"))
-                          (mkdir-p directory)
-                          (chmod directory #o1777))))))
+  (service x11-socket-directory-service-type))
+
 
 ;;;
 ;;; Enlightenment desktop service.
@@ -1689,22 +1693,24 @@ dispatches events from it.")))
      (arguments arguments)))
 
   (list
-   (lambda (service)
-     (case (assoc-ref (gnome-keyring-pam-services config)
-                      (pam-service-name service))
-       ((login)
-        (pam-service
-         (inherit service)
-         (auth (append (pam-service-auth service)
-                       (list (%pam-keyring-entry))))
-         (session (append (pam-service-session service)
-                          (list (%pam-keyring-entry "auto_start"))))))
-       ((passwd)
-        (pam-service
-         (inherit service)
-         (password (append (pam-service-password service)
-                           (list (%pam-keyring-entry))))))
-       (else service)))))
+   (pam-extension
+    (transformer
+     (lambda (service)
+       (case (assoc-ref (gnome-keyring-pam-services config)
+                        (pam-service-name service))
+         ((login)
+          (pam-service
+           (inherit service)
+           (auth (append (pam-service-auth service)
+                         (list (%pam-keyring-entry))))
+           (session (append (pam-service-session service)
+                            (list (%pam-keyring-entry "auto_start"))))))
+         ((passwd)
+          (pam-service
+           (inherit service)
+           (password (append (pam-service-password service)
+                             (list (%pam-keyring-entry))))))
+         (else service)))))))
 
 (define gnome-keyring-service-type
   (service-type
@@ -1818,8 +1824,14 @@ applications needing access to be root.")
              (service sddm-service-type))
 
          ;; Screen lockers are a pretty useful thing and these are small.
-         (screen-locker-service slock)
-         (screen-locker-service xlockmore "xlock")
+         (service screen-locker-service-type
+                  (screen-locker-configuration
+                   (name "slock")
+                   (program (file-append slock "/bin/slock"))))
+         (service screen-locker-service-type
+                  (screen-locker-configuration
+                   (name "xlock")
+                   (program (file-append xlockmore "/bin/xlock"))))
 
          ;; Add udev rules for MTP devices so that non-root users can access
          ;; them.
@@ -1859,19 +1871,19 @@ applications needing access to be root.")
 
          ;; The D-Bus clique.
          (service avahi-service-type)
-         (udisks-service)
+         (service udisks-service-type)
          (service upower-service-type)
-         (accountsservice-service)
+         (service accountsservice-service-type)
          (service cups-pk-helper-service-type)
          (service colord-service-type)
-         (geoclue-service)
+         (service geoclue-service-type)
          (service polkit-service-type)
-         (elogind-service)
-         (dbus-service)
+         (service elogind-service-type)
+         (service dbus-root-service-type)
 
          (service ntp-service-type)
 
-         x11-socket-directory-service
+         (service x11-socket-directory-service-type)
 
          (service pulseaudio-service-type)
          (service alsa-service-type)

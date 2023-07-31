@@ -46,7 +46,7 @@
 ;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;; Copyright © 2021 lasnesne <lasnesne@lagunposprasihopre.org>
 ;;; Copyright © 2021, 2022 Petr Hodina <phodina@protonmail.com>
-;;; Copyright © 2021 jgart <jgart@dismail.de>
+;;; Copyright © 2021, 2023 jgart <jgart@dismail.de>
 ;;; Copyright © 2021 Disseminate Dissent <disseminatedissent@protonmail.com>
 ;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2022 Gabriel Wicki <gabriel@erlikon.ch>
@@ -60,6 +60,9 @@
 ;;; Copyright © 2022 Fredrik Salomonsson <plattfot@posteo.net>
 ;;; Copyright © 2022 ( <paren@disroot.org>
 ;;; Copyright © 2022 zamfofex <zamfofex@twdb.moe>
+;;; Copyright © 2023 Gabriel Wicki <gabriel@erlikon.ch>
+;;; Copyright © 2023 Jonathan Brielamier <jonathan.brielmaier@web.de>
+;;; Copyright © 2023 Vessel Wave <vesselwave@disroot.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -109,6 +112,7 @@
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages fribidi)
   #:use-module (gnu packages gawk)
+  #:use-module (gnu packages gettext)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gperf)
@@ -130,6 +134,8 @@
   #:use-module (gnu packages man)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages mpd)
+  #:use-module (gnu packages pciutils)
+  #:use-module (gnu packages music)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
@@ -325,20 +331,33 @@ commands would.")
                 "0jrya4rhh46sivlmqaqc4n9abpp1yn1ajhi616gn75cxwl8rjqr8"))))
     (build-system meson-build-system)
     (arguments
-     `(;; The test suite requires the unpackaged Xephyr X server.
-       #:tests? #f
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'install 'patch-session-file
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (i3 (string-append out "/bin/i3"))
-                    (i3-with-shmlog (string-append out "/bin/i3-with-shmlog")))
-               (substitute* (string-append out "/share/xsessions/i3.desktop")
-                 (("Exec=i3") (string-append "Exec=" i3)))
-               (substitute* (string-append out "/share/xsessions/i3-with-shmlog.desktop")
-                 (("Exec=i3-with-shmlog") (string-append "Exec=" i3-with-shmlog)))
-               #t))))))
+     (list
+      ;; The test suite requires the unpackaged Xephyr X server.
+      #:tests? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'patch-session-file
+            (lambda _
+              (let ((i3 (string-append #$output "/bin/i3"))
+                    (i3-with-shmlog (string-append #$output "/bin/i3-with-shmlog")))
+                (substitute* (string-append #$output "/share/xsessions/i3.desktop")
+                  (("Exec=i3") (string-append "Exec=" i3)))
+                (substitute* (string-append #$output "/share/xsessions/i3-with-shmlog.desktop")
+                  (("Exec=i3-with-shmlog") (string-append "Exec=" i3-with-shmlog))))))
+           (add-after 'patch-session-file 'wrap-perl-bin
+             (lambda* (#:key inputs #:allow-other-keys)
+               (let* ((i3-save-tree (string-append #$output "/bin/i3-save-tree"))
+                      (perl-lib-names '("perl-anyevent"
+                                        "perl-anyevent-i3"
+                                        "perl-json-xs"
+                                        "perl-common-sense"
+                                        "perl-types-serialiser"))
+                      (perl-lib-paths
+                       (map (lambda (name)
+                              (string-append (assoc-ref inputs name) "/lib/perl5/site_perl"))
+                            perl-lib-names)))
+                 (wrap-program i3-save-tree
+                               `("PERL5LIB" ":" prefix ,perl-lib-paths))))))))
     (inputs
      (list libxcb
            xcb-util
@@ -350,6 +369,11 @@ commands would.")
            libev
            yajl
            xmlto
+           perl
+           perl-anyevent-i3
+           perl-json-xs
+           perl-common-sense
+           perl-types-serialiser
            perl-pod-simple
            libx11
            pcre2
@@ -743,7 +767,7 @@ desktop environment.")
 (define-public icewm
   (package
     (name "icewm")
-    (version "3.3.1")
+    (version "3.3.4")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -751,7 +775,7 @@ desktop environment.")
                     version "/icewm-" version ".tar.lz"))
               (sha256
                (base32
-                "1m0jl9d2ikwb1s2cpm3q7f73h84mai9y31k8bhsq8y47jbkc6slk"))))
+                "124w00yq35mj859nf321bpy36ij7a0kblcg95axxahz4l6fhxfxf"))))
     (build-system gnu-build-system)
     (native-inputs (list pkg-config))
     (inputs (list fontconfig
@@ -853,9 +877,9 @@ used on each workspace.  Xinerama is fully supported, allowing windows to be
 tiled on several screens.")
     (license license:bsd-3)))
 
-(define-public xmobar
+(define-public ghc-xmobar
   (package
-    (name "xmobar")
+    (name "ghc-xmobar")
     (version "0.46")
     (source (origin
               (method url-fetch)
@@ -872,17 +896,18 @@ tiled on several screens.")
            ghc-alsa-mixer
            ghc-dbus
            ghc-hinotify
-           ghc-http
+           ghc-http-client-tls
            ghc-http-conduit
            ghc-http-types
-           ghc-iwlib
            ghc-libmpd
            ghc-netlink
+           ghc-cereal
            ghc-old-locale
            ghc-parsec-numbers
            ghc-regex-compat
            ghc-temporary
            ghc-timezone-olson
+           ghc-timezone-series
            ghc-x11
            ghc-x11-xft
            ghc-cairo
@@ -890,18 +915,35 @@ tiled on several screens.")
            libxpm))
     (arguments
      `(#:configure-flags (list "--flags=all_extensions")
-       ;; Haddock documentation is for the library.
-       #:haddock? #f
        #:phases
        (modify-phases %standard-phases
-         (add-after 'register 'remove-libraries
+         (add-after 'install 'remove-binaries
              (lambda* (#:key outputs #:allow-other-keys)
-               (delete-file-recursively (string-append (assoc-ref outputs "out") "/lib"))))
+               (delete-file-recursively (string-append (assoc-ref outputs "out") "/bin"))))
          (add-before 'build 'patch-test-shebang
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "test/Xmobar/Plugins/Monitors/AlsaSpec.hs"
                (("/bin/bash") (which "bash"))))))))
     (home-page "https://xmobar.org")
+    (synopsis "Haskell library for minimalistic text based status bars")
+    (description
+     "@code{ghc-xmobar} is the haskell library that @code{xmobar} is based on.
+It can be used to extend @code{xmobar} with other Haskell code.")
+    (license license:bsd-3)))
+
+(define-public xmobar
+  (package
+    (inherit ghc-xmobar)
+    (name "xmobar")
+    (inputs
+     (list ghc-xmobar
+           libxpm))
+    (arguments
+     `(#:configure-flags (list "--flags=all_extensions" "exe:xmobar")
+       ;; Haddock documentation is for the library.
+       #:haddock? #f
+       ;; Tests are for the library.
+       #:tests? #f))
     (synopsis "Minimalistic text based status bar")
     (description
      "@code{xmobar} is a lightweight, text-based, status bar written in
@@ -1007,12 +1049,17 @@ drags, snap-to-border support, and virtual desktops.")
                                   version "/fluxbox-" version ".tar.xz"))
               (sha256
                (base32
-                "1h1f70y40qd225dqx937vzb4k2cz219agm1zvnjxakn5jkz7b37w"))))
+                "1h1f70y40qd225dqx937vzb4k2cz219agm1zvnjxakn5jkz7b37w"))
+              (patches
+               (search-patches "fluxbox-1.3.7-no-dynamic-cursor.patch"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags '("CPPFLAGS=-U__TIME__") ;ugly, but for reproducibility
        #:phases
        (modify-phases %standard-phases
+         (add-before 'bootstrap 'force-bootstrap
+           (lambda _
+             (delete-file "configure")))
          (add-after 'install 'install-vim-files
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
@@ -1035,12 +1082,13 @@ drags, snap-to-border support, and virtual desktops.")
                      Type=Application~%" ,name ,synopsis out)))
                #t))))))
     (native-inputs
-     (list pkg-config))
+     (list autoconf automake gnu-gettext pkg-config))
     (inputs
      (list freetype
            fribidi
            imlib2
            libx11
+           libxcursor
            libxext
            libxft
            libxinerama
@@ -1053,10 +1101,32 @@ experience.")
     (home-page "http://fluxbox.org/")
     (license license:expat)))
 
+(define-public fbautostart
+  (package
+    (name "fbautostart")
+    (version "2.718281828")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/paultag/fbautostart.git")
+                     (commit version)))
+              (file-name (string-append name "-" version "-checkout"))
+              (sha256
+               (base32
+                "13h6j5khi5axqhflzhayzgvyhxylmk5vsgin235ji440mzd516gz"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     (list autoconf automake))
+    (synopsis "XDG autostarter for Fluxbox window manager")
+    (description "This package provides an autostarter complaint with
+the XDG Autostart specification.")
+    (home-page "https://github.com/paultag/fbautostart")
+    (license license:expat)))
+
 (define-public fnott
   (package
     (name "fnott")
-    (version "1.3.0")
+    (version "1.4.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1065,7 +1135,7 @@ experience.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "00zg03nz79kqcsnwmm22friawhvl05f93yxpvqmy5wvggx9hrlz8"))))
+                "0l0brayvcifrc5rxxkqfrskd6523vs3allg2cxhwkixqf2ddg7kh"))))
     (build-system meson-build-system)
     (arguments `(#:build-type "release"))
     (native-inputs
@@ -1386,7 +1456,7 @@ It is inspired by Xmonad and dwm.  Its major features include:
                 (mkdir-p xsessions)
                 (make-desktop-entry-file
                  (string-append xsessions "/cwm.desktop")
-                 #:name: cwm
+                 #:name "cwm"
                  #:exec (string-append #$output "/bin/cwm")
                  #:try-exec (string-append #$output "/bin/cwm")
                  #:comment '((#f "OpenBSD Calm Window Manager fork")))))))))
@@ -1403,7 +1473,7 @@ project derived from the original Calm Window Manager.")
 (define-public dwl
   (package
     (name "dwl")
-    (version "0.3.1")
+    (version "0.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1412,7 +1482,7 @@ project derived from the original Calm Window Manager.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0952kajc60ijy6qz14y6s5n7dyyf14ndzrhs4ynxj97k76742z2l"))))
+                "0pj0h3zd2f60hxpavpmgzid1sj7hf9m5cgclbackljqq4gpwlvir"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no tests
@@ -1532,7 +1602,7 @@ functionality to display information about the most commonly used services.")
 (define-public wlroots
   (package
     (name "wlroots")
-    (version "0.15.1")
+    (version "0.16.2")
     (source
      (origin
        (method git-fetch)
@@ -1541,7 +1611,7 @@ functionality to display information about the most commonly used services.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "00s73nhi3sc48l426jdlqwpclg41kx1hv0yk4yxhbzw19gqpfm1h"))))
+        (base32 "1m12nv6avgnz626h3giqp6gcx44w1wq6z0jy780mx8z255ic7q15"))))
     (build-system meson-build-system)
     (arguments
      `(#:phases
@@ -1552,7 +1622,13 @@ functionality to display information about the most commonly used services.")
                (("Xwayland") (string-append (assoc-ref inputs
                                                        "xorg-server-xwayland")
                                             "/bin/Xwayland")))
-             #t)))))
+             #t))
+         (add-before 'configure 'fix-meson-file
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "backend/drm/meson.build"
+               (("/usr/share/hwdata/pnp.ids")
+                (string-append (assoc-ref inputs "hwdata")
+                               "/share/hwdata/pnp.ids"))))))))
     (propagated-inputs
      (list ;; As required by wlroots.pc.
            eudev
@@ -1567,8 +1643,10 @@ functionality to display information about the most commonly used services.")
            xcb-util-wm
            xorg-server-xwayland))
     (native-inputs
-     (list pkg-config))
-    (home-page "https://github.com/swaywm/wlroots")
+     (list
+       `(,hwdata "pnp")
+       pkg-config))
+    (home-page "https://gitlab.freedesktop.org/wlroots/wlroots/")
     (synopsis "Pluggable, composable, unopinionated modules for building a
 Wayland compositor")
     (description "wlroots is a set of pluggable, composable, unopinionated
@@ -1578,7 +1656,7 @@ modules for building a Wayland compositor.")
 (define-public sway
   (package
     (name "sway")
-    (version "1.7")
+    (version "1.8.1")
     (source
      (origin
        (method git-fetch)
@@ -1587,7 +1665,7 @@ modules for building a Wayland compositor.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0ss3l258blyf2d0lwd7pi7ga1fxfj8pxhag058k7cmjhs3y30y5l"))))
+        (base32 "1y7brfrsjnm9gksijgnr6zxqiqvn06mdiwsk5j87ggmxazxd66av"))))
     (build-system meson-build-system)
     (arguments
      `(;; elogind is propagated by wlroots -> libseat
@@ -1616,6 +1694,7 @@ modules for building a Wayland compositor.")
                   libinput-minimal
                   libxkbcommon
                   pango
+                  pcre2
                   swaybg
                   wayland
                   wlroots))
@@ -1624,6 +1703,29 @@ modules for building a Wayland compositor.")
     (home-page "https://github.com/swaywm/sway")
     (synopsis "Wayland compositor compatible with i3")
     (description "Sway is a i3-compatible Wayland compositor.")
+    (license license:expat)))
+
+(define-public swayfx
+  (package
+    (inherit sway)
+    (name "swayfx")
+    (version "0.3.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/WillPower3309/swayfx")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1550n9xnqbl1am4cwlnj8ip5cs7kgdzx96ga2hkcw29cpyian7rv"))))
+    (build-system meson-build-system)
+    (home-page "https://github.com/WillPower3309/swayfx")
+    (synopsis "Sway Fork with extra options and effects")
+    (description
+     "Fork of Sway, a Wayland compositor compatible with i3.  SwayFX
+adds extra options and effects to the original Sway, such as blur, rounded
+corners, shadows, inactive window dimming, etc.")
     (license license:expat)))
 
 (define-public swayidle
@@ -1652,20 +1754,18 @@ modules for building a Wayland compositor.")
 (define-public swaylock
   (package
     (name "swaylock")
-    (version "1.6")
+    (version "1.7.2")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/swaywm/swaylock")
-             (commit version)))
+             (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1ihdvx6gdinzabvnazjmkk3ajrp7ngg0jzfwcjqn4hcjv64s0lam"))))
+        (base32 "03jrjwlwxkcyd6m9a1bbwapasnz7b7aws7h0y6jigjm4m478phv6"))))
     (build-system meson-build-system)
-    (inputs (list cairo gdk-pixbuf libxkbcommon
-                  ;("linux-pam" ,linux-pam) ; FIXME: Doesn't work.
-                  wayland))
+    (inputs (list cairo gdk-pixbuf libxkbcommon linux-pam wayland))
     (native-inputs (list pango pkg-config scdoc wayland-protocols))
     (home-page "https://github.com/swaywm/sway")
     (synopsis "Screen locking utility for Wayland compositors")
@@ -1676,7 +1776,7 @@ modules for building a Wayland compositor.")
   (package
     (inherit swaylock)
     (name "swaylock-effects")
-    (version "1.6.10")
+    (version "1.6.11")
     (source
      (origin
        (method git-fetch)
@@ -1686,7 +1786,7 @@ modules for building a Wayland compositor.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1d8ri7bzwfr53ybgf23acz57wyhcl2f1nqprcda1v9bzfgsqfk2n"))))
+         "0j7dxn66xqlf6iv2arqzz7mxlh7nf85anvpyf30d2frcidarda9h"))))
     (arguments
      (list #:configure-flags #~'("-Dsse=false")))
     (synopsis "Screen locking utility for Wayland compositors with effects")
@@ -1720,7 +1820,7 @@ display a clock or apply image manipulation techniques to the background image."
 (define-public swaynotificationcenter
   (package
     (name "swaynotificationcenter")
-    (version "0.7.3")
+    (version "0.8.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1728,7 +1828,7 @@ display a clock or apply image manipulation techniques to the background image."
                     (commit (string-append "v" version))))
               (file-name (git-file-name name version))
               (sha256
-               (base32 "1xvr5m5sqznr3dd512i5pk0d56v7n0ywdcy6rnz85vbf2k7b6kj5"))))
+               (base32 "1c3gd6mlr209jzzrh5jmws2lawnn3gr6smvzcw74kkpi3wvs7l0k"))))
     (build-system meson-build-system)
     (arguments (list #:configure-flags #~(list "-Dsystemd-service=false")))
     (native-inputs
@@ -1744,6 +1844,8 @@ display a clock or apply image manipulation techniques to the background image."
            gtk+
            gtk-layer-shell
            libhandy
+           libgee
+           pulseaudio
            wayland-protocols))
     (synopsis "Notification daemon with a graphical interface")
     (description
@@ -1770,7 +1872,7 @@ compository, supporting the following featuers:
 (define-public waybar
   (package
     (name "waybar")
-    (version "0.9.16")
+    (version "0.9.18")
     (source
      (origin
        (method git-fetch)
@@ -1779,7 +1881,7 @@ compository, supporting the following featuers:
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "06vwsax8z6vvvav4c1d40nfiljc7h1cla57r43nv8dw86n539ic5"))))
+        (base32 "11yia2fs5a05jlbrdhxm26c2sgmbj3iwsk3bsqcvjvv3mlsrhxkf"))))
     (build-system meson-build-system)
     (inputs (list date
                   fmt
@@ -1791,6 +1893,7 @@ compository, supporting the following featuers:
                   libmpdclient
                   libnl
                   libxml2
+                  playerctl
                   pulseaudio
                   spdlog
                   wayland))
@@ -1830,10 +1933,18 @@ core/thread.")
     (home-page "https://github.com/plattfot/cpu-histogram/")
     (license license:expat)))
 
+(define-public waybar-experimental
+  (let ((base waybar))
+    (package/inherit base
+      (name "waybar-experimental")
+      (arguments
+       (list #:configure-flags #~(list "-Dexperimental=true")))
+      (synopsis "Waybar with experimental features"))))
+
 (define-public wlr-randr
   (package
     (name "wlr-randr")
-    (version "0.2.0")
+    (version "0.3.0")
     (source
      (origin
        (method git-fetch)
@@ -1842,7 +1953,7 @@ core/thread.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0d44r4schknfc3g09y0kjbhl62zkynv6hi1z4zqc9ic5fhav3r15"))))
+        (base32 "0cj24fb6s7n8nphvhrp8ldrivjdcrjw64i5v9rsfb6z80q4qg548"))))
     (build-system meson-build-system)
     (inputs (list wayland))
     (native-inputs (list pkg-config))
@@ -1854,7 +1965,7 @@ core/thread.")
 (define-public mako
   (package
     (name "mako")
-    (version "1.7.1")
+    (version "1.8.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1863,7 +1974,7 @@ core/thread.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0vpar1a7zafkd2plmyaackgba6fyg35s9zzyxmj8j7v2q5zxirgz"))))
+                "05g1gp61qd9n9w4lq925i4wgryagvah6x489g17j7rnw59q4qhdi"))))
     (build-system meson-build-system)
     (arguments
      (list #:phases
@@ -1891,7 +2002,7 @@ compositors that support the layer-shell protocol.")
 (define-public kanshi
   (package
     (name "kanshi")
-    (version "1.3.0")
+    (version "1.3.1")
     (source
      (origin
        (method git-fetch)
@@ -1900,7 +2011,7 @@ compositors that support the layer-shell protocol.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0sa8k74d24ijw6ml1yyy75dk763r2sbm7fgk033g5xnx28kd394j"))))
+        (base32 "195v6lfh9w88nas6pca0v644nvrc645sramj78gzgqdm7nm20rvq"))))
     (build-system meson-build-system)
     (inputs (list wayland))
     (native-inputs (list pkg-config scdoc))
@@ -1910,6 +2021,29 @@ compositors that support the layer-shell protocol.")
 automatically enabled and disabled on hotplug.  Kanshi can be used with
 Wayland compositors supporting the wlr-output-management protocol.")
     (license license:expat))) ; MIT license
+
+(define-public wdisplays
+  (package
+    (name "wdisplays")
+    (version "1.1.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/artizirk/wdisplays.git")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "06ydcmfdics2qqjb14p767xs8khd86nancdd9z8j11h2gpvwznvn"))))
+    (build-system meson-build-system)
+    (inputs (list gtk+ libepoxy wayland))
+    (native-inputs (list `(,glib "bin") pkg-config))
+    (home-page "https://github.com/artizirk/wdisplays")
+    (synopsis "Configuring displays in Wayland compositors")
+    (description "@command{wdisplays} is a graphical application for
+configuring displays in Wayland compositors that implements the
+wlr-output-management-unstable-v1 protocol.")
+    (license license:gpl3+)))
 
 (define-public stumpwm
   (package
@@ -1976,7 +2110,11 @@ Wayland compositors supporting the wlr-output-management protocol.")
                 (invoke "./autogen.sh")
                 (invoke "sh" "./configure" "SHELL=sh")
                 (apply invoke "make" "stumpwm.info" make-flags)
-                (install-file "stumpwm.info" info)))))))
+                (install-file "stumpwm.info" info))))
+          (add-after 'install-manual 'remove-temporary-cache
+            (lambda* (#:key outputs #:allow-other-keys)
+              (delete-file-recursively (string-append (assoc-ref outputs "lib")
+                                                      "/.cache")))))))
     (synopsis "Window manager written in Common Lisp")
     (description
      "Stumpwm is a window manager written entirely in Common Lisp.
@@ -2019,6 +2157,7 @@ productive, customizable lisp based systems.")
            (delete 'copy-source)
            (delete 'build)
            (delete 'check)
+           (delete 'remove-temporary-cache)
            (delete 'cleanup)))))))
 
 (define stumpwm-contrib
@@ -2370,6 +2509,25 @@ one in Emacs.")
 PNG files.")
     (license license:gpl3+)))
 
+(define-public sbcl-stumpwm-hostname
+  (package
+    (inherit stumpwm-contrib)
+    (name "sbcl-stumpwm-hostname")
+    (arguments
+     '(#:asd-systems '("hostname")
+       #:tests? #f
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'chdir
+           (lambda _
+             (chdir "modeline/hostname"))))))
+    (home-page
+     "https://github.com/stumpwm/stumpwm-contrib/tree/master/modeline/hostname")
+    (synopsis "Put hostname in the StumpWM modeline")
+    (description "This StumpWM module puts the hostname in the StumpWM
+modeline.")
+    (license license:gpl3+)))
+
 (define-public sbcl-stumpwm-notify
   (package
     (inherit stumpwm-contrib)
@@ -2680,7 +2838,7 @@ shows a notification for the user on the screen.")
 (define-public cagebreak
   (package
     (name "cagebreak")
-    (version "1.8.3")
+    (version "2.1.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2689,16 +2847,21 @@ shows a notification for the user on the screen.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0vm97ak0589v39m3fljf1qhy92dqgiqcrrfp757gg7q58qwa6dkf"))))
+                "09ky8wili3ym8qi4dasckdcdcvn4g6ak08dg0yccnwmnlwxiyps6"))))
     (build-system meson-build-system)
     (arguments
-     `(#:configure-flags '("-Dxwayland=true")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-data-dir
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "meson.build"
-               (("/etc/") (string-append (assoc-ref outputs "out") "/etc"))))))))
+     (list
+      #:configure-flags #~(list "-Dxwayland=true")
+      ;; XXX: Running cagebreak tests need more tools, such as: clang-format,
+      ;; shellcheck, git, gnupg ...
+      #:tests? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-data-dir
+            (lambda _
+              (substitute* '("cagebreak.c" "meson.build")
+                (("/etc/") (string-append #$output "/etc/"))
+                (("/usr/share/") (string-append #$output "/usr/share/"))))))))
     (native-inputs (list pandoc pkg-config))
     (inputs (list libevdev pango wlroots))
     (home-page "https://github.com/project-repo/cagebreak")
@@ -2732,6 +2895,47 @@ for wayland conceptually based on the X11 window manager
      (description "libucl implements a configuration language that is easy to
 read and write, and compatible with JSON.")
     (license license:bsd-2)))
+
+(define-public labwc
+  (package
+    (name "labwc")
+    (version "0.6.4")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/labwc/labwc")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "00ajr7s8qywdfa9vhlfc02p1wwdcqaaa09pm1im9w6mrvb904lzh"))))
+    (build-system meson-build-system)
+    (native-inputs
+     (list pkg-config gettext-minimal scdoc))
+    (inputs
+     (list cairo
+           glib
+           libxcb
+           libxml2
+           pango
+           wlroots))
+    (home-page "https://labwc.github.io")
+    (synopsis "Window-stacking compositor for Wayland")
+    (description
+     "Labwc is lightweight and independent with a focus on simply stacking
+windows well and rendering some window decorations, it is inspired by Openbox.
+It takes a no-bling/frills approach and says no to features such as icons
+(except window buttons), animations, decorative gradients and any other
+options not required to reasonably render common themes.  It relies on clients
+for panels, screenshots, wallpapers and so on to create a full desktop
+environment.
+
+Labwc tries to stay in keeping with wlroots and sway in terms of general
+approach and coding style.
+
+Labwc has no reliance on any particular Desktop Environment, Desktop Shell or
+session.  Nor does it depend on any UI toolkits such as Qt or GTK.")
+    (license license:gpl2)))
 
 (define-public hikari
   (package
@@ -2781,6 +2985,94 @@ read and write, and compatible with JSON.")
      "Hikari is a stacking Wayland compositor with additional tiling
 capabilities.  It is heavily inspired by the Calm Window manager(cwm).")
     (license license:bsd-2)))
+
+(define-public jwm
+  (package
+    (name "jwm")
+    (version "2.4.3")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/joewing/jwm/releases/download/"
+                    "v" version "/jwm-" version ".tar.xz"))
+              (sha256
+               (base32
+                "1av7r9sp26r5l74zvwdmyyyzav29mw5bafihp7y33vsjqkh4wfzf"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f   ; no check target
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-xsession
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (xsessions (string-append out "/share/xsessions")))
+                (mkdir-p xsessions)
+                (call-with-output-file
+                    (string-append xsessions "/jwm.desktop")
+                  (lambda (port)
+                    (format port "~
+                     [Desktop Entry]~@
+                     Name=jwm~@
+                     Comment=Joe's Window Manager~@
+                     Exec=~a/bin/jwm~@
+                     Type=XSession~%" out)))))))))
+    (native-inputs (list pkg-config))
+    (inputs
+     (list cairo
+           libjpeg-turbo
+           libpng
+           librsvg
+           libxext
+           libxinerama
+           libxmu
+           libxpm
+           libxrender
+           libxt
+           pango))
+    (home-page "http://joewing.net/projects/jwm")
+    (synopsis "Joe's Window Manager")
+    (description
+     "JWM is a light-weight window manager for the X11 Window System.  it is
+written in C and uses only Xlib at a minimum.  Because of its small footprint,
+it makes a good window manager for older computers and less powerful systems,
+such as the Raspberry Pi, though it is perfectly capable of running on modern
+systems.")
+    (license license:expat)))
+
+(define-public mjwm
+  (package
+    (name "mjwm")
+    (version "4.1.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/chiku/mjwm")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0lgfp2xidhvmbj4zqvzz9g8zwbn6mz0pgacc57b43ha523vamsjq"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f   ; no check target
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-subcategory.h
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "include/subcategory.h"
+                ;; icon name should be application-other instead of
+                ;; application-others.
+                (("applications-others") "applications-other")))))))
+    (home-page "https://github.com/chiku/mjwm")
+    (synopsis "Create menu for JWM")
+    (description
+     "MJWM can create JWM's menu from (freedesktop) desktop files and the
+generated file can be include in the rootmenu section of your jwm config
+file.")
+    (license license:gpl2+)))
 
 (define-public devour
   (package
@@ -2980,7 +3272,7 @@ used for multimedia keys.")
     (build-system copy-build-system)
     (arguments
      (list #:install-plan #~`(("grimshot" "bin/")
-                              ("grimshot.1" "usr/share/man/man1/"))
+                              ("grimshot.1" "share/man/man1/"))
            #:phases #~(modify-phases %standard-phases
                         (add-after 'unpack 'chdir
                           (lambda _

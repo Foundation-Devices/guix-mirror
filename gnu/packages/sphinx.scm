@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2014 David Thompson <davet@gnu.org>
-;;; Copyright © 2015, 2017, 2019, 2020, 2021 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2017, 2019, 2020, 2021, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2016, 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2016-2019, 2022 Marius Bakke <marius@gnu.org>
@@ -10,7 +10,7 @@
 ;;; Copyright © 2017 Christine Lemmer-Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2017 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2019, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
-;;; Copyright © 2019, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2019, 2021, 2023 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2019 Alexandros Theodotou <alex@zrythm.org>
 ;;; Copyright © 2019 Brett Gilio <brettg@gnu.org>
 ;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
@@ -109,28 +109,27 @@
            texlive-amsmath
            texlive-capt-of
            texlive-carlisle             ;remreset
+           texlive-cmap
            texlive-etoolbox
-           texlive-ltxcmds
-           texlive-hyperref
-           texlive-latex-base           ;alltt, atbegshi, makeidx, textcomp
-           texlive-latex-cmap
            texlive-fancyhdr
            texlive-fancyvrb
-           texlive-latex-float
-           texlive-latex-fncychap
-           texlive-latex-framed
-           texlive-latex-geometry
-           texlive-graphics                       ;graphicx, color
+           texlive-float
+           texlive-fncychap
+           texlive-framed
+           texlive-geometry
+           texlive-hyperref
            texlive-kvoptions
-           texlive-latex-needspace
-           texlive-latex-parskip
-           texlive-latex-preview
-           texlive-latex-tabulary
-           texlive-titlesec
-           texlive-tools                          ;multicol, longtable
-           texlive-latex-upquote
-           texlive-latex-varwidth
+           texlive-latex-bin
+           texlive-ltxcmds
+           texlive-needspace
            texlive-oberdiek             ;hypcap
+           texlive-parskip
+           texlive-preview
+           texlive-tabulary
+           texlive-titlesec
+           texlive-tools                ;multicol, longtable
+           texlive-upquote
+           texlive-varwidth
            texlive-wrapfig
            texlive-xcolor))
     (native-inputs
@@ -155,7 +154,10 @@ sources.")
               (uri (pypi-uri "Sphinx" version))
               (sha256
                (base32
-                "1rp28jryxwy24y8vpacclqihbizyi6b1s6id86pibvm46ybcmy3v"))))))
+                "1rp28jryxwy24y8vpacclqihbizyi6b1s6id86pibvm46ybcmy3v"))))
+    (propagated-inputs
+     (modify-inputs (package-propagated-inputs python-sphinx)
+       (replace "python-docutils" python-docutils-0.15)))))
 
 (define-public python-sphinxcontrib-apidoc
   (package
@@ -173,7 +175,6 @@ sources.")
      `(#:tests? #f))                    ;requires python-pytest<4.0
     (native-inputs
      (list python-pbr
-           python-pre-commit
            python-pytest
            python-sphinx
            python-testrepository))
@@ -366,15 +367,8 @@ Blog, News or Announcements section to a Sphinx website.")
         (file-name (git-file-name name version))
         (sha256
          (base32 "1ivqz6yv96a2jp59kylg1gbkrmzq6zwilppz3ij0zrkjn25zb97k"))))
-    (build-system python-build-system)
-    (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (invoke "pytest")))))))
-    (propagated-inputs (list python-docutils python-sphinx-4))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-docutils-0.15 python-sphinx-4))
     (native-inputs
      (list python-pytest
            python-pytest-regressions))
@@ -795,7 +789,15 @@ scientific documentation.")
         (base32
          "0p3abj91c3l72ajj5jwblscsdf1jflrnn0djx2h5y6f2wjbx9ipf"))))
     (build-system python-build-system)
-    (arguments '(#:tests? #f)) ; No tests.
+    (arguments
+     (list
+      #:tests? #f ; No tests.
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'allow-newer-docutil
+            (lambda _
+              (substitute* "setup.py"
+                (("docutils<0.18") "docutils<0.20")))))))
     (propagated-inputs (list python-docutils python-sphinx))
     (home-page "https://github.com/snide/sphinx_rtd_theme/")
     (synopsis "ReadTheDocs.org theme for Sphinx")
@@ -805,18 +807,27 @@ scientific documentation.")
 (define-public python-breathe
   (package
     (name "python-breathe")
-    (version "4.34.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (pypi-uri "breathe" version))
-       (sha256
-        (base32
-         "18fvphs1cb2cns9q82195fx7lmlwfikzwa10cczavpaax2jnh1xc"))))
+    (version "4.35.0")
+    (source (origin
+              (method git-fetch) ;git repo has tests
+              (uri (git-reference
+                    (url "https://github.com/breathe-doc/breathe")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1hlcrhr533yjkz9ds83xnmn8h6z3r6vfzz7qrpy14n9j4ysyz59c"))))
     (build-system python-build-system)
-    (propagated-inputs
-     (list python-docutils python-sphinx))
-    (home-page "https://github.com/michaeljones/breathe")
+    (arguments
+     (list #:phases #~(modify-phases %standard-phases
+                        (replace 'check
+                          (lambda* (#:key tests? #:allow-other-keys)
+                            (when tests?
+                              (with-directory-excursion "tests"
+                                (invoke "python" "-m" "pytest" "-v"))))))))
+    (native-inputs (list python-pytest))
+    (propagated-inputs (list python-docutils python-sphinx))
+    (home-page "https://www.breathe-doc.org")
     (synopsis "ReStructuredText and Sphinx bridge to Doxygen")
     (description "This package is an extension to reStructuredText and Sphinx
 to be able to read and render the Doxygen xml output.")

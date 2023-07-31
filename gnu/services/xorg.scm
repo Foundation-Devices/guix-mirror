@@ -13,6 +13,7 @@
 ;;; Copyright © 2021 Josselin Poiret <josselin.poiret@protonmail.ch>
 ;;; Copyright © 2022 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2023 muradm <mail@muradm.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -107,10 +108,15 @@
 
             slim-service-type
 
-            screen-locker
-            screen-locker?
+            screen-locker-configuration
+            screen-locker-configuration?
+            screen-locker-configuration-name
+            screen-locker-configuration-program
+            screen-locker-configuration-allow-empty-password?
+            screen-locker-configuration-using-pam?
+            screen-locker-configuration-using-setuid?
             screen-locker-service-type
-            screen-locker-service
+            screen-locker-service  ; deprecated
 
             localed-configuration
             localed-configuration?
@@ -355,6 +361,22 @@ in @var{modules}."
                                  files)
                        #t))))
 
+(define (xorg-configuration-server-package-path config input path)
+  "Lookup the direct @var{input} in the xorg server package of @var{config}
+and append @var{path} to it."
+  (let* ((server (xorg-configuration-server config))
+         (package (lookup-package-direct-input server input)))
+    (when package (file-append package path))))
+
+(define (xorg-configuration-dri-driver-path config)
+  (xorg-configuration-server-package-path config "mesa" "/lib/dri"))
+
+(define (xorg-configuration-xkb-bin-dir config)
+  (xorg-configuration-server-package-path config "xkbcomp" "/bin"))
+
+(define (xorg-configuration-xkb-dir config)
+  (xorg-configuration-server-package-path config "xkeyboard-config" "/share/X11/xkb"))
+
 (define* (xorg-wrapper #:optional (config (xorg-configuration)))
   "Return a derivation that builds a script to start the X server with the
 given @var{config}.  The resulting script should be used in place of
@@ -362,12 +384,13 @@ given @var{config}.  The resulting script should be used in place of
   (define exp
     ;; Write a small wrapper around the X server.
     #~(begin
-        (setenv "XORG_DRI_DRIVER_PATH" (string-append #$mesa "/lib/dri"))
-        (setenv "XKB_BINDIR" (string-append #$xkbcomp "/bin"))
+        (setenv "XORG_DRI_DRIVER_PATH"
+                #$(xorg-configuration-dri-driver-path config))
+        (setenv "XKB_BINDIR" #$(xorg-configuration-xkb-bin-dir config))
 
         (let ((X (string-append #$(xorg-configuration-server config) "/bin/X")))
           (apply execl X X
-                 "-xkbdir" (string-append #$xkeyboard-config "/share/X11/xkb")
+                 "-xkbdir" #$(xorg-configuration-xkb-dir config)
                  "-config" #$(xorg-configuration->file config)
                  "-configdir" #$(xorg-configuration-directory
                                  (xorg-configuration-modules config))
@@ -647,7 +670,7 @@ reboot_cmd " shepherd "/sbin/reboot\n"
 
                        (list (symbol-append 'xorg-server-
                                             (string->symbol vt)))))
-           (requirement '(user-processes host-name udev))
+           (requirement '(pam user-processes host-name udev))
            (start
             #~(lambda ()
                 ;; A stale lock file can prevent SLiM from starting, so remove it to
@@ -683,21 +706,38 @@ reboot_cmd " shepherd "/sbin/reboot\n"
 ;;; Screen lockers & co.
 ;;;
 
-(define-record-type <screen-locker>
-  (screen-locker name program empty?)
-  screen-locker?
-  (name    screen-locker-name)                     ;string
-  (program screen-locker-program)                  ;gexp
-  (empty?  screen-locker-allows-empty-passwords?)) ;Boolean
+(define-configuration/no-serialization screen-locker-configuration
+  (name
+   string
+   "Name of the screen locker.")
+  (program
+   file-like
+   "Path to the executable for the screen locker as a G-Expression.")
+  (allow-empty-password?
+   (boolean #f)
+   "Whether to allow empty passwords.")
+  (using-pam?
+   (boolean #t)
+   "Whether to setup PAM entry.")
+  (using-setuid?
+   (boolean #t)
+   "Whether to setup program as setuid binary."))
 
-(define screen-locker-pam-services
-  (match-lambda
-    (($ <screen-locker> name _ empty?)
-     (list (unix-pam-service name
-                             #:allow-empty-passwords? empty?)))))
+(define (screen-locker-pam-services config)
+  (match-record config <screen-locker-configuration>
+    (name allow-empty-password? using-pam?)
+    (if using-pam?
+        (list (unix-pam-service name
+                                #:allow-empty-passwords?
+                                allow-empty-password?))
+        '())))
 
-(define screen-locker-setuid-programs
-  (compose list file-like->setuid-program screen-locker-program))
+(define (screen-locker-setuid-programs config)
+  (match-record config <screen-locker-configuration>
+    (name program using-setuid?)
+    (if using-setuid?
+        (list (file-like->setuid-program program))
+        '())))
 
 (define screen-locker-service-type
   (service-type (name 'screen-locker)
@@ -711,10 +751,14 @@ reboot_cmd " shepherd "/sbin/reboot\n"
 the graphical server by making it setuid-root, so it can authenticate users,
 and by creating a PAM service for it.")))
 
-(define* (screen-locker-service package
-                                #:optional
-                                (program (package-name package))
-                                #:key allow-empty-passwords?)
+(define (screen-locker-generate-doc)
+  (configuration->documentation 'screen-locker-configuration))
+
+(define-deprecated (screen-locker-service package
+                                          #:optional
+                                          (program (package-name package))
+                                          #:key allow-empty-passwords?)
+  screen-locker-service-type
   "Add @var{package}, a package for a screen locker or screen saver whose
 command is @var{program}, to the set of setuid programs and add a PAM entry
 for it.  For example:
@@ -725,9 +769,10 @@ for it.  For example:
 
 makes the good ol' XlockMore usable."
   (service screen-locker-service-type
-           (screen-locker program
-                          (file-append package "/bin/" program)
-                          allow-empty-passwords?)))
+           (screen-locker-configuration
+            (name program)
+            (program (file-append package "/bin/" program))
+            (allow-empty-password? allow-empty-passwords?))))
 
 
 ;;;
@@ -1089,7 +1134,7 @@ argument.")))
   (list (shepherd-service
          (documentation "Xorg display server (GDM)")
          (provision '(xorg-server))
-         (requirement '(dbus-system user-processes host-name udev elogind))
+         (requirement '(dbus-system pam user-processes host-name udev elogind))
          (start #~(lambda ()
                     (fork+exec-command
                      (list #$(file-append (gdm-configuration-gdm config)

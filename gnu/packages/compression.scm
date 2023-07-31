@@ -7,7 +7,7 @@
 ;;; Copyright © 2015, 2016, 2017, 2018, 2020, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2017, 2018 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2015 Jeff Mickey <j@codemac.net>
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2015-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2016 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2016–2022 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -24,7 +24,7 @@
 ;;; Copyright © 2018 Joshua Sierles, Nextjournal <joshua@nextjournal.com>
 ;;; Copyright © 2018, 2019 Pierre Neidhardt <mail@ambrevar.xyz>
 ;;; Copyright © 2019 Nicolas Goaziou <mail@nicolasgoaziou.fr>
-;;; Copyright © 2019 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2019, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020 Björn Höfling <bjoern.hoefling@bjoernhoefling.de>
 ;;; Copyright © 2020 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2020, 2021 Lars-Dominik Braun <lars@6xq.net>
@@ -809,13 +809,13 @@ sfArk file format to the uncompressed sf2 format.")
   (package
     (name "libmspack")
     (home-page "https://cabextract.org.uk/libmspack/")
-    (version "0.10.1")
+    (version "0.11")
     (source
      (origin
       (method url-fetch)
       (uri (string-append home-page name "-" version "alpha.tar.gz"))
       (sha256
-       (base32 "13janaqsvm7aqc4agjgd4819pbgqv50j88bh5kci1z70wvg65j5s"))))
+       (base32 "06x2xq73lchw5lcq386sx9wk05v21s2f38bi3dwkdk5fy2r1zpbh"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags '("--disable-static")))
@@ -840,11 +840,7 @@ decompression of some loosely related file formats used by Microsoft.")
     (build-system gnu-build-system)
     (outputs (list "out" "static"))
     (native-inputs
-     (append
-       (list python)    ;; For tests.
-       (if (member (%current-system) (package-supported-systems valgrind))
-         (list valgrind)
-         '())))
+     (list python)) ;; For tests.
     (arguments
      `(;; Not designed for parallel testing.
        ;; See https://github.com/lz4/lz4/issues/957#issuecomment-737419821
@@ -860,16 +856,14 @@ decompression of some loosely related file formats used by Microsoft.")
              (substitute* "tests/Makefile"
                ;; This fails when $prefix is not a single top-level directory.
                (("^test: (.*) test-install" _ targets)
-                (string-append "test: " targets)))
-             #t))
+                (string-append "test: " targets)))))
          (add-after 'install 'move-static-library
            (lambda* (#:key outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out"))
                    (static (assoc-ref outputs "static")))
                (mkdir-p (string-append static "/lib"))
                (rename-file (string-append out "/lib/liblz4.a")
-                            (string-append static "/lib/liblz4.a"))
-               #t))))))
+                            (string-append static "/lib/liblz4.a"))))))))
     (home-page "https://www.lz4.org")
     (synopsis "Compression algorithm focused on speed")
     (description "LZ4 is a lossless compression algorithm, providing
@@ -1069,13 +1063,13 @@ tarballs.")
  (package
    (name "cabextract")
    (home-page "https://cabextract.org.uk/")
-   (version "1.9.1")
+   (version "1.11")
    (source (origin
               (method url-fetch)
               (uri (string-append home-page "cabextract-" version ".tar.gz"))
               (sha256
                (base32
-                "19qwhl2r8ip95q4vxzxg2kp4p125hjmc9762sns1dwwf7ikm7hmg"))
+                "1iis7a19n26dax3gsnrw9kb0vwq46rbpicnlyf7p2k2y2nqnsm5m"))
               (modules '((guix build utils)))
               (snippet
                '(begin
@@ -1666,7 +1660,9 @@ or junctions, and always follows hard links.")
              "HAVE_LZMA=0"
              ;; Not currently detected, but be explicit & avoid surprises later.
              "HAVE_LZ4=0"
-             "HAVE_ZLIB=0")))
+             "HAVE_ZLIB=0")
+       #:tests? ,(not (or (target-hurd?)
+                          (%current-target-system)))))
     (home-page "https://facebook.github.io/zstd/")
     (synopsis "Zstandard real-time compression algorithm")
     (description "Zstandard (@command{zstd}) is a lossless compression algorithm
@@ -1682,6 +1678,20 @@ speed.")
                    license:expat         ; lib/dictBuilder/divsufsort.[ch]
                    license:public-domain ; zlibWrapper/examples/fitblk*
                    license:zlib))))      ; zlibWrapper/{gz*.c,gzguts.h}
+
+(define-public zstd-1.5.5
+  (package
+    (inherit zstd)
+    ;; Don't hide this package from the UI.
+    (properties '())
+    (version "1.5.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/facebook/zstd/releases/download/"
+                           "v" version "/zstd-" version ".tar.gz"))
+       (sha256
+        (base32 "1r1ydmj7ib3g5372yj3k40vl3b9ax0154qg2lqcy7ylwhb69chww"))))))
 
 (define-public pzstd
   (package/inherit zstd
@@ -2353,7 +2363,7 @@ reading from and writing to ZIP archives.")
 (define-public zchunk
   (package
     (name "zchunk")
-    (version "1.2.2")
+    (version "1.3.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2362,22 +2372,23 @@ reading from and writing to ZIP archives.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0q0avb0397xkmidl8rxasfywp0r7w3awk6271pa2d9xl9p1n82zy"))))
+                "19rw870150w1c730wzg2pn68ixmscq8cwa3vricqhwxs5l63r5wr"))))
     (build-system meson-build-system)
     (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'patch-paths
-                    (lambda* (#:key inputs #:allow-other-keys)
-                      (substitute* "src/zck_gen_zdict.c"
-                        (("/usr/bin/zstd")
-                         (string-append (assoc-ref inputs "zstd")
-                                        "/bin/zstd"))))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-file-name
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "src/zck_gen_zdict.c"
+                (("/usr/(bin/zstd)" _ file)
+                 (string-append (search-input-file inputs file)))))))))
     (native-inputs
      (list pkg-config))
     (inputs
      (list curl zstd))
     (propagated-inputs
-     `(("zstd:lib" ,zstd "lib")))       ;in Requires.private of zck.pc
+     (list `(,zstd "lib")))             ; in Requires.private of zck.pc
     (home-page "https://github.com/zchunk/zchunk")
     (synopsis "Compressed file format for efficient deltas")
     (description "The zchunk compressed file format allows splitting a file
@@ -2404,32 +2415,25 @@ To download a zchunk file.
 (define-public zutils
   (package
     (name "zutils")
-    (version "1.10")
+    (version "1.12")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://savannah/zutils/zutils-" version ".tar.lz"))
        (sha256
-        (base32 "15dimqp8zlqaaa2l46r22srp1py38mlmn69ph1j5fmrd54w43m0d"))))
+        (base32 "1vl8mhvsl0zlh34hwhc05vj33a2xfr0w7i978hcwaw8wn1w59bkq"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags
-       (list "--sysconfdir=/etc")
-       #:phases
-       (modify-phases %standard-phases
-         (add-before 'check 'disable-failing-tests
-           ;; XXX https://lists.nongnu.org/archive/html/zutils-bug/2020-07/msg00005.html
-           (lambda _
-             (substitute* "testsuite/check.sh"
-               (("\"\\$\\{ZGREP\\}\" -N -L \"GNU\"") "true")
-               (("\"\\$\\{ZGREP\\}\" -N -L \"nx_pattern\"") "false"))
-             #t))
-         (replace 'install
-          (lambda* (#:key make-flags outputs #:allow-other-keys)
-            (apply invoke "make" "install"
-                   (string-append "sysconfdir=" (assoc-ref outputs "out")
-                                  "/etc")
-                   make-flags))))))
+     (list
+      #:configure-flags
+      #~(list "--sysconfdir=/etc")
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'install
+            (lambda* (#:key make-flags #:allow-other-keys)
+              (apply invoke "make" "install"
+                     (string-append "sysconfdir=" #$output "/etc")
+                     make-flags))))))
     (native-inputs
      ;; Needed to extract the source tarball and run the test suite.
      (list lzip))
@@ -2531,7 +2535,7 @@ file compression algorithm.")
 (define-public xarchiver
   (package
     (name "xarchiver")
-    (version "0.5.4.20")
+    (version "0.5.4.21")
     (source
      (origin
        (method git-fetch)
@@ -2540,7 +2544,7 @@ file compression algorithm.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1bgc8r2ii96ghslfscpjhswjgscvw65h2rjr0zvfqn8saqh1ydrv"))))
+        (base32 "0m3vq1mh2vg5r7vhnwjkfhix6i2cm15z82xsi6zaqvc4zkswb2m5"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
      (list gettext-minimal intltool libxslt pkg-config))
@@ -2679,12 +2683,8 @@ to their original, binary CD format.")
     (build-system cmake-build-system)
     (arguments
      (list #:configure-flags
-           #~(list "-DLIBDEFLATE_BUILD_STATIC_LIB=NO")
-           #:phases
-           #~(modify-phases %standard-phases
-               (replace 'check
-                 (lambda _
-                   (invoke "../source/scripts/run_tests.sh"))))))
+           #~(list "-DLIBDEFLATE_BUILD_STATIC_LIB=NO"
+                   "-DLIBDEFLATE_BUILD_TESTS=YES")))
     (inputs
      (list zlib))
     (home-page "https://github.com/ebiggers/libdeflate")

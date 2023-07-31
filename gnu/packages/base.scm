@@ -6,7 +6,7 @@
 ;;; Copyright © 2014 Alex Kost <alezost@gmail.com>
 ;;; Copyright © 2014, 2015 Manolis Fragkiskos Ragkousis <manolis837@gmail.com>
 ;;; Copyright © 2016, 2017, 2019-2023 Efraim Flashner <efraim@flashner.co.il>
-;;; Copyright © 2016, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2016, 2020, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2016, 2018 Alex Vong <alexvong1995@gmail.com>
 ;;; Copyright © 2017 Rene Saavedra <rennes@openmailbox.org>
 ;;; Copyright © 2017, 2020 Mathieu Othacehe <m.othacehe@gmail.com>
@@ -22,6 +22,7 @@
 ;;; Copyright © 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 zamfofex <zamfofex@twdb.moe>
 ;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
+;;; Copyright © 2023 Josselin Poiret <dev@jpoiret.xyz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -75,6 +76,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
   #:export (glibc
+            libc-for-target
             make-ld-wrapper
             libiconv-if-needed))
 
@@ -132,21 +134,17 @@ command-line arguments, multiple languages, and so on.")
                                  (string-append bin "/fgrep"))
                 (("^exec grep")
                  (string-append "exec " bin "/grep"))))))
-        ,@(if (hurd-target?)
-              '((add-before 'check 'skip-triple-backref-test
+        ,@(if (system-hurd?)
+              '((add-before 'check 'skip-test
                   (lambda _
-                    ;; This test is marked as malfunctioning on glibc systems
-                    ;; due to
-                    ;; <https://sourceware.org/bugzilla/show_bug.cgi?id=11053>
-                    ;; and it triggers a segfault with glibc 2.33 on GNU/Hurd.
-                    ;; Skip it.
-                    (substitute* "tests/triple-backref"
-                      (("^warn_" all)
-                       (string-append "exit 77\n" all))))))
-              '()))
-      #:make-flags ,(if (hurd-target?)
-                        ''("XFAIL_TESTS=test-perror2 equiv-classes") ;XXX
-                        ''())))
+                    (substitute*
+                        ;; This test hangs
+                        '("tests/hash-collision-perf"
+                          ;; This test fails
+                          "tests/file")
+                      (("^#!.*" all)
+                       (string-append all "exit 77;\n"))))))
+              '()))))
    (synopsis "Print lines matching a pattern")
    (description
      "grep is a tool for finding text inside files.  Text is found by
@@ -185,10 +183,6 @@ including, for example, recursive directory searching.")
                     "  CONFIG_HEADER='$(CONFIG_HEADER)'\t\t\\\n")))))
             (modules '((guix build utils)))))
    (build-system gnu-build-system)
-   (arguments
-    `(#:make-flags ,(if (hurd-target?)
-                        ''("XFAIL_TESTS=test-perror2")
-                        ''())))
    (synopsis "Stream editor")
    (native-inputs (list perl))                    ;for tests
    (description
@@ -217,7 +211,7 @@ implementation offers several extensions over the standard utility.")
    ;; Note: test suite requires ~1GiB of disk space.
    (arguments
     `(,@(cond
-          ((hurd-target?)
+          ((target-hurd?)
            '(#:make-flags
              (list (string-append
                      "TESTSUITEFLAGS= -k '"
@@ -309,9 +303,15 @@ differences.")
             (patches (search-patches "diffutils-fix-signal-processing.patch"))))
    (build-system gnu-build-system)
    (arguments
-    `(#:make-flags ,(if (hurd-target?)
-                        ''("XFAIL_TESTS=test-perror2 large-subopt")
-                        ''())))
+    (list
+     #:phases (if (system-hurd?)
+                  #~(modify-phases %standard-phases
+                      (add-after 'unpack 'skip-tests
+                        (lambda _
+                          (substitute* "tests/large-subopt"
+                            (("^#!.*" all)
+                             (string-append all "exit 77;\n"))))))
+                  #~%standard-phases)))
    (native-inputs (list perl))
    (synopsis "Comparing and merging files")
    (description
@@ -346,10 +346,16 @@ interactive means to merge two files.")
                      (substitute* '("tests/xargs/verbose-quote.sh"
                                     "tests/find/exec-plus-last-file.sh")
                        (("#!/bin/sh")
-                        (string-append "#!" (which "sh")))))))
-      #:make-flags ,(if (hurd-target?)
-                        ''("XFAIL_TESTS=test-perror2")
-                        ''())))
+                        (string-append "#!" (which "sh"))))))
+                 ,@(if (system-hurd?)
+                       '((add-after 'unpack 'skip-tests
+                           (lambda _
+                             (substitute*
+                                 ;; This test fails non-deterministically
+                                 "gnulib-tests/test-strerror_r.c"
+                               (("(^| )main *\\(.*" all)
+                                (string-append all "{\n  exit (77);//"))))))
+                       '()))))
    (synopsis "Operating on files matching given criteria")
    (description
     "Findutils supplies the basic file directory searching utilities of the
@@ -395,23 +401,13 @@ used to apply commands with arbitrarily long arguments.")
    (outputs '("out" "debug"))
    (arguments
     `(#:parallel-build? #f            ; help2man may be called too early
-      ,@(if (hurd-target?)
+      ,@(if (system-hurd?)
             '(#:make-flags            ; these tests fail deterministically
-              (list (string-append "XFAIL_TESTS=tests/misc/env-S.pl"
-                                   " tests/misc/kill.sh"
-                                   " tests/misc/nice.sh"
-                                   " tests/misc/pwd-long.sh"
-                                   " tests/split/fail.sh"
-
-                                   ;; /hurd/fifo issue:
-                                   ;; <https://issues.guix.gnu.org/58803>.
-                                   " tests/df/unreadable.sh"
-
+              (list (string-append "XFAIL_TESTS="
                                    ;; Gnulib tests.
                                    " test-fdutimensat"
                                    " test-futimens"
                                    " test-linkat"
-                                   " test-perror2"
                                    " test-renameat"
                                    " test-renameatu"
                                    " test-utimensat")))
@@ -433,10 +429,35 @@ used to apply commands with arbitrarily long arguments.")
                        (("#!/bin/sh") (string-append "#!" (which "sh"))))))
                  (add-after 'unpack 'remove-tests
                    (lambda _
-                     ,@(if (hurd-target?)
-                           '((substitute* "Makefile.in"
-                               ;; this test hangs
-                               (("^ *tests/misc/timeout-group.sh.*") ""))
+                     ,@(if (system-hurd?)
+                           '((substitute*
+                                 ;; These tests hang
+                                 '("tests/cp/sparse-to-pipe.sh"
+                                   "tests/split/fail.sh"
+                                   ;; These tests error
+                                   "tests/dd/nocache.sh"
+                                   ;; These tests fail
+                                   "tests/cp/sparse.sh"
+                                   "tests/cp/special-f.sh"
+                                   "tests/dd/bytes.sh"
+                                   "tests/dd/stats.sh"
+                                   "tests/ls/dangle.sh"
+                                   "tests/ls/follow-slink.sh"
+                                   "tests/ls/hyperlink.sh"
+                                   "tests/ls/infloop.sh"
+                                   "tests/ls/inode.sh"
+                                   "tests/ls/selinux-segfault.sh"
+                                   "tests/misc/env-S.pl"
+                                   "tests/misc/factor-parallel.sh"
+                                   "tests/misc/ls-misc.pl"
+                                   "tests/misc/nice.sh"
+                                   "tests/misc/pwd-long.sh"
+                                   "tests/misc/shred-passes.sh"
+                                   "tests/misc/stat-slash.sh"
+                                   "tests/rm/fail-eperm.xpl"
+                                   "tests/split/filter.sh")
+                               (("^#!.*" all)
+                                (string-append all "exit 77;\n")))
                              (substitute* "gnulib-tests/Makefile.in"
                                ;; This test sometimes fails and sometimes
                                ;; passes, but it does this consistently, so
@@ -511,7 +532,7 @@ standard.")
    (inputs (list guile-3.0))
    (outputs '("out" "debug"))
    (arguments
-    `(,@(if (hurd-target?)
+    `(,@(if (target-hurd?)
             '(#:configure-flags '("CFLAGS=-D__alloca=alloca"
                                   "ac_cv_func_posix_spawn=no"))
             '())
@@ -755,6 +776,17 @@ the store.")
     (home-page "https://www.gnu.org/software/guix//")
     (license gpl3+)))
 
+(define-public %glibc/hurd-configure-flags
+  ;; 'configure' in glibc 2.35 omits to pass '-ffreestanding' when detecting
+  ;; Mach headers.  This is fixed in glibc commits
+  ;; 8b8c768e3c701ed1993789bb46acb8a12c7a93df and
+  ;; 7685630b98ca2a3f5de86eadf130993e6cf998a0; as a workaround, bypass those
+  ;; tests.
+  '("ac_cv_header_mach_mach_types_defs=yes"
+    "ac_cv_header_mach_mach_types_h=yes"
+    "ac_cv_header_mach_machine_ndr_def_h=no"
+    "libc_cv_mach_task_creation_time=yes"))
+
 (define-public glibc
   ;; This is the GNU C Library, used on GNU/Linux and GNU/Hurd.  Prior to
   ;; version 2.28, GNU/Hurd used a different glibc branch.
@@ -787,7 +819,7 @@ the store.")
    ;; libc provides <hurd.h>, which includes a bunch of Hurd and Mach headers,
    ;; so both should be propagated.
    (propagated-inputs
-    (if (hurd-target?)
+    (if (target-hurd?)
         `(("hurd-core-headers" ,hurd-core-headers))
         `(("kernel-headers" ,linux-libre-headers))))
 
@@ -853,8 +885,9 @@ the store.")
 
             ;; On GNU/Hurd we get discarded-qualifiers warnings for
             ;; 'device_write_inband' among other things.  Ignore them.
-            ,@(if (hurd-target?)
-                  '("--disable-werror")
+            ,@(if (target-hurd?)
+                  `("--disable-werror"
+                    ,@%glibc/hurd-configure-flags)
                   '()))
 
       #:tests? #f                                 ; XXX
@@ -980,7 +1013,7 @@ the store.")
                                          (map (cut string-append slib "/" <>)
                                               files))))))
 
-                 ,@(if (hurd-target?)
+                 ,@(if (target-hurd?)
                        '((add-after 'install 'augment-libc.so
                            (lambda* (#:key outputs #:allow-other-keys)
                              (let* ((out (assoc-ref outputs "out")))
@@ -1000,7 +1033,7 @@ the store.")
                     ("gettext" ,gettext-minimal)
                     ("python" ,python-minimal)
 
-                    ,@(if (hurd-target?)
+                    ,@(if (target-hurd?)
                           `(("mig" ,mig)
                             ("perl" ,perl))
                           '())))
@@ -1041,6 +1074,34 @@ with the Linux kernel.")
 
 ;; Below are old libc versions, which we use mostly to build locale data in
 ;; the old format (which the new libc cannot cope with.)
+
+(define-public glibc-2.33
+  (package
+    (inherit glibc)
+    (name "glibc")
+    (version "2.33")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://gnu/glibc/glibc-" version ".tar.xz"))
+              (sha256
+               (base32
+                "1zvp0qdfbdyqrzydz18d9zg3n5ygy8ps7cmny1bvsp8h1q05c99f"))
+              (patches
+               (cons (search-patch "glibc-2.33-riscv64-miscompilation.patch")
+                     ;; Remove a patch that's become irrelevant and that does not
+                     ;; apply to this version.
+                     (remove (lambda (patch)
+                               (string=? (basename patch)
+                                         "glibc-hurd-clock_gettime_monotonic.patch"))
+                             (origin-patches (package-source glibc)))))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments glibc)
+       ((#:configure-flags flags ''())
+        ;; There are undefined references to pthread symbols while linking
+        ;; 'support/links-dso-program.cc'.  Since this isn't needed here, turn
+        ;; off C++ tests.
+        `(cons "libc_cv_cxx_link_ok=no" ,flags))))))
+
 (define-public glibc-2.32
   (package
     (inherit glibc)
@@ -1340,6 +1401,9 @@ test environments.")
    (make-glibc-utf8-locales glibc)))
 
 ;; Packages provided to ease use of binaries linked against the previous libc.
+(define-public glibc-locales-2.33
+  (package (inherit (make-glibc-locales glibc-2.33))
+           (name "glibc-locales-2.33")))
 (define-public glibc-locales-2.32
   (package (inherit (make-glibc-locales glibc-2.32))
            (name "glibc-locales-2.32")))
@@ -1376,25 +1440,45 @@ variety of options.  It is an alternative to the shell \"type\" built-in
 command.")
     (license gpl3+))) ; some files are under GPLv2+
 
+(define-public glibc/hurd
+  (package/inherit glibc
+    (name "glibc-hurd")
+    (version "2.37")
+    (source (origin
+            (method url-fetch)
+            (uri (string-append "mirror://gnu/glibc/glibc-" version ".tar.xz"))
+            (sha256
+             (base32
+              "0hqsp4dzrjx0iga6jv0magjw26dh82pxlmk8yis5v0d127qyymr2"))
+            (patches (search-patches "glibc-ldd-powerpc.patch"
+                                     "glibc-dl-cache.patch"
+                                     "glibc-2.37-versioned-locpath.patch"
+                                     "glibc-reinstate-prlimit64-fallback.patch"
+                                     "glibc-supported-locales.patch"
+                                     "glibc-2.37-hurd-clock_t_centiseconds.patch"
+                                     "glibc-2.37-hurd-local-clock_gettime_MONOTONIC.patch"
+                                     "glibc-hurd-mach-print.patch"
+                                     "glibc-hurd-gettyent.patch"))))
+    (supported-systems %hurd-systems)))
+
 (define-public glibc/hurd-headers
-  (package (inherit glibc)
+  (package/inherit glibc/hurd
     (name "glibc-hurd-headers")
     (outputs '("out"))
     (propagated-inputs (list gnumach-headers hurd-headers))
     (native-inputs
-     (modify-inputs (package-native-inputs glibc)
+     (modify-inputs (package-native-inputs glibc/hurd)
        (prepend (if (%current-target-system)
-                    ;; XXX: When targeting i586-pc-gnu, we need a 32-bit MiG,
-                    ;; hence this hack.
-                    (package (inherit mig)
-                             (arguments `(#:system "i686-linux")))
+                    (let* ((cross-base (resolve-interface '(gnu packages cross-base)))
+                           (cross-mig (module-ref cross-base 'cross-mig)))
+                      (cross-mig (%current-target-system)))
                     mig))))
     (arguments
-     (substitute-keyword-arguments (package-arguments glibc)
+     (substitute-keyword-arguments (package-arguments glibc/hurd)
        ;; We just pass the flags really needed to build the headers.
-       ((#:configure-flags _)
+       ((#:configure-flags flags)
         `(list "--enable-add-ons"
-               "--host=i586-pc-gnu"))
+               ,@%glibc/hurd-configure-flags))
        ((#:phases _)
         '(modify-phases %standard-phases
            (replace 'install
@@ -1408,7 +1492,17 @@ command.")
                  (close-port
                   (open-output-file
                    (string-append out "/include/gnu/stubs.h"))))))
-           (delete 'build)))))))                  ; nothing to build
+           (delete 'build)))))                  ; nothing to build
+    (supported-systems %hurd-systems)))
+
+(define* (libc-for-target #:optional
+                          (target (or (%current-target-system)
+                                      (%current-system))))
+  (match target
+    ((? target-hurd?)
+     glibc/hurd)
+    (_
+     glibc)))
 
 (define-public tzdata
   (package
@@ -1558,6 +1652,6 @@ package needs iconv ,@(libiconv-if-needed) should be added."
   "Return the list of \"final inputs\"."
   ;; Avoid circular dependency by lazily resolving 'commencement'.
   (let ((iface (resolve-interface '(gnu packages commencement))))
-    (module-ref iface '%final-inputs)))
+    ((module-ref iface '%final-inputs) (%current-system))))
 
 ;;; base.scm ends here

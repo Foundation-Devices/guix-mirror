@@ -31,12 +31,14 @@
   #:use-module (guix build utils)
   #:use-module (guix monads)
   #:use-module ((guix gexp) #:select (lower-object))
+  #:autoload   (guix describe) (current-profile current-channels)
+  #:autoload   (guix channels) (guix-channel? channel-commit)
   #:use-module (guix scripts)
   #:use-module (guix scripts build)
   #:autoload   (guix scripts pack) (symlink-spec-option-parser)
   #:use-module (guix transformations)
   #:autoload   (ice-9 ftw) (scandir)
-  #:use-module (gnu build install)
+  #:autoload   (gnu build install) (evaluate-populate-directive)
   #:autoload   (gnu build linux-container) (call-with-container %namespaces
                                             user-namespace-supported?
                                             unprivileged-user-namespace-supported?
@@ -49,9 +51,11 @@
   #:autoload   (gnu packages) (specification->package+output)
   #:autoload   (gnu packages bash) (bash)
   #:autoload   (gnu packages bootstrap) (bootstrap-executable %bootstrap-guile)
+  #:autoload   (gnu packages package-management) (guix)
   #:use-module (ice-9 match)
   #:autoload   (ice-9 rdelim) (read-line)
   #:use-module (ice-9 vlist)
+  #:autoload   (web uri) (string->uri uri-scheme)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-26)
@@ -107,6 +111,8 @@ shell'."
   (display (G_ "
   -P, --link-profile     link environment profile to ~/.guix-profile within
                          an isolated container"))
+  (display (G_ "
+  -W, --nesting          make Guix available within the container"))
   (display (G_ "
   -u, --user=USER        instead of copying the name and home of the current
                          user into an isolated container, use the name USER
@@ -238,6 +244,9 @@ use '--preserve' instead~%"))
          (option '(#\N "network") #f #f
                  (lambda (opt name arg result)
                    (alist-cons 'network? #t result)))
+         (option '(#\W "nesting") #f #f
+                 (lambda (opt name arg result)
+                   (alist-cons 'nesting? #t result)))
          (option '(#\P "link-profile") #f #f
                  (lambda (opt name arg result)
                    (alist-cons 'link-profile? #t result)))
@@ -262,7 +271,11 @@ use '--preserve' instead~%"))
                    (alist-cons 'file-system-mapping
                                (specification->file-system-mapping arg #f)
                                result)))
-         (option '(#\S "symlink") #t #f symlink-spec-option-parser)
+         (option '(#\S "symlink") #t #f
+                 (lambda (opt name arg result)
+                   ;; Delay call to avoid auto-loading (guix scripts pack)
+                   ;; when unnecessary.
+                   (symlink-spec-option-parser opt name arg result)))
          (option '(#\r "root") #t #f
                  (lambda (opt name arg result)
                    (alist-cons 'gc-root arg result)))
@@ -342,6 +355,26 @@ for the corresponding packages."
                      (packages->outputs (load* file module) mode)))
                   (('manifest . file)
                    (manifest-entries (load-manifest file)))
+                  (('nesting? . #t)
+                   (if (assoc-ref opts 'profile)
+                       '()
+                       (let ((profile (and=> (current-profile) readlink*)))
+                         (if (or (not profile) (not (store-path? profile)))
+                             (begin
+                               (warning (G_ "\
+could not add current Guix to the profile~%"))
+                               '())
+                             (list (manifest-entry
+                                     (name "guix")
+                                     (version
+                                      (or (any (lambda (channel)
+                                                 (and (guix-channel? channel)
+                                                      (channel-commit channel)))
+                                               (current-channels))
+                                          "0"))
+                                     (item profile)
+                                     (search-paths
+                                      (package-native-search-paths guix))))))))
                   (_ '()))
                 opts)
     manifest-entry=?)))
@@ -514,6 +547,11 @@ by running 'set' in the shell."
        (catch #t
          (lambda ()
            (load-profile profile manifest #:pure? #t)
+
+           ;; Mark the terminal as "unknown" do avoid ANSI escape codes such
+           ;; as bracketed paste that would mess up the output of the script.
+           (setenv "TERM" "")
+
            (setenv "GUIX_ENVIRONMENT" profile)
            (close-fdes controller)
            (login-tty inferior)
@@ -683,7 +721,8 @@ regexps in WHITE-LIST."
 
 (define* (launch-environment/container #:key command bash user user-mappings
                                        profile manifest link-profile? network?
-                                       map-cwd? emulate-fhs? (setup-hook #f)
+                                       map-cwd? emulate-fhs? nesting?
+                                       (setup-hook #f)
                                        (symlinks '()) (white-list '()))
   "Run COMMAND within a container that features the software in PROFILE.
 Environment variables are set according to the search paths of MANIFEST.  The
@@ -698,6 +737,9 @@ When EMULATE-FHS?, set up the container to follow the Filesystem Hierarchy
 Standard and provide a glibc that reads the cache from /etc/ld.so.cache.
 SETUP-HOOK is an additional setup procedure to be called, currently only used
 with the EMULATE-FHS? option.
+
+When NESTING? is true, share all the store with the container and add Guix to
+its profile, allowing its use from within the container.
 
 LINK-PROFILE? creates a symbolic link from ~/.guix-profile to the
 environment profile.
@@ -726,8 +768,26 @@ WHILE-LIST."
            ("/libexec" . "/usr/libexec")
            ("/share"   . "/usr/share"))))
 
-  (mlet %store-monad ((reqs (inputs->requisites
-                             (list (direct-store-path bash) profile))))
+  (define (nesting-mappings)
+    ;; Files shared with the host when enabling nesting.
+    (cons* (file-system-mapping
+            (source (%store-prefix))
+            (target source))
+           (file-system-mapping
+            (source (cache-directory))
+            (target source)
+            (writable? #t))
+           (let ((uri (string->uri (%daemon-socket-uri))))
+             (if (or (not uri) (eq? 'file (uri-scheme uri)))
+                 (list (file-system-mapping
+                        (source (%daemon-socket-uri))
+                        (target source)))
+                 '()))))
+
+  (mlet %store-monad ((reqs (if nesting?
+                                (return '())
+                                (inputs->requisites
+                                 (list (direct-store-path bash) profile)))))
     (return
      (let* ((cwd      (getcwd))
             (home     (getenv "HOME"))
@@ -767,14 +827,17 @@ WHILE-LIST."
              (append
               (override-user-mappings
                user home
-               (append user-mappings
-                       ;; Share current working directory, unless asked not to.
-                       (if map-cwd?
-                           (list (file-system-mapping
-                                  (source cwd)
-                                  (target cwd)
-                                  (writable? #t)))
-                           '())))
+               (append
+                ;; Share current working directory, unless asked not to.
+                (if map-cwd?
+                    (list (file-system-mapping
+                           (source cwd)
+                           (target cwd)
+                           (writable? #t)))
+                    '())
+                ;; Add the user mappings *after* the current working directory
+                ;; so that a user can layer bind mounts on top of it.
+                user-mappings))
               ;; Mappings for the union closure of all inputs.
               (map (lambda (dir)
                      (file-system-mapping
@@ -787,13 +850,21 @@ WHILE-LIST."
                                       (filter-map optional-mapping->fs
                                                   %network-file-mappings)
                                       '())
-                                  ;; Mappings for an FHS container.
                                   (if emulate-fhs?
                                       (filter-map optional-mapping->fs
                                                   fhs-mappings)
                                       '())
+                                  (if nesting?
+                                      (filter-map optional-mapping->fs
+                                                  (nesting-mappings))
+                                      '())
                                   (map file-system-mapping->bind-mount
                                        mappings))))
+
+       ;; Trigger autoload now: the child process may lack (gnu build install)
+       ;; in its file system view.
+       (identity evaluate-populate-directive)
+
        (exit/status
         (call-with-container file-systems
           (lambda ()
@@ -1005,6 +1076,7 @@ command-line option processing with 'parse-command-line'."
          (network?     (assoc-ref opts 'network?))
          (no-cwd?      (assoc-ref opts 'no-cwd?))
          (emulate-fhs? (assoc-ref opts 'emulate-fhs?))
+         (nesting?     (assoc-ref opts 'nesting?))
          (user         (assoc-ref opts 'user))
          (bootstrap?   (assoc-ref opts 'bootstrap?))
          (system       (assoc-ref opts 'system))
@@ -1051,6 +1123,8 @@ command-line option processing with 'parse-command-line'."
         (leave (G_ "--no-cwd cannot be used without '--container'~%")))
       (when emulate-fhs?
         (leave (G_ "'--emulate-fhs' cannot be used without '--container~%'")))
+      (when nesting?
+        (leave (G_ "'--nesting' cannot be used without '--container~%'")))
       (when (pair? symlinks)
         (leave (G_ "'--symlink' cannot be used without '--container~%'"))))
 
@@ -1133,6 +1207,7 @@ when using '--container'; doing nothing~%"))
                                                   #:network? network?
                                                   #:map-cwd? (not no-cwd?)
                                                   #:emulate-fhs? emulate-fhs?
+                                                  #:nesting? nesting?
                                                   #:symlinks symlinks
                                                   #:setup-hook
                                                   (and emulate-fhs?

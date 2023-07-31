@@ -293,16 +293,16 @@ acl_check_data:
 (define %dovecot-os
   (simple-operating-system
    (service dhcp-client-service-type)
-   (dovecot-service #:config
-                    (dovecot-configuration
-                     (disable-plaintext-auth? #f)
-                     (ssl? "no")
-                     (auth-mechanisms '("anonymous"))
-                     (auth-anonymous-username "alice")
-                     (mail-location
-                      (string-append "maildir:~/Maildir"
-                                     ":INBOX=~/Maildir/INBOX"
-                                     ":LAYOUT=fs"))))))
+   (service dovecot-service-type
+            (dovecot-configuration
+             (disable-plaintext-auth? #f)
+             (ssl? "no")
+             (auth-mechanisms '("anonymous"))
+             (auth-anonymous-username "alice")
+             (mail-location
+              (string-append "maildir:~/Maildir"
+                             ":INBOX=~/Maildir/INBOX"
+                             ":LAYOUT=fs"))))))
 
 (define (run-dovecot-test)
   "Return a test of an OS running Dovecot service."
@@ -382,7 +382,9 @@ Subject: Hello Nice to meet you!")
             (marionette-eval
              '(begin
                 (use-modules (ice-9 ftw)
-                             (ice-9 match))
+                             (ice-9 match)
+                             (rnrs io ports))
+
                 (let ((TESTBOX/new "/home/alice/Maildir/TESTBOX/new/"))
                   (match (scandir TESTBOX/new)
                     (("." ".." message-file)
@@ -556,7 +558,9 @@ Subject: Hello Nice to meet you!")
              (marionette-eval
               '(begin
                  (use-modules (ice-9 ftw)
-                              (ice-9 match))
+                              (ice-9 match)
+                              (rnrs io ports))
+
                  (let ((TESTBOX/new "/home/alice/TestMaildir/new/"))
                    (match (scandir TESTBOX/new)
                      (("." ".." message-file)

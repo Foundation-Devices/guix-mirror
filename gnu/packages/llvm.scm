@@ -502,7 +502,7 @@ code analysis tools.")
               "znver3")
             '())))))
 
-(define (make-clang-toolchain clang libomp)
+(define-public (make-clang-toolchain clang libomp)
   (package
     (name (string-append (package-name clang) "-toolchain"))
     (version (package-version clang))
@@ -699,12 +699,7 @@ of programming tools as well as libraries with equivalent functionality.")
           #~(modify-phases #$phases
               (add-after 'unpack 'change-directory
                 (lambda _
-                  (chdir "compiler-rt")))
-              (add-after 'install 'delete-static-libraries
-                ;; Reduce size from 33 MiB to 7.4 MiB.
-                (lambda _
-                  (for-each delete-file
-                            (find-files #$output "\\.a(\\.syms)?$"))))))))
+                  (chdir "compiler-rt")))))))
       (native-inputs
        (modify-inputs (package-native-inputs template)
          (prepend gcc-12)))             ;libfuzzer fails to build with GCC 11
@@ -1462,7 +1457,7 @@ Library.")
     ;; Based on LLVM 14 as of v5.0.0
     (inherit llvm-14)
     (name "llvm-for-rocm")
-    (version "5.1.3")                         ;this must match '%rocm-version'
+    (version "5.6.0")                         ;this must match '%rocm-version'
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1471,10 +1466,7 @@ Library.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0j6ydfkwrxwskgnhxc3cmry42n5faqbnwf2747qgf7lz5id8h8g5"))
-              (patches
-               (search-patches "llvm-roc-5.0.0-linkdl.patch"
-                               "llvm-roc-4.0.0-remove-isystem-usr-include.patch"))))
+                "1kg6q6aqijjrwaznj0gr3nd01gykrnqqnk8vz8wyfifr18l9jrgx"))))
     (arguments
      (substitute-keyword-arguments (package-arguments llvm-14)
        ((#:configure-flags flags)
@@ -1891,38 +1883,18 @@ requirements according to version 1.1 of the OpenCL specification.")
 (define-public python-llvmlite
   (package
     (name "python-llvmlite")
-    (version "0.38.0")
+    (version "0.39.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "llvmlite" version))
        (sha256
         (base32
-         "0p4nyic9rm7s2fm3m3wpkh568594p9q9nfyjkqxny49vrxn1d7d9"))))
+         "0wnm0l0301sj8xp6skg3ci1gii56x5dk6l2x88f2c1g8h9ybsfml"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'patch-reference-to-llvmlite.so
-           ;; ctypes.CDLL uses dlopen to load libllvmlite.so, which
-           ;; fails, so locate it by its absolute path.  Change it in
-           ;; ffi.py, not utils.py, because setup.py relies on the
-           ;; output of get_library_name for proper installation.
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (libllvmlite.so (string-append out "/lib/python"
-                                                   ,(version-major+minor
-                                                     (package-version python))
-                                                   "/site-packages/llvmlite/"
-                                                   "binding/libllvmlite.so")))
-               (substitute* "llvmlite/binding/ffi.py"
-                 (("_lib_name = get_library_name\\(\\)")
-                  (format #f "_lib_name = ~s" libllvmlite.so))))))
-         (add-after 'unpack 'skip-failing-tests
-           (lambda _
-             (substitute* "llvmlite/tests/test_binding.py"
-               (("    def test_libm\\(self\\).*" all)
-                (string-append "    @unittest.skip('Fails on Guix')\n" all)))))
          (add-before 'build 'set-compiler/linker-flags
            (lambda* (#:key inputs #:allow-other-keys)
              (let ((llvm (assoc-ref inputs "llvm")))
@@ -2303,7 +2275,7 @@ LLVM."))))
             (add-after 'unpack 'patch-paths
               (lambda* (#:key inputs #:allow-other-keys)
                 (substitute* "lib/Interpreter/CIFactory.cpp"
-                  (("\bsed\b")
+                  (("\\bsed\\b")
                    (which "sed"))
                   ;; This ensures that the default C++ library used by Cling is
                   ;; that of the compiler that was used to build it, rather

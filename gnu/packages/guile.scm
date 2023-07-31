@@ -4,7 +4,7 @@
 ;;; Copyright © 2014, 2016, 2018 David Thompson <davet@gnu.org>
 ;;; Copyright © 2014, 2017, 2018 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015, 2017 Christine Lemmer-Webber <cwebber@dustycloud.org>
-;;; Copyright © 2016 Jan Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2016, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2016, 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017 Andy Wingo <wingo@igalia.com>
@@ -47,7 +47,6 @@
   #:use-module (gnu packages gawk)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages gperf)
-  #:use-module (gnu packages hurd)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages libunistring)
   #:use-module (gnu packages linux)
@@ -58,6 +57,7 @@
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages version-control)
+  #:use-module (guix gexp)
   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module (guix git-download)
@@ -201,7 +201,7 @@ without requiring the source code to be rewritten.")
 
       #:phases
       (modify-phases %standard-phases
-        ,@(if (hurd-system?)
+        ,@(if (system-hurd?)
               '((add-after 'unpack 'disable-tests
                   (lambda _
                     ;; Hangs at: "Running 00-repl-server.test"
@@ -212,8 +212,13 @@ without requiring the source code to be rewritten.")
                     (rename-file "test-suite/tests/srfi-18.test" "srfi-18.test")
                     ;; failed to remove 't-guild-compile-7215.go.tdL7yC
                     (substitute* "test-suite/standalone/Makefile.in"
-                      (("test-guild-compile ") ""))
-                    #t)))
+                      (("test-guild-compile ") "")))))
+              '())
+        ,@(if (system-hurd?)
+              '((add-after 'unpack 'disable-threads.tests
+                  (lambda _
+                    ;; Many tests hang, esp. (join-thread ..), also others.
+                    (rename-file "test-suite/tests/threads.test" "threads.test"))))
               '())
         (add-before 'configure 'pre-configure
           (lambda* (#:key inputs #:allow-other-keys)
@@ -286,7 +291,12 @@ without requiring the source code to be rewritten.")
         (if (target-x86-32?)            ;<https://issues.guix.gnu.org/49368>
             `(append '("--disable-static")
                  '("CFLAGS=-g -O2 -fexcess-precision=standard"))
-            flags))))
+            flags))
+       ((#:phases phases '%standard-phases)
+        #~(modify-phases #$phases
+            #$@(if (system-hurd?)
+                   #~((delete 'disable-threads.tests))
+                   '())))))
 
     (properties '((timeout . 72000)               ;20 hours
                   (max-silent-time . 36000)))     ;10 hours (needed on ARM
@@ -298,8 +308,6 @@ without requiring the source code to be rewritten.")
            (search-path-specification
             (variable "GUILE_LOAD_COMPILED_PATH")
             (files '("lib/guile/2.2/site-ccache")))))))
-
-(define-deprecated guile-2.2/bug-fix guile-2.2)
 
 (define-public guile-2.2.4
   (package
@@ -344,51 +352,82 @@ without requiring the source code to be rewritten.")
        ;; cross-compiling.
        ((#:parallel-build? _ #f)
         (not (%current-target-system)))
-       ((#:configure-flags flags ''())
+       ((#:configure-flags flags #~'())
         ;; XXX: JIT-enabled Guile crashes in obscure ways on GNU/Hurd.
-        `(cons* ,@(if (hurd-target?)
-                      '("--disable-jit")
-                      '())
-                ;; -fexcess-precision=standard is required when compiling for
-                ;; i686-linux, otherwise "numbers.test" will fail
-                ;; (see <https://issues.guix.gnu.org/49368> and
-                ;; <https://issues.guix.gnu.org/49659>).
-                ;; TODO: Keep this in GUILE-2.2 and remove from here on next
-                ;; rebuild cycle.
-                ,@(if (target-x86-32?)
-                      '("CFLAGS=-g -O2 -fexcess-precision=standard")
-                      '())
-                "--enable-mini-gmp"
-                '("--disable-static")))
+        #~(cons* #$@(if (target-hurd?)
+                        #~("--disable-jit")
+                        #~())
+                 ;; -fexcess-precision=standard is required when compiling for
+                 ;; i686-linux, otherwise "numbers.test" will fail
+                 ;; (see <https://issues.guix.gnu.org/49368> and
+                 ;; <https://issues.guix.gnu.org/49659>).
+                 ;; TODO: Keep this in GUILE-2.2 and remove from here on next
+                 ;; rebuild cycle.
+                 #$@(if (target-x86-32?)
+                        #~("CFLAGS=-g -O2 -fexcess-precision=standard")
+                        #~())
+                 "--enable-mini-gmp"
+                 '("--disable-static")))
        ((#:phases phases)
-        `(modify-phases ,phases
-           (add-before 'check 'disable-stack-overflow-test
-             (lambda _
-               ;; This test can invoke the "OOM killer", especially when
-               ;; running on emulated hardware (QEMU).  Skip it.
-               (substitute* "test-suite/standalone/test-stack-overflow"
-                 (("!#")
-                  "!#\n(exit 77)\n"))))
+        #~(modify-phases #$phases
+            (add-before 'check 'disable-stack-overflow-test
+              (lambda _
+                ;; This test can invoke the "OOM killer", especially when
+                ;; running on emulated hardware (QEMU).  Skip it.
+                (substitute* "test-suite/standalone/test-stack-overflow"
+                  (("!#")
+                   "!#\n(exit 77)\n"))))
 
-           ,@(if (target-ppc32?)
-               `((add-after 'unpack 'adjust-bootstrap-flags
-                   (lambda _
-                     ;; Upstream knows about suggested solution.
-                     ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=45214
-                     ;; https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=977223#46
-                     (substitute* "stage0/Makefile.in"
-                       (("^GUILE_OPTIMIZATIONS.*")
-                        "GUILE_OPTIMIZATIONS = -O1 -Oresolve-primitives -Ocps\n")))))
-               '())
-           ,@(if (or (target-ppc32?)
-                     (target-riscv64?))
-               `((add-after 'unpack 'skip-failing-fdes-test
-                   (lambda _
-                     ;; ERROR: ((system-error "seek" "~A" ("Bad file descriptor") (9)))
-                     (substitute* "test-suite/tests/ports.test"
-                       (("fdes not closed\"" all) (string-append all "(exit 77)")))
-                     #t)))
-               '())))))
+            #$@(if (target-hurd?)
+                   #~((add-before 'build 'patch-posix-spawn-usage
+                        (lambda _
+                          ;; TODO: Move patch to 'source' on next rebuild
+                          ;; cycle.
+                          (define patch
+                            #$(local-file
+                               (search-patch "guile-hurd-posix-spawn.patch")))
+                          (invoke "patch" "--force" "-p1" "-i" patch))))
+                   #~())
+            #$@(if (system-hurd?)
+                   #~((add-after 'unpack 'disable-popen.test-no-duplicate
+                        ;; This test hangs on the Hurd.
+                        (lambda _
+                          (substitute* "test-suite/tests/popen.test"
+                            (("\\(pass-if \"no duplicate\".*" all)
+                             (string-append
+                              all
+                              (object->string
+                               '(when (string-ci= "GNU"
+                                                  (vector-ref (uname) 0))
+                                  (throw 'unresolved)))))))))
+                   #~())
+            #$@(if (target-ppc32?)
+                   #~((add-after 'unpack 'adjust-bootstrap-flags
+                        (lambda _
+                          ;; Upstream knows about suggested solution.
+                          ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=45214
+                          ;; https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=977223#46
+                          (substitute* "stage0/Makefile.in"
+                            (("^GUILE_OPTIMIZATIONS.*")
+                             "GUILE_OPTIMIZATIONS = -O1 -Oresolve-primitives -Ocps\n")))))
+                   #~())
+            #$@(if (target-powerpc?)
+                   #~((add-after 'unpack 'skip-oom-test
+                        (lambda _
+                          ;; This test hangs with guile-3.0.9 and libgc-8.2.2 and
+                          ;; fails completely on powerpc-linux.
+                          (substitute* "test-suite/standalone/test-out-of-memory"
+                            (("!#") "!#\n\n(exit 77)\n")))))
+                   #~())
+            #$@(if (or (target-ppc32?)
+                       (target-riscv64?))
+                   #~((add-after 'unpack 'skip-failing-fdes-test
+                        (lambda _
+                          ;; ERROR: ((system-error "seek" "~A" ("Bad file descriptor") (9)))
+                          (substitute* "test-suite/tests/ports.test"
+                            (("fdes not closed\"" all) (string-append all "(exit 77)")))
+                          #t)))
+                   #~())))))
 
     (native-search-paths
      (list (search-path-specification
@@ -416,9 +455,9 @@ without requiring the source code to be rewritten.")
                                                 ;  when heavily loaded)
 
 (define-public guile-next
-  (let ((version "3.0.8")
+  (let ((version "3.0.9")
         (revision "0")
-        (commit "a1a85581f17dade76a598b48eac7d3d308e3a0a5"))
+        (commit "aa2cfe7cf69327285a17de97682d696f2f6c43ef"))
     (package
       (inherit guile-3.0)
       (name "guile-next")
@@ -432,24 +471,24 @@ without requiring the source code to be rewritten.")
                 (file-name (git-file-name name version))
                 (sha256
                  (base32
-                  "1l5zkg0wpchyizq8s4615hkj0n0i029l72k3pq2hha89r3bcn8al"))))
+                  "03xwy3ni85qy0lrvz0lk0488394nfsfc1004l84lgyzql2qwkynl"))))
       (arguments
        (substitute-keyword-arguments (package-arguments guile-3.0)
          ((#:phases phases '%standard-phases)
-          `(modify-phases ,phases
-             (add-before 'bootstrap 'set-version
-               (lambda _
-                 ;; Tell 'git-version-gen' what version this is, or it will
-                 ;; just pick "UNKNOWN", making it unusable as a replacement
-                 ;; for 'guile-3.0'.  XXX: This is inaccurate when using
-                 ;; '--with-branch' but using (package-version this-package)
-                 ;; wouldn't give us a valid version string.
-                 (call-with-output-file ".tarball-version"
-                   (lambda (port)
-                     (display ,version port)))))
-             (add-before 'check 'skip-failing-tests
-               (lambda _
-                 (delete-file "test-suite/tests/version.test")))))))
+          #~(modify-phases #$phases
+              (add-before 'bootstrap 'set-version
+                (lambda _
+                  ;; Tell 'git-version-gen' what version this is, or it will
+                  ;; just pick "UNKNOWN", making it unusable as a replacement
+                  ;; for 'guile-3.0'.  XXX: This is inaccurate when using
+                  ;; '--with-branch' but using (package-version this-package)
+                  ;; wouldn't give us a valid version string.
+                  (call-with-output-file ".tarball-version"
+                    (lambda (port)
+                      (display #$version port)))))
+              (add-before 'check 'skip-failing-tests
+                (lambda _
+                  (delete-file "test-suite/tests/version.test")))))))
       (native-inputs
        (modify-inputs (package-native-inputs guile-3.0)
          (prepend autoconf
@@ -469,42 +508,45 @@ without requiring the source code to be rewritten.")
     (source (package-source guile))
     (build-system gnu-build-system)
     (arguments
-     '(#:configure-flags '("--disable-silent-rules"
-                           "--enable-mini-gmp")   ;for Guile >= 3.0.6
-       #:phases (modify-phases %standard-phases
-                  (add-before 'build 'chdir
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      (invoke "make" "-C" "libguile" "scmconfig.h")
-                      (invoke "make" "-C" "lib")
-                      (chdir "guile-readline")
+     (list #:configure-flags
+           #~'("--disable-silent-rules"
+               "--enable-mini-gmp")               ;for Guile >= 3.0.6
 
-                      (substitute* "Makefile"
-                        (("../libguile/libguile-[[:graph:]]+\\.la")
-                         ;; Remove dependency on libguile-X.Y.la.
-                         "")
-                        (("^READLINE_LIBS = (.*)$" _ libs)
-                         ;; Link against the provided libguile.
-                         (string-append "READLINE_LIBS = "
-                                        "-lguile-$(GUILE_EFFECTIVE_VERSION) "
-                                        libs "\n"))
-                        (("\\$\\(top_builddir\\)/meta/build-env")
-                         ;; Use the provided Guile, not the one from
-                         ;; $(builddir).
-                         "")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-before 'build 'chdir
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (invoke "make" "-C" "libguile" "scmconfig.h")
+                   (invoke "make" "-C" "lib")
+                   (chdir "guile-readline")
 
-                        ;; Install modules to the 'site' directories.
-                        (("^moddir = .*$")
-                         "moddir = $(pkgdatadir)/site/$(GUILE_EFFECTIVE_VERSION)\n")
-                        (("^ccachedir = .*$")
-                         "ccachedir = $(pkglibdir)/$(GUILE_EFFECTIVE_VERSION)/site-ccache\n"))
+                   (substitute* "Makefile"
+                     (("../libguile/libguile-[[:graph:]]+\\.la")
+                      ;; Remove dependency on libguile-X.Y.la.
+                      "")
+                     (("^READLINE_LIBS = (.*)$" _ libs)
+                      ;; Link against the provided libguile.
+                      (string-append "READLINE_LIBS = "
+                                     "-lguile-$(GUILE_EFFECTIVE_VERSION) "
+                                     libs "\n"))
+                     (("\\$\\(top_builddir\\)/meta/build-env")
+                      ;; Use the provided Guile, not the one from
+                      ;; $(builddir).
+                      "")
 
-                      ;; Load 'guile-readline.so' from the right place.
-                      (substitute* "ice-9/readline.scm"
-                        (("load-extension \"guile-readline\"")
-                         (format #f "load-extension \
+                     ;; Install modules to the 'site' directories.
+                     (("^moddir = .*$")
+                      "moddir = $(pkgdatadir)/site/$(GUILE_EFFECTIVE_VERSION)\n")
+                     (("^ccachedir = .*$")
+                      "ccachedir = $(pkglibdir)/$(GUILE_EFFECTIVE_VERSION)/site-ccache\n"))
+
+                   ;; Load 'guile-readline.so' from the right place.
+                   (substitute* "ice-9/readline.scm"
+                     (("load-extension \"guile-readline\"")
+                      (format #f "load-extension \
  (string-append ~s \"/lib/guile/\" (effective-version) \"/extensions/guile-readline\")"
-                                 (assoc-ref outputs "out"))))
-                      #t)))))
+                              (assoc-ref outputs "out"))))
+                   #t)))))
     (home-page (package-home-page guile))
     (native-inputs (package-native-inputs guile))
     (propagated-inputs (package-propagated-inputs guile))
@@ -561,8 +603,8 @@ GNU@tie{}Guile.  Use the @code{(ice-9 readline)} module and call its
                   "1l7ik4q4zk7vq4m3gnwizc0b64b1mdr31hxqlzxs94xaf2lvi7s2"))))
       (arguments
        (substitute-keyword-arguments (package-arguments guile-2.2)
-         ((#:phases phases '%standard-phases)
-          `(modify-phases ,phases
+         ((#:phases phases)
+          #~(modify-phases #$phases
              (replace 'bootstrap
                (lambda _
                  ;; Disable broken tests.
@@ -575,8 +617,7 @@ GNU@tie{}Guile.  Use the @code{(ice-9 readline)} module and call its
                     (string-append "#;" m)))
 
                  (patch-shebang "build-aux/git-version-gen")
-                 (invoke "sh" "autogen.sh")
-                 #t))))))
+                 (invoke "sh" "autogen.sh")))))))
       (native-inputs
        (modify-inputs (package-native-inputs guile-2.2)
          (prepend autoconf
@@ -622,12 +663,6 @@ specification.  These are the main features:
 
     ;; Version 1.2.0 switched to GPLv3+ (from LGPLv3+).
     (license license:gpl3+)))
-
-;; Deprecate the 'guile-json' alias to force the use 'guile-json-1' or
-;; 'guile-json-3'.  In the future, we may reuse 'guile-json' as an alias for
-;; 'guile-json-3'.
-(define-deprecated guile-json guile-json-1)
-(export guile-json)
 
 (define-public guile2.0-json
   (package-for-guile-2.0 guile-json-1))
@@ -816,7 +851,20 @@ type system, elevating types to first-class status.")
                  (lambda _
                    (substitute* "Makefile.am"
                      ((".*tests/blob\\.scm.*") ""))))))
-           '())))
+           '())
+       ,@(if (system-hurd?)
+             (list
+              #:phases
+              #~(modify-phases %standard-phases
+                  (add-after 'unpack 'skip-tests/hurd
+                    (lambda _
+                      (substitute* "tests/proxy.scm"
+                        (("\\(test-begin.*" all)
+                         (string-append
+                          all
+                          "(when (string-ci= \"GNU\" (vector-ref (uname) 0))\n"
+                          "  (test-skip 1))\n")))))))
+             '())))
     (native-inputs
      (list pkg-config autoconf automake texinfo guile-3.0 guile-bytestructures))
     (inputs

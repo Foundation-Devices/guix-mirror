@@ -17,12 +17,13 @@
 ;;; Copyright © 2020 Brett Gilio <brettg@gnu.org>
 ;;; Copyright © 2020, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Raghav Gururajan <raghavgururajan@disroot.org>
-;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Vincent Legoll <vincent.legoll@gmail.com>
 ;;; Copyright © 2021 LibreMiami <packaging-guix@libremiami.org>
 ;;; Copyright © 2021 Sarah Morgensen <iskarian@mgsn.dev>
 ;;; Copyright © 2021 Demis Balbach <db@minikn.xyz>
 ;;; Copyright © 2022 Thomas Albers Raviola <thomas@thomaslabs.org>
+;;; Copyright © 2023 Ivan Gankevich <igankevich@capybaramail.xyz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -40,6 +41,7 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (gnu packages telephony)
+  #:use-module (guix gexp)
   #:use-module (gnu packages)
   #:use-module (gnu packages admin)
   #:use-module (gnu packages aidc)
@@ -70,6 +72,7 @@
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages linphone)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages maths)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages netpbm)
@@ -297,6 +300,9 @@ reimplementation.")
             (sha256 (base32
                      "1mv080rvrhyxyhgqiqr8r9jdqhg3xhfawjvfj5zgj47h59nggjba"))))
    (build-system gnu-build-system)
+   (arguments
+    ;; Does not work with std=c++17, which is the default in modern GCC versions.
+    `(#:configure-flags '("CXXFLAGS=-std=c++14")))
    (inputs (list gnutls))
    (synopsis "Common C++ framework for threaded applications")
    (description "GNU uCommon C++ is meant as a very light-weight C++ library
@@ -561,7 +567,7 @@ address of one of the participants.")
 (define-public mumble
   (package
     (name "mumble")
-    (version "1.4.274")
+    (version "1.4.287")
     (source (origin
               (method url-fetch)
               (uri
@@ -570,7 +576,7 @@ address of one of the participants.")
                 version "/" name "-" version ".tar.gz"))
               (sha256
                (base32
-                "12rv61mmpgvcc1svq2y66r29sl47y9lfi9if0r09x4nqrkf7vj3y"))
+                "0iq54011jgrc5ipk16x05n3sj54j8mzhcidnzcdsb2x5pzan33ip"))
               (modules '((guix build utils)
                          (ice-9 ftw)
                          (srfi srfi-1)))
@@ -646,7 +652,7 @@ address of one of the participants.")
            libsndfile
            libxi
            mesa ; avoid bundled
-           openssl
+           openssl-1.1 ; 1.5.x works with openssl-3.x
            opus ; avoid bundled
            poco
            protobuf
@@ -729,7 +735,7 @@ your calls and messages.")
 (define-public pjproject
   (package
     (name "pjproject")
-    (version "2.12.1")
+    (version "2.13")
     (source
      (origin
        (method git-fetch)
@@ -739,7 +745,7 @@ your calls and messages.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0xrj4sznbaip22y9hclff6y81l285bzkkj1smzifskpk3kiwp00w"))
+         "0ld0adp9y2ydnz2ldwdzig3hpk4ayx1va6aqc3nja8zfdnd36fyb"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -820,7 +826,10 @@ your calls and messages.")
                  "#define INCLUDE_TCP_TEST 0\n")
                 ;; The TSX tests takes a very long time to run; skip them.
                 (("#define INCLUDE_TSX_GROUP.*")
-                 "#define INCLUDE_TSX_GROUP 0\n"))
+                 "#define INCLUDE_TSX_GROUP 0\n")
+                ;; The resolve test requires a working domain name resolver.
+                (("#define INCLUDE_RESOLVE_TEST.*")
+                 "#define INCLUDE_RESOLVE_TEST 0\n"))
               (substitute* "pjsip/src/test/dns_test.c"
                 ;; The round_robin_test fails non-deterministically (depending
                 ;; on load); skip it (see:
@@ -1030,3 +1039,64 @@ It supports the following smartphones:
 @end itemize")
       (home-page "https://github.com/2b-as/xgoldmon")
       (license license:gpl2+))))
+
+(define-public sipp
+  (package
+    (name "sipp")
+    (version "3.7.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/SIPp/sipp")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256 (base32 "0vplccia9zdva1wwny2xgs0b6rzmq4abxvw8lyz61wfw7jjmvin0"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list
+      #:configure-flags
+      #~(list "-DUSE_GSL=1" "-DUSE_PCAP=1" "-DUSE_SSL=1" "-DUSE_SCTP=1")
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; Modify build instructions to use external GTEST and GMOCK.
+          (add-before 'configure 'unbundle-gtest
+            (lambda _
+              (rmdir "gtest")
+              (symlink (assoc-ref %build-inputs "googletest") "gtest")
+              (substitute* "CMakeLists.txt"
+                ((".*gtest-all.*") "")
+                ((".*gmock-all.*") "")
+                (("target_compile_features\\(sipp_unittest" all)
+                 (string-append "target_link_libraries(sipp_unittest gtest gmock)\n"
+                                all)))))
+          ;; Generate version.h without GIT.
+          (add-before 'configure 'fix-version
+            (lambda _
+              (copy-file "include/version.h.in" "include/version.h")
+              (substitute* "include/version.h" (("@VERSION@") #$version))
+              (substitute* "CMakeLists.txt" (("find_package\\(Git\\)") ""))))
+          (add-after 'build 'build-tests
+            (lambda* (#:key parallel-build? #:allow-other-keys)
+              (invoke "make"
+                      (string-append
+                       "-j" (if parallel-build?
+                                (number->string (parallel-job-count))
+                                "1"))
+                      "sipp_unittest")))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (invoke "./sipp_unittest")))))))
+    (inputs
+     (list gsl libpcap lksctp-tools ncurses/tinfo openssl))
+    (native-inputs
+     (list googletest pkg-config))
+    (synopsis "Performance testing tool for the SIP protocol")
+    (description "SIPp can be used to test many real SIP equipements like SIP
+proxies, B2BUAs, SIP media servers, SIP/x gateways, and SIP PBXes.  It is also
+very useful to emulate thousands of user agents calling your SIP system.")
+    (home-page "https://sipp.readthedocs.io/")
+    (license (list license:gpl2+        ; sipp's main license
+                   license:bsd-3        ; send_packets.c, send_packets.h
+                   license:zlib)))) ; md5.c, md5.h

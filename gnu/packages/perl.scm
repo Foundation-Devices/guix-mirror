@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2012, 2013, 2014, 2015, 2016, 2017 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2013, 2019, 2020, 2021 Andreas Enge <andreas@enge.fr>
-;;; Copyright © 2015, 2016, 2017, 2019, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2016, 2017, 2019, 2021, 2022, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2016, 2017, 2019, 2020 Eric Bavier <bavier@posteo.net>
 ;;; Copyright © 2015 Eric Dvorsak <eric@dvorsak.fr>
 ;;; Copyright © 2016, 2018 Mark H Weaver <mhw@netris.org>
@@ -28,14 +28,15 @@
 ;;; Copyright © 2020 Paul Garlick <pgarlick@tourbillion-technology.com>
 ;;; Copyright © 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Malte Frank Gerdes <malte.f.gerdes@gmail.com>
-;;; Copyright © 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
 ;;; Copyright © 2021 Raghav Gururajan <rg@raghavgururajan.name>
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
-;;; Copyright © 2022 Evgeny Pisemsky <evgeny@pisemsky.com>
-;;; Copyright © 2022 gemmaro <gemmaro.dev@gmail.com>
+;;; Copyright © 2022, 2023 Evgeny Pisemsky <evgeny@pisemsky.com>
+;;; Copyright © 2022, 2023 gemmaro <gemmaro.dev@gmail.com>
 ;;; Copyright © 2023 Mădălin Ionel Patrașcu <madalinionel.patrascu@mdc-berlin.de>
 ;;; Copyright © 2023 Andreas Enge <andreas@enge.fr>
+;;; Copyright © 2023 Jake Leporte <jakeleporte@outlook.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -63,6 +64,8 @@
   #:use-module (guix utils)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system perl)
+  #:use-module (guix memoization)
+  #:use-module (guix search-paths)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages compression)
@@ -86,11 +89,13 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages readline)
   #:use-module (gnu packages sdl)
+  #:use-module (gnu packages security-token)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages video)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
-  #:use-module (gnu packages xorg))
+  #:use-module (gnu packages xorg)
+  #:export (perl-extutils-pkgconfig))
 
 ;;;
 ;;; Please: Try to add new module packages in alphabetic order.
@@ -546,6 +551,27 @@ users can force the decision of which backend to use by setting the environment
 variable ANY_MOOSE to be Moose or Mouse.")
     (license (package-license perl))))
 
+(define-public perl-app-cpanminus
+  (package
+    (name "perl-app-cpanminus")
+    (version "1.7046")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "mirror://cpan/authors/id/M/MI/MIYAGAWA/App-cpanminus-"
+                    version ".tar.gz"))
+              (sha256
+               (base32
+                "0qpq1x24dcrm7bm2qj814nkmxg8mzkdn6wcirjd8yd578jdrv31y"))))
+    (build-system perl-build-system)
+    (home-page "https://metacpan.org/release/App-cpanminus")
+    (synopsis "CPAN package manager")
+    (description "App::cpanminus is a script to get, unpack, build and install
+modules from CPAN and does nothing else.  It's dependency free (can bootstrap
+itself), requires zero configuration, and stands alone.  When running, it
+requires only 10MB of RAM.")
+    (license (package-license perl))))
+
 (define-public perl-app-xml-docbook-builder
   (package
     (name "perl-app-xml-docbook-builder")
@@ -815,9 +841,6 @@ error when it would have happened.")
     (synopsis "Disables bareword filehandles")
     (description "This module disables bareword filehandles.")
     (license (package-license perl))))
-
-(define-public perl-base
-  (deprecated-package "perl-base" perl))
 
 (define-public perl-browser-open
   (package
@@ -2537,6 +2560,25 @@ used in @code{crypt} are also supplied separately.")
     ;; Files in the 'fcrypt' directory are covered by a BSD licence.
     (license (list license:perl-license license:bsd-3))))
 
+(define-public perl-cryptx
+  (package
+  (name "perl-cryptx")
+  (version "0.078")
+  (source
+   (origin
+     (method url-fetch)
+     (uri (string-append "mirror://cpan/authors/id/M/MI/MIK/CryptX-"
+                         version ".tar.gz"))
+     (sha256
+      (base32 "1gdw33k8h7izjfb4zy9j1qfq4ffbqzpvhcf9ncy79mgp8890n5lk"))))
+  (build-system perl-build-system)
+  (home-page "https://metacpan.org/release/CryptX")
+  (synopsis "Self-contained cryptographic toolkit based on LibTomCrypt")
+  (description
+   "These self-contained Perl modules provide cryptography based on the
+LibTomCrypt library.")
+  (license license:perl-license)))
+
 (define-public perl-cwd-guard
   (package
     (name "perl-cwd-guard")
@@ -2767,7 +2809,7 @@ code that, when \"eval\"ed, produces a deep copy of the original arguments.")
 (define-public perl-data-dumper
   (package
     (name "perl-data-dumper")
-    (version "2.180")
+    (version "2.183")
     (source
      (origin
        (method url-fetch)
@@ -2775,7 +2817,7 @@ code that, when \"eval\"ed, produces a deep copy of the original arguments.")
                            "Data-Dumper-" version ".tar.gz"))
        (sha256
         (base32
-         "029vfvj81dhyv01zrd94lak8qnkbik2h5d1mvj19hxdp67jnwqc6"))))
+         "1lssmgag36w1lhrnli2gq3g55p0z3zx5x74dh4vipbkx1f4kc9z4"))))
     (build-system perl-build-system)
     (home-page "https://metacpan.org/release/Data-Dumper")
     (synopsis "Convert data structures to strings")
@@ -4615,7 +4657,10 @@ convert Perl XS code into C code, the ExtUtils::Typemaps module to
 handle Perl/XS typemap files, and their submodules.")
     (license (package-license perl))))
 
-(define-public perl-extutils-pkgconfig
+;; This is the "primitive" perl-extutils-pkgconfig package.  People should use
+;; `perl-extutils-pkgconfig' instead (see below)', but we export
+;; %perl-extutils-pkgconfig so that `fold-packages' finds it.
+(define-public %perl-extutils-pkgconfig
   (package
     (name "perl-extutils-pkgconfig")
     (version "1.16")
@@ -4627,8 +4672,32 @@ handle Perl/XS typemap files, and their submodules.")
                (base32
                 "0vhwh0731rhh1sswmvagq0myn754dnkab8sizh6d3n6pjpcwxsmv"))))
     (build-system perl-build-system)
-    (propagated-inputs
-     (list pkg-config))
+    ;; XXX: Patch the pkg-config references to avoid propagating it, as that
+    ;; would cause the search path to be wrong when cross-building, due to
+    ;; propagated inputs being treated as host inputs, not native inputs.
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-pkg-config-path
+            (lambda* (#:key native-inputs inputs #:allow-other-keys)
+              (let* ((target #$(%current-target-system))
+                     (pkg-config-name (if target
+                                          (string-append target "-pkg-config")
+                                          "pkg-config"))
+                     (pkg-config (search-input-file
+                                  (or native-inputs inputs)
+                                  (string-append "bin/" pkg-config-name))))
+                (substitute* '("Makefile.PL"
+                               "lib/ExtUtils/PkgConfig.pm")
+                  (("qx/pkg-config([^/]*)/" _ args)
+                   (string-append "`" pkg-config args "`"))
+                  (("(`|\")pkg-config" _ quote)
+                   (string-append quote pkg-config)))))))))
+    (native-inputs (list pkg-config))
+    ;; Note: do not use the pkg-config syntax here, as the search paths fields
+    ;; are not thunked and its value could be wrong.
+    (native-search-paths (list $PKG_CONFIG_PATH))
     (home-page "https://metacpan.org/release/ExtUtils-PkgConfig")
     (synopsis "Simplistic interface to pkg-config")
     (description
@@ -4637,6 +4706,29 @@ handle Perl/XS typemap files, and their submodules.")
 of perl extensions which bind libraries that @command{pkg-config} knows.
 It is really just boilerplate code that you would have written yourself.")
     (license license:lgpl2.1+)))
+
+(define-public cross-perl-extutils-pkgconfig
+  (mlambda (target)
+    "Return a perl-extutils-pkgconfig for TARGET, adjusting the search paths."
+    (package
+      (inherit %perl-extutils-pkgconfig)
+      ;; Ignore native inputs, and set `PKG_CONFIG_PATH' for target inputs.
+      (native-search-paths '())
+      (search-paths (list $PKG_CONFIG_PATH)))))
+
+(define (perl-extutils-pkgconfig-for-target target)
+  "Return a perl-extutils-pkgconfig package for TARGET, which may be either #f
+for a native build, or a GNU triplet."
+  (if target
+      (cross-perl-extutils-pkgconfig target)
+      %perl-extutils-pkgconfig))
+
+;; This hack mimics the one for pkg-config, to allow automatically choosing
+;; the native or the cross `pkg-config' depending on whether it's being used
+;; in a cross-build environment or not.
+(define-syntax perl-extutils-pkgconfig
+  (identifier-syntax (perl-extutils-pkgconfig-for-target
+                      (%current-target-system))))
 
 (define-public perl-extutils-typemaps-default
   (package
@@ -5963,6 +6055,28 @@ it tries to load Cpanel::JSON::XS, then JSON::XS, then JSON::PP in order, and
 either uses the first module it finds or throws an error.")
     (license (package-license perl))))
 
+(define-public perl-json-parse
+  (package
+    (name "perl-json-parse")
+    (version "0.62")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "mirror://cpan/authors/id/B/BK/BKB/JSON-Parse-" version
+                    ".tar.gz"))
+              (sha256
+               (base32
+                "1nb6zxf6p42dmdmdv4c8x0dnra2sdxq21n6nvl0p8jcjjc7ihwv2"))))
+    (build-system perl-build-system)
+    (home-page "https://metacpan.org/release/JSON-Parse")
+    (synopsis "Perl Module for parsing JSON")
+    (description "@code{JSON::Parse} is a module for parsing JSON.  It offers
+@code{parse_json} which takes a string containing JSON and returns an
+equivalent Perl structure, @code{valid_json} which returns true or false
+depending on whether the JSON is correct or not, @code{assert_valid_json}
+which produces a descriptive fatal error if the JSON is invalid, and so on.")
+    (license (package-license perl))))
+
 (define-public perl-json-xs
   (package
     (name "perl-json-xs")
@@ -6260,7 +6374,7 @@ expression and a list of abbreviations (built in and given).")
 (define-public perl-lingua-translit
   (package
     (name "perl-lingua-translit")
-    (version "0.28")
+    (version "0.29")
     (source
      (origin
        (method url-fetch)
@@ -6268,7 +6382,7 @@ expression and a list of abbreviations (built in and given).")
                            "Lingua-Translit-" version ".tar.gz"))
        (sha256
         (base32
-         "1qgap0j0ixmif309dvbqca7sy8xha9xgnj9s2lvh8qrczkc92gqi"))))
+         "0lkpb698p1a5b7r0m5mz23k95cgbr4vm9mfrnw4dgnkr02ygmlhs"))))
     (build-system perl-build-system)
     (arguments
      (list
@@ -8597,8 +8711,25 @@ defaults, optional parameters, and extra \"slurpy\" parameters.")
 distributions.")
     (license (package-license perl))))
 
-(define-public perl-parent
-  (deprecated-package "perl-parent" perl))
+(define-public perl-par
+  (package
+    (name "perl-par")
+    (version "1.018")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://cpan/authors/id/R/RS/RSCHUPP/PAR-"
+                    version ".tar.gz"))
+              (sha256
+               (base32
+                "0ifyjd1pxbfp8wxa9l8b1irjwln4gwh4nz256mjacjv194mh99bc"))))
+    (build-system perl-build-system)
+    (propagated-inputs (list perl-archive-zip perl-par-dist))
+    (home-page "https://metacpan.org/release/PAR")
+    (synopsis "Perl Archive Toolkit")
+    (description
+     "Perl module for using special zip files (called Perl ARchives) as
+libraries from which Perl modules can be loaded.")
+    (license license:perl-license)))
 
 (define-public perl-path-class
   (package
@@ -9516,6 +9647,30 @@ which it is called.")
     (description "This package provides basic statistics functions like
 @code{median()}, @code{mean()}, @code{variance()} and @code{stddev()}.")
     (license license:lgpl2.0)))
+
+(define-public perl-statistics-distributions
+  (package
+    (name "perl-statistics-distributions")
+    (version "1.02")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://cpan/authors/id/M/MI/MIKEK/Statistics-Distributions-"
+             version ".tar.gz"))
+       (sha256
+        (base32
+         "1j1kswl98f4i9dn176f9aa3y9bissx2sscga5jm3gjl4pxm3k7zr"))))
+    (build-system perl-build-system)
+    (home-page "https://metacpan.org/pod/Statistics::Distributions")
+    (synopsis "Calculating some values of common statistical distributions")
+    (description
+     "@code{Statistics::Distributions} calculates percentage points (5
+significant digits) of the u (standard normal) distribution, the student's t
+distribution, the chi-square distribution and the F distribution.  It can also
+calculate the upper probability (5 significant digits) of the u (standard
+normal), the chi-square, the t and the F distribution.")
+    (license license:perl-license)))
 
 (define-public perl-statistics-pca
   (package
@@ -10519,6 +10674,46 @@ used to justify strings to various alignment styles.")
 text sequences from strings.")
     (license (package-license perl))))
 
+(define-public perl-text-bibtex
+  (package
+    (name "perl-text-bibtex")
+    (version "0.88")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://cpan/authors/id/A/AM/AMBS/Text-BibTeX-"
+                           version ".tar.gz"))
+       (sha256
+        (base32
+         "0b7lmjvfmypps1nw6nsdikgaakm0n0g4186glaqazg5xd1p5h55h"))))
+    (build-system perl-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'add-output-directory-to-rpath
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "inc/MyBuilder.pm"
+               (("-Lbtparse" line)
+                (string-append "-Wl,-rpath="
+                               (assoc-ref outputs "out") "/lib " line)))
+             #t))
+         (add-after 'unpack 'install-libraries-to-/lib
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "Build.PL"
+               (("lib64") "lib"))
+             #t)))))
+    (native-inputs
+     (list perl-capture-tiny perl-config-autoconf perl-extutils-libbuilder
+           perl-module-build))
+    (home-page "https://metacpan.org/release/Text-BibTeX")
+    (synopsis "Interface to read and parse BibTeX files")
+    (description "@code{Text::BibTeX} is a Perl library for reading, parsing,
+and processing BibTeX files.  @code{Text::BibTeX} gives you access to the data
+at many different levels: you may work with BibTeX entries as simple field to
+string mappings, or get at the original form of the data as a list of simple
+values (strings, macros, or numbers) pasted together.")
+    (license license:perl-license)))
+
 (define-public perl-text-charwidth
   (package
     (name "perl-text-charwidth")
@@ -11227,7 +11422,7 @@ Tree::Simple::Visitor::* objects.")
 (define-public perl-try-tiny
   (package
     (name "perl-try-tiny")
-    (version "0.30")
+    (version "0.31")
     (source
      (origin
        (method url-fetch)
@@ -11235,7 +11430,7 @@ Tree::Simple::Visitor::* objects.")
                            "Try-Tiny-" version ".tar.gz"))
        (sha256
         (base32
-         "0szgvlz19yz3mq1lbzmwh8w5dh6agg5s16xv22zrnl83r7ax0nys"))))
+         "1ghidhh2wasxbmjsdsyfcy20wgli3m58dkj6ixnv4xa0i8fx601k"))))
     (build-system perl-build-system)
     (home-page "https://metacpan.org/release/Try-Tiny")
     (synopsis "Minimal try/catch with proper preservation of $@@")
@@ -12247,6 +12442,40 @@ A summary of features for comparison to other file finding modules:
 As a convenience, the PIR module is an empty subclass of this one that is less
 arduous to type for one-liners.")
     (license license:asl2.0)))
+
+(define-public perl-pcsc
+  (package
+    (name "perl-pcsc")
+    (version "1.4.14")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "mirror://cpan/authors/id/W/WH/WHOM/pcsc-perl-" version
+                    ".tar.bz2"))
+              (sha256
+               (base32
+                "17f6i16jv6ci6459vh6y3sz94vgcvykjjszcl4xsykryakjvf8i7"))))
+    (build-system perl-build-system)
+    (arguments
+     (list
+      ;; The test suite is disabled because it requires access to a card
+      ;; reader with a card inserted.
+      #:tests? #f
+      #:phases #~(modify-phases %standard-phases
+                   (add-after 'unpack 'patch-dlopen
+                     (lambda* (#:key inputs #:allow-other-keys)
+                       (substitute* "PCSCperl.h"
+                         (("libpcsclite.so.1")
+                          (search-input-file inputs
+                                             "/lib/libpcsclite.so.1"))))))))
+    (native-inputs (list pkg-config))
+    (inputs (list pcsc-lite))
+    (synopsis "Perl library for PC/SC")
+    (description
+     "This library allows communication with a smart card using PC/SC from a Perl
+script.")
+    (home-page "https://pcsc-perl.apdu.fr/")
+    (license license:gpl2+)))
 
 (define-public perl-pod-constants
   (package

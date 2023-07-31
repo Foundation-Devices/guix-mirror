@@ -63,11 +63,13 @@ its API, and related concepts.
 @c how to join your own translation team and how to report issues with the
 @c translation.
 This manual is also available in French (@pxref{Top,,, guix-cookbook.fr,
-Livre de recettes de GNU Guix}) and German (@pxref{Top,,,
-guix-cookbook.de, GNU-Guix-Kochbuch}).  If you would like to translate
+Livre de recettes de GNU Guix}), German (@pxref{Top,,,
+guix-cookbook.de, GNU-Guix-Kochbuch}) and Slovak (@pxref{Top,,,
+guix-cookbook.sk, Receptár GNU Guix}).  If you would like to translate
 this document in your native language, consider joining
 @uref{https://translate.fedoraproject.org/projects/guix/documentation-cookbook,
-Weblate} (@pxref{Translating Guix,,, guix, GNU Guix reference manual}).
+Weblate} (@pxref{Translating Guix,,, guix, GNU Guix reference
+manual}).
 
 @menu
 * Scheme tutorials::            Meet your new favorite language!
@@ -232,10 +234,11 @@ A list structure can be created with the @code{list} procedure:
 @end lisp
 
 @item
-The @dfn{quote} disables evaluation of a parenthesized expression: the
-first term is not called over the other terms (@pxref{Expression Syntax,
-quote,, guile, GNU Guile Reference Manual}).  Thus it effectively
-returns a list of terms.
+@cindex S-expression
+The @dfn{quote} disables evaluation of a parenthesized expression, also
+called an S-expression or ``s-exp'': the first term is not called over
+the other terms (@pxref{Expression Syntax, quote,, guile, GNU Guile
+Reference Manual}).  Thus it effectively returns a list of terms.
 
 @lisp
 '(display (string-append "Hello " "Guix" "\n"))
@@ -246,9 +249,10 @@ returns a list of terms.
 @end lisp
 
 @item
-The @dfn{quasiquote} disables evaluation of a parenthesized expression
-until @dfn{unquote} (a comma) re-enables it.  Thus it provides us with
-fine-grained control over what is evaluated and what is not.
+The @code{quasiquote} (@code{`}, a backquote) disables evaluation of a
+parenthesized expression until @code{unquote} (@code{,}, a comma)
+re-enables it.  Thus it provides us with fine-grained control over what
+is evaluated and what is not.
 
 @lisp
 `(2 a 5 7 (2 ,a 5 ,(+ a 4)))
@@ -257,6 +261,37 @@ fine-grained control over what is evaluated and what is not.
 
 Note that the above result is a list of mixed elements: numbers, symbols (here
 @code{a}) and the last element is a list itself.
+
+@item
+@cindex G-expressions, syntax
+@cindex gexps, syntax
+@findex #~
+@findex #$
+@findex gexp
+@findex ungexp
+Guix defines a variant of S-expressions on steroids called
+@dfn{G-expressions} or ``gexps'', which come with a variant of
+@code{quasiquote} and @code{unquote}: @code{#~} (or @code{gexp}) and
+@code{#$} (or @code{ungexp}).  They let you @emph{stage code for later
+execution}.
+
+For example, you'll encounter gexps in some package definitions where
+they provide code to be executed during the package build process.  They
+look like this:
+
+@lisp
+;; Below is a G-expression representing staged code.
+#~(begin
+    ;; Invoke 'ls' from the package defined by the 'coreutils'
+    ;; variable.
+    (system* #$(file-append coreutils "/bin/ls") "-l")
+
+    ;; Create this package's output directory.
+    (mkdir #$output))
+@end lisp
+
+@xref{G-Expressions,,, guix, GNU Guix Reference Manual}, for more on
+gexps.
 
 @item
 Multiple variables can be named locally with @code{let} (@pxref{Local
@@ -628,30 +663,25 @@ The @code{use-modules} expression tells which of the modules we need in the file
 Modules are a collection of values and procedures.  They are commonly called
 ``libraries'' or ``packages'' in other programming languages.
 
-@node @samp{GUIX_PACKAGE_PATH}
-@subsubsection @samp{GUIX_PACKAGE_PATH}
+@node Channels
+@subsubsection Channels
 
-@emph{Note: Starting from Guix 0.16, the more flexible Guix @dfn{channels} are the
-preferred way and supersede @samp{GUIX_PACKAGE_PATH}.  See next section.}
+@cindex channel
+Guix and its package collection can be extended through @dfn{channels}.
+A channel is a Git repository, public or not, containing @file{.scm}
+files that provide packages (@pxref{Defining Packages,,, guix, GNU Guix
+Reference Manual}) or services (@pxref{Defining Services,,, guix, GNU
+Guix Reference Manual}).
 
-It can be tedious to specify the file from the command line instead of simply
-calling @code{guix package --install my-hello} as you would do with the official
-packages.
-
-Guix makes it possible to streamline the process by adding as many ``package
-declaration directories'' as you want.
-
-Create a directory, say @file{~/guix-packages} and add it to the @samp{GUIX_PACKAGE_PATH}
-environment variable:
+How would you go about creating a channel?  First, create a directory
+that will contain your @file{.scm} files, say @file{~/my-channel}:
 
 @example
-$ mkdir ~/guix-packages
-$ export GUIX_PACKAGE_PATH=~/guix-packages
+mkdir ~/my-channel
 @end example
 
-To add several directories, separate them with a colon (@code{:}).
-
-Our previous @samp{my-hello} needs some adjustments though:
+Suppose you want to add the @samp{my-hello} package we saw previously;
+it first needs some adjustments:
 
 @lisp
 (define-module (my-hello)
@@ -692,9 +722,9 @@ package.  If you want to use @code{define-public} in this use-case nonetheless, 
 sure the file ends with an evaluation of @code{my-hello}:
 
 @lisp
-; ...
+;; ...
 (define-public my-hello
-  ; ...
+  ;; ...
   )
 
 my-hello
@@ -702,22 +732,50 @@ my-hello
 
 This last example is not very typical.
 
-Now @samp{my-hello} should be part of the package collection like all other official
-packages.  You can verify this with:
+Now how do you make that package visible to @command{guix} commands so
+you can test your packages?  You need to add the directory to the search
+path using the @option{-L} command-line option, as in these examples:
 
 @example
-$ guix package --show=my-hello
+guix show -L ~/my-channel my-hello
+guix build -L ~/my-channel my-hello
 @end example
 
-@node Guix channels
-@subsubsection Guix channels
+The final step is to turn @file{~/my-channel} into an actual channel,
+making your package collection seamlessly available @i{via} any
+@command{guix} command.  To do that, you first need to make it a Git
+repository:
 
-Guix 0.16 features channels, which is very similar to @samp{GUIX_PACKAGE_PATH} but
-provides better integration and provenance tracking.  Channels are not
-necessarily local, they can be maintained as a public Git repository for
-instance.  Of course, several channels can be used at the same time.
+@example
+cd ~/my-channel
+git init
+git add my-hello.scm
+git commit -m "First commit of my channel."
+@end example
 
-@xref{Channels,,, guix, GNU Guix Reference Manual} for setup details.
+And that's it, you have a channel!  From there on, you can add this
+channel to your channel configuration in
+@file{~/.config/guix/channels.scm} (@pxref{Specifying Additional
+Channels,,, guix, GNU Guix Reference Manual}); assuming you keep your
+channel local for now, the @file{channels.scm} would look something like
+this:
+
+@lisp
+(append (list (channel
+                (name 'my-channel)
+                (url (string-append "file://" (getenv "HOME")
+                                    "/my-channel"))))
+        %default-channels)
+@end lisp
+
+Next time you run @command{guix pull}, your channel will be picked up
+and the packages it defines will be readily available to all the
+@command{guix} commands, even if you do not pass @option{-L}.  The
+@command{guix describe} command will show that Guix is, indeed, using
+both the @code{my-channel} and the @code{guix} channels.
+
+@xref{Creating a Channel,,, guix, GNU Guix Reference Manual}, for
+details.
 
 @node Direct checkout hacking
 @subsubsection Direct checkout hacking
@@ -819,12 +877,12 @@ another, more sophisticated package (slightly modified from the source):
   #:use-module (guix packages)
   #:use-module (guix git-download)
   #:use-module (guix build-system cmake)
-  #:use-module (gnu packages ssh)
-  #:use-module (gnu packages web)
+  #:use-module (gnu packages compression)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
-  #:use-module (gnu packages compression)
-  #:use-module (gnu packages tls))
+  #:use-module (gnu packages ssh)
+  #:use-module (gnu packages tls)
+  #:use-module (gnu packages web))
 
 (define-public my-libgit2
   (let ((commit "e98d0a37c93574d2c6107bf7f31140b548c6a7bf")
@@ -861,9 +919,11 @@ another, more sophisticated package (slightly modified from the source):
                  (("/bin/rm") (which "rm")))))
            ;; Run checks more verbosely.
            (replace 'check
-             (lambda _ (invoke "./libgit2_clar" "-v" "-Q")))
+             (lambda* (#:key tests? #:allow-other-keys)
+               (when tests?
+                 (invoke "./libgit2_clar" "-v" "-Q"))))
            (add-after 'unpack 'make-files-writable-for-tests
-             (lambda _ (for-each make-file-writable (find-files "." ".*")))))))
+             (lambda _ (for-each make-file-writable (find-files ".")))))))
       (inputs
        (list libssh2 http-parser python-wrapper))
       (native-inputs
@@ -2122,7 +2182,10 @@ be made setuid-root so it can authenticate users, and it needs a PAM service. Th
 can be achieved by adding the following service to your @file{config.scm}:
 
 @lisp
-(screen-locker-service slock)
+(service screen-locker-services-type
+         (screen-locker-configuration
+          (name "slock")
+          (program (file-append slock "/bin/slock"))))
 @end lisp
 
 If you manually lock your screen, e.g. by directly calling slock when you want to lock

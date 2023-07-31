@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2014 Cyril Roelandt <tipecaml@gmail.com>
 ;;; Copyright © 2014, 2015 Eric Bavier <bavier@member.fsf.org>
-;;; Copyright © 2013-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015, 2016 Mathieu Lirzin <mthl@gnu.org>
 ;;; Copyright © 2016 Danny Milosavljevic <dannym+a@scratchpost.org>
 ;;; Copyright © 2016 Hartmut Goebel <h.goebel@crazy-compilers.com>
@@ -33,7 +33,6 @@
 (define-module (guix lint)
   #:use-module (guix store)
   #:autoload   (guix base16) (bytevector->base16-string)
-  #:use-module (guix base32)
   #:autoload   (guix base64) (base64-encode)
   #:use-module (guix build-system)
   #:use-module (guix diagnostics)
@@ -519,6 +518,7 @@ of a package, and INPUT-NAMES, a list of package specifications such as
             "qmake"
             "qttools-5"
             "texinfo"
+            "texlive-updmap.cfg"
             "xorg-server-for-tests"
             "yelp-tools")))
     (map (lambda (input)
@@ -533,7 +533,8 @@ of a package, and INPUT-NAMES, a list of package specifications such as
   ;; Emit a warning if some inputs of PACKAGE are likely to should not be
   ;; an input at all.
   (let ((input-names '("python-setuptools"
-                       "python-pip")))
+                       "python-pip"
+                       "python-pre-commit")))
     (map (lambda (input)
            (make-warning
             package
@@ -1484,6 +1485,9 @@ the NIST server non-fatal."
                          (package-version package))))
         ((force lookup) name version)))))
 
+;; Prevent Guile 3 from inlining this procedure so we can mock it in tests.
+(set! package-vulnerabilities package-vulnerabilities)
+
 (define* (check-vulnerabilities package
                                 #:optional (package-vulnerabilities
                                             package-vulnerabilities))
@@ -1607,11 +1611,11 @@ try again later")
   (parameterize ((%allow-request? skip-when-limit-reached))
     (catch #t
       (lambda ()
-        (match (and (origin? (package-source package))
-                    (package-source package))
+        (match (package-source package)
           (#f                                     ;no source
            '())
-          ((= origin-uri (? git-reference? reference))
+          ((and (? origin?)
+                (= origin-uri (? git-reference? reference)))
            (define url
              (git-reference-url reference))
            (define commit
@@ -1677,9 +1681,12 @@ Disarchive entry refers to non-existent SWH directory '~a'")
                    ((? content?)
                     '())))
                '()))
+          ((? local-file?)
+           '())
           (_
            (list (make-warning package
-                               (G_ "unsupported source type")
+                               (G_ "\
+source is not an origin, it cannot be archived")
                                #:field 'source)))))
       (match-lambda*
         (('swh-error url method response)
@@ -1862,6 +1869,10 @@ them for PACKAGE."
      (description "Validate package descriptions")
      (check       check-description-style))
    (lint-checker
+     (name        'synopsis)
+     (description "Validate package synopses")
+     (check       check-synopsis-style))
+   (lint-checker
      (name        'inputs-should-be-native)
      (description "Identify inputs that should be native inputs")
      (check       check-inputs-should-be-native))
@@ -1925,10 +1936,7 @@ or a list thereof")
 
 (define %network-dependent-checkers
   (list
-   (lint-checker
-     (name        'synopsis)
-     (description "Validate package synopses")
-     (check       check-synopsis-style))
+
    (lint-checker
      (name        'gnu-description)
      (description "Validate synopsis & description of GNU packages")

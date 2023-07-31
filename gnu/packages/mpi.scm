@@ -141,7 +141,7 @@ bind processes, and much more.")
 (define-public hwloc-2
   (package
     (inherit hwloc-1)
-    (version "2.9.0")
+    (version "2.9.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://download.open-mpi.org/release/hwloc/v"
@@ -149,7 +149,7 @@ bind processes, and much more.")
                                   "/hwloc-" version ".tar.bz2"))
               (sha256
                (base32
-                "11v8hnl6fdsdbm3wnz5gg88f2ghixjyl7jlfmywj293ab5iyjw10"))))
+                "1kv0n3b9knb8aawf0hxaxn9wc9bbpwh676r2gmb0pc7qfzvgv1qa"))))
 
     ;; libnuma is no longer needed.
     (inputs (modify-inputs (package-inputs hwloc-1)
@@ -168,16 +168,7 @@ bind processes, and much more.")
            (add-before 'check 'skip-tests-that-require-/sys
              (lambda _
                ;; 'test-gather-topology.sh' requires /sys as of 2.9.0; skip it.
-               (setenv "HWLOC_TEST_GATHER_TOPOLOGY" "0")
-
-               ;; 'hwloc_backends' also requires /sys on non-x86 systems, for
-               ;; which hwloc lacks a topology backend not reliant on the
-               ;; operating system; skip it also on these machines.
-               (substitute* "tests/hwloc/hwloc_backends.c"
-                 ,@(if (not (target-x86?))
-                       '((("putenv\\(\\(char \\*\\) \"HWLOC_L" all)
-                          (string-append "exit (77);\n" all)))
-                       '()))))
+               (setenv "HWLOC_TEST_GATHER_TOPOLOGY" "0")))
            (add-before 'check 'skip-test-that-fails-on-qemu
              (lambda _
                ;; Skip test that fails on emulated hardware due to QEMU bug:
@@ -186,8 +177,6 @@ bind processes, and much more.")
                  (("hwloc_topology_init" all)
                   (string-append "exit (77);\n" all)))))))))))
 
-(define-deprecated hwloc-2.0 hwloc-2)
-
 (define-public hwloc
   ;; The latest stable series of hwloc.
   hwloc-2)
@@ -195,7 +184,7 @@ bind processes, and much more.")
 (define-public openmpi
   (package
     (name "openmpi")
-    (version "4.1.4")
+    (version "4.1.5")
     (source
      (origin
        (method url-fetch)
@@ -203,7 +192,7 @@ bind processes, and much more.")
                            (version-major+minor version)
                            "/downloads/openmpi-" version ".tar.bz2"))
        (sha256
-        (base32 "03ckngrff1cl0l81vfvrfhp99rbgk7s0633kr1l468yibwbjx4cj"))
+        (base32 "1qyvc77diyrxmviirdwqpibgm32c4vkdlvw8g79rsf2pq9mrhh56"))
        (patches (search-patches "openmpi-mtl-priorities.patch"))))
 
     (properties
@@ -410,13 +399,13 @@ only provides @code{MPI_THREAD_FUNNELED}.")))
 (define-public python-mpi4py
   (package
     (name "python-mpi4py")
-    (version "3.0.3")
+    (version "3.1.4")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "mpi4py" version))
        (sha256
-        (base32 "07ssbhssv27rrjx1c5vd3vsr31vay5d8xcf4zh9yblcyidn72b81"))))
+        (base32 "101lz7bnm9l17nrkbg6497kxscyh53aah7qd2b820ck2php8z18p"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -433,7 +422,9 @@ only provides @code{MPI_THREAD_FUNNELED}.")))
              #t)))))
     (inputs
      (list openmpi))
-    (home-page "https://bitbucket.org/mpi4py/mpi4py/")
+    (properties
+     '((updater-extra-inputs . ("openmpi"))))
+    (home-page "https://github.com/mpi4py/mpi4py")
     (synopsis "Python bindings for the Message Passing Interface standard")
     (description "MPI for Python (mpi4py) provides bindings of the Message
 Passing Interface (MPI) standard for the Python programming language, allowing

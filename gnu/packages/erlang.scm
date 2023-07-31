@@ -8,6 +8,7 @@
 ;;; Copyright © 2021 Oskar Köök <oskar@maatriks.ee>
 ;;; Copyright © 2021 Cees de Groot <cg@evrl.com>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
+;;; Copyright © 2023 wrobell <wrobell@riseup.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -45,7 +46,7 @@
 (define-public erlang
   (package
     (name "erlang")
-    (version "25.0.4")
+    (version "25.3.2")
     (source (origin
               (method git-fetch)
               ;; The tarball from http://erlang.org/download contains many
@@ -57,7 +58,7 @@
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0n39pd5d8mmyj03d8fdan0zb2pcc383pmqf0v7s356fgirdbsrcm"))
+                "092lym5a181gz89nscw7kqhw1wa6qvgcpkj80q4i9p79mxmsr1nj"))
               (patches (search-patches "erlang-man-path.patch"))))
     (build-system gnu-build-system)
     (native-inputs
@@ -71,7 +72,7 @@
                                (version-major+minor version) ".tar.gz"))
            (sha256
             (base32
-             "17ap4kawlbqmcl13c543gh54p1ng8ivxmbn6lbbij07k81ry5p1y"))))))
+             "0vnpds5q17xc4jjj3sbsllpx68wyhgvx70714vkzyd68rbjmhmk7"))))))
     (inputs
      (list ncurses openssl wxwidgets))
     (propagated-inputs
@@ -168,7 +169,8 @@
            (lambda* (#:key outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out")))
                (substitute* (string-append out "/bin/erl")
-                 (("sed") (which "sed"))))))
+                 (("basename") (which "basename"))
+                 (("dirname") (which "dirname"))))))
          (add-after 'install 'install-doc
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))

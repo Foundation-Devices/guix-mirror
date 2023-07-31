@@ -4,7 +4,7 @@
 ;;; Copyright © 2019 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -252,7 +252,7 @@ supported devices, as well as input/output file format support.")
 (define-public openboardview
   (package
     (name "openboardview")
-    (version "8.95.2")
+    (version "9.95.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -271,10 +271,10 @@ supported devices, as well as input/output file format support.")
                             (scandir "." (negate (cut member <> keep))))))
               (patches
                (search-patches "openboardview-use-system-imgui.patch"
-                               "openboardview-use-system-utf8.patch"))
+                               "openboardview-use-system-mpc.patch"))
               (sha256
                (base32
-                "1n2yfi8wpky0y231kq2zdgwn7f7kff8m53m904hxi5ppmwhx1d6q"))))
+                "1safjd729a7591rigkiy3c678bivrj5q1qwg1f18sijhlsfkf5b3"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -298,13 +298,6 @@ supported devices, as well as input/output file format support.")
                   "add_subdirectory("
                   (search-input-directory inputs "share/glad") ;source_dir
                   " src/glad)\n")))))                          ;binary dir
-          (add-before 'configure 'fix-utf8-include-directive
-            ;; Our utf8-h package makes the header available as "utf8.h"
-            ;; directly rather than "utf8/utf8.h".
-            (lambda _
-              (substitute* '("src/openboardview/FileFormats/BRDFile.cpp"
-                             "src/openboardview/BoardView.cpp")
-                (("utf8/utf8.h") "utf8.h"))))
           (add-before 'configure 'dynamically-load-gtk-via-absolute-path
             ;; The GTK library is not linked thus not present in the RUNPATH of
             ;; the produced binary; the absolute path of the libraries must to
@@ -327,11 +320,14 @@ supported devices, as well as input/output file format support.")
     (inputs
      (list fontconfig
            gtk+
-           imgui
+           ;; OpenBoardView can build with Dear ImGui 1.88, but there are some
+           ;; usability problems such as the difficulty to register clicks.
+           imgui-1.87
+           orangeduck-mpc
            sdl2
            sqlite
            zlib))
-    (home-page "https://openboardview.org/")
+    (home-page "https://github.com/OpenBoardView/OpenBoardView")
     (synopsis "Viewer for BoardView files")
     (description "OpenBoardView is a viewer for BoardView files, which present
 the details of a printed circuit board (PCB).  It comes with features
@@ -431,3 +427,61 @@ from ALSA, ESD, and COMEDI sources.  This package currently does not include
 support for ESD sources.")
     (home-page "https://xoscope.sourceforge.net/")
     (license license:gpl2+)))
+
+(define-public minipro
+  ;; Information needed to fix Makefile
+   (let* ((commit "c181c2cf1619d00a520627d475e3fadb1eea5dac")
+         (commit-short (substring commit 0 8))
+         (date "2022-09-10 21:44:06 -0700"))
+    (package
+      (name "minipro")
+      (version "0.6")
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://gitlab.com/DavidGriffith/minipro.git")
+                      (commit version)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "03xgmvvsxmqrz7blg7cqk0pb9ynhlq6v6jfl532zmjdzp5p3h10d"))))
+      (native-inputs (list pkg-config which))
+      (inputs (list libusb))
+      (build-system gnu-build-system)
+      (arguments
+       (list
+        #:tests? #f ; no test suite
+        #:phases
+        #~(modify-phases %standard-phases
+            (delete 'configure) ; No ./configure script
+            (add-before 'build 'fix-makefile
+              (lambda _
+                ;; Fix some git related variables that minipro expects
+                (substitute* "Makefile"
+                  (("GIT_BRANCH = .*")
+                   (string-append "GIT_BRANCH = \"master\"\n"))
+                  (("GIT_HASH = .*")
+                   (string-append "GIT_HASH = \"" #$commit "\"\n"))
+                  (("GIT_HASH_SHORT = .*")
+                   (string-append "GIT_HASH_SHORT = \"" #$commit-short "\"\n"))
+                  (("GIT_DATE = .*")
+                   (string-append "GIT_DATE = \"" #$date "\"\n"))))))
+        #:make-flags
+        #~(list (string-append "VERSION=" #$version)
+                (string-append "PREFIX=" #$output)
+                (string-append "UDEV_DIR=" #$output "/lib/udev")
+                (string-append "COMPLETIONS_DIR=" #$output
+                               "/share/bash-completion/completions"))))
+      (synopsis "Controls the TL866xx series of chip programmers")
+      (description
+       "minipro is designed to program or read the contents of
+chips supported by the TL866xx series of programmers.  This includes many
+microcontrollers, ROMs, EEPROMs and PLDs.
+
+To use this program without root privileges you must install the necessary udev
+rules.  This can be done by extending @code{udev-service-type} in your
+@code{operating-system} configuration with this package.  E.g.:
+@code{(udev-rules-service 'minipro minipro #:groups '(\"plugdev\")}.
+Additionally your user must be member of the @code{plugdev} group.")
+      (home-page "https://gitlab.com/DavidGriffith/minipro")
+      (license license:gpl3+))))

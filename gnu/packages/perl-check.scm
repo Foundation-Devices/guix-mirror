@@ -39,6 +39,7 @@
   #:use-module (gnu packages web)
   #:use-module (guix packages)
   #:use-module (guix download)
+  #:use-module (guix git-download)
   #:use-module (guix build-system perl)
   #:use-module (gnu packages perl))
 
@@ -546,7 +547,7 @@ Test::More and friends.")
 (define-public perl-test-fatal
   (package
     (name "perl-test-fatal")
-    (version "0.014")
+    (version "0.016")
     (source
      (origin
        (method url-fetch)
@@ -554,7 +555,7 @@ Test::More and friends.")
                            "Test-Fatal-" version ".tar.gz"))
        (sha256
         (base32
-         "1c6bs68mss4q7cyapkv2c0jn66i21050p0faxf3s3417gdffzp5w"))))
+         "13vqdyk95y89msk1r8g1vp1jw6rzkl1y76lprnw3085sy8qd90vj"))))
     (build-system perl-build-system)
     (propagated-inputs (list perl-try-tiny))
     (home-page "https://metacpan.org/release/Test-Fatal")
@@ -713,6 +714,29 @@ contents of a file is equal to a particular string.")
     (synopsis "Run Perl standard test scripts with statistics")
     (description "Simple test harness which allows tests to be run and results
 automatically aggregated and output to STDOUT.")
+    (license perl-license)))
+
+(define-public perl-test-inter
+  (package
+    (name "perl-test-inter")
+    (version "1.10")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/SBECK-github/Test-Inter")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0ii3avmd31j3kxg456jqvlj5w0hpywpj51mqm4ccnjm820yv8irb"))))
+    (build-system perl-build-system)
+    (home-page "https://metacpan.org/pod/Test::Inter")
+    (synopsis "Framework for more readable interactive test scripts")
+    (description
+     "@code{Test::Inter} is another framework for writing test scripts, which
+offer the ability to access specific tests in a reasonably interactive
+fashion, primarily for debugging purposes.  Much of the syntax is loosely
+inspired by @code{Test::More}.")
     (license perl-license)))
 
 (define-public perl-test-leaktrace

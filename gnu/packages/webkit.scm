@@ -6,7 +6,7 @@
 ;;; Copyright © 2018–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Pierre Neidhardt <mail@ambrevar.xyz>
 ;;; Copyright © 2019 Marius Bakke <mbakke@fastmail.com>
-;;; Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -36,6 +36,7 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bison)
+  #:use-module (gnu packages c)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages enchant)
@@ -123,18 +124,16 @@ the WPE-flavored port of WebKit.")
 engine that uses Wayland for graphics output.")
     (license license:bsd-2)))
 
-(define %webkit-version "2.38.5")
-
 (define-public webkitgtk
   (package
     (name "webkitgtk")                  ; webkit2gtk4
-    (version %webkit-version)
+    (version "2.40.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://www.webkitgtk.org/releases/"
                                   name "-" version ".tar.xz"))
               (sha256
-               (base32 "19y1n05mp370mq4bp2bk0pm3wk49z9a10azjjdcdyx12091hrhj0"))
+               (base32 "0070fy5crf7kngy49wz5bqwvp8z9rmnq2cm6wxp41nllv5q8i2cn"))
               (patches (search-patches
                         "webkitgtk-adjust-bubblewrap-paths.patch"))))
     (build-system cmake-build-system)
@@ -148,18 +147,26 @@ engine that uses Wayland for graphics output.")
       ;; binaries require 20 GiB of memory to link (even with ld.gold or lld)
       ;; and produce 4.6 GiB of debug symbols.
       #:build-type "Release"
-      #:configure-flags #~(list
-                           "-DPORT=GTK"
-                           ;; GTKDOC will be removed upstream soon in favor of
-                           ;; gi-docgen; it is normally disabled because the
-                           ;; doc is rather expensive to build.
-                           "-DENABLE_GTKDOC=ON"
-                           ;; The minibrowser, not built by default, is a good
-                           ;; tool to validate the good operation of
-                           ;; webkitgtk.
-                           "-DENABLE_MINIBROWSER=ON"
-                           ;; The default lib installation prefix is lib64.
-                           (string-append "-DLIB_INSTALL_DIR=" #$output "/lib"))
+      #:configure-flags
+      #~(list "-DPORT=GTK"
+              ;; GTKDOC will be removed upstream soon in favor of
+              ;; gi-docgen; it is normally disabled because the
+              ;; doc is rather expensive to build.
+              "-DENABLE_GTKDOC=ON"
+              ;; The minibrowser, not built by default, is a good
+              ;; tool to validate the good operation of
+              ;; webkitgtk.
+              "-DENABLE_MINIBROWSER=ON"
+              ;; The default lib installation prefix is lib64.
+              (string-append "-DLIB_INSTALL_DIR=" #$output "/lib")
+              ;; XXX: WebKitGTK makes use of elogind's systemd-compatible
+              ;; headers, which are under the include/elogind prefix.  The WTF
+              ;; component doesn't propagate the Journald header correctly
+              ;; detected (stubs from elogind), hence the following hack (see:
+              ;; https://bugs.webkit.org/show_bug.cgi?id=254495).
+              (string-append "-DCMAKE_CXX_FLAGS=-I"
+                             (search-input-directory
+                              %build-inputs "include/elogind")))
       ;; The build may fail with -j1 (see:
       ;; https://bugs.webkit.org/show_bug.cgi?id=195251).
       #:make-flags #~(list "-j" (number->string (max 2 (parallel-job-count))))
@@ -186,19 +193,19 @@ engine that uses Wayland for graphics output.")
               (substitute* "Source/cmake/OptionsCommon.cmake"
                 (("if \\(LD_SUPPORTS_DISABLE_NEW_DTAGS\\)")
                  "if (FALSE)"))))
-          (add-after 'unpack 'help-cmake-find-elogind
-            (lambda _
-              (substitute* "Source/cmake/FindJournald.cmake"
-                ;; Otherwise, CMake would throw an error because it relies on
-                ;; the pkg-config search to locate headers.
-                (("pkg_check_modules\\(PC_SYSTEMD QUIET libsystemd")
-                 "pkg_check_modules(PC_SYSTEMD QUIET libelogind"))))
           (add-after 'unpack 'embed-absolute-wpebackend-reference
             (lambda* (#:key inputs #:allow-other-keys)
               (let ((wpebackend-fdo (assoc-ref inputs "wpebackend-fdo")))
                 (substitute* "Source/WebKit/UIProcess/glib/WebProcessPoolGLib.cpp"
                   (("libWPEBackend-fdo-[\\.0-9]+\\.so" all)
                    (search-input-file inputs (string-append "lib/" all)))))))
+          #$@(if (target-x86-32?)
+                 ;; Don't include x86intrin.h on i686-linux.
+                 '((add-after 'unpack 'fix-headers
+                     (lambda _
+                       (substitute* "Source/ThirdParty/ANGLE/src/common/platform.h"
+                         (("\\|\\| defined\\(__i386__\\)") "")))))
+                 '())
           #$@(if (target-x86-64?)
                  '()
                  '((add-after 'unpack 'disable-sse2
@@ -222,7 +229,8 @@ engine that uses Wayland for graphics output.")
            pkg-config
            python-wrapper
            gi-docgen
-           ruby))
+           ruby-2.7
+           unifdef))
     (propagated-inputs
      (list gtk+ libsoup))
     (inputs
@@ -233,11 +241,11 @@ engine that uses Wayland for graphics output.")
            geoclue
            gst-plugins-base
            gst-plugins-bad-minimal
-           gtk+-2
            harfbuzz
            hyphen
            icu4c
            lcms
+           libavif
            libgcrypt
            libgudev
            libjpeg-turbo
@@ -290,7 +298,7 @@ propagated by default) such as @code{gst-plugins-good} and
        (replace "gtk+" gtk)))
     (inputs
      (modify-inputs (package-inputs webkitgtk)
-       (delete "gtk+-2" "libnotify")))))
+       (delete "libnotify")))))
 
 ;;; Required by e.g. emacs-next-pgtk, emacs-xwidgets, and some other GNOME
 ;;; packages for webkit2gtk-4.0.  See also the upstream tracker for libsoup 3:
@@ -309,13 +317,13 @@ propagated by default) such as @code{gst-plugins-good} and
   (package
     (inherit webkitgtk)
     (name "wpewebkit")
-    (version %webkit-version)
+    (version "2.40.0")
     (source (origin
               (inherit (package-source webkitgtk))
               (uri (string-append "https://wpewebkit.org/releases/"
                                   name "-" version ".tar.xz"))
               (sha256
-               (base32 "0q8nmk9l6bqv2bhljm9wv7mvgdl393z7v2m7a0c5avac18yzs07z"))))
+               (base32 "1dl663nbm011sx099x9gdhk3aj119yn5rxp77jmnhdv1l77jpv58"))))
     (arguments
      (substitute-keyword-arguments (package-arguments webkitgtk)
        ((#:configure-flags flags)

@@ -148,7 +148,7 @@ Otherwise assume that there is no password for root."
             (marionette-eval
              `(begin
                 (use-modules (gnu services herd))
-                (start 'user-processes)
+                (start-service 'user-processes)
                 ((@@ (gnu services herd) eval-there)
                  '(let ((result (read (current-input-port))))
                     (if (eof-object? result)
@@ -962,7 +962,7 @@ non-ASCII names from /tmp.")
     (name-service-switch %mdns-host-lookup-nss)
     (services (cons* (service avahi-service-type
                               (avahi-configuration (debug? #t)))
-                     (dbus-service)
+                     (service dbus-root-service-type)
                      (service dhcp-client-service-type) ;needed for multicast
 
                      ;; Enable heavyweight debugging output.

@@ -21,6 +21,8 @@
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
 ;;; Copyright © 2022 Robby Zambito <contact@robbyzambito.me>
 ;;; Copyright © 2023 Andrew Whatson <whatson@tailcall.au>
+;;; Copyright © 2023 Juliana Sims <jtsims@protonmail.com>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -48,6 +50,8 @@
   #:use-module (guix git-download)
   #:use-module (guix utils)
   #:use-module (guix build-system asdf)
+  #:use-module (guix build-system copy)
+  #:use-module (guix build-system emacs)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system trivial)
   #:use-module (gnu packages autotools)
@@ -134,6 +138,12 @@
                (("\\./configure")
                 (string-append (which "sh") " configure")))
              #t))
+         ;; disable array-parameter warnings that become errors while
+         ;; compiling microcode target
+         (add-before 'configure 'set-flags
+           (lambda* (#:key inputs #:allow-other-keys)
+             (setenv "CFLAGS" "-Wno-array-parameter")
+             (setenv "CPPFLAGS" "-Wno-array-parameter")))
          (replace 'build
            (lambda* (#:key system outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out")))
@@ -181,8 +191,9 @@
        ("autoconf" ,autoconf)
        ("automake" ,automake)
        ("libtool" ,libtool)
-       ("texlive" ,(texlive-updmap.cfg (list texlive-tex-texinfo
-                                             texlive-epsf)))
+       ("texlive" ,(texlive-updmap.cfg
+                    (list texlive-epsf
+                          texlive-texinfo)))
        ("texinfo" ,texinfo)
        ("ghostscript" ,ghostscript)
        ("m4" ,m4)))
@@ -544,24 +555,24 @@ in Scheme, and a runtime library which allows Pre-Scheme code to run as Scheme."
 (define-public gambit-c
   (package
     (name "gambit-c")
-    (version "4.9.3")
+    (version "4.9.4")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "http://www.iro.umontreal.ca/~gambit/download/gambit/v"
-             (version-major+minor version) "/source/gambit-v"
+             "http://www.gambitscheme.org/"
+             version "/gambit-v"
              (string-map (lambda (c) (if (char=? c #\.) #\_ c)) version)
              ".tgz"))
        (sha256
-        (base32 "1p6172vhcrlpjgia6hsks1w4fl8rdyjf9xjh14wxfkv7dnx8a5hk"))))
+        (base32 "025x8zi9176qwww4d3pk8aj9ab1fpqyxqz26q3v394k6bfk49yqr"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags
        ;; According to the ./configure script, this makes the build slower and
        ;; use >= 1 GB memory, but makes Gambit much faster.
        '("--enable-single-host")))
-    (home-page "http://dynamo.iro.umontreal.ca/wiki/index.php/Main_Page")
+    (home-page "http://www.gambitscheme.org/")
     (synopsis "Efficient Scheme interpreter and compiler")
     (description
      "Gambit consists of two main programs: gsi, the Gambit Scheme
@@ -607,7 +618,7 @@ threads.")
 
 (define-public sicp
   (let ((commit "bda03f79d6e2e8899ac2b5ca6a3732210e290a79")
-        (revision "2"))
+        (revision "3"))
     (package
       (name "sicp")
       (version (git-version "20180718" revision commit))
@@ -620,30 +631,24 @@ threads.")
                  (base32
                   "0mng7qrj2dvssyffr9ycnf4a5k0kadp4dslq7mc5bhzq1qxyjs2w"))
                 (file-name (git-file-name name version))))
-      (build-system trivial-build-system)
-      (native-inputs `(("gzip" ,gzip)
-                       ("source" ,source)
-                       ("texinfo" ,texinfo)))
+      (build-system copy-build-system)
+      (native-inputs (list gzip texinfo))
       (arguments
-       `(#:modules ((guix build utils))
-         #:builder
-         (begin
-           (use-modules (guix build utils)
-                        (srfi srfi-26))
-           (let ((gzip (assoc-ref %build-inputs "gzip"))
-                 (source (assoc-ref %build-inputs "source"))
-                 (texinfo (assoc-ref %build-inputs "texinfo"))
-                 (html-dir (string-append %output "/share/doc/" ,name "/html"))
-                 (info-dir (string-append %output "/share/info")))
-             (copy-recursively (string-append source "/html") html-dir)
-             (setenv "PATH" (string-append gzip "/bin"
-                                           ":" texinfo "/bin"))
-             (mkdir-p info-dir)
-             (invoke "makeinfo" "--output"
-                     (string-append info-dir "/sicp.info")
-                     (string-append source "/sicp-pocket.texi"))
-             (for-each (cut invoke "gzip" "-9n" <>)
-                       (find-files info-dir))))))
+       (list #:install-plan ''(("html" "share/doc/sicp/")
+                               ("sicp.info" "share/info/"))
+             #:phases #~(modify-phases %standard-phases
+                          (add-after 'unpack 'remove-obsolete-commands
+                            (lambda _
+                              ;; Reported upstream:
+                              ;; https://github.com/sarabander/sicp/issues/46.
+                              (substitute* "sicp-pocket.texi"
+                                (("@setshortcontentsaftertitlepage")
+                                 ""))))
+                          (add-before 'install 'build
+                            (lambda _
+                              (invoke "makeinfo" "--no-split"
+                                      "--output=sicp.info"
+                                      "sicp-pocket.texi"))))))
       (home-page "https://sarabander.github.io/sicp")
       (synopsis "Structure and Interpretation of Computer Programs")
       (description "Structure and Interpretation of Computer Programs (SICP) is
@@ -1113,94 +1118,100 @@ a Common Lisp environment.")
 (define-public gerbil
   (package
     (name "gerbil")
-    (version "0.16")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/vyzo/gerbil")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0vng0kxpnwsg8jbjdpyn4sdww36jz7zfpfbzayg9sdpz6bjxjy0f"))))
+    (version "0.17.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/vyzo/gerbil")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0c0nspm659ybgmqlppdv7sxzll4hwkvcp9qmcsip6d0kz0p8r9c3"))))
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (delete 'bootstrap)
-         (add-before 'configure 'chdir
-           (lambda _
-             (chdir "src")
-             #t))
-         (replace 'configure
-           (lambda* (#:key outputs inputs #:allow-other-keys)
-             (invoke "chmod" "755" "-R" ".")
-             ;; Otherwise fails when editing an r--r--r-- file.
-             (invoke "gsi-script" "configure"
-                     "--prefix" (assoc-ref outputs "out")
-                     "--with-gambit" (assoc-ref inputs "gambit-c"))))
-         (add-before 'patch-generated-file-shebangs 'fix-gxi-shebangs
-           (lambda _
-             ;; Some .ss files refer to gxi using /usr/bin/env gxi
-             ;; and 'patch-generated-file-shebangs can't fix that
-             ;; because gxi has not been compiled yet.
-             ;; We know where gxi is going to end up so we
-             ;; Doctor Who our fix here before the problem
-             ;; happens towards the end of the build.sh script.
-             (let ((abs-srcdir (getcwd)))
-               (for-each
-                (lambda (f)
-                   (substitute* f
-                     (("#!/usr/bin/env gxi")
-                      (string-append "#!" abs-srcdir "/../bin/gxi"))))
-                 '("./gerbil/gxc"
-                   "./lang/build.ss"
-                   "./misc/http-perf/build.ss"
-                   "./misc/rpc-perf/build.ss"
-                   "./misc/scripts/docsnarf.ss"
-                   "./misc/scripts/docstub.ss"
-                   "./misc/scripts/docsyms.ss"
-                   "./r7rs-large/build.ss"
-                   "./release.ss"
-                   "./std/build.ss"
-                   "./std/run-tests.ss"
-                   "./std/web/fastcgi-test.ss"
-                   "./std/web/rack-test.ss"
-                   "./tools/build.ss"
-                   "./tutorial/httpd/build.ss"
-                   "./tutorial/kvstore/build.ss"
-                   "./tutorial/lang/build.ss"
-                   "./tutorial/proxy/build-static.ss"
-                   "./tutorial/proxy/build.ss")))
-             #t))
-         (replace
-          'build
-          (lambda*
-           (#:key inputs #:allow-other-keys)
-           (setenv "HOME" (getcwd))
-             (invoke
-              ;; The build script needs a tty or it'll crash on an ioctl
-              ;; trying to find the width of the terminal it's running on.
-              ;; Calling in script prevents that.
-              "script"
-              "-qefc"
-              "./build.sh")))
-         (delete 'check)
-         (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (bin (string-append out "/bin"))
-                    (lib (string-append out "/lib")))
-               (mkdir-p bin)
-               (mkdir-p lib)
-               (copy-recursively "../bin" bin)
-               (copy-recursively "../lib" lib)))))))
-    (native-inputs
-     (list coreutils util-linux))
-    (propagated-inputs
-     (list gambit-c zlib openssl sqlite))
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (delete 'bootstrap)
+               (add-before 'configure 'chdir
+                 (lambda _
+                   (chdir "src")))
+               (replace 'configure
+                 (lambda _
+                   (invoke "chmod" "755" "-R" ".")
+                   ;; Otherwise fails when editing an r--r--r-- file.
+                   (invoke "gsi-script"
+                           "configure"
+                           "--prefix"
+                           #$output
+                           "--with-gambit"
+                           #$gambit-c)))
+               (add-before 'patch-generated-file-shebangs 'fix-gxi-shebangs
+                 (lambda _
+                   ;; Some .ss files refer to gxi using /usr/bin/env gxi
+                   ;; and 'patch-generated-file-shebangs can't fix that
+                   ;; because gxi has not been compiled yet.
+                   ;; We know where gxi is going to end up so we
+                   ;; Doctor Who our fix here before the problem
+                   ;; happens towards the end of the build.sh script.
+                   (let ((abs-srcdir (getcwd)))
+                     (for-each (lambda (f)
+                                 (substitute* f
+                                   (("#!/usr/bin/env gxi")
+                                    (string-append "#!" abs-srcdir
+                                                   "/../bin/gxi"))))
+                               '("./gerbil/gxc" "./lang/build.ss"
+                                 "./misc/http-perf/build.ss"
+                                 "./misc/rpc-perf/build.ss"
+                                 "./misc/scripts/docsnarf.ss"
+                                 "./misc/scripts/docstub.ss"
+                                 "./misc/scripts/docsyms.ss"
+                                 "./r7rs-large/build.ss"
+                                 "./release.ss"
+                                 "./std/build.ss"
+                                 "./std/run-tests.ss"
+                                 "./std/web/fastcgi-test.ss"
+                                 "./std/web/rack-test.ss"
+                                 "./tools/build.ss"
+                                 "./tutorial/httpd/build.ss"
+                                 "./tutorial/kvstore/build.ss"
+                                 "./tutorial/lang/build.ss"
+                                 "./tutorial/proxy/build-static.ss"
+                                 "./tutorial/proxy/build.ss")))))
+               (add-after 'configure 'create-gx-version.scm
+                 (lambda _
+                   (with-output-to-file (string-append (getcwd)
+                                                       "/gerbil/runtime/gx-version.scm")
+                     (lambda _
+                       (write `(define (gerbil-version-string)
+                                 ,(string-append "v"
+                                                 #$(version-major+minor
+                                                    version))))))))
+               (replace 'build
+                 (lambda _
+                   (setenv "HOME"
+                           (getcwd))
+                   (invoke
+                    ;; The build script needs a tty or it'll crash on an ioctl
+                    ;; trying to find the width of the terminal it's running on.
+                    ;; Calling in script prevents that.
+                    "script"
+                    "-qefc"
+                    "./build.sh")))
+               (replace 'install
+                 (lambda _
+                   (let* ((bin (string-append #$output "/bin"))
+                          (lib (string-append #$output "/lib")))
+                     (mkdir-p bin)
+                     (mkdir-p lib)
+                     (copy-recursively "../bin" bin)
+                     (copy-recursively "../lib" lib)))))
+           #:tests? #f))
+    (native-inputs (list coreutils gambit-c util-linux))
+    (propagated-inputs (list gambit-c openssl sqlite zlib))
     (build-system gnu-build-system)
     (synopsis "Meta-dialect of Scheme with post-modern features")
-    (description "Gerbil is an opinionated dialect of Scheme designed for Systems
+    (description
+     "Gerbil is an opinionated dialect of Scheme designed for Systems
 Programming, with a state of the art macro and module system on top of the Gambit
 runtime.  The macro system is based on quote-syntax, and provides the full meta-syntactic
 tower with a native implementation of syntax-case.  It also provides a full-blown module
@@ -1209,3 +1220,19 @@ is that Gerbil modules are single instantiation, supporting high performance ahe
 time compilation and compiled macros.")
     (home-page "https://cons.io")
     (license `(,lgpl2.1 ,asl2.0))))
+
+(define-public emacs-gerbil-mode
+  (package
+    (inherit gerbil)
+    (name "emacs-gerbil-mode")
+    (version "1.0")
+    (build-system emacs-build-system)
+    (arguments
+     (list #:phases #~(modify-phases %standard-phases
+                        (add-before 'install 'change-directory
+                          (lambda _
+                            (chdir "etc"))))))
+    (synopsis "Emacs major-mode for editing Gerbil code")
+    (description
+     "Gerbil mode provides font-lock, indentation, navigation, and REPL for
+Gerbil code within Emacs.")))

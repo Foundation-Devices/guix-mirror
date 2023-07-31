@@ -4,10 +4,11 @@
 ;;; Copyright © 2016 Mathieu Lirzin <mthl@gnu.org>
 ;;; Copyright © 2018 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2020 Marius Bakke <marius@gnu.org>
-;;; Copyright © 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 Andrew Whatson <whatson@gmail.com>
+;;; Copyright © 2023 Bruno Victal <mirai@makinata.eu>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -38,6 +39,7 @@
   #:use-module (gnu packages web-browsers)
   #:use-module (gnu packages xml)
   #:use-module (guix gexp)
+  #:use-module (guix utils)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix download)
@@ -48,39 +50,45 @@
   #:use-module (guix build-system trivial)
   #:use-module (guix build-system python))
 
-(define-public docbook-xml-5
+(define-public docbook-xml
   (package
     (name "docbook-xml")
-    (version "5.0.1")
+    (version "5.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://docbook.org/xml/" version
-                                  "/docbook-" version ".zip"))
+                                  "/docbook-v" version "-os.zip"))
               (sha256
                (base32
-                "1iz3hq1lqgnshvlz4j9gvh4jy1ml74qf90vqf2ikbq0h4i2xzybs"))))
-    (build-system trivial-build-system)
+                "0zqy9prj9wam9dn7v3mgr7ld1axqxdhgrmv06dviwg00ahv43wxk"))))
+    (build-system copy-build-system)
     (arguments
-     `(#:modules ((guix build utils))
-       #:builder
-       (begin
-         (use-modules (guix build utils))
-         (let* ((unzip
-                 (string-append (assoc-ref %build-inputs "unzip")
-                                "/bin/unzip"))
-                (source (assoc-ref %build-inputs "source"))
-                (out    (assoc-ref %outputs "out"))
-                (dtd    (string-append out "/xml/dtd/docbook")))
-           (invoke unzip source)
-           (mkdir-p dtd)
-           (copy-recursively (string-append "docbook-" ,version) dtd)
-           (with-directory-excursion dtd
-             (substitute* (string-append out "/xml/dtd/docbook/catalog.xml")
-               (("uri=\"")
-                (string-append
-                 "uri=\"file://" dtd "/")))
-             #t)))))
-    (native-inputs (list unzip))
+     (list
+      #:modules '((guix build copy-build-system)
+                  (guix build utils)
+                  (srfi srfi-26))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-permissions
+            (lambda _
+              ;; XXX: These files do not need 0755 permission.
+              (for-each (cut chmod <> #o644) (find-files "."))))
+          (add-before 'install 'patch-catalog-xml
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((xsltproc (search-input-file inputs "/bin/xsltproc"))
+                    (dtd-path (string-append #$output "/xml/dtd/docbook")))
+                (invoke xsltproc "--nonet" "--noout"
+                        "--stringparam" "prefix" dtd-path
+                        "--output" "catalog.xml.new"
+                        #$(local-file
+                           (search-auxiliary-file "xml/patch-catalog-xml.xsl"))
+                        "catalog.xml")
+                (rename-file "catalog.xml.new" "catalog.xml"))))
+          (replace 'install
+            (lambda _
+              (let ((dtd-path (string-append #$output "/xml/dtd/docbook")))
+                (copy-recursively "." dtd-path)))))))
+    (native-inputs (list libxslt unzip))
     (home-page "https://docbook.org")
     (synopsis "DocBook XML DTDs for document authoring")
     (description
@@ -89,43 +97,23 @@ suited to books and papers about computer hardware and software (though it is
 by no means limited to these applications.)  This package provides XML DTDs.")
     (license (license:x11-style "" "See file headers."))))
 
-(define-public docbook-xml
+(define-public docbook-xml-4.5
   (package
-    (inherit docbook-xml-5)
-    (name "docbook-xml")
+    (inherit docbook-xml)
     (version "4.5")
     (source (origin
-              (method url-fetch)
+              (method url-fetch/zipbomb)
               (uri (string-append "https://docbook.org/xml/" version
                                   "/docbook-xml-" version ".zip"))
               (sha256
                (base32
-                "1d671lcjckjri28xfbf6dq7y3xnkppa910w1jin8rjc35dx06kjf"))))
-    (arguments
-     '(#:builder (begin
-                   (use-modules (guix build utils))
-
-                   (let* ((unzip
-                           (string-append (assoc-ref %build-inputs "unzip")
-                                          "/bin/unzip"))
-                          (source (assoc-ref %build-inputs "source"))
-                          (out    (assoc-ref %outputs "out"))
-                          (dtd    (string-append out "/xml/dtd/docbook")))
-                     (mkdir-p dtd)
-                     (with-directory-excursion dtd
-                       (invoke unzip source))
-                     (substitute* (string-append out "/xml/dtd/docbook/catalog.xml")
-                       (("uri=\"")
-                        (string-append
-                         "uri=\"file://" dtd "/")))
-                     #t))
-                 #:modules ((guix build utils))))))
+                "1d671lcjckjri28xfbf6dq7y3xnkppa910w1jin8rjc35dx06kjf"))))))
 
 (define-public docbook-xml-4.4
   (package (inherit docbook-xml)
     (version "4.4")
     (source (origin
-              (method url-fetch)
+              (method url-fetch/zipbomb)
               (uri (string-append "https://docbook.org/xml/" version
                                   "/docbook-xml-" version ".zip"))
               (sha256
@@ -136,7 +124,7 @@ by no means limited to these applications.)  This package provides XML DTDs.")
   (package (inherit docbook-xml)
     (version "4.3")
     (source (origin
-              (method url-fetch)
+              (method url-fetch/zipbomb)
               (uri (string-append "https://docbook.org/xml/" version
                                   "/docbook-xml-" version ".zip"))
               (sha256
@@ -147,7 +135,7 @@ by no means limited to these applications.)  This package provides XML DTDs.")
   (package (inherit docbook-xml)
     (version "4.2")
     (source (origin
-              (method url-fetch)
+              (method url-fetch/zipbomb)
               (uri (string-append "https://docbook.org/xml/" version
                                   "/docbook-xml-" version ".zip"))
               (sha256
@@ -159,33 +147,45 @@ by no means limited to these applications.)  This package provides XML DTDs.")
     (inherit docbook-xml)
     (version "4.1.2")
     (source (origin
-              (method url-fetch)
+              (method url-fetch/zipbomb)
               (uri (string-append "https://docbook.org/xml/" version
                                   "/docbkx412.zip"))
               (sha256
                (base32
                 "0wkp5rvnqj0ghxia0558mnn4c7s3n501j99q2isp3sp0ci069w1h"))))
     (arguments
-     '(#:modules ((guix build utils))
-       #:builder
-       (begin
-         (use-modules (guix build utils))
-         (let* ((source (assoc-ref %build-inputs "source"))
-                (unzip  (string-append (assoc-ref %build-inputs "unzip")
-                                       "/bin/unzip"))
-                (xmlcatalog  (string-append (assoc-ref %build-inputs "libxml2")
-                                            "/bin/xmlcatalog"))
-                (dtd    (string-append (assoc-ref %outputs "out")
-                                       "/xml/dtd/docbook"))
-                (catalog.xml (string-append dtd "/catalog.xml")))
-           (mkdir-p dtd)
-           (invoke unzip source "-d" dtd)
-           ;; Create a minimal XML catalog, to use with libxml2 tools.
-           (invoke xmlcatalog "--noout" "--create" catalog.xml)
-           (invoke xmlcatalog "--noout" "--add" "public"
-                   "-//OASIS//DTD DocBook XML V4.1.2//EN"
-                   (string-append dtd "/docbookx.dtd") catalog.xml)))))
-    (native-inputs (list libxml2 unzip))))
+     (substitute-keyword-arguments (package-arguments docbook-xml)
+       ((#:phases phases)
+        #~(modify-phases #$phases
+            (add-after 'unpack 'copy-catalog-file
+              ;; docbook-xml-4.1.2 is unique in the fact that it doesn't come
+              ;; with a catalog.xml file, requiring it to be generated by hand
+              ;; from the docbook.cat SGML catalog. We could automatically
+              ;; generate it here at the cost of enlarging the package
+              ;; definition with a rudimentary (PEG) parser for the SGML
+              ;; catalog but this is overkill since this file is unlikely to
+              ;; change, therefore we ship a pre-generated catalog.xml.
+              (lambda _
+                (copy-file
+                 #$(local-file
+                    (search-auxiliary-file
+                     "xml/docbook-xml/catalog-4.1.2.xml"))
+                 "catalog.xml")))
+            (add-after 'patch-catalog-xml 'add-rewrite-entries
+              (lambda* (#:key inputs #:allow-other-keys)
+                (let ((xmlcatalog (search-input-file inputs "/bin/xmlcatalog"))
+                      (dtd-path (string-append #$output "/xml/dtd/docbook")))
+                  (for-each
+                   (lambda (type)
+                     (invoke xmlcatalog "--noout"
+                             "--add" type
+                             "http://www.oasis-open.org/docbook/xml/4.1.2/"
+                             (string-append "file://" dtd-path "/")
+                             "catalog.xml"))
+                   (list "rewriteSystem" "rewriteURI")))))))))
+    (native-inputs
+     (modify-inputs (package-native-inputs docbook-xml)
+       (prepend libxml2)))))
 
 ;;; There's an issue in docbook-xsl 1.79.2 that causes manpages to be
 ;;; generated incorrectly and embed raw nroff syntax such as '.PP' when there
@@ -534,38 +534,30 @@ the in DocBook SGML DTDs.")
     (build-system python-build-system)
     ;; TODO: Add xfig/transfig for fig2dev utility
     (inputs
-     `(("texlive" ,(texlive-updmap.cfg (list texlive-amsfonts
-                                             texlive-latex-anysize
-                                             texlive-latex-appendix
-                                             texlive-latex-bookmark
-                                             texlive-latex-changebar
-                                             texlive-latex-colortbl
-                                             texlive-latex-fancybox
-                                             texlive-fancyhdr
+     `(("texlive" ,(texlive-updmap.cfg (list texlive-anysize
+                                             texlive-appendix
+                                             texlive-changebar
+                                             texlive-fancybox
                                              texlive-fancyvrb
-                                             texlive-latex-float
-                                             texlive-latex-footmisc
-                                             texlive-hyperref
-                                             texlive-latex-jknapltx
+                                             texlive-float
+                                             texlive-footmisc
+                                             texlive-jknapltx
                                              texlive-listings
-                                             texlive-latex-multirow
-                                             texlive-latex-overpic
+                                             texlive-multirow
+                                             texlive-overpic
                                              texlive-pdfpages
                                              texlive-refcount
+                                             texlive-rsfs
+                                             texlive-stmaryrd
                                              texlive-subfigure
                                              texlive-titlesec
-                                             texlive-wasysym
-
-                                             texlive-fonts-rsfs
-                                             texlive-stmaryrd
-
-                                             texlive-iftex)))
+                                             texlive-wasysym)))
        ("imagemagick" ,imagemagick)     ;for convert
        ("inkscape" ,inkscape/stable)    ;for svg conversion
        ("docbook" ,docbook-xml)
        ("libxslt" ,libxslt)))           ;for xsltproc
     (arguments
-     `(;; Using setuptools causes an invalid "package_base" path in
+     `( ;; Using setuptools causes an invalid "package_base" path in
        ;; out/bin/.dblatex-real due to a missing leading '/'.  This is caused
        ;; by dblatex's setup.py stripping the root path when creating the
        ;; script.  (dblatex's setup.py still uses distutils and thus has to
@@ -707,73 +699,72 @@ Detect the differences in markup between two SGML files.
                 "0ifwzk99rzjws0ixzimbvs83x6cxqk1xzmg84wa1p7bs6rypaxs0"))))
     (build-system gnu-build-system)
     (inputs
-     `(("bash-minimal" ,bash-minimal)
-       ("docbook-xml" ,docbook-xml)
-       ("perl" ,perl)
-       ("perl-xml-namespacesupport" ,perl-xml-namespacesupport)
-       ("perl-xml-parser" ,perl-xml-parser)
-       ("perl-xml-sax" ,perl-xml-sax)
-       ("perl-xml-sax-base" ,perl-xml-sax-base)
-       ("texinfo" ,texinfo)
-       ("xsltproc" ,libxslt)))
+     (list bash-minimal
+           docbook-xml-4.5
+           perl
+           perl-xml-namespacesupport
+           perl-xml-parser
+           perl-xml-sax
+           perl-xml-sax-base
+           texinfo
+           libxslt))
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'configure 'patch-sources
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Fix failed substitution in config.pl
-             (substitute* "perl/config.pl"
-               (("\\$\\{prefix\\}")
-                (assoc-ref outputs "out")))
-             ;; Fix a failing test (maybe it worked with old texinfo?)
-             (substitute* "test/complete-manuals/at1.xml"
-               (("<bridgehead>")
-                "<bridgehead renderas=\"sect2\">"))
-             ;; Patch all the tests use DocBook 4.5
-             (substitute* (find-files "test" "\\.xml$")
-               (("\"-//OASIS//DTD DocBook XML V4\\..+//EN\"")
-                "\"-//OASIS//DTD DocBook XML V4.5//EN\"")
-               (("\"http://www\\.oasis-open\\.org/docbook/xml/4\\..+/docbookx.dtd\"")
-                "\"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd\""))
-             ;; Set XML catalogs for tests to pass
-             (setenv "XML_CATALOG_FILES"
-                     (string-append (assoc-ref inputs "docbook-xml")
-                                    "/xml/dtd/docbook/catalog.xml"))))
-         (add-after 'install 'wrap-programs
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (programs
-                     (map (lambda (p)
-                            (string-append out "/bin/" p))
-                          '("db2x_manxml" "db2x_texixml" "db2x_xsltproc"
-                            "docbook2man" "docbook2texi")))
-                    (perl5lib
-                     (map (lambda (i)
-                            (string-append (assoc-ref inputs i)
-                                           "/lib/perl5/site_perl"))
-                          '("perl-xml-namespacesupport"
-                            "perl-xml-parser"
-                            "perl-xml-sax"
-                            "perl-xml-sax-base")))
-                    (xml-catalog-files
-                     (list (string-append (assoc-ref inputs "docbook-xml")
-                                          "/xml/dtd/docbook/catalog.xml"))))
-               (map (lambda (program)
-                      (wrap-program program
-                        `("PERL5LIB" ":" prefix
-                          ,perl5lib)
-                        `("XML_CATALOG_FILES" " " prefix
-                          ,xml-catalog-files)))
-                    programs))))
-         (add-after 'install 'create-symlinks
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-               ;; Create db2x_* symlinks to satisfy some configure scripts
-               ;; which use these names to differentiate from an older
-               ;; docbook2man script provided by docbook-utils.
-               (map (lambda (prog)
-                      (symlink prog (string-append out "/bin/db2x_" prog)))
-                    '("docbook2man" "docbook2texi"))))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'configure 'patch-sources
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; Fix failed substitution in config.pl
+              (substitute* "perl/config.pl"
+                (("\\$\\{prefix\\}")
+                 #$output))
+              ;; Fix a failing test (maybe it worked with old texinfo?)
+              (substitute* "test/complete-manuals/at1.xml"
+                (("<bridgehead>")
+                 "<bridgehead renderas=\"sect2\">"))
+              ;; Patch all the tests use DocBook 4.5
+              (substitute* (find-files "test" "\\.xml$")
+                (("\"-//OASIS//DTD DocBook XML V4\\..+//EN\"")
+                 "\"-//OASIS//DTD DocBook XML V4.5//EN\"")
+                (("\"http://www\\.oasis-open\\.org/docbook/xml/4\\..+/docbookx.dtd\"")
+                 "\"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd\""))
+              ;; Set XML catalogs for tests to pass
+              (setenv "XML_CATALOG_FILES"
+                      (string-append (assoc-ref inputs "docbook-xml")
+                                     "/xml/dtd/docbook/catalog.xml"))))
+          (add-after 'install 'wrap-programs
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((programs
+                      (map (lambda (p)
+                             (search-input-file outputs
+                                                (string-append "bin/" p)))
+                           '("db2x_manxml" "db2x_texixml" "db2x_xsltproc"
+                             "docbook2man" "docbook2texi")))
+                     (perl5lib
+                      '#$(map (lambda (i)
+                                (file-append (this-package-input i)
+                                             "/lib/perl5/site_perl"))
+                              '("perl-xml-namespacesupport"
+                                "perl-xml-parser"
+                                "perl-xml-sax"
+                                "perl-xml-sax-base")))
+                     (xml-catalog-files
+                      (list (search-input-file
+                             inputs "xml/dtd/docbook/catalog.xml"))))
+                (map (lambda (program)
+                       (wrap-program program
+                         `("PERL5LIB" ":" prefix ,perl5lib)
+                         `("XML_CATALOG_FILES" " " prefix ,xml-catalog-files)))
+                     programs))))
+          (add-after 'install 'create-symlinks
+            (lambda _
+              ;; Create db2x_* symlinks to satisfy some configure scripts
+              ;; which use these names to differentiate from an older
+              ;; docbook2man script provided by docbook-utils.
+              (map (lambda (prog)
+                     (symlink prog (string-append #$output
+                                                  "/bin/db2x_" prog)))
+                   '("docbook2man" "docbook2texi")))))))
     (home-page "https://docbook2x.sourceforge.net")
     (synopsis "Convert DocBook to man page and Texinfo format")
     (description

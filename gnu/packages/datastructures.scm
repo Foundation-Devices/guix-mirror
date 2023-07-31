@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2016, 2018, 2019 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2016, 2018, 2019, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016, 2017, 2019–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Meiyo Peng <meiyo.peng@gmail.com>
 ;;; Copyright © 2019, 2020, 2022 Efraim Flashner <efraim@flashner.co.il>
@@ -27,6 +27,7 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages perl)
+  #:use-module (gnu packages pkg-config)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix gexp)
@@ -358,7 +359,7 @@ equivalent succinct data structure are (most of the time) identical.")
 (define-public tllist
   (package
     (name "tllist")
-    (version "1.0.5")
+    (version "1.1.0")
     (home-page "https://codeberg.org/dnkl/tllist")
     (source (origin
               (method git-fetch)
@@ -366,7 +367,7 @@ equivalent succinct data structure are (most of the time) identical.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "061mkg6hc9x89zya3bw18ymxlzd8fbhjipxpva8x01lh2vp1d4f0"))))
+                "03296h1w0rnsj87490cgy007axngyg1v8w3z5nvm6x5gcs6b8rg1"))))
     (build-system meson-build-system)
     (synopsis "Typed link list for C")
     (description
@@ -441,3 +442,42 @@ and tsl::robin_pg_set. The first two are faster and use a power of two growth
 policy, the last two use a prime growth policy instead and are able to cope
 better with a poor hash function.")
     (license license:expat)))
+
+(define-public zix
+  (let ((commit "a13ae5ad9dc70075740f11139f1db96cc79faa59")
+        (revision "0"))
+    (package
+      (name "zix")
+      (version (git-version "0.3.3" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://gitlab.com/drobilla/zix.git")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1njyb8lz1d5qzf0k14pb3rq13xkxnddwbz090dj69138ymz1xgyl"))))
+      (build-system meson-build-system)
+      (arguments
+       (list #:configure-flags #~(list "-Ddocs=disabled"))) ;needs "sphinxygen"
+      (native-inputs (list pkg-config))
+      (home-page "https://gitlab.com/drobilla/zix")
+      (synopsis "C library of portability wrappers and data structures")
+      (description
+       "Zix is a C library of portability wrappers and data structures.  It
+provides the following components:
+@table @code
+@item ZixAllocator A customizable allocator.
+@item ZixBumpAllocator A simple realtime-safe bump-pointer allocator.
+@item ZixBTree A page-allocated B-tree.
+@item ZixHash An open-addressing hash table.
+@item ZixRing A lock-free realtime-safe ring buffer.
+@item ZixSem A portable semaphore wrapper.
+@item ZixThread A portable thread wrapper.
+@item ZixTree A binary search tree.
+@item zixgest.h Digest functions suitable for hashing arbitrary data.
+zix/filesystem.h Functions for working with filesystems.
+@item zix/path.h Functions for working with filesystem paths lexically.
+@end table")
+      (license license:isc))))

@@ -2,7 +2,7 @@
 ;;; Copyright © 2015 David Thompson <davet@gnu.org>
 ;;; Copyright © 2015, 2016, 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016 Kei Kebreau <kkebreau@posteo.net>
-;;; Copyright © 2016, 2017, 2020, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2017, 2020, 2022, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Troy Sankey <sankeytms@gmail.com>
 ;;; Copyright © 2016, 2021 Stefan Reichoer <stefan@xsteve.at>
 ;;; Copyright © 2018, 2019, 2021 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -123,7 +123,7 @@ the <tz.h> library for handling time zones and leap seconds.")
 (define-public libical
   (package
     (name "libical")
-    (version "3.0.14")
+    (version "3.0.16")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -131,7 +131,7 @@ the <tz.h> library for handling time zones and leap seconds.")
                     version "/libical-" version ".tar.gz"))
               (sha256
                (base32
-                "13ycghsi4iv8mnm0xv97bs0x6qvfhdxkw20n3yhcc7bg6n0bg122"))))
+                "0cqc1wpalxmxjx8dmcaga9w8kd5l7944hqmidz43hifaf7fhaixl"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -141,12 +141,6 @@ the <tz.h> library for handling time zones and leap seconds.")
                                 "-DICAL_GLIB_VAPI=true")
       #:phases
       #~(modify-phases %standard-phases
-          (add-after 'unpack 'patch-docbook-reference
-            (lambda _
-              (substitute* "doc/reference/libical-glib/libical-glib-docs.sgml.in"
-                (("http://www.oasis-open.org/docbook/xml/4.3/")
-                 (string-append #$(this-package-native-input "docbook-xml")
-                                "/xml/dtd/docbook/")))))
           (add-before 'configure 'patch-paths
             (lambda* (#:key inputs #:allow-other-keys)
               (define zoneinfo (search-input-directory inputs "share/zoneinfo"))
@@ -183,13 +177,13 @@ data units.")
 (define-public khal
   (package
     (name "khal")
-    (version "0.10.5")
+    (version "0.11.2")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "khal" version))
               (sha256
                (base32
-                "0xhcrx7lcjk126i2xgqmgb199vd4hxsq34mkdmhdh9ia62nbgvsf"))))
+                "1flrz01nsmvphiv673b8ia279qcp3gj6a1rsjlsj4gp5f69xif4g"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f ; The test suite is unreliable. See <https://bugs.gnu.org/44197>
@@ -208,21 +202,23 @@ data units.")
            ;; Required to build manpage
            python-sphinxcontrib-newsfeed python-sphinx))
     (inputs
-     (list sqlite
+     (list python-atomicwrites
+           python-click
+           python-click-log
            python-configobj
            python-dateutil
            python-icalendar
+           python-pytz
+           python-pyxdg
            python-tzlocal
            python-urwid
-           python-pytz
-           python-setproctitle
-           python-atomicwrites
-           python-click
-           python-click-log
-           python-pyxdg))
+           ;; For the extras.
+           python-setproctitle))
     (synopsis "Console calendar program")
     (description "Khal is a standards based console calendar program,
-able to synchronize with CalDAV servers through vdirsyncer.")
+able to synchronize with CalDAV servers through vdirsyncer.  It includes
+both a @acronym{CLI, command-line interface} and a @acronym{TUI, textual user
+interface} named 'ikhal'.")
     (home-page "https://lostpackets.de/khal/")
     (license license:expat)))
 

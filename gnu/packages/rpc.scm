@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2019 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2019, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2020 Brett Gilio <brettg@gnu.org>
@@ -31,6 +31,7 @@
   #:use-module (guix utils)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system pyproject)
   #:use-module (guix build-system python)
   #:use-module (gnu packages adns)
   #:use-module (gnu packages autotools)
@@ -42,6 +43,7 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages regex)
   #:use-module (gnu packages tls)
@@ -107,7 +109,7 @@
                    (find-files "." "\\.a$"))))
              #t)))))
     (inputs
-     (list abseil-cpp c-ares/cmake openssl re2 zlib))
+     (list abseil-cpp-cxxstd11 c-ares/cmake openssl re2 zlib))
     (native-inputs
      `(("pkg-config" ,pkg-config)
        ("protobuf" ,protobuf)
@@ -121,6 +123,24 @@ tracing, health checking and authentication.  It is also applicable in last
 mile of distributed computing to connect devices, mobile applications and
 browsers to backend services.")
     (license license:asl2.0)))
+
+(define-public grpc-for-python-grpcio
+  (package
+    (inherit grpc)
+    (name "grpc")
+    (version "1.47.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/grpc/grpc")
+                    (commit (string-append "v" version))
+                    (recursive? #true)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1nl2d92f3576m69991d7gwyk1giavm04fagr612yjh90rni01ikw"))))
+    (inputs
+     (list abseil-cpp-20211102.0 c-ares/cmake openssl re2 zlib))))
 
 ;; Some packages require this older version.
 (define-public grpc-1.16.1
@@ -151,10 +171,12 @@ browsers to backend services.")
                               "src/core/lib/iomgr/ev_epollex_linux.cc")
                  (("gettid\\(")
                   "sys_gettid("))))))))
+    (inputs
+     (modify-inputs (package-inputs grpc)
+       (replace "abseil-cpp" abseil-cpp-20200923.3)))
     (native-inputs
      (modify-inputs (package-native-inputs grpc)
-       (delete "abseil-cpp" "protobuf")
-       (prepend abseil-cpp-20200923.3 protobuf-3.6)))))
+       (replace "protobuf" protobuf-3.6)))))
 
 (define-public python-grpc-stubs
   (package
@@ -188,6 +210,8 @@ type information of gRPC.")
        (modules '((guix build utils) (ice-9 ftw)))
        (snippet
         '(begin
+           ;; Delete this generated file.
+           (delete-file "src/python/grpcio/grpc/_cython/cygrpc.cpp")
            (with-directory-excursion "third_party"
              ;; Delete the bundled source code of libraries that are possible
              ;; to provide as inputs.
@@ -199,18 +223,23 @@ type information of gRPC.")
                                                  "address_sorting"
                                                  "upb"
                                                  "xxhash")))))))))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
      (list
       #:phases
       #~(modify-phases %standard-phases
           (add-before 'build 'use-system-libraries
             (lambda _
+              (substitute* "setup.py"
+                (("EXTENSION_INCLUDE_DIRECTORIES = \\(" m)
+                 (string-append m " ('" #$(this-package-input "grpc")
+                                "/include/grpc/impl/codegen/',) + ")))
               (setenv "GRPC_PYTHON_BUILD_SYSTEM_CARES" "1")
               (setenv "GRPC_PYTHON_BUILD_SYSTEM_OPENSSL" "1")
               (setenv "GRPC_PYTHON_BUILD_SYSTEM_ZLIB" "1")
               (setenv "GRPC_PYTHON_BUILD_SYSTEM_RE2" "1")
               (setenv "GRPC_PYTHON_BUILD_SYSTEM_ABSL" "1")
+              (setenv "GRPC_PYTHON_BUILD_WITH_CYTHON" "1")
               ;; Fix the linker options to link with abseil-cpp, which is
               ;; looked under /usr/lib.
               (substitute* "setup.py"
@@ -222,7 +251,9 @@ type information of gRPC.")
               (substitute* '("setup.py" "src/python/grpcio/commands.py")
                 (("'cc'") "'gcc'")))))))
     (inputs
-     (list abseil-cpp c-ares openssl re2 zlib))
+     (list abseil-cpp-20211102.0 c-ares grpc-for-python-grpcio openssl re2 zlib))
+    (native-inputs
+     (list python-cython))
     (propagated-inputs
      (list python-six))
     (home-page "https://grpc.io")

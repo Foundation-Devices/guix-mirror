@@ -25,16 +25,19 @@
 ;;; Copyright © 2018 Rutger Helling <rhelling@mykolab.com>
 ;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2020 R Veera Kumar <vkor@vkten.in>
-;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020 Zhu Zihao <all_but_last@163.com>
-;;; Copyright © 2020, 2021, 2022 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2021, 2022, 2023 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;; Copyright © 2021 Nicolò Balzarotti <nicolo@nixo.xyz>
 ;;; Copyright © 2021 Alexandr Vityazev <avityazev@posteo.org>
 ;;; Copyright © 2022 Jai Vetrivelan <jaivetrivelan@gmail.com>
 ;;; Copyright © 2022 ( <paren@disroot.org>
 ;;; Copyright © 2022-2023 Bruno Victal <mirai@makinata.eu>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2023 Artyom V. Poptsov <poptsov.artyom@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -76,6 +79,7 @@
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages graphics)
   #:use-module (gnu packages gtk)
+  #:use-module (gnu packages imagemagick)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
   #:use-module (gnu packages maths)
@@ -114,6 +118,50 @@
   #:use-module (guix build-system scons)
   #:use-module (guix deprecation)
   #:use-module (srfi srfi-1))
+
+(define-public converseen
+  (package
+    (name "converseen")
+    (version "0.9.11.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/Faster3ck/Converseen")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0nxvac8df47gxg1klqlz0s3rxl0ykrikmciniwkb938bgilmaijm"))
+              (patches
+               (search-patches "converseen-hide-updates-checks.patch"
+                               ;; Remove links to sites relying on non-free
+                               ;; Javascript.
+                               "converseen-hide-non-free-pointers.patch"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list
+      #:tests? #false                   ;no tests
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'set-translations-location
+            ;; Fix translations location.  Without this, only English is
+            ;; offered.
+            (lambda _
+              (substitute* "src/translator.cpp"
+                (("QString\\(\"%1/share/converseen/loc\"\\).arg\\(rootPath\\)")
+                 (string-append "QString(\""
+                                #$output
+                                "/share/converseen/loc\")"))))))))
+    (native-inputs
+     (list pkg-config qttools-5))
+    (inputs
+     (list imagemagick qtbase-5))
+    (home-page "https://converseen.fasterland.net/")
+    (synopsis "Batch image converter and resizer")
+    (description
+     "Converseen is an image batch conversion tool.  You can resize and
+convert images in more than 100 different formats.")
+    (license license:gpl3+)))
 
 (define-public iqa
   (package
@@ -274,6 +322,62 @@ APNG patch provides APNG support to libpng.")
    (description "Pngcrush optimizes @acronym{PNG, Portable Network Graphics}
 images.  It can further losslessly compress them by as much as 40%.")
    (license license:zlib)))
+
+(define-public pngcheck
+  (package
+    (name "pngcheck")
+    (version "3.0.3")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "http://www.libpng.org/pub/png/src/pngcheck-" version
+                    ".tar.gz"))
+              (sha256
+               (base32
+                "1rny14v57d2zvnqcqbh3m87mkya22qr2394fg7vm3xsacf8l8sn3"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:tests? #f ;no check target
+       #:phases (modify-phases %standard-phases
+                  (delete 'configure)
+                  (replace 'build
+                    (lambda* (#:key inputs outputs #:allow-other-keys)
+                      (invoke "make" "-f" "Makefile.unx")))
+                  (add-after 'build 'compress-man-pages
+                    (lambda* (#:key inputs outputs #:allow-other-keys)
+                      (invoke "gzip" "pngcheck.1")
+                      (invoke "gzip" "gpl/pngsplit.1")
+                      (invoke "gzip" "gpl/png-fix-IDAT-windowsize.1")))
+                  (replace 'install
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out"))
+                             (bin (string-append out "/bin/"))
+                             (man (string-append out "/share/man/man1/")))
+                        (install-file "pngcheck" bin)
+                        (install-file "pngcheck.1.gz" man)
+                        (install-file "pngsplit" bin)
+                        (install-file "gpl/pngsplit.1.gz" man)
+                        (install-file "png-fix-IDAT-windowsize" bin)
+                        (install-file "gpl/png-fix-IDAT-windowsize.1.gz" man)))))))
+    (inputs (list zlib))
+    (home-page "http://www.libpng.org/pub/png/apps/pngcheck.html")
+    (synopsis "Print info and check PNG, JNG and MNG files")
+    (description
+     "@code{pngcheck} verifies the integrity of PNG, JNG and MNG files (by
+checking the internal 32-bit CRCs, a.k.a. checksums, and decompressing the image
+data); it can optionally dump almost all of the chunk-level information in the image
+in human-readable form.  For example, it can be used to print the basic statistics
+about an image (dimensions, bit depth, etc.); to list the color and transparency info
+in its palette (assuming it has one); or to extract the embedded text annotations.
+This is a command-line program with batch capabilities (e.g. @code{pngcheck
+*.png}.)
+
+Also includes @code{pngsplit} which can split a PNG, MNG or JNG file into individual,
+numbered chunks, and @code{png-fix-IDAT-windowsize} that allow to reset first IDAT's
+zlib window-size bytes and fix up CRC to match.")
+    ;; "pngsplit" and "png-fix-IDAT-windowsize" are licensed under the terms of
+    ;; GNU GPL2+.  See "gpl/COPYING" in the repository."
+    (license (list license:x11 license:gpl2+))))
 
 (define-public pnglite
   (let ((commit "11695c56f7d7db806920bd9229b69f230e6ffb38")
@@ -458,7 +562,7 @@ lossless JPEG manipulations such as rotation, scaling or cropping:
            (lambda _
              ;; The Makefile uses optimization level 1, so the same
              ;; level is used here for consistency.
-             (invoke "gcc" "-shared" "-fPIC" "-O"
+             (invoke ,(cc-for-target) "-shared" "-fPIC" "-O"
                      ;; Common files.
                      "adapthuff.o" "image.o" "strcodec.o" "strPredQuant.o"
                      "strTransform.o" "perfTimerANSI.o"
@@ -469,7 +573,7 @@ lossless JPEG manipulations such as rotation, scaling or cropping:
                      "encode.o" "segenc.o" "strenc.o" "strFwdTransform.o"
                      "strPredQuantEnc.o"
                      "-o" "libjpegxr.so")
-             (invoke "gcc" "-shared" "-fPIC" "-O"
+             (invoke ,(cc-for-target) "-shared" "-fPIC" "-O"
                      ;; Glue files.
                      "JXRGlue.o" "JXRMeta.o" "JXRGluePFC.o" "JXRGlueJxr.o"
                      ;; Test files.
@@ -524,9 +628,27 @@ official designation is ISO/IEC 29199-2). This library is an implementation of t
       (sha256
        (base32 "06f6d08xvmsiki4mc1qs985gsjqmsxx793a93b72y25q84wbg9x9"))))
    (build-system gnu-build-system)
-   (inputs (list libjpeg-turbo))
    (arguments
-    '(#:tests? #f))                     ; no tests
+    `(#:tests? #f                       ; no tests
+      ,@(if (and (target-riscv64?)
+                 (%current-target-system))
+          (list #:phases
+                #~(modify-phases %standard-phases
+                    (add-after 'unpack 'update-config-scripts
+                      (lambda* (#:key native-inputs inputs #:allow-other-keys)
+                        (for-each (lambda (file)
+                                    (install-file
+                                      (search-input-file
+                                        (or native-inputs inputs)
+                                        (string-append "/bin/" file)) "./tools"))
+                                  '("config.guess" "config.sub"))))))
+          '())))
+   (inputs (list libjpeg-turbo))
+   (native-inputs
+    (if (and (target-riscv64?)
+             (%current-target-system))
+      (list config)
+      '()))
    (synopsis "Optimize JPEG images")
    (description
     "jpegoptim provides lossless optimization (based on optimizing
@@ -548,6 +670,25 @@ maximum quality factor.")
                (base32
                 "1hjm8lwap7bjyyxsyi94fh5817xzqhk4kb5y0b7mb6675xw10prk"))))
     (build-system gnu-build-system)
+    (arguments
+     (if (and (target-riscv64?)
+              (%current-target-system))
+       (list #:phases
+             #~(modify-phases %standard-phases
+                 (add-after 'unpack 'update-config-scripts
+                   (lambda* (#:key native-inputs inputs #:allow-other-keys)
+                     (for-each (lambda (file)
+                                 (install-file
+                                   (search-input-file
+                                     (or native-inputs inputs)
+                                     (string-append "/bin/" file)) "."))
+                               '("config.guess" "config.sub"))))) )
+       '()))
+    (native-inputs
+     (if (and (target-riscv64?)
+              (%current-target-system))
+       (list config)
+       '()))
     (inputs
      (list libpng jasper))
     (home-page "https://icns.sourceforge.io/")
@@ -655,6 +796,39 @@ seedfill and connected components, image transformations combining changes in
 scale and pixel depth, and pixelwise masking, blending, enhancement, and
 arithmetic ops.")
     (license license:bsd-2)))
+
+(define-public leptonica-1.80
+  (package
+    (inherit leptonica)
+    (name "leptonica")
+    (version "1.80.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/DanBloomberg/leptonica")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "12ddln72z5l3icz0i9rpsfkg5xik8fcwcn8lb0cp3jigjxi8gvkg"))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments leptonica)
+       ((#:tests? _ #t)
+        ;; The pngio_reg test fails, probably because the libpng used is
+        ;; newer.
+        #f)
+       ((#:phases phases '%standard-phases)
+        #~(modify-phases #$phases
+            (replace 'provide-absolute-giflib-reference
+              (lambda _
+                (let ((giflib #$(this-package-input "giflib")))
+                  ;; Add an absolute reference to giflib to avoid propagation.
+                  ;; This is the same as for the parent package, but at that
+                  ;; time the file name was 'liblept.la, not libleptonica.la.
+                  (with-directory-excursion (string-append #$output "/lib")
+                    (substitute* '("liblept.la" "pkgconfig/lept.pc")
+                      (("-lgif")
+                       (string-append "-L" giflib "/lib -lgif")))))))))))))
 
 (define-public jbig2dec
   (package
@@ -1257,7 +1431,7 @@ language bindings to VIGRA.")
 (define-public libwebp
   (package
     (name "libwebp")
-    (version "1.2.2")
+    (version "1.2.4")
     (source
      (origin
        ;; No tarballs are provided for >0.6.1.
@@ -1268,7 +1442,7 @@ language bindings to VIGRA.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1khqkm5j9aiii9jfsbxzzyz3x33sifzcx537cyjyb3a2g2rl969k"))))
+         "1jndbc99dd19a6d7h4ds51xyak7gfddkbi41nxdm8n23w7ks35r8"))))
     (build-system gnu-build-system)
     (inputs
      (list freeglut
@@ -1343,7 +1517,9 @@ channels.")
                     (lib (string-append out "/lib")))
                (for-each delete-file (find-files lib "\\.a$")))))
 
-         ,@(if (or (target-ppc64le?) (target-aarch64?))
+         ,@(if (or (target-ppc64le?)
+                   (target-aarch64?)
+                   (target-riscv64?))
                '((add-after 'unpack 'adjust-tests
                    (lambda _
                      ;; Adjust test on ppc64 and aarch64, where no exception
@@ -1654,8 +1830,9 @@ is hereby granted."))))
      (list #:configure-flags
            #~'("-DCMAKE_INSTALL_LIBDIR:PATH=lib"
                "-DENABLE_STATIC=0"
-               ;; djpeg-shared-3x2-float-prog-cmp fails on 32-bit PPC.
-               #$@(if (string=? "powerpc-linux" (%current-system))
+               ;; djpeg-shared-3x2-float-prog-cmp fails on some systems.
+               #$@(if (or (target-ppc32?)
+                          (target-riscv64?))
                       '("-DFLOATTEST=NO")
                       '())
                ;; The build system probes for the current CPU, but
@@ -1692,9 +1869,6 @@ and decompress to 32-bit and big-endian pixel buffers (RGBX, XBGR, etc.).")
     (license (list license:bsd-3        ;the TurboJPEG API library and programs
                    license:ijg          ;the libjpeg library and associated tools
                    license:zlib))))     ;the libjpeg-turbo SIMD extensions
-
-(define-deprecated libjpeg libjpeg-turbo)
-(export libjpeg)
 
 (define-public niftilib
   (package
@@ -1856,7 +2030,7 @@ Features:
      (list pkg-config scdoc
            `(,glib "bin"))) ; for 'glib-compile-resources'
     (inputs
-     (list gtk+ libnotify))
+     (list gtk+ libnotify gettext-minimal))
     (propagated-inputs
      ;; Needed to properly render the icons.
      (list font-awesome))
@@ -1872,14 +2046,14 @@ stdout.")
 (define-public gifsicle
   (package
    (name "gifsicle")
-   (version "1.93")
+   (version "1.94")
    (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.lcdf.org/gifsicle/gifsicle-"
                            version ".tar.gz"))
        (sha256
-        (base32 "0irljjm76anicsm5rfkpqxd6x105aa8f0sky13dc3x1bfdwp1xlj"))))
+        (base32 "16zq5wd6fyjgy0p0mak15k3mh1zpqb9rg6gqfpg215kqq02p1jab"))))
    (build-system gnu-build-system)
    (arguments
     '(#:phases
@@ -1892,8 +2066,7 @@ stdout.")
               (("/bin/sh")
                (which "sh"))
               (("/bin/rm")
-               (which "rm")))
-            #t)))))
+               (which "rm"))))))))
    (native-inputs (list perl))    ; only for tests
    (inputs (list libx11))
    (home-page "https://www.lcdf.org/gifsicle/")
@@ -1963,7 +2136,7 @@ identical visual appearance.")
 (define-public slurp
   (package
    (name "slurp")
-   (version "1.3.2")
+   (version "1.4.0")
    (source
     (origin
      (method git-fetch)
@@ -1972,7 +2145,7 @@ identical visual appearance.")
            (commit (string-append "v" version))))
      (file-name (git-file-name name version))
      (sha256
-      (base32 "00dx6ds1227qnxqrw58k0am78q8fa49rgp1zingrkjcbpbi7g475"))))
+      (base32 "1i6g4dfiv2mwkjvvrx3wizb1n05xmd4j9nkhdii4klwd1gdrhjwd"))))
    (build-system meson-build-system)
    (native-inputs
     (list pkg-config scdoc))
@@ -2025,7 +2198,7 @@ losslessly translates between SNG and PNG.")
 (define-public blurhash
   (package
     (name "blurhash")
-    (version "0.0.1")
+    (version "0.2.0")
     (source
      (origin
        (method git-fetch)
@@ -2034,10 +2207,10 @@ losslessly translates between SNG and PNG.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0jy2iigarskwfhskyladbb6l92x1fb3i3vz4bvcks0za4w5hfxk5"))))
+        (base32 "0hx15fspava43z47kv17ivxv56g03fb2zf45dl07v3shickqxw0x"))))
     (build-system meson-build-system)
     (native-inputs
-     (list cmake doctest))
+     (list doctest pkg-config))
     (home-page "https://github.com/Nheko-Reborn/blurhash")
     (synopsis "C++ blurhash encoder/decoder")
     (description "Simple encoder and decoder for blurhashes.  Contains a
@@ -2166,7 +2339,8 @@ This package can be used to create @code{favicon.ico} files for web sites.")
                  (string-append #$gdk-pixbuf "/bin/gdk-pixbuf-thumbnailer")))))
           (add-after 'install 'install-readme
             (lambda _
-              (let ((doc (string-append #$output "/share/doc/libavif-" #$version)))
+              (let ((doc (string-append #$output "/share/doc/libavif-"
+                                        #$(package-version this-package))))
                 (install-file "../source/README.md" doc))))
           (add-after 'install 'split
             (lambda _
@@ -2255,7 +2429,7 @@ Format) file format decoder and encoder.")
 (define-public libjxl
   (package
     (name "libjxl")
-    (version "0.7.0")
+    (version "0.8.2")
     (source
      (origin
        (method git-fetch)
@@ -2265,23 +2439,24 @@ Format) file format decoder and encoder.")
              (recursive? #t)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1ysh7kd30wwnq0gc1l8c0j9b6wzd15k0kkvfaacjvjqcz11lnc7l"))
+        (base32 "1alhnnxkwy5bdwahfsdh87xk9rg1s2fm3r9y2w11ka8p3n1ccwr3"))
        (modules '((guix build utils)))
        (snippet
-        ;; Delete the bundles that will not be used. libjxl bundles LCMS,
-        ;; which is in Guix, but a newer version is required.
+        ;; Delete the bundles that will not be used.
         '(begin
            (for-each (lambda (directory)
                        (delete-file-recursively
                         (string-append "third_party/" directory)))
-                     '("brotli" "googletest" "highway"))))))
+                     '("brotli" "googletest" "highway" "lcms" "libpng"
+                       "zlib"))))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags
        (list "-DJPEGXL_FORCE_SYSTEM_GTEST=true"
              "-DJPEGXL_FORCE_SYSTEM_BROTLI=true"
-             ;; "-DJPEGXL_FORCE_SYSTEM_LCMS2=true" ; requires lcms@2.13
-             "-DJPEGXL_FORCE_SYSTEM_HWY=true")))
+             "-DJPEGXL_FORCE_SYSTEM_LCMS2=true"
+             "-DJPEGXL_FORCE_SYSTEM_HWY=true"
+             "-DJPEGXL_BUNDLE_LIBPNG=false")))
     (native-inputs
      (list asciidoc doxygen googletest pkg-config python))
     (inputs
@@ -2289,12 +2464,13 @@ Format) file format decoder and encoder.")
            gflags
            giflib
            imath
-           ;; lcms ; requires lcms@2.13
+           lcms
            libavif
            libjpeg-turbo
            libpng
            libwebp
-           openexr))
+           openexr
+           zlib))
     ;; These are in Requires.private of libjxl.pc.
     (propagated-inputs
      (list brotli google-highway))

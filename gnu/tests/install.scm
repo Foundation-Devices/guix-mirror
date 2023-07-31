@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2016-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2016-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017, 2019, 2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Danny Milosavljevic <dannym@scratchpost.org>
@@ -316,7 +316,7 @@ such as for RAID systems."
             ;; Wait for tty1.
             (marionette-eval '(begin
                                 (use-modules (gnu services herd))
-                                (start 'term-tty1))
+                                (start-service 'term-tty1))
                              marionette)
 
             (when #$(->bool script)
@@ -1733,7 +1733,8 @@ build (current-guix) and then store a couple of full system images.")
       (setvbuf (current-output-port) 'none)
       (setvbuf (current-error-port) 'none)
 
-      (marionette-eval* '(use-modules (gnu installer tests))
+      (marionette-eval* '(use-modules (gnu installer tests)
+                                      (guix build utils))
                         #$marionette)
 
       ;; Arrange so that 'converse' prints debugging output to the console.

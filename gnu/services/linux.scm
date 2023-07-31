@@ -1,10 +1,11 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Brice Waegeneire <brice@waegenei.re>
-;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2020, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 raid5atemyhomework <raid5atemyhomework@protonmail.com>
 ;;; Copyright © 2021 B. Wilson <elaexuotee@wilsonb.com>
 ;;; Copyright © 2022 Josselin Poiret <dev@jpoiret.xyz>
+;;; Copyright © 2023 Bruno Victal <mirai@makinata.eu>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -29,13 +30,17 @@
   #:use-module (guix i18n)
   #:use-module (guix ui)
   #:use-module (gnu services)
+  #:use-module (gnu services admin)
   #:use-module (gnu services base)
+  #:use-module (gnu services configuration)
+  #:use-module (gnu services mcron)
   #:use-module (gnu services shepherd)
   #:use-module (gnu packages linux)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
+  #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:export (earlyoom-configuration
             earlyoom-configuration?
@@ -49,6 +54,16 @@
             earlyoom-configuration-show-debug-messages?
             earlyoom-configuration-send-notification-command
             earlyoom-service-type
+
+            fstrim-configuration
+            fstrim-configuration?
+            fstrim-configuration-package
+            fstrim-configuration-schedule
+            fstrim-configuration-listed-in
+            fstrim-configuration-verbose?
+            fstrim-configuration-quiet-unsupported?
+            fstrim-configuration-extra-arguments
+            fstrim-service-type
 
             kernel-module-loader-service-type
 
@@ -141,14 +156,107 @@ representation."
              #:log-file "/var/log/earlyoom.log"))
    (stop #~(make-kill-destructor))))
 
+(define %earlyoom-log-rotation
+  (list (log-rotation
+         (files '("/var/log/earlyoom.log")))))
+
 (define earlyoom-service-type
   (service-type
    (name 'earlyoom)
    (default-value (earlyoom-configuration))
    (extensions
     (list (service-extension shepherd-root-service-type
-                             (compose list earlyoom-shepherd-service))))
+                             (compose list earlyoom-shepherd-service))
+          (service-extension rottlog-service-type
+                             (const %earlyoom-log-rotation))))
    (description "Run @command{earlyoom}, the Early OOM daemon.")))
+
+
+;;;
+;;; fstrim
+;;;
+
+(define (mcron-time? x)
+  (or (procedure? x) (string? x) (list? x)))
+
+(define-maybe list-of-strings (prefix fstrim-))
+
+(define (fstrim-serialize-boolean field-name value)
+  (list (format #f "~:[~;--~a~]" value
+                ;; Drop trailing '?' character.
+                (string-drop-right (symbol->string field-name) 1))))
+
+(define (fstrim-serialize-list-of-strings field-name value)
+  (list (string-append "--" (symbol->string field-name))
+        #~(string-join '#$value ":")))
+
+(define-configuration fstrim-configuration
+  (package
+    (file-like util-linux)
+    "The package providing the @command{fstrim} command."
+    empty-serializer)
+  (schedule
+   (mcron-time "0 0 * * 0")
+   "Schedule for launching @command{fstrim}.  This can be a procedure, a list
+or a string.  For additional information, see @ref{Guile Syntax,,
+Job specification, mcron, the mcron manual}.  By default this is set to run
+weekly on Sunday at 00:00."
+   empty-serializer)
+  ;; The following are fstrim-related options.
+  (listed-in
+   (maybe-list-of-strings '("/etc/fstab" "/proc/self/mountinfo"))
+   ;; Note: documentation sourced from the fstrim manpage.
+   "List of files in fstab or kernel mountinfo format.  All missing or
+empty files are silently ignored.  The evaluation of the list @emph{stops}
+after the first non-empty file.  File systems with @code{X-fstrim.notrim} mount
+option in fstab are skipped.")
+  (verbose?
+   (boolean #t)
+   "Verbose execution.")
+  (quiet-unsupported?
+   (boolean #t)
+   "Suppress error messages if trim operation (ioctl) is unsupported.")
+  (extra-arguments
+   maybe-list-of-strings
+   "Extra options to append to @command{fstrim} (run @samp{man fstrim} for
+more information)."
+   (serializer
+    (lambda (_ value)
+      (if (maybe-value-set? value)
+          value '()))))
+  (prefix fstrim-))
+
+(define (serialize-fstrim-configuration config)
+  (concatenate
+   (filter list?
+           (map (lambda (field)
+                  ((configuration-field-serializer field)
+                   (configuration-field-name field)
+                   ((configuration-field-getter field) config)))
+                fstrim-configuration-fields))))
+
+(define (fstrim-mcron-job config)
+  (match-record config <fstrim-configuration> (package schedule)
+    #~(job
+       ;; Note: The “if” below is to ensure that
+       ;; lists are ungexp'd correctly since @var{schedule}
+       ;; can be either a procedure, a string or a list.
+       #$(if (list? schedule)
+             #~'(#$@schedule)
+             schedule)
+       (lambda ()
+         (system* #$(file-append package "/sbin/fstrim")
+                  #$@(serialize-fstrim-configuration config)))
+       "fstrim")))
+
+(define fstrim-service-type
+  (service-type
+   (name 'fstrim)
+   (extensions
+    (list (service-extension mcron-service-type
+                             (compose list fstrim-mcron-job))))
+   (description "Discard unused blocks from file systems.")
+   (default-value (fstrim-configuration))))
 
 
 ;;;

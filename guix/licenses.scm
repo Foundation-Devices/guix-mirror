@@ -39,6 +39,7 @@
 (define-module (guix licenses)
   #:use-module (srfi srfi-9)
   #:export (license? license-name license-uri license-comment
+            afl2.1
             agpl1 agpl3 agpl3+
             apsl2
             asl1.1 asl2.0
@@ -75,6 +76,7 @@
             knuth
             lal1.3
             lgpl2.0 lgpl2.0+ lgpl2.1 lgpl2.1+ lgpl3 lgpl3+ llgpl
+            lpl1.02
             lppl lppl1.0+ lppl1.1+ lppl1.2 lppl1.2+
             lppl1.3 lppl1.3+
             lppl1.3a lppl1.3a+
@@ -169,6 +171,11 @@ cases, reduces to #t at macro-expansion time."
        definitions ...))))
 
 (begin-license-definitions license?
+
+(define afl2.1
+  (license "AFL 2.1"
+           "https://spdx.org/licenses/AFL-2.1.html"
+           "https://www.gnu.org/licenses/license-list#AcademicFreeLicense"))
 
 (define agpl1
   (license "AGPL 1"
@@ -515,6 +522,11 @@ at URI, which may be a file:// URI pointing the package's tree."
   (license "LLGPL"
            "https://opensource.franz.com/preamble.html"
            "Lisp Lesser General Public License"))
+
+(define lpl1.02 ;Lucent
+  (license "LPL 1.02"
+           "https://directory.fsf.org/wiki/License:LPL-1.02"
+           "https://www.gnu.org/licenses/license-list.html#lucent102"))
 
 (define lppl
   (license "LPPL (any version)"

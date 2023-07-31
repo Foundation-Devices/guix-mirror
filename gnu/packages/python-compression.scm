@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2017, 2018 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017, 2018, 2023 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017, 2019, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017 Nikita <nikita@n0.is>
 ;;; Copyright © 2017 Julien Lepiller <julien@lepiller.eu>
@@ -181,18 +181,18 @@ compression algorithm.")
 (define-public python-isal
   (package
     (name "python-isal")
-    (version "0.11.1")
+    (version "1.1.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "isal" version))
        (sha256
-        (base32 "1bxj7r24p974pqfgym485s90ydhzji9q7zyfg3sf8fycm9ya01wd"))
-       ;; Remove bundles isa-l source code
+        (base32 "01914gwfrb95dagz9sqnsmvc0hssg2pb6aj204fdamss4piz8r0k"))
+       ;; Remove bundled isa-l source code
        (modules '((guix build utils)))
        (snippet
         '(delete-file-recursively "src/isal/isa-l"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
@@ -342,20 +342,18 @@ Python strings.")
 (define-public python-lz4
   (package
     (name "python-lz4")
-    (version "4.0.2")
+    (version "4.3.2")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "lz4" version))
        (sha256
         (base32
-         "16vj2bnhhdkcz2a2ai2mx2kf9ngx1cjr18636yp1514kq9r72fq8"))
+         "1nmc36j5xnk7mvwwpm0nb1sddjk5iv77h877fdkkxcngm621shz1"))
        (modules '((guix build utils)))
-       (snippet
-        '(begin
-           ;; Remove bundled copy of lz4.
-           (delete-file-recursively "lz4libs")
-           #t))))
+       (snippet '(begin
+                   ;; Remove bundled copy of lz4.
+                   (delete-file-recursively "lz4libs")))))
     (build-system python-build-system)
     (arguments
      (list #:phases
@@ -510,13 +508,13 @@ wrapper.  It provides a backport of the @code{Path} object.")
 (define-public python-zopfli
   (package
     (name "python-zopfli")
-    (version "0.2.1")
+    (version "0.2.2")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "zopfli" version ".zip"))
        (sha256
-        (base32 "1ipjkcgdbplsrhr31ypk48px8cax4cm9gcjj7yrcrhg20ql3s9p5"))))
+        (base32 "1z1akqx3fjnwa75insch9p08hafikqdvqkj6mxv1k6fr81sxnj9d"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -564,18 +562,40 @@ provided.")
 (define-public python-pyzstd
   (package
     (name "python-pyzstd")
-    (version "0.15.3")
+    (version "0.15.9")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pyzstd" version))
        (sha256
-        (base32
-         "0wkli2i4my79l43b996bdga0fac8s8nfd1zjyzl46lwmsfsxlkmc"))))
+        (base32 "1iycfmif15v1jhv0gsza1hyd1hn3sz0vn9s1y79abzv8axndxzfb"))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin
+           ;; Remove a bundled copy of the zstd sources.
+           (delete-file-recursively "zstd")))))
     (build-system python-build-system)
+    (arguments
+     (list
+      #:configure-flags
+      #~(list "--dynamic-link-zstd")
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'build
+            ;; The python-build-system's phase doesn't honour configure-flags.
+            (lambda* (#:key configure-flags #:allow-other-keys)
+              (apply invoke "python" "./setup.py" "build"
+                     configure-flags)))
+          (replace 'check
+            ;; The python-build-system's phase doesn't honour configure-flags.
+            (lambda* (#:key tests? test-target configure-flags
+                      #:allow-other-keys)
+              (when tests?
+                (apply invoke "python" "./setup.py" test-target
+                       configure-flags)))))))
+    (inputs (list `(,zstd "lib")))
     (home-page "https://github.com/animalize/pyzstd")
     (synopsis "Zstandard bindings for Python")
-    (description "This package provides Python bindings to the
-Zstandard (zstd)
+    (description "This package provides Python bindings to the Zstandard (zstd)
 compression library.  The API is similar to Python's bz2/lzma/zlib module.")
     (license license:bsd-3)))

@@ -2,9 +2,9 @@
 ;;; Copyright © 2014, 2022 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016 Daniel Pimentel <d4n1@d4n1.org>
 ;;; Copyright © 2016 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2017, 2018, 2019, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2017, 2018, 2019, 2022, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2020, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Brett Gilio <brettg@gnu.org>
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
@@ -49,6 +49,7 @@
   #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages rpc)
+  #:use-module (gnu packages rails)
   #:use-module (gnu packages ruby)
   #:use-module (srfi srfi-1))
 
@@ -164,6 +165,33 @@ data in motion, or as a file format for data at rest.")
 yet extensible format.  Google uses Protocol Buffers for almost all of its
 internal RPC protocols and file formats.")
     (license license:bsd-3)))
+
+;; Needed for python-mysql-connector-python
+(define-public protobuf-3.20
+  (package
+    (inherit protobuf)
+    (name "protobuf")
+    (version "3.20.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/protocolbuffers/"
+                    "protobuf/releases/download/v" version
+                    "/protobuf-cpp-" version ".tar.gz"))
+              (modules '((guix build utils)))
+              (snippet '(delete-file-recursively "third_party"))
+              (sha256
+               (base32
+                "1hsscx9jm8qv3afgwc764rx9sx1ylkrr54xw1wc0mfjbl8mpw5m0"))))
+    (build-system gnu-build-system)
+    (arguments (substitute-keyword-arguments (package-arguments protobuf)
+                 ;; XXX: insists on using bundled googletest
+                 ((#:tests? _ #f) #false)
+                 ((#:configure-flags _ #f)
+                  #~(list))
+                 ((#:phases phases)
+                  #~(modify-phases #$phases
+                      (delete 'set-c++-standard)))))))
 
 ;; Tensorflow requires version 3.6 specifically.
 (define-public protobuf-3.6
@@ -353,7 +381,7 @@ any memory-restricted system.")
      (list python-grpc-stubs
            python-grpcio-tools
            python-pytest
-           python-typing-extensions-next))
+           python-typing-extensions))
     (propagated-inputs
      (list protobuf
            python-protobuf
@@ -468,8 +496,19 @@ structured data.")
        (sha256
         (base32
          "04bqb12smlckzmgkj6vgmpbr3cby0n6726cmz33bqr7kn1vb728l"))))
-    (arguments '())                            ;no "--cpp_implementation" here
-    (inputs (list python-six))))
+    (arguments
+     (list
+      #:phases
+      '(modify-phases %standard-phases
+         (add-after 'unpack 'compatibility
+           (lambda _
+             (substitute* '("google/protobuf/internal/containers.py"
+                            "google/protobuf/internal/well_known_types.py")
+               (("collections.Mutable")
+                "collections.abc.Mutable")))))))
+    (inputs (list python-six))
+    (native-inputs
+     (list python-setuptools-for-tensorflow))))
 
 (define-public python-proto-plus
   (package
@@ -512,7 +551,7 @@ source files.")
 (define-public ruby-protobuf
   (package
     (name "ruby-protobuf")
-    (version "3.10.3")
+    (version "3.10.7")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -521,56 +560,52 @@ source files.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1yzz7jgpp6qip5d6qhzbkf5gqaydfk3z3c1ngccwzp6w6wa75g8a"))))
+                "12hp1clg83jfl35x1h2ymzpj5w83wrnqw7hjfc6mqa8lsvpw535r"))))
     (build-system ruby-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'do-not-use-bundler-for-tests
-           (lambda _
-             (substitute* "spec/spec_helper.rb"
-               (("Bundler\\.setup.*") ""))
-             #t))
-         (add-after 'unpack 'relax-version-requirements
-           (lambda _
-             (substitute* ((@@ (guix build ruby-build-system) first-gemspec))
-               (("'rake',.*")
-                "'rake'\n")
-               (("\"rubocop\",.*")
-                "'rubocop'\n")
-               (("\"parser\",.*")
-                "'parser'\n"))
-             #t))
-         (add-after 'unpack 'patch-protoc
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((protoc (assoc-ref inputs "protobuf")))
-               (substitute* "lib/protobuf/tasks/compile.rake"
-                 (("\"protoc\"")
-                  (string-append "\"" protoc "/bin/protoc" "\"")))
-               #t)))
-         (add-after 'unpack 'skip-failing-test
-           ;; See: https://github.com/ruby-protobuf/protobuf/issues/419
-           (lambda _
-             (substitute* "spec/lib/protobuf/rpc/connectors/ping_spec.rb"
-               (("expect\\(::IO\\)\\.to receive\\(:select\\).*" all)
-                (string-append "        pending\n" all)))
-             #t))
-         (add-after 'replace-git-ls-files 'replace-more-git-ls-files
-           (lambda _
-             (substitute* ((@@ (guix build ruby-build-system) first-gemspec))
-               (("`git ls-files -- \\{test,spec,features\\}/*`")
-                "`find test spec features -type f | sort`")
-               (("`git ls-files -- bin/*`")
-                "`find bin -type f | sort`"))
-             #t))
-         (replace 'check
-           (lambda _
-             (invoke "rspec"))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'do-not-use-bundler-for-tests
+            (lambda _
+              (substitute* "spec/spec_helper.rb"
+                (("Bundler\\.setup.*") ""))))
+          (add-after 'unpack 'relax-version-requirements
+            (lambda _
+              (substitute* ((@@ (guix build ruby-build-system) first-gemspec))
+                (("'rake',.*")
+                 "'rake'\n")
+                (("\"rubocop\",.*")
+                 "'rubocop'\n")
+                (("\"parser\",.*")
+                 "'parser'\n"))))
+          (add-after 'unpack 'patch-protoc
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "lib/protobuf/tasks/compile.rake"
+                (("\"protoc\"")
+                 (string-append "\"" (search-input-file inputs "bin/protoc")
+                                "\"")))))
+          (add-after 'unpack 'skip-failing-test
+            ;; See: https://github.com/ruby-protobuf/protobuf/issues/419
+            (lambda _
+              (substitute* "spec/lib/protobuf/rpc/connectors/ping_spec.rb"
+                (("expect\\(::IO\\)\\.to receive\\(:select\\).*" all)
+                 (string-append "        pending\n" all)))))
+          (add-after 'replace-git-ls-files 'replace-more-git-ls-files
+            (lambda _
+              (substitute* ((@@ (guix build ruby-build-system) first-gemspec))
+                (("`git ls-files -- \\{test,spec,features\\}/*`")
+                 "`find test spec features -type f | sort`")
+                (("`git ls-files -- bin/*`")
+                 "`find bin -type f | sort`"))))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                (invoke "rspec")))))))
     (native-inputs
      (list ruby-benchmark-ips
            ruby-ffi-rzmq
            ruby-parser
-           ruby-pry-byebug
            ruby-pry-stack-explorer
            ruby-rake
            ruby-rspec
@@ -583,26 +618,12 @@ source files.")
     (inputs
      (list protobuf))
     (propagated-inputs
-     (list ruby-activesupport ruby-middleware ruby-thor ruby-thread-safe))
+     (list ruby-activesupport
+           ruby-middleware
+           ruby-thor
+           ruby-thread-safe))
     (home-page "https://github.com/ruby-protobuf/protobuf")
     (synopsis "Implementation of Google's Protocol Buffers in Ruby")
     (description "Protobuf is an implementation of Google's Protocol Buffers
 in pure Ruby.")
     (license license:expat)))
-
-;;; This is a modified ruby-protobuf package used by ruby-cucumber-messages
-;;; until https://github.com/ruby-protobuf/protobuf/pull/411 and
-;;; https://github.com/ruby-protobuf/protobuf/pull/415 are merged upstream.
-(define-public ruby-protobuf-cucumber
-  (hidden-package
-   (package
-     (inherit ruby-protobuf)
-     (name "ruby-protobuf-cucumber")
-     (version "3.10.8")
-     (source
-      (origin
-        (method url-fetch)
-        (uri (rubygems-uri "protobuf-cucumber" version))
-        (sha256
-         (base32
-          "1rd6naabhpfb1i5dr6fp5mqwaawsx0mqm73h5ycwkgbm1n2si872")))))))

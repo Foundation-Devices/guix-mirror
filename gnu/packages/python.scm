@@ -56,7 +56,7 @@
 ;;; Copyright © 2018 Luther Thompson <lutheroto@gmail.com>
 ;;; Copyright © 2018 Vagrant Cascadian <vagrant@debian.org>
 ;;; Copyright © 2019 Tanguy Le Carrour <tanguy@bioneland.org>
-;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2020, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2020, 2021 Greg Hogan <code@greghogan.com>
 ;;; Copyright © 2022 Philip McGrath <philip@philipmcgrath.com>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
@@ -85,7 +85,6 @@
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages dbm)
-  #:use-module (gnu packages hurd)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python-build)
@@ -245,7 +244,7 @@
                                     "Lib/test/support/__init__.py"
                                     "Lib/test/test_subprocess.py"))
                (("/bin/sh") (which "sh")))))
-         ,@(if (hurd-system?)
+         ,@(if (system-hurd?)
                `((add-before 'build 'patch-regen-for-hurd
                    (lambda* (#:key inputs #:allow-other-keys)
                      (let ((libc (assoc-ref inputs "libc")))
@@ -458,7 +457,7 @@ data types.")
                 (format #f "TESTOPTS=-j~d" (parallel-job-count))
                 ;; test_mmap fails on low-memory systems
                 " --exclude test_mmap test_socket"
-                ,@(if (hurd-target?)
+                ,@(if (system-hurd?)
                       '(" test_posix"      ;multiple errors
                         " test_time"
                         " test_pty"
@@ -488,12 +487,33 @@ data types.")
                         " test_open_unix_connection"
                         " test_open_unix_connection_error"
                         " test_read_pty_output"
-                        " test_write_pty")
+                        " test_write_pty"
+                        " test_concurrent_futures" ;freeze
+                        " test_venv"       ;freeze
+                        " test_multiprocessing_forkserver" ;runs over 10min
+                        " test_multiprocessing_spawn" ;runs over 10min
+                        " test_builtin"
+                        " test_capi"
+                        " test_dbm_ndbm"
+                        " test_exceptions"
+                        " test_faulthandler"
+                        " test_getopt"
+                        " test_importlib"
+                        " test_json"
+                        " test_multiprocessing_fork"
+                        " test_multiprocessing_main_handling"
+                        " test_pdb "
+                        " test_regrtest"
+                        " test_sqlite")
                       '()))))
        ((#:phases phases)
         `(modify-phases ,phases
-           ,@(if (hurd-system?)
-                 `((delete 'patch-regen-for-hurd)) ;regen was removed after 3.5.9
+           ,@(if (system-hurd?)
+                 `((delete 'patch-regen-for-hurd)  ;regen was removed after 3.5.9
+                   (add-after 'unpack 'disable-multi-processing
+                     (lambda _
+                       (substitute* "Makefile.pre.in"
+                         (("-j0") "-j1")))))
                  '())
            (add-after 'unpack 'remove-windows-binaries
              (lambda _
@@ -635,30 +655,36 @@ for more information.")))
     (inputs `(("bash" ,bash)))
     (propagated-inputs `(("python" ,python)))
     (arguments
-     `(#:modules ((guix build utils))
-       #:builder
-         (begin
-           (use-modules (guix build utils))
-           (let ((bin (string-append (assoc-ref %outputs "out") "/bin"))
-                 (python (string-append (assoc-ref %build-inputs "python") "/bin/")))
-                (mkdir-p bin)
-                (for-each
+     (list #:modules '((guix build utils))
+           #:builder
+           #~(begin
+               (use-modules (guix build utils))
+               (let ((bin (string-append #$output "/bin"))
+                     (python (string-append
+                              ;; XXX: '%build-inputs' contains the native
+                              ;; Python when cross-compiling.
+                              #$(if (%current-target-system)
+                                    (this-package-input "python")
+                                    #~(assoc-ref %build-inputs "python"))
+                              "/bin/")))
+                 (mkdir-p bin)
+                 (for-each
                   (lambda (old new)
                     (symlink (string-append python old)
                              (string-append bin "/" new)))
                   `("python3" ,"pydoc3" ,"pip3")
                   `("python"  ,"pydoc"  ,"pip"))
-                ;; python-config outputs search paths based upon its location,
-                ;; use a bash wrapper to avoid changing its outputs.
-                (let ((bash (string-append (assoc-ref %build-inputs "bash")
-                                           "/bin/bash"))
-                      (old  (string-append python "python3-config"))
-                      (new  (string-append bin "/python-config")))
-                  (with-output-to-file new
-                    (lambda ()
-                      (format #t "#!~a~%" bash)
-                      (format #t "exec \"~a\" \"$@\"~%" old)
-                      (chmod new #o755))))))))
+                 ;; python-config outputs search paths based upon its location,
+                 ;; use a bash wrapper to avoid changing its outputs.
+                 (let ((bash (string-append (assoc-ref %build-inputs "bash")
+                                            "/bin/bash"))
+                       (old  (string-append python "python3-config"))
+                       (new  (string-append bin "/python-config")))
+                   (with-output-to-file new
+                     (lambda ()
+                       (format #t "#!~a~%" bash)
+                       (format #t "exec \"~a\" \"$@\"~%" old)
+                       (chmod new #o755))))))))
     (synopsis "Wrapper for the Python 3 commands")
     (description
      "This package provides wrappers for the commands of Python@tie{}3.x such

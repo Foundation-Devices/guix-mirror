@@ -179,9 +179,11 @@ BLANK-LINE? is true, assume PORT is at the beginning of a new line."
       (match lst
         (() result)
         (((? dot?) . rest)
-         (let ((dotted (reverse rest)))
-           (set-cdr! (last-pair dotted) (car result))
-           dotted))
+         (if (pair? rest)
+             (let ((dotted (reverse rest)))
+               (set-cdr! (last-pair dotted) (car result))
+               dotted)
+             (car result)))
         ((x . rest) (loop (cons x result) rest)))))
 
   (let loop ((blank-line? blank-line?)
@@ -219,6 +221,27 @@ BLANK-LINE? is true, assume PORT is at the beginning of a new line."
               (list 'quote (loop #f return)))
              ((eq? chr #\`)
               (list 'quasiquote (loop #f return)))
+             ((eq? chr #\#)
+              (match (read-char port)
+                (#\~ (list 'gexp (loop #f return)))
+                (#\$ (list (match (peek-char port)
+                             (#\@
+                              (read-char port)    ;consume
+                              'ungexp-splicing)
+                             (_
+                              'ungexp))
+                           (loop #f return)))
+                (#\+ (list (match (peek-char port)
+                             (#\@
+                              (read-char port)    ;consume
+                              'ungexp-native-splicing)
+                             (_
+                              'ungexp-native))
+                           (loop #f return)))
+                (chr
+                 (unread-char chr port)
+                 (unread-char #\# port)
+                 (read port))))
              ((eq? chr #\,)
               (list (match (peek-char port)
                       (#\@
@@ -289,16 +312,19 @@ expressions and blanks that were read."
    ('define-record-type 2)
    ('define-record-type* 4)
    ('define-configuration 2)
+   ('package/inherit 2)
    ('let 2)
    ('let* 2)
    ('letrec 2)
    ('letrec* 2)
    ('match 2)
    ('match-record 3)
+   ('match-record-lambda 2)
    ('when 2)
    ('unless 2)
    ('package 1)
    ('origin 1)
+   ('channel 1)
    ('modify-inputs 2)
    ('modify-phases 2)
    ('add-after '(((modify-phases) . 3)))
@@ -311,6 +337,8 @@ expressions and blanks that were read."
    ('with-output-to-file 2)
    ('with-input-from-file 2)
    ('with-directory-excursion 2)
+   ('wrap-program 2)
+   ('wrap-script 2)
 
    ;; (gnu system) and (gnu services).
    ('operating-system 1)
@@ -342,7 +370,8 @@ expressions and blanks that were read."
    ('services '(operating-system))
    ('set-xorg-configuration '())
    ('services '(home-environment))
-   ('home-bash-configuration '(service))))
+   ('home-bash-configuration '(service))
+   ('introduction '(channel))))
 
 (define (prefix? candidate lst)
   "Return true if CANDIDATE is a prefix of LST."
@@ -397,11 +426,18 @@ particular newlines, is left as is."
 
 (define (printed-string str context)
   "Return the read syntax for STR depending on CONTEXT."
+  (define (preserve-newlines? str)
+    (and (> (string-length str) 40)
+         (string-index str #\newline)))
+
   (match context
     (()
-     (object->string str))
+     (if (preserve-newlines? str)
+         (escaped-string str)
+         (object->string str)))
     ((head . _)
-     (if (memq head %natural-whitespace-string-forms)
+     (if (or (memq head %natural-whitespace-string-forms)
+             (preserve-newlines? str))
          (escaped-string str)
          (object->string str)))))
 
@@ -525,6 +561,12 @@ FORMAT-VERTICAL-SPACE; a useful value of 'canonicalize-vertical-space'."
        (and (not (memq thing
                        '(quote quasiquote unquote unquote-splicing)))
             (pair? tail)))
+      (_ #f)))
+
+  (define (starts-with-line-comment? lst)
+    ;; Return true if LST starts with a line comment.
+    (match lst
+      ((x . _) (and (comment? x) (not (comment-margin? x))))
       (_ #f)))
 
   (let loop ((indent indent)
@@ -708,7 +750,8 @@ FORMAT-VERTICAL-SPACE; a useful value of 'canonicalize-vertical-space'."
                              (+ indent 1)
                              (+ column (if delimited? 1 2))))
               (newline?  (or (newline-form? head context)
-                             (list-of-lists? head tail))) ;'let' bindings
+                             (list-of-lists? head tail) ;'let' bindings
+                             (starts-with-line-comment? tail)))
               (context   (cons head context)))
          (if overflow?
              (begin

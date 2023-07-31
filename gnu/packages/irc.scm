@@ -2,7 +2,7 @@
 ;;; Copyright © 2013 Cyril Roelandt <tipecaml@gmail.com>
 ;;; Copyright © 2014 Kevin Lemonnier <lemonnierk@ulrar.net>
 ;;; Copyright © 2015, 2017 Ludovic Courtès <ludo@gnu.org>
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2015-2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Nikita <nikita@n0.is>
 ;;; Copyright © 2017 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2017–2022 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -155,7 +155,7 @@ irssi, but graphical.")
 (define-public irssi
   (package
     (name "irssi")
-    (version "1.4.3")
+    (version "1.4.4")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/irssi/irssi/"
@@ -163,7 +163,7 @@ irssi, but graphical.")
                                   version ".tar.xz"))
               (sha256
                (base32
-                "0d04bam0lrk66wi7ygd5si5y6adf2ajhh6mn89zyc8m34d972gxr"))))
+                "1bby23mn7318dmxf8aw9ahs6j4mbc0ilm4swji4m8ixiqz49xzpy"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -198,14 +198,14 @@ Conferencing} and @acronym{ICB, Internet Citizen's Band}.")
 (define-public weechat
   (package
     (name "weechat")
-    (version "3.8")
+    (version "4.0.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://weechat.org/files/src/weechat-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "0a5zfkqqdkya111rl2gpwlbfala0305qry9cdz2r1h7q0316bjzp"))))
+                "0g026j47140h8kqyh3l0367fq9194wdx8q7f4na0kj14s3h8wr0f"))))
     (build-system cmake-build-system)
     (outputs '("out" "doc"))
     (native-inputs
@@ -234,7 +234,8 @@ Conferencing} and @acronym{ICB, Internet Citizen's Band}.")
        (list "-DENABLE_PHP=OFF"
              ,@(if (target-x86?)
                  '("-DENABLE_MAN=ON"
-                   "-DENABLE_DOC=ON")
+                   "-DENABLE_DOC=ON"
+                   "-DENABLE_DOC_INCOMPLETE=ON")
                 '()))
        #:phases
        (modify-phases %standard-phases
@@ -749,7 +750,7 @@ but can also be used independently as a logging bot.")
            gnutls
            libmaxminddb
            mbedtls-apache
-           mysql
+           (list mariadb "dev")
            openldap
            openssl
            `(,pcre "bin")

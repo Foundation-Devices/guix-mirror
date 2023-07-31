@@ -3,8 +3,8 @@
 ;;; Copyright © 2015 Mathieu Lirzin <mthl@gnu.org>
 ;;; Copyright © 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2016, 2018–2022 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2016, 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
-;;; Copyright © 2016 Jan Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2016, 2019-2021, 2023 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2016 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2016, 2017 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2017 Hartmut Goebel <h.goebel@crazy-compilers.com>
@@ -25,6 +25,7 @@
 ;;; Copyright © 2014, 2022 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Disseminate Dissent <disseminatedissent@protonmail.com>
+;;; Copyright © 2023 Timotej Lazar <timotej.lazar@araneo.si>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -43,6 +44,7 @@
 
 (define-module (gnu packages disk)
   #:use-module (gnu packages)
+  #:use-module (gnu packages admin)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
@@ -67,6 +69,7 @@
   #:use-module (gnu packages graphics)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages guile)
+  #:use-module (gnu packages hurd)
   #:use-module (gnu packages image)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages ncurses)
@@ -76,6 +79,9 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages popt)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
+  #:use-module (gnu packages python-crypto)
+  #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
@@ -239,27 +245,36 @@ tmpfs/ramfs filesystems.")
 (define-public parted
   (package
     (name "parted")
-    (version "3.5")
+    (version "3.6")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://gnu/parted/parted-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "18h51i3x5cbqhlj5rm23m9sfw63gaaby5czln5w6qpqj3ifdsf29"))))
+                "04p6b4rygrfd1jrskwrx3bn2icajg1mvbfhyc0c9l3ya7kixnhrv"))))
     (build-system gnu-build-system)
     (arguments
-     (list #:phases
-       #~(modify-phases %standard-phases
-           (add-after 'unpack 'fix-locales-and-python
-             (lambda _
-               (substitute* "tests/t0251-gpt-unicode.sh"
-                 (("C.UTF-8") "en_US.utf8")) ;not in Glibc locales
-               (substitute* "tests/msdos-overlap"
-                 (("/usr/bin/python") (which "python"))))))))
+     (list
+      #:configure-flags (if (target-hurd?)
+                            #~'("--disable-device-mapper")
+                            #~'())
+      #:tests? (not (or (target-hurd?)
+                        (%current-target-system)))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-locales-and-python
+            (lambda _
+              (substitute* "tests/t0251-gpt-unicode.sh"
+                (("C.UTF-8") "en_US.utf8")) ;not in Glibc locales
+              (substitute* "tests/msdos-overlap"
+                (("/usr/bin/python") (which "python"))))))))
     (inputs
-     (list lvm2 readline
-           `(,util-linux "lib")))
+     `(,@(if (target-hurd?)
+             (list hurd-minimal)
+             (list lvm2))
+       ,readline
+       (,util-linux "lib")))
     (native-inputs
      (list gettext-minimal
 
@@ -571,6 +586,42 @@ present in many Western Digital hard drives.  This timer is part of the
 the default timer setting is not well suited to Linux or other *nix systems,
 and can dramatically shorten the lifespan of the drive if left unchecked.")
     (license license:gpl3+)))
+
+(define-public greaseweazle-host-tools
+  (package
+    (name "greaseweazle-host-tools")
+    (version "1.12")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/keirf/greaseweazle")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1lpvjlf2xg4ccwik8npiihi0lgw9dx5h12pp4ry343gkz4pwgk9x"))))
+    (build-system python-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'build 'setuptools-version
+            (lambda _
+              (setenv "SETUPTOOLS_SCM_PRETEND_VERSION" "1.8")))
+          (add-after 'install 'install-udev-rules
+            (lambda _
+              (install-file "scripts/49-greaseweazle.rules"
+                            (string-append #$output "/lib/udev/rules.d/")))))))
+    (native-inputs (list python-setuptools-scm))
+    (propagated-inputs
+     (list python-bitarray python-crcmod python-pyserial python-requests))
+    (synopsis "Tools for accessing a floppy drive at the raw flux level")
+    (description
+     "This package provides the host tools for controlling a Greaseweazle: an
+Open Source USB device capable of reading and writing raw data on nearly any
+type of floppy disk")
+    (home-page "https://github.com/keirf/greaseweazle")
+    (license license:public-domain)))
 
 (define-public gparted
   (package
@@ -1159,7 +1210,7 @@ on your file system and offers to remove it.  @command{rmlint} can find:
                 "1piym8za0iw2s8yryh39y072f90mzisv89ffvn1jzb71f71mbfqa"))))
     (build-system go-build-system)
     (native-inputs
-     (list go-github.com-mattn-go-runewidth go-golang-org-x-term
+     (list go-github-com-mattn-go-runewidth go-golang-org-x-term
            go-gopkg-in-djherbis-times-v1 go-github-com-gdamore-tcell-v2-2.3))
     (arguments
      `(#:import-path "github.com/gokcehan/lf"))
@@ -1501,6 +1552,46 @@ wrapper for disk usage querying and visualisation.")
 gone and to help you to clean it up.")
     (home-page "https://github.com/shundhammer/qdirstat")
     (license license:gpl2)))
+
+(define-public nwipe
+  (package
+    (name "nwipe")
+    (version "0.34")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/martijnvanbrummelen/nwipe")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1frwjgz4mpzwr9sigr693crmxsjl08wcikh6ik7dm0x40l1kqqpd"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'install 'wrap
+                 (lambda* (#:key inputs outputs #:allow-other-keys)
+                   (wrap-program (search-input-file outputs "bin/nwipe")
+                     (list "PATH" ":" 'prefix
+                           (map (lambda (p) (dirname (search-input-file inputs p)))
+                                '("sbin/dmidecode"
+                                  "sbin/hdparm"
+                                  "sbin/smartctl")))))))))
+    (inputs
+     (list bash-minimal dmidecode hdparm ncurses parted smartmontools))
+    (native-inputs
+     (list autoconf automake libtool pkg-config))
+    (home-page "https://github.com/martijnvanbrummelen/nwipe")
+    (synopsis "Secure disk wiping utility")
+    (description
+     "@command{nwipe} securely erases disks using a variety of methods to
+ensure the data cannot be recovered.  It can wipe multiple drives in parallel
+and can be used noninteractively or with a text-based user interface.")
+    (license
+     (list license:gpl2
+           license:bsd-3 ; mt19937ar-cok
+           license:public-domain)))) ; {isaac_rand,PDFGen}
 
 (define-public wipe
   (package

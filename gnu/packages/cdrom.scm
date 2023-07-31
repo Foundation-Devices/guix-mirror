@@ -113,6 +113,7 @@ caching facility provided by the library.")
              (method url-fetch)
              (uri (string-append "mirror://gnu/libcdio/libcdio-"
                                  version ".tar.bz2"))
+             (patches (search-patches "libcdio-glibc-compat.patch"))
              (sha256
               (base32
                "0avi6apv5ydjy6b9c3z9a46rvp5i57qyr09vr7x4nndxkmcfjl45"))))
@@ -161,7 +162,7 @@ libcdio.")
 (define-public xorriso
   (package
     (name "xorriso")
-    (version "1.5.4")
+    (version "1.5.6.pl02")
     (outputs '("out" "gui"))
     (source (origin
              (method url-fetch)
@@ -169,7 +170,7 @@ libcdio.")
                                  version ".tar.gz"))
              (sha256
               (base32
-               "14p3r6jahfqqw2gf739l5myz5x4qb8h34zyczbpdps2krbq5bh9s"))))
+               "1qfs9ybd9k67r78rp1csijmlrq7mq39f7kpyq6qcap46z5fryvvq"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -250,7 +251,7 @@ reconstruction capability.")
 (define-public cdrdao
   (package
     (name "cdrdao")
-    (version "1.2.4")
+    (version "1.2.5")
     (source
      (origin
        (method git-fetch)
@@ -260,7 +261,7 @@ reconstruction capability.")
               (string-append "rel_" (string-replace-substring version "." "_")))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1gcl8ibyylamy2d1piq3749nw3xrlp12r0spzp2gmni57b8a6b7j"))))
+        (base32 "1hh1lm4wr1vhsq2brczn94h88h3bppvjidj9cfqkl20jhaj38968"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags
@@ -274,9 +275,12 @@ reconstruction capability.")
        (modify-phases %standard-phases
          (add-before 'bootstrap 'fix-configure.ac
            (lambda _
-             ;; Remove reference to missing macro.
-             (substitute* "configure.ac" (("^AM_GCONF_SOURCE_2.*") ""))
-             #t)))))
+             ;; Remove references to missing macros.
+             (substitute* "configure.ac"
+              (("^AM_GCONF_SOURCE_2.*") "")
+              ;; This was introduced in autoconf-2.70, but is described
+              ;; as usually not needed in the autoconf documentation.
+              (("^AC_CHECK_INCLUDES_DEFAULT") "")))))))
     (native-inputs
      (list autoconf automake pkg-config))
     (inputs
@@ -730,33 +734,40 @@ information is written to standard error.")
 (define-public asunder
   (package
     (name "asunder")
-    (version "2.9.7")
+    (version "3.0.1")
     (source
      (origin
        (method url-fetch)
        (uri
-        (string-append "http://www.littlesvr.ca/asunder/releases/asunder-"
+        (string-append "https://www.littlesvr.ca/asunder/releases/asunder-"
                        version ".tar.bz2"))
        (sha256
-        (base32 "1x3l308ss0iqhz90qyjb94gyd8b4piyrm2nzjmg5kf049k9prjf1"))))
+        (base32 "0srpag9bca76iiv8766kxmbvhsri58k15xp70348frkvp7hy4s48"))))
     (build-system glib-or-gtk-build-system)
     (arguments
-     '(#:out-of-source? #f
-       #:phases (modify-phases %standard-phases
-                  (add-after 'install 'wrap
-                    (lambda* (#:key inputs outputs #:allow-other-keys)
-                      (let ((program (string-append (assoc-ref outputs "out")
-                                                    "/bin/asunder")))
-                        (define (bin-directory input-name)
-                          (string-append (assoc-ref inputs input-name) "/bin"))
-                        (wrap-program program
-                          `("PATH" ":" prefix
-                            ,(map bin-directory (list "cdparanoia"
-                                                      "lame"
-                                                      "vorbis-tools"
-                                                      "flac"
-                                                      "opus-tools"
-                                                      "wavpack"))))))))))
+     (list
+      #:out-of-source? #f
+       #:phases
+       #~(modify-phases %standard-phases
+         (add-before 'check 'fix-tests
+           ;; As of 3.0.1, there are no ‘real’ tests under src/, and the linty
+           ;; test under po/ is broken.  Still, it's trivial to fix.
+           (lambda _
+             (let ((file (open-file "po/POTFILES.in" "a")))
+               (format file "~%src/upload.c~%")
+               (close-port file))))
+         (add-after 'install 'wrap
+           (lambda _
+             (wrap-program (string-append #$output "/bin/asunder")
+               `("PATH" ":" prefix
+                 ,(map (lambda (input) (string-append input "/bin"))
+                       '#$(map (lambda (label) (this-package-input label))
+                               (list "cdparanoia"
+                                     "flac"
+                                     "lame"
+                                     "opus-tools"
+                                     "vorbis-tools"
+                                     "wavpack"))))))))))
     (native-inputs (list intltool pkg-config))
     ;; TODO: Add the necessary packages for Musepack encoding.
     (inputs `(("gtk+-2" ,gtk+-2)
@@ -846,14 +857,14 @@ laid out on the image.")
 (define-public libburn
   (package
     (name "libburn")
-    (version "1.5.4")
+    (version "1.5.6")
     (source (origin
              (method url-fetch)
              (uri (string-append "http://files.libburnia-project.org/releases/"
                                  "libburn-" version ".tar.gz"))
              (sha256
               (base32
-               "0m1vyry6pi115nysfgb0cg313qqhnlxqdg7f920wpiar0z8mjl2j"))))
+               "0jv447ixwvj68vslbgbbvkzmaabf4dz0dcizg9garvp59cdlk5bj"))))
     (build-system gnu-build-system)
     (native-inputs
      (list pkg-config))
@@ -868,14 +879,14 @@ DVD-RW, DVD-R, DVD-R/DL, BD-R, and BD-RE.")
 (define-public libisofs
   (package
     (name "libisofs")
-    (version "1.5.4")
+    (version "1.5.6.pl01")
     (source (origin
              (method url-fetch)
              (uri (string-append "http://files.libburnia-project.org/releases/"
                                  "libisofs-" version ".tar.gz"))
              (sha256
               (base32
-               "13m82l13cb5d7ca53dv3akma1jr9gw0hnnshdwqpj6ahly0fv85a"))))
+               "09czddjriv2zi1bdsck8a31ci6xpi1qr2rqmzfhlqx21sqwd67xc"))))
     (build-system gnu-build-system)
     (inputs
      (list zlib acl))

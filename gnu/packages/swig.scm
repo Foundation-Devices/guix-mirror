@@ -2,8 +2,9 @@
 ;;; Copyright © 2013, 2015, 2016 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2018, 2021 Marius Bakke <marius@gnu.org>
-;;; Copyright © 2019 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2019, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2020 Arun Isaac <arunisaac@systemreboot.net>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -25,6 +26,7 @@
   #:use-module (guix download)
   #:use-module (guix licenses)
   #:use-module (guix build-system gnu)
+  #:use-module (guix utils)
   #:use-module (gnu packages)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages guile)
@@ -54,6 +56,8 @@
                          perl))
                      ;;("python" ,python-wrapper)
     (inputs (list pcre))
+    (arguments (list #:tests? (not (or (target-hurd?)
+                                       (%current-target-system)))))
     (home-page "https://swig.org/")
     (synopsis
      "Interface compiler that connects C/C++ code to higher-level languages")
@@ -67,3 +71,21 @@ you tailor the wrapping process to suit your application.")
 
     ;; See http://www.swig.org/Release/LICENSE for details.
     (license gpl3+)))
+
+(define-public swig-next
+  ;; a number of packages using swig do not build with this version
+  ;; so we need to keep swig 4.0.2 above and place the current release
+  ;; as swig-next
+  (package
+    (inherit swig)
+    (name "swig")
+    (version "4.1.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://sourceforge/" name "/" name "/"
+                                 name "-" version "/"
+                                 name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "16xc767gf5ip40jh698wbdrxrghli5v2c966bkdmrmpwv378mw1a"))))
+    (inputs (list pcre2))))

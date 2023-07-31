@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2012-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2012-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014, 2015, 2017, 2018, 2019 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015 Eric Bavier <bavier@member.fsf.org>
 ;;; Copyright © 2016 Alex Kost <alezost@gmail.com>
@@ -9,6 +9,7 @@
 ;;; Copyright © 2021 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2022 Maxime Devos <maximedevos@telenet.be>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
+;;; Copyright © 2023 Simon Tournier <zimon.toutoune@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -51,10 +52,10 @@
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)
-  #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-35)
+  #:use-module (srfi srfi-71)
   #:use-module (rnrs bytevectors)
   #:use-module (web uri)
   #:autoload   (texinfo) (texi-fragment->stexi)
@@ -73,7 +74,6 @@
             origin-uri
             origin-method
             origin-hash
-            origin-sha256                         ;deprecated
             origin-file-name
             origin-actual-file-name
             origin-patches
@@ -168,6 +168,9 @@
             package-error-invalid-license
             &package-input-error
             package-input-error?
+            &package-cyclic-dependency-error
+            package-cyclic-dependency-error?
+            package-error-dependency-cycle
             package-error-invalid-input
             &package-cross-build-system-error
             package-cross-build-system-error?
@@ -183,6 +186,7 @@
             package-closure
 
             default-guile
+            guile-for-grafts
             default-guile-derivation
             set-guile-for-build
             package-file
@@ -344,14 +348,6 @@ as base32.  Otherwise, it must be a bytevector."
   "Build an <origin> record, automatically converting 'sha256' field
 specifications to 'hash'."
   (origin-compatibility-helper (fields ...) ()))
-
-(define-deprecated (origin-sha256 origin)
-  origin-hash
-  (let ((hash (origin-hash origin)))
-    (unless (eq? (content-hash-algorithm hash) 'sha256)
-      (raise (condition (&message
-                         (message (G_ "no SHA256 hash for origin"))))))
-    (content-hash-value hash)))
 
 (define (print-origin origin port)
   "Write a concise representation of ORIGIN to PORT."
@@ -813,6 +809,10 @@ exist, return #f instead."
   package-input-error?
   (input package-error-invalid-input))
 
+(define-condition-type &package-cyclic-dependency-error &package-error
+  package-cyclic-dependency-error?
+  (cycle package-error-dependency-cycle))
+
 (define-condition-type &package-cross-build-system-error &package-error
   package-cross-build-system-error?)
 
@@ -1239,8 +1239,16 @@ input list."
 
 (define (package-direct-sources package)
   "Return all source origins associated with PACKAGE; including origins in
-PACKAGE's inputs."
-  `(,@(or (and=> (package-source package) list) '())
+PACKAGE's inputs and patches."
+  (define (expand source)
+    (cons source
+          (filter origin? (origin-patches source))))
+
+  `(,@(match (package-source package)
+        ((? origin? origin)
+         (expand origin))
+        (_
+         '()))
     ,@(filter-map (match-lambda
                    ((_ (? origin? orig) _ ...)
                     orig)
@@ -1316,17 +1324,29 @@ in INPUTS and their transitive propagated inputs."
   (let ()
     (define (supported-systems-procedure system)
       (define supported-systems
-        (mlambdaq (package)
-          (parameterize ((%current-system system))
-            (fold (lambda (input systems)
-                    (match input
-                      ((label (? package? package) . _)
-                       (lset-intersection string=? systems
-                                          (supported-systems package)))
-                      (_
-                       systems)))
-                  (package-supported-systems package)
-                  (bag-direct-inputs (package->bag package system #f))))))
+        ;; The VISITED parameter allows for cycle detection.  This is a pretty
+        ;; strategic place to do that: most commands call it upfront, yet it's
+        ;; not on the hot path of 'package->derivation'.  The downside is that
+        ;; only package-level cycles are detected.
+        (let ((visited (make-parameter (setq))))
+          (mlambdaq (package)
+            (when (set-contains? (visited) package)
+              (raise (condition
+                      (&package-cyclic-dependency-error
+                       (package package)
+                       (cycle (set->list (visited)))))))
+
+            (parameterize ((visited (set-insert package (visited)))
+                           (%current-system system))
+              (fold (lambda (input systems)
+                      (match input
+                        ((label (? package? package) . _)
+                         (lset-intersection string=? systems
+                                            (supported-systems package)))
+                        (_
+                         systems)))
+                    (package-supported-systems package)
+                    (bag-direct-inputs (package->bag package system #f)))))))
 
       supported-systems)
 
@@ -1527,15 +1547,16 @@ package and returns its new name after rewrite."
 (define* (package-input-rewriting/spec replacements #:key (deep? #t))
   "Return a procedure that, given a package, applies the given REPLACEMENTS to
 all the package graph, including implicit inputs unless DEEP? is false.
+
 REPLACEMENTS is a list of spec/procedures pair; each spec is a package
 specification such as \"gcc\" or \"guile@2\", and each procedure takes a
-matching package and returns a replacement for that package."
+matching package and returns a replacement for that package.  Matching
+packages that have the 'hidden?' property set are not replaced."
   (define table
     (fold (lambda (replacement table)
             (match replacement
               ((spec . proc)
-               (let-values (((name version)
-                             (package-name->name+version spec)))
+               (let ((name version (package-name->name+version spec)))
                  (vhash-cons name (list version proc) table)))))
           vlist-null
           replacements))
@@ -1558,7 +1579,8 @@ matching package and returns a replacement for that package."
     (gensym " package-replacement"))
 
   (define (rewrite p)
-    (if (assq-ref (package-properties p) replacement-property)
+    (if (or (assq-ref (package-properties p) replacement-property)
+            (hidden-package? p))
         p
         (match (find-replacement p)
           (#f p)

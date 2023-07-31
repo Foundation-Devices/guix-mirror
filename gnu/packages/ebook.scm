@@ -125,7 +125,7 @@ with Microsoft Compiled HTML (CHM) files")
 (define-public calibre
   (package
     (name "calibre")
-    (version "5.36.0")
+    (version "5.44.0")
     (source
      (origin
        (method url-fetch)
@@ -134,7 +134,7 @@ with Microsoft Compiled HTML (CHM) files")
                            version ".tar.xz"))
        (sha256
         (base32
-         "1c036qmn7lxq0899c2xzzs6whz7z0557frnfqisbvfxa13b2sadk"))
+         "1v48mzmr9z9rs6s7r8fgaqs6vnxnin1hyzwmwmal78inzpma7ykg"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -245,9 +245,8 @@ tags = [\"WS_X11\"]")
                 (("\\[tool.sip.project\\]")
                  (string-append "[tool.sip.project]
 sip-include-dirs = [\""
-                                #$(this-package-input
-                                   "python-pyqt")
-                                "/share/sip\"]")))
+                   #$(this-package-input "python-pyqt")
+                   "/lib/python3.10/site-packages/PyQt5/bindings\"]")))
               (substitute* "src/calibre/ebooks/pdf/pdftohtml.py"
                 (("PDFTOHTML = 'pdftohtml'")
                  (string-append "PDFTOHTML = \""
@@ -622,7 +621,7 @@ Some of the current features:
 (define-public xchm
   (package
     (name "xchm")
-    (version "1.33")
+    (version "1.35")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/rzvncj/xCHM"
@@ -630,7 +629,7 @@ Some of the current features:
                                   version "/xchm-" version ".tar.gz"))
               (sha256
                (base32
-                "0an09shap2wj9gzj5fsw5sc2i6paq3kc3mc52fnwg2bb2dan5qxk"))))
+                "19w9cmdncqgy20bk8njbvcz5xld15pq5slf7m477vhnvws8a373i"))))
     (build-system gnu-build-system)
     (inputs
      (list wxwidgets chmlib))

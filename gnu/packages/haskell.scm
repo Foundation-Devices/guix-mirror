@@ -23,6 +23,7 @@
 ;;; Copyright © 2021 Matthew James Kraai <kraai@ftbfs.org>
 ;;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
 ;;; Copyright © 2021 Simon Tournier <zimon.toutoune@gmail.com>
+;;; Copyright © 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1260,7 +1261,27 @@ interactive environment for the functional language Haskell.")
                ;;    quasiquotation/T14028.run  T14028 [bad stderr] (dyn)
                (substitute* '("testsuite/tests/quasiquotation/all.T")
                  (("unless\\(config.have_ext_interp, skip\\),")
-                  "unless(config.have_ext_interp, skip), when(arch('i386'), skip),"))))))))
+                  "unless(config.have_ext_interp, skip), when(arch('i386'), skip),"))))
+           ;; i686 fails on CI, but (sometimes and with generous timeouts) completes
+           ;; locally. The issue seems to be that the testsuite tries to run some very
+           ;; broad regular expressions on output files of several megabytes in size,
+           ;; which takes a long time. Since the expressions never match anything on
+           ;; our builds anyways, remove them.
+           ;; TODO: Merge with 'skip-failing-tests-i686 or move into snippets on
+           ;; next rebuild. Note that they are required for GHC 8.10 and 9.2.
+           #$@(if (string-prefix? "i686" (or (%current-target-system)
+                                             (%current-system)))
+               #~((add-after 'skip-failing-tests-i686 'skip-more-failing-tests-i686
+                    (lambda _
+                      (substitute* '("testsuite/tests/profiling/should_run/all.T")
+                        (("test\\('T11627a', \\[ ")
+                         "test('T11627a', [ when(arch('i386'), skip), "))
+                      (substitute* '("testsuite/driver/testlib.py")
+                        ((".*changes being made to the file will invalidate the code signature.*")
+                         "")
+                        ((".*warning: argument unused during compilation:.*")
+                         "")))))
+               #~())))))
     (native-search-paths (list (search-path-specification
                                 (variable "GHC_PACKAGE_PATH")
                                 (files (list
@@ -1293,7 +1314,14 @@ interactive environment for the functional language Haskell.")
                   version "/ghc-" version "-testsuite.tar.xz"))
            (sha256
             (base32
-             "1m5fzhr4gjn9ni8gxx7ag3fkbw1rspjzgv39mnfb0nkm5mw70v3s"))))
+             "1m5fzhr4gjn9ni8gxx7ag3fkbw1rspjzgv39mnfb0nkm5mw70v3s"))
+           (patches (search-patches "ghc-9.2-grep-warnings.patch"))
+           (modules '((guix build utils)))
+           (snippet
+            ;; collections.Iterable was moved to collections.abc in Python 3.10.
+            '(substitute* "testsuite/driver/testlib.py"
+               (("collections\\.Iterable")
+                "collections.abc.Iterable")))))
        ,@(filter (match-lambda
                    (("ghc-bootstrap" . _) #f)
                    (("ghc-testsuite" . _) #f)
@@ -1325,20 +1353,16 @@ interactive environment for the functional language Haskell.")
        (substitute-keyword-arguments (package-arguments base)
          ((#:phases phases '%standard-phases)
           #~(modify-phases #$phases
-             ;; File Common.hs has been moved to src/ in this release.
-             (replace 'fix-cc-reference
-               (lambda _
-                 (substitute* "utils/hsc2hs/src/Common.hs"
-                   (("\"cc\"") "\"gcc\""))))
-             ;; FIXME: Remove i686-specific match on the next rebuild cycle.
-             #$@(match (%current-system)
-                  ("i686-linux"
-                    #~((add-after 'skip-more-tests 'skip-T21694-i686
-                        (lambda _
-                          (substitute* '("testsuite/tests/simplCore/should_compile/all.T")
-                            (("^test\\('T21694', \\[ " all)
-                             (string-append all "when(arch('i386'), skip), ")))))))
-                  (_ #~()))))
+              ;; File Common.hs has been moved to src/ in this release.
+              (replace 'fix-cc-reference
+                (lambda _
+                  (substitute* "utils/hsc2hs/src/Common.hs"
+                    (("\"cc\"") "\"gcc\""))))
+              (add-after 'skip-more-tests 'skip-T21694-i686
+                (lambda _
+                  (substitute* '("testsuite/tests/simplCore/should_compile/all.T")
+                    (("^test\\('T21694', \\[ " all)
+                     (string-append all "when(arch('i386'), skip), ")))))))
          ;; Increase verbosity, so running the test suite does not time out on CI.
          ((#:make-flags make-flags ''())
           #~(cons "VERBOSE=4" #$make-flags))))
@@ -1350,11 +1374,12 @@ interactive environment for the functional language Haskell.")
           ,(origin
              (method url-fetch)
              (uri (string-append
-                    "https://www.haskell.org/ghc/dist/"
-                    version "/ghc-" version "-testsuite.tar.xz"))
+                   "https://www.haskell.org/ghc/dist/"
+                   version "/ghc-" version "-testsuite.tar.xz"))
              (sha256
               (base32
-               "19ha0hidrijawy53vm2r0sgml5zkl8126mqy7p0pyacmw3k7913l"))))
+               "19ha0hidrijawy53vm2r0sgml5zkl8126mqy7p0pyacmw3k7913l"))
+             (patches (search-patches "ghc-9.2-grep-warnings.patch"))))
          ,@(filter (match-lambda
                      (("ghc-bootstrap" . _) #f)
                      (("ghc-testsuite" . _) #f)
