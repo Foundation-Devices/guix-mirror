@@ -1300,8 +1300,14 @@ new Date();"))
               (modules '((guix build utils)))
               (snippet
                '(for-each delete-file (find-files "." "\\.(bin|exe|jar)$")))
-              (patches (search-patches
-                        "openjdk-currency-time-bomb2.patch"))))
+              (patches
+               (search-patches "openjdk-10-module3-reproducibility.patch"
+                               "openjdk-10-module4-reproducibility.patch"
+                               "openjdk-10-char-reproducibility.patch"
+                               "openjdk-11-classlist-reproducibility.patch"
+                               "openjdk-10-jar-reproducibility.patch"
+                               "openjdk-10-jtask-reproducibility.patch"
+                               "openjdk-currency-time-bomb2.patch"))))
     (build-system gnu-build-system)
     (outputs '("out" "jdk" "doc"))
     (arguments
@@ -1335,6 +1341,10 @@ new Date();"))
          "--with-libjpeg=system"
          "--with-libpng=system"
          "--with-version-pre="
+         ;; Should be set by SOURCE_DATE_EPOCH handler, but isn't being
+         ;; set; do it manually.
+         "--with-hotspot-build-time=1970-01-01T00:00:01"
+         "--enable-reproducible-build"  ; to be sure
          ;; Allow the build system to locate the system freetype.
          (string-append "--with-freetype-include="
                         #$(this-package-input "freetype") "/include")
@@ -1348,6 +1358,11 @@ new Date();"))
               ;; this exact first line.
               (substitute* "make/data/blockedcertsconverter/blocked.certs.pem"
                 (("^#!.*") "#! java BlockedCertsConverter SHA-256\n"))))
+          (add-after 'unpack 'remove-timestamping
+            (lambda _
+              (substitute* "src/hotspot/share/runtime/abstract_vm_version.cpp"
+                (("__DATE__") "")
+                (("__TIME__") ""))))
           (add-after 'unpack 'patch-jni-libs
             ;; Hardcode dynamically loaded libraries.
             (lambda _
@@ -1548,7 +1563,7 @@ new Date();"))
            libxtst))
     (native-inputs
      (list autoconf
-           bash                     ; not bash-minimal, needs ulimit
+           bash                         ; not bash-minimal, needs ulimit
            openjdk10
            `(,openjdk10 "jdk")
            gnu-make-4.2
