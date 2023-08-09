@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2012, 2013, 2015 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014 Mark H Weaver <mhw@netris.org>
-;;; Copyright © 2015, 2018 Andreas Enge <andreas@enge.fr>
+;;; Copyright © 2015, 2018, 2023 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2016, 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2016, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2018, 2019 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -45,7 +45,7 @@
 (define-public gmp
   (package
    (name "gmp")
-   (version "6.2.1")
+   (version "6.3.0")
    (source (origin
             (method url-fetch)
             (uri
@@ -53,8 +53,7 @@
                             version ".tar.xz"))
             (sha256
              (base32
-              "1wml97fdmpcynsbw9yl77rj29qibfp652d0w3222zlfx5j8jjj7x"))
-            (patches (search-patches "gmp-faulty-test.patch"))))
+              "1648ad1mr7c1r8lkkqshrv1jfjgfdb30plsadxhni7mq041bihm3"))))
    (build-system gnu-build-system)
    (native-inputs (list m4))
    (outputs '("out" "debug"))
@@ -70,26 +69,7 @@
                  ;; they produce different headers.  We need shared.
                  `("--disable-static"
                    "--enable-shared"))
-                (else '())))
-      ;; Remove after core-updates merge.
-      ;; Workaround for gcc-7 transition breakage, -system and cross-build,
-      ;; Note: See <http://bugs.gnu.org/22186> for why not 'CPATH'.
-      ;; Note: See <http://bugs.gnu.org/30756> for why not 'C_INCLUDE_PATH' & co.
-      ,@(if (target-mingw?)
-            `(#:phases
-              (modify-phases %standard-phases
-                (add-before 'configure 'setenv
-                  (lambda _
-                    (let ((gcc (assoc-ref %build-inputs "cross-gcc"))
-                          (libc (assoc-ref %build-inputs "cross-libc")))
-                      (setenv "CROSS_CPLUS_INCLUDE_PATH"
-                              (string-append gcc "/include/c++"
-                                             ":" gcc "/include"
-                                             ":" libc "/include"))
-                      (format #t "environment variable `CROSS_CPLUS_INCLUDE_PATH' set to `~a'\n"
-                              (getenv "CROSS_CPLUS_INCLUDE_PATH"))
-                      #t)))))
-            '())))
+                (else '())))))
    (synopsis "Multiple-precision arithmetic library")
    (description
     "The @acronym{GMP, the GNU Multiple Precision Arithmetic} library performs
