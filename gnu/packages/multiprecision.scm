@@ -58,8 +58,7 @@
    (native-inputs (list m4))
    (outputs '("out" "debug"))
    (arguments
-    `(#:parallel-tests? #f ; mpz/reuse fails otherwise
-      #:configure-flags
+    `(#:configure-flags
       '(;; Build a "fat binary", with routines for several
         ;; sub-architectures.
         "--enable-fat"
