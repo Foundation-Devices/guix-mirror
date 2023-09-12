@@ -70,6 +70,7 @@
   #:use-module (guix git-download)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system trivial)
+  #:use-module (guix search-paths)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)
@@ -1050,7 +1051,8 @@ the store.")
     ;; distros.
     (list (search-path-specification
            (variable "GUIX_LOCPATH")
-           (files '("lib/locale")))))
+           (files '("lib/locale")))
+          $TZDIR))
 
    (synopsis "The GNU C Library")
    (description
