@@ -799,7 +799,7 @@ tables.")
                          (replace "guile-lib" guile2.2-lib)
                          (replace "guile-smc" guile2.2-smc)))))
 
-(define-public guile-fibers-1.3
+(define-public guile-fibers
   (package
     (name "guile-fibers")
     (version "1.3.1")
@@ -856,9 +856,11 @@ is not available for Guile 2.0.")
     (properties '((upstream-name . "fibers")))
     (license license:lgpl3+)))
 
+(define-public guile-fibers-1.3 guile-fibers)
+
 (define-public guile-fibers-1.1
   (package
-    (inherit guile-fibers-1.3)
+    (inherit guile-fibers)
     (version "1.1.1")
     (source (origin
               (method git-fetch)
@@ -886,7 +888,7 @@ is not available for Guile 2.0.")
      ;; <https://github.com/wingo/fibers/pull/53>.
      (filter (cut string-suffix? "-linux" <>) %supported-systems))))
 
-(define-public guile-fibers
+(define-public guile-fibers-1.0
   (package
     (inherit guile-fibers-1.1)
     (version "1.0.0")
@@ -1678,7 +1680,7 @@ Scheme by using Guile’s foreign function interface.")
               (replace "guile" guile-2.2)))))
 
 (define-public guile-mastodon
-  (let ((commit "74b75bcf547df92acee1e0466ecd7ec07f775392")
+  (let ((commit "0a94ae6bbca63d440eb3f6d7e636630aca6d2b52")
         (revision "1"))
     (package
       (name "guile-mastodon")
@@ -1691,7 +1693,7 @@ Scheme by using Guile’s foreign function interface.")
                 (file-name (string-append name "-" version "-checkout"))
                 (sha256
                  (base32
-                  "1wx5h6wa9c0na8mrnr2nv1nzjvq68zyrly8yyp11dsskhaw4y33h"))))
+                  "17ic44jypv1yq296w8b4nm99189fdgmdw1pdx0172x97dicsf2j6"))))
       (build-system gnu-build-system)
       (native-inputs
        (list autoconf automake emacs-minimal pkg-config texinfo))

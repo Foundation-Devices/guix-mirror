@@ -36,6 +36,7 @@
 ;;; Copyright © 2021 Lu Hui <luhux76@gmail.com>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -72,6 +73,7 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages check)
+  #:use-module (gnu packages cups)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages emacs)
   #:use-module (gnu packages flex)
@@ -1431,6 +1433,7 @@ treat it as part of their software base when porting.")
   (package
     (name "libxpm")
     (version "3.5.13")
+    (replacement libxpm/fixed)
     (source
       (origin
         (method url-fetch)
@@ -1453,6 +1456,21 @@ treat it as part of their software base when porting.")
     (synopsis "Xorg XPM library")
     (description "XPM (X Pixmap) image file format library.")
     (license license:x11)))
+
+(define-public libxpm/fixed
+  (package
+    (inherit libxpm)
+    (version "3.5.17")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (string-append
+               "mirror://xorg/individual/lib/libXpm-"
+               version
+               ".tar.xz"))
+        (sha256
+          (base32
+            "0hvf49qy55gwldpwpw7ihcmn5i2iinpjh2rbha63hzcy060izcv4"))))))
 
 (define-public libxres
   (package
@@ -5340,7 +5358,7 @@ Wayland.")
 (define-public libx11-fixed
   (package
     (inherit libx11)
-    (version "1.8.6")
+    (version "1.8.7")
     (source
      (origin
        (method url-fetch)
@@ -5348,7 +5366,7 @@ Wayland.")
                            version ".tar.xz"))
        (sha256
         (base32
-         "1jawl8zp1h7hdmxx1sc6kmxkki187d9yixr2l03ai6wqqry5nlsr"))))))
+         "1vlrgrdibp4lr84wgmsdy1ihzaai8bvvqc68npi1m19wir36gwh5"))))))
 
 ;; packages of height 5 in the propagated-inputs tree
 
@@ -5912,7 +5930,7 @@ to answer a question.  Xmessage can also exit after a specified time.")
 (define-public xterm
   (package
     (name "xterm")
-    (version "377")
+    (version "384")
     (source
      (origin
        (method url-fetch)
@@ -5922,7 +5940,7 @@ to answer a question.  Xmessage can also exit after a specified time.")
              (string-append "ftp://ftp.invisible-island.net/xterm/"
                             "xterm-" version ".tgz")))
        (sha256
-        (base32 "1clhm4c8d7vmz0dn6qz2c6g68wxl8f2ba8a7c1zdk3jxlkkqy46v"))
+        (base32 "0wy3rdj5smis44nsy6iccx3gsyzlqw0rcjjb7h605bnf803qgvri"))
        (patches
          (search-patches "xterm-370-explicit-xcursor.patch"))))
     (build-system gnu-build-system)
@@ -6110,16 +6128,16 @@ basic eye-candy effects.")
 (define-public xpra
   (package
     (name "xpra")
-    (version "4.4.6")
+    (version "5.0.2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.xpra.org/src/xpra-"
                            version ".tar.xz"))
        (sha256
-        (base32 "0d3s13wqbn9jwqp4i55mn4chgjkrckq3jx4jrq1bcjjz5agzfrq5"))
-       (patches (search-patches "xpra-4.2-systemd-run.patch"
-                                "xpra-4.2-install_libs.patch"))))
+        (base32 "0gxv0h1spg2jl3g9cc6qxxkq6a7prmb92dqqwk0s6pvrj8w3izlk"))
+       (patches (search-patches "xpra-5.0-systemd-run.patch"
+                                "xpra-5.0-install_libs.patch"))))
     (build-system python-build-system)
     (inputs
      (list bash-minimal                 ; for wrap-program
@@ -6158,7 +6176,8 @@ basic eye-candy effects.")
            python-dbus                  ; For desktop notifications.
            dbus                         ; For dbus-launch command.
            python-lz4                   ; Faster compression than zlib.
-           python-netifaces))
+           python-netifaces
+           python-pycups))
     (native-inputs (list pkg-config pandoc python-cython))
     (arguments
      (list
@@ -6193,7 +6212,7 @@ basic eye-candy effects.")
                  (format #f "~s" (search-input-file inputs "bin/xauth"))))
               ;; Fix directory of config files.
               (substitute* '("xpra/scripts/config.py"
-                             "xpra/platform/xposix/paths.py")
+                             "xpra/platform/posix/paths.py")
                 (("\"/etc/xpra/?\"")
                  (string-append "\"" #$output "/etc/xpra/\"")))
               ;; XXX: Stolen from (gnu packages linux)

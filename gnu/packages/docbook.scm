@@ -582,31 +582,7 @@ the in DocBook SGML DTDs.")
                (base32
                 "0yd09nypswy3q4scri1dg7dr99d7gd6r2dwx0xm81l9f4y32gs0n"))))
     (build-system python-build-system)
-    (arguments
-     (list
-      ;; Using setuptools causes an invalid "package_base" path in
-      ;; out/bin/.dblatex-real due to a missing leading '/'.  This is caused
-      ;; by dblatex's setup.py stripping the root path when creating the
-      ;; script.  (dblatex's setup.py still uses distutils and thus has to
-      ;; create the script by itself. The feature for creating scripts is one
-      ;; of setuptools' features.)
-      ;; See this thread for details:
-      ;; https://lists.gnu.org/archive/html/guix-devel/2016-12/msg00030.html
-      #:use-setuptools? #f
-      #:tests? #f                       ;no test suite
-      #:phases
-      #~(modify-phases %standard-phases
-          (add-after 'wrap 'set-path
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let ((path (map (lambda (x)
-                                 (string-append (assoc-ref inputs x)
-                                                "/bin"))
-                               (list "libxslt"
-                                     "imagemagick" "inkscape"
-                                     "texlive-updmap.cfg"))))
-                ;; dblatex executes helper programs at runtime.
-                (wrap-program (string-append #$output "/bin/dblatex")
-                  `("PATH" ":" prefix ,path))))))))
+    ;; TODO: Add fig2dev for fig2dev utility.
     (inputs
      (list (texlive-updmap.cfg (list texlive-anysize
                                              texlive-appendix

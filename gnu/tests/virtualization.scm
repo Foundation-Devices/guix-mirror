@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2017 Christopher Baines <mail@cbaines.net>
-;;; Copyright © 2020-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2020-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2021 Pierre Langlois <pierre.langlois@gmx.com>
 ;;; Copyright © 2022 Marius Bakke <marius@gnu.org>
@@ -31,12 +31,14 @@
   #:use-module (gnu services)
   #:use-module (gnu services dbus)
   #:use-module (gnu services networking)
+  #:use-module (gnu services ssh)
   #:use-module (gnu services virtualization)
   #:use-module (gnu packages ssh)
   #:use-module (gnu packages virtualization)
   #:use-module (guix gexp)
   #:use-module (guix records)
   #:use-module (guix store)
+  #:use-module (guix modules)
   #:export (%test-libvirt
             %test-qemu-guest-agent
             %test-childhurd))
@@ -225,31 +227,37 @@
 ;;; GNU/Hurd virtual machines, aka. childhurds.
 ;;;
 
-;; Copy of `hurd-vm-disk-image', using plain disk-image for test
-(define (hurd-vm-disk-image-raw config)
-  (let ((os ((@@ (gnu services virtualization) secret-service-operating-system)
-             (hurd-vm-configuration-os config)))
-        (disk-size (hurd-vm-configuration-disk-size config)))
-    (system-image
-     (image
-      (inherit hurd-disk-image)
-      (format 'disk-image)
-      (size disk-size)
-      (operating-system os)))))
-
 (define %childhurd-os
   (simple-operating-system
    (service dhcp-client-service-type)
    (service hurd-vm-service-type
             (hurd-vm-configuration
-             (image (hurd-vm-disk-image-raw this-record))))))
+             ;; Allow root login with an empty password to simplify the test
+             ;; below.
+             (os (operating-system
+                   (inherit %hurd-vm-operating-system)
+                   (services
+                    (modify-services (operating-system-user-services
+                                      %hurd-vm-operating-system)
+                      (openssh-service-type
+                       config => (openssh-configuration
+                                  (inherit config)
+                                  (permit-root-login #t)))))))))))
 
 (define (run-childhurd-test)
+  (define (import-module? module)
+    ;; This module is optional and depends on Guile-Gcrypt, do skip it.
+    (and (guix-module-name? module)
+         (not (equal? module '(guix store deduplication)))))
+
   (define os
     (marionette-operating-system
      %childhurd-os
-     #:imported-modules '((gnu services herd)
-                          (guix combinators))))
+     #:imported-modules (source-module-closure
+                         '((gnu services herd)
+                           (guix combinators)
+                           (gnu build install))
+                         #:select? import-module?)))
 
   (define vm
     (virtual-machine
@@ -293,7 +301,10 @@
                        (ice-9 match))
 
           (define marionette
-            (make-marionette (list #$vm)))
+            ;; Emulate the host CPU so that KVM is available inside as well
+            ;; ("nested KVM"), provided
+            ;; /sys/module/kvm_intel/parameters/nested (or similar) allows it.
+            (make-marionette (list #$vm "-cpu" "host")))
 
           (test-runner-current (system-test-runner #$output))
           (test-begin "childhurd")
@@ -301,7 +312,9 @@
           (test-assert "service running"
             (marionette-eval
              '(begin
-                (use-modules (gnu services herd))
+                (use-modules (gnu services herd)
+                             (ice-9 match))
+
                 (match (start-service 'childhurd)
                   (#f #f)
                   (('service response-parts ...)
@@ -316,7 +329,8 @@
             ;; to the host won't work because QEMU listens on 127.0.0.1.
             (marionette-eval
              '(begin
-                (use-modules (ice-9 match))
+                (use-modules (ice-9 match)
+                             (ice-9 textual-ports))
 
                 (let loop ((n 60))
                   (if (zero? n)
@@ -367,6 +381,31 @@
               (and (string-suffix? ".drv"
                                    (pk 'drv (string-trim-right drv)))
                    drv)))
+
+          (test-assert "copy-on-write store"
+            ;; Set up a writable store.  The root partition is already an
+            ;; overlayfs, which is not suitable as the bottom part of this
+            ;; additional overlayfs; thus, create a tmpfs for the backing
+            ;; store.
+            ;; TODO: Remove this when <virtual-machine> creates a writable
+            ;; store.
+            (marionette-eval
+             '(begin
+                (use-modules (gnu build install)
+                             (guix build syscalls))
+
+                (mkdir "/run/writable-store")
+                (mount "none" "/run/writable-store" "tmpfs")
+                (mount-cow-store "/run/writable-store" "/backing-store")
+                (system* "df" "-hT"))
+             marionette))
+
+          (test-equal "offloading"
+            0
+            (marionette-eval
+             '(and (file-exists? "/etc/guix/machines.scm")
+                   (system* "guix" "offload" "test"))
+             marionette))
 
           (test-end))))
 

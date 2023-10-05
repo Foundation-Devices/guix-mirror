@@ -49,7 +49,6 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages ed)
-  #:use-module (gnu packages gawk)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages guile)
   #:use-module (gnu packages multiprecision)
@@ -1385,7 +1384,9 @@ to the @code{share/locale} sub-directory of this package.")
                                                          locale ".UTF-8")))
                                ',locales)
                      #t))))
-    (native-inputs (list glibc gzip))
+    (native-inputs
+     `(("glibc" ,glibc)
+       ("gzip" ,gzip)))
     (synopsis (if default-locales?
                   (P_ "Small sample of UTF-8 locales")
                   (P_ "Customized sample of UTF-8 locales")))
@@ -1465,7 +1466,8 @@ command.")
                                      "glibc-2.37-hurd-clock_t_centiseconds.patch"
                                      "glibc-2.37-hurd-local-clock_gettime_MONOTONIC.patch"
                                      "glibc-hurd-mach-print.patch"
-                                     "glibc-hurd-gettyent.patch"))))
+                                     "glibc-hurd-gettyent.patch"
+                                     "glibc-hurd-getauxval.patch"))))
     (supported-systems %hurd-systems)))
 
 (define-public glibc/hurd-headers

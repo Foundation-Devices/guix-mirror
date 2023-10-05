@@ -131,9 +131,7 @@
   #:use-module (gnu packages lisp-xyz)
   #:use-module (gnu packages logging)
   #:use-module (gnu packages lua)
-  #:use-module (gnu packages m4)
   #:use-module (gnu packages man)
-  #:use-module (gnu packages maths)
   #:use-module (gnu packages mpd)
   #:use-module (gnu packages pciutils)
   #:use-module (gnu packages music)
@@ -153,7 +151,6 @@
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages time)
-  #:use-module (gnu packages video)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xml)
@@ -789,7 +786,7 @@ desktop environment.")
 (define-public icewm
   (package
     (name "icewm")
-    (version "3.3.4")
+    (version "3.4.2")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -797,7 +794,7 @@ desktop environment.")
                     version "/icewm-" version ".tar.lz"))
               (sha256
                (base32
-                "124w00yq35mj859nf321bpy36ij7a0kblcg95axxahz4l6fhxfxf"))))
+                "1qki2r0x9d3yhxypa4i875qzr4dsjig6prs8pvj1w83yb0z4nk5n"))))
     (build-system gnu-build-system)
     (native-inputs (list pkg-config))
     (inputs (list fontconfig

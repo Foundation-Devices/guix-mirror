@@ -38,15 +38,13 @@
   #:use-module (gnu packages golang)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages linux)
-  #:use-module (gnu packages python)
   #:use-module (gnu packages python-crypto)
-  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages time))
 
 (define-public syncthing
   (package
     (name "syncthing")
-    (version "1.23.6")
+    (version "1.24.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/syncthing/syncthing"
@@ -54,7 +52,7 @@
                                   "/syncthing-source-v" version ".tar.gz"))
               (sha256
                (base32
-                "03myinspq61aiis29mq0xjigj5rh5jd8m0d9xakf43vi7pqgwjbc"))))
+                "13v04slf231hd3rywyan0n7yyc94s34wfwnmwz8sfw4vgxk5k52a"))))
     (build-system go-build-system)
     ;; The primary Syncthing executable goes to "out", while the auxiliary
     ;; server programs and utility tools go to "utils".  This reduces the size
@@ -64,7 +62,7 @@
      (list #:modules '((srfi srfi-26) ; for cut
                        (guix build utils)
                        (guix build go-build-system))
-           #:go go-1.19
+           #:go go-1.20
            #:import-path "github.com/syncthing/syncthing"
            ;; We don't need to install the source code for end-user applications.
            #:install-source? #f
@@ -101,7 +99,7 @@
                                "stdisco" "stdiscosrv" "stevents" "stfileinfo"
                                "stfinddevice" "stfindignored" "stgenfiles"
                                "strelaypoolsrv" "strelaysrv" "stsigtool"
-                               "stvanity" "stwatchfile" "uraggregate" "ursrv")))))
+                               "stvanity" "stwatchfile" "ursrv")))))
 
          (add-after 'install 'install-docs
            (lambda _

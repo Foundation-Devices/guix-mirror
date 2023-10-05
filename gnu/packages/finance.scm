@@ -18,7 +18,7 @@
 ;;; Copyright © 2020 Kei Kebreau <kkebreau@posteo.net>
 ;;; Copyright © 2020 Christine Lemmer-Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2020 Tom Zander <tomz@freedommail.ch>
-;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
+;;; Copyright © 2020, 2023 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020, 2021, 2022 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Carlo Holl <carloholl@gmail.com>
 ;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
@@ -34,6 +34,8 @@
 ;;; Copyright © 2022 Justin Veilleux <terramorpha@cock.li>
 ;;; Copyright © 2023 Frank Pursel <frank.pursel@gmail.com>
 ;;; Copyright © 2023 Skylar Hill <stellarskylark@posteo.net>
+;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
+;;; Copyright © 2023 Attila Lendvai <attila@lendvai.name>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -76,6 +78,7 @@
   #:use-module (gnu packages boost)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages cpp)
   #:use-module (gnu packages crypto)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages databases)
@@ -923,7 +926,7 @@ Bech32 and segwit addresses.")
   ;; the toplevel app called trezor-agent.
   (package
     (name "python-trezor-agent")
-    (version "0.14.4")
+    (version "0.14.7")
     (source
      (origin
        (method git-fetch)
@@ -932,7 +935,7 @@ Bech32 and segwit addresses.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1ksv494xpga27ifrjyn1bkqaya5h769lqb9rx1ng0n4kvmnrqr3l"))))
+        (base32 "04dds5bbw73nk36zm8d02qw6qr92nrlcf8r1cq8ba96mzi34jbk0"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -960,8 +963,12 @@ Bech32 and segwit addresses.")
            python-semver
            python-unidecode
            python-wheel))
-    (native-inputs
-     (list gnupg python-mock python-pytest))
+    (native-inputs ; Only needed for running the tests
+     (list gnupg
+           python-bech32
+           python-cryptography
+           python-mock
+           python-pytest))
     (home-page "https://github.com/romanz/trezor-agent")
     (synopsis "Use hardware wallets as SSH and GPG agent")
     (description
@@ -1092,7 +1099,7 @@ Nano dongle.")
 (define-public python-trezor
   (package
     (name "python-trezor")
-    (version "0.13.0")
+    (version "0.13.7")
     (source
      (origin
        (method git-fetch)
@@ -1101,7 +1108,7 @@ Nano dongle.")
              (commit (string-append "python/v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1wy584bxx5p2av4lv1bx9hl1q0b5n7hqz0hnqb9shjriarvl5ckd"))
+        (base32 "13wyl9b15c8iscfakprwfvh2akw180hfqdjww79b78ywz51y7hdh"))
        (modules
         '((guix build utils)
           (srfi srfi-26)
@@ -1127,25 +1134,24 @@ Nano dongle.")
     (build-system python-build-system)
     (propagated-inputs
      (list python-attrs
-           ;; TOOD: Use the latest click version after release 0.13.1 or later
-           ;; is made (see:
-           ;; https://github.com/trezor/trezor-firmware/issues/2199).
-           python-click-7
-           python-construct
+           python-click
+           python-construct-classes
            python-ecdsa
            python-hidapi
            python-libusb1
            python-mnemonic
            python-requests
            python-typing-extensions))
-    (native-inputs
-     ;; For tests.
+    (native-inputs ; Only needed for running the tests
      (list protobuf
            python-black
            python-isort
+           python-pillow
            python-protobuf
            python-pyqt
-           python-pytest))
+           python-pytest
+           python-simple-rlp
+           python-wheel))
     (home-page "https://github.com/trezor/python-trezor")
     (synopsis "Python library for communicating with TREZOR Hardware Wallet")
     (description "@code{trezor} is a Python library for communicating with
@@ -1203,21 +1209,21 @@ the KeepKey Hardware Wallet.")
 (define-public trezor-agent
   (package
     (name "trezor-agent")
-    (version "0.14.4")
+    ;; There are multiple Python apps/packages in the same git repo.  The git
+    ;; tag seems to track libagent's version (which is called
+    ;; python-trezor-agent in the Guix namespace). Currently trezor-agent's
+    ;; version is set in `agents/trezor/setup.py` to a different value than
+    ;; libagent, but as discussed with upstream in issue
+    ;; https://github.com/romanz/trezor-agent/issues/369, we are copying our
+    ;; version from that of libagent.
+    (version (package-version python-trezor-agent))
     (source
      (origin
        (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/romanz/trezor-agent")
-             ;; The version mismatch is not a mistake.  Multiple Python
-             ;; apps/packages are in the same git repo, and they have
-             ;; different versions.  The git tag seems to track libagent,
-             ;; i.e. python-trezor-agent in the Guix namespace.  See
-             ;; e.g. ./agents/trezor/setup.py.
-             (commit "v0.14.4")))
+       (uri (origin-uri (package-source python-trezor-agent)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1ksv494xpga27ifrjyn1bkqaya5h769lqb9rx1ng0n4kvmnrqr3l"))
+        (base32 "04dds5bbw73nk36zm8d02qw6qr92nrlcf8r1cq8ba96mzi34jbk0"))
        (modules
         '((guix build utils)
           (ice-9 ftw)
@@ -1236,13 +1242,16 @@ the KeepKey Hardware Wallet.")
                                     (string-append "./" file-name)))
                      (scandir "./agents/trezor/"
                               (negate (cut member <> '("." "..") string=))))
-           (delete-file-recursively "./agents")))))
+           (delete-file-recursively "./agents")
+           ;; Without deleting ./contrib the sanity-check phase fails. Reported
+           ;; upstream as https://github.com/romanz/trezor-agent/issues/429.
+           (delete-file-recursively "./contrib")
+           ;; Without deleting ./libagent setuptools complains as follows:
+           ;; "error: Multiple top-level packages discovered in a flat-layout: ['contrib', 'libagent']."
+           (delete-file-recursively "./libagent")))))
     (arguments
      `(#:phases
        (modify-phases %standard-phases
-         ;; This package only has a Python script, not a Python module, so the
-         ;; sanity-check phase can't work.
-         (delete 'sanity-check)
          (add-after 'unpack 'relax-requirements
            (lambda _
              (substitute* "setup.py"
@@ -1265,8 +1274,10 @@ the KeepKey Hardware Wallet.")
     (build-system python-build-system)
     (inputs
      (list python-trezor python-trezor-agent))
-    (native-inputs
-     (list python-attrs))
+    (native-inputs ; Only needed for running the tests
+     (list python-attrs
+           python-bech32
+           python-simple-rlp))
     (home-page "https://github.com/romanz/trezor-agent")
     (synopsis "Using Trezor as hardware SSH/GPG agent")
     (description "This package allows using Trezor as a hardware SSH/GPG
@@ -1378,14 +1389,14 @@ Luhn and family of ISO/IEC 7064 check digit algorithms.")
 (define-public python-duniterpy
   (package
     (name "python-duniterpy")
-    (version "1.1.0")
+    (version "1.1.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "duniterpy" version))
        (sha256
-        (base32 "18i5bqz58vjp740pxb4wb4ixg1g2d73cwi0d8gp85fmj5p8f2gx7"))))
-    (build-system python-build-system)
+        (base32 "0h0fsawsrjd50lb1bkysb21ph39qlhmiymd3r5vs695qxvbwaqaa"))))
+    (build-system pyproject-build-system)
     (arguments
      ;; FIXME: Tests fail with: "TypeError: block_uid() missing 1 required
      ;; positional argument: 'value'".
@@ -1393,19 +1404,34 @@ Luhn and family of ISO/IEC 7064 check digit algorithms.")
        #:phases (modify-phases %standard-phases
                   (add-after 'unpack 'loosen-requirements
                     (lambda _
-                      (substitute* "setup.py"
-                        (("mnemonic>=0\\.19,<0.20")
-                         "mnemonic>=0.19")))))))
+                      (substitute* "pyproject.toml"
+                        (("mnemonic = \"\\^0\\.19")
+                         "mnemonic = \">=0.19")
+                        (("jsonschema = \"\\^3\\.2")
+                         "jsonschema = \">=3.2"))))
+                  (add-after 'unpack 'adjust-for-new-libnacl
+                    (lambda _
+                      ;; Mimic upstream commit ad8f6a26e9e7067; remove
+                      ;; for newer versions of duniterpy.
+                      (substitute* "pyproject.toml"
+                        (("libnacl = \"1\\.8")
+                         "libnacl = \">=1.9"))
+                      (substitute* "duniterpy/key/ascii_armor.py"
+                        (("from libnacl\\.version import version as libnacl_version")
+                         "import importlib.metadata
+libnacl_version = importlib.metadata.version('libnacl')")))))))
+    (native-inputs
+     (list python-poetry-core))
     (propagated-inputs
      (list python-attrs
            python-base58
+           python-graphql-core
            python-jsonschema
            python-libnacl
-           python-pyaes
-           python-graphql-core
            python-mnemonic
-           python-websocket-client
-           python-pypeg2))
+           python-pyaes
+           python-pypeg2
+           python-websocket-client))
     (home-page "https://git.duniter.org/clients/python/duniterpy")
     (synopsis "Python implementation of Duniter API")
     (description "@code{duniterpy} is an implementation of
@@ -1640,7 +1666,7 @@ trezord as a regular user instead of needing to it run as root.")
 (define-public trezord
   (package
     (name "trezord")
-    (version "2.0.31")
+    (version "2.0.33")
     (source
      (origin
        (method git-fetch)
@@ -1648,16 +1674,18 @@ trezord as a regular user instead of needing to it run as root.")
              (url "https://github.com/trezor/trezord-go")
              (commit (string-append "v" version))))
        (sha256
-        (base32 "130nhk1pnr3xx9qkcij81mm3jxrl5zvvdqhvrgvrikqg3zlb6v5b"))
+        (base32 "0nnfh9qkb8ljajkxwrn3nn85zrsw10hp7c5i4zh60qgfyl0djppw"))
        (file-name (git-file-name name version))))
     (build-system go-build-system)
     (arguments
-     '(#:import-path "github.com/trezor/trezord-go"))
+     `(#:import-path "github.com/trezor/trezord-go"
+       ;; Requires go 1.18 or later: https://github.com/trezor/trezord-go/commit/f559ee5079679aeb5f897c65318d3310f78223ca
+       #:go ,go-1.20))
     (native-inputs
-     `(("github.com/gorilla-csrf" ,go-github-com-gorilla-csrf)
-       ("github.com/gorilla/handlers" ,go-github-com-gorilla-handlers)
-       ("github.com/gorilla/mux" ,go-github-com-gorilla-mux)
-       ("gopkg.in/natefinch/lumberjack.v2" ,go-gopkg-in-natefinch-lumberjack.v2)))
+     (list go-github-com-gorilla-csrf
+           go-github-com-gorilla-handlers
+           go-github-com-gorilla-mux
+           go-gopkg-in-natefinch-lumberjack.v2))
     (home-page "https://trezor.io")
     (synopsis "Trezor Communication Daemon aka Trezor Bridge (written in Go)")
     (description "This allows a Trezor hardware wallet to communicate to the
@@ -1795,36 +1823,70 @@ a Qt GUI.")
 (define-public fulcrum
   (package
     (name "fulcrum")
-    (version "1.1.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append "https://gitlab.com/FloweeTheHub/fulcrum/-/archive/v"
-                           version "/fulcrum-v" version ".tar.gz"))
-       (sha256
-        (base32 "04w5gw02d39caa8a0l6wkn87kc43zzad2prqsyrcq97vlbkdx6x6"))))
+    (version "1.9.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/cculianu/Fulcrum")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (modules '((guix build utils)))
+              (snippet
+                #~(for-each delete-file-recursively
+                            '("src/Json/simdjson"
+                              "src/bitcoin/secp256k1"
+                              "src/robin_hood"
+                              "src/zmq"
+                              "staticlibs")))
+              (sha256
+               (base32
+                "1110vanl6aczlq25i4ck9j4vr81in5icw4z383wyhjpcy6rwxsw2"))
+              (patches
+               (search-patches "fulcrum-1.9.1-unbundled-libraries.patch"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         ;; Call qmake instead of configure to create a Makefile.
-         (replace 'configure
-           (lambda _
-             (invoke
-              "qmake"
-              (string-append "PREFIX=" %output)
-              "features="))))))
-    (native-inputs
-     (list qttools-5))
+     (list #:configure-flags
+           #~(list "CONFIG+=config_without_bundled_cppzmq"
+                   "CONFIG+=config_without_bundled_robin_hood"
+                   "CONFIG+=config_without_bundled_secp256k1"
+                   "LIBS+=-lrocksdb"
+                   #$@(if (target-64bit?) '("LIBS+=-lsimdjson") '())
+                   (format #f "DEFINES+=GIT_COMMIT=\"\\\\\\~s\\\\\\\""
+                           #$version)
+                   (string-append "PREFIX=" #$output))
+           #:phases
+           #~(modify-phases %standard-phases
+               (replace 'configure
+                 (lambda* (#:key configure-flags #:allow-other-keys)
+                   (apply invoke "qmake" configure-flags))))))
+    (native-inputs (list pkg-config qttools-5))
     (inputs
-     (list python qtbase-5 rocksdb zlib))
-    (home-page "https://gitlab.com/FloweeTheHub/fulcrum/")
-    (synopsis "Fast and nimble SPV server for Bitcoin Cash")
+     (append (list cppzmq
+                   jemalloc
+                   python
+                   qtbase-5
+                   robin-hood-hashing
+                   rocksdb
+                   zeromq
+                   zlib)
+             (if (target-64bit?)
+                 (list simdjson-0.6)
+                 '())))
+    (home-page "https://github.com/cculianu/Fulcrum")
+    (synopsis "Payment verification server for Bitcoin-like crypto-currencies")
     (description
-     "Flowee Fulcrum is a server that is the back-end for @acronym{SPV,
-Simplified Payment Verification} wallets, it provides the full API for those
-walets in a fast and small server.  The full data is stored in a full node,
-like Flowee the Hub, which Fulcrum connects to over RPC.")
+     "Fulcrum is a @acronym{SPV, Simplified Payment Verification} server for
+Bitcoin-like crypto-currencies.  The server indexes the blockchain of the
+crypto-currency used, and the resulting index can be used by wallets to
+perform queries to keep real-time track of balances.
+
+Supported crypto-currencies:
+
+@itemize
+@item Bitcoin Core.
+@item Bitcoin Cash-like.
+@item Litecoin.
+@end itemize")
     (license license:gpl3+)))
 
 (define-public flowee

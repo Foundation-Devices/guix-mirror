@@ -174,8 +174,8 @@
   ;; Note: the 'update-guix-package.scm' script expects this definition to
   ;; start precisely like this.
   (let ((version "1.4.0")
-        (commit "4dfdd822102690b5687acf28365ab707b68d9476")
-        (revision 10))
+        (commit "b9fae146d6cc4a6968a8eb18beef29aa1414a31e")
+        (revision 12))
     (package
       (name "guix")
 
@@ -191,7 +191,7 @@
                       (commit commit)))
                 (sha256
                  (base32
-                  "1p21gz2lr7iqvma1m83k2r04w201rzvk31d5kfn2qkr9l0gds4cx"))
+                  "1pxdfd2g1q3vb5wmv5c53zphsv9q8m835vd00vhjaijzvz9ri7ja"))
                 (file-name (string-append "guix-" version "-checkout"))))
       (build-system gnu-build-system)
       (arguments
@@ -214,6 +214,13 @@
                             ;; closure is pretty big (too big for the Guix
                             ;; system installation image.)
                             "ac_cv_path_DOT_USER_PROGRAM=dot"
+
+                            ;; When cross-compiling, 'git' is not in $PATH
+                            ;; (because it's not a native input).  Thus,
+                            ;; always explicitly pass its file name.
+                            (string-append "ac_cv_path_GIT="
+                                           (search-input-file %build-inputs
+                                                              "/bin/git"))
 
                             ;; To avoid problems with the length of shebangs,
                             ;; choose a fixed-width and short directory name
@@ -514,6 +521,8 @@ $(prefix)/etc/openrc\n")))
 
          ("disarchive" ,disarchive)               ;for 'guix perform-download'
          ("guile-lzma" ,guile-lzma)               ;for Disarchive
+
+         ("git-minimal" ,git-minimal)             ;for 'guix perform-download'
 
          ("glibc-utf8-locales" ,glibc-utf8-locales)))
       (propagated-inputs
@@ -960,6 +969,57 @@ transactions from C or Python.")
 
     ;; The whole is GPLv2+; librpm itself is dual-licensed LGPLv2+ | GPLv2+.
     (license license:gpl2+)))
+
+(define-public bffe
+  (let ((commit "722c37ec8a23835edfc85cba3d89868592a2ed2d")
+        (revision "2"))
+    (package
+      (name "bffe")
+      (version (git-version "0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://git.cbaines.net/guix/bffe")
+                      (commit commit)))
+                (sha256
+                 (base32
+                  "05i4awyirp440pk4vwa0sf46gi801zv839qm1i2z7jipm1xfwaxx"))
+                (file-name (string-append name "-" version "-checkout"))))
+      (build-system gnu-build-system)
+      (native-inputs
+       (list pkg-config
+             autoconf
+             automake
+
+             ;; Guile libraries are needed here for cross-compilation.
+             guile-next
+             guile-gnutls
+             guile-json-4
+             guix
+             guix-data-service
+             guix-build-coordinator
+             guile-fibers-1.3
+             guile-prometheus
+             guile-lib))
+      (propagated-inputs
+       (list guile-gnutls
+             guile-json-4
+             guix
+             guix-data-service
+             guix-build-coordinator
+             guile-fibers-1.3
+             guile-prometheus
+             guile-lib))
+      (home-page "https://git.cbaines.net/guix/bffe")
+      (synopsis "Build Farm Front-end for Guix")
+      (description
+       "The BFFE of Build Farm Front-end is an experimental frontend for Guix
+build farms.  It works together with the Guix Data Service and Guix Build
+Coordinator to submit builds and monitor the activity.
+
+It functions as a Guile library, with the @code{run-bffe-service} procedure in
+the @code{(bffe)} module as the entry point.")
+      (license license:gpl3+))))
 
 (define-public python-anaconda-client
   (package
@@ -1450,8 +1510,8 @@ environments.")
                   "0k9zkdyyzir3fvlbcfcqy17k28b51i20rpbjwlx2i1mwd2pw9cxc")))))))
 
 (define-public guix-build-coordinator
-  (let ((commit "cbded42c284cca4ecaaebbf0a666cf89efc465a7")
-        (revision "88"))
+  (let ((commit "9c42dcb726fc925606b12695e195ae1dc7e28cc3")
+        (revision "89"))
     (package
       (name "guix-build-coordinator")
       (version (git-version "0" revision commit))
@@ -1462,7 +1522,7 @@ environments.")
                       (commit commit)))
                 (sha256
                  (base32
-                  "1z2wdf5h4dxq9g7a6j7nvmrsqcibrfm8nmkakqgz7ipcxyk0vzjx"))
+                  "18m368rgmaiscmr1jlz77qkfw5fp4m8szgh90l6wbi9w68yfmr4n"))
                 (file-name (string-append name "-" version "-checkout"))))
       (build-system gnu-build-system)
       (arguments
@@ -1541,7 +1601,7 @@ environments.")
              guile-gcrypt
              guix
              guile-prometheus
-             guile-fibers-1.3
+             guile-fibers
              guile-lib
              (first (assoc-ref (package-native-inputs guix) "guile"))))
       (inputs
@@ -1559,7 +1619,7 @@ environments.")
              guile-sqlite3
              guix
              guile-gnutls
-             guile-fibers-1.3))
+             guile-fibers))
       (home-page "https://git.cbaines.net/guix/build-coordinator/")
       (synopsis "Tool to help build derivations")
       (description
@@ -1775,7 +1835,7 @@ in an isolated environment, in separate namespaces.")
              guile-json-4
              guile-gcrypt
              guix
-             guile-fibers-1.3
+             guile-fibers
              guile-prometheus
              guile-lib
              guile-lzlib
@@ -1788,7 +1848,7 @@ in an isolated environment, in separate namespaces.")
        (list guile-json-4
              guile-gcrypt
              guix
-             guile-fibers-1.3
+             guile-fibers
              guile-prometheus
              guile-lib
              guile-lzlib
@@ -1870,7 +1930,7 @@ for packaging and deployment of cross-compiled Windows applications.")
 (define-public libostree
   (package
     (name "libostree")
-    (version "2022.7")
+    (version "2023.5")
     (source
      (origin
        (method url-fetch)
@@ -1878,7 +1938,7 @@ for packaging and deployment of cross-compiled Windows applications.")
              "https://github.com/ostreedev/ostree/releases/download/v"
              (version-major+minor version) "/libostree-" version ".tar.xz"))
        (sha256
-        (base32 "07s14awf9ynlp84s08dkbwj9i18g93y0yf0k87nbks4l3hkakqlb"))))
+        (base32 "056v7bz40dx8k2j2pfypc4shl6ijzvx1gy8r0kaw66py67xklndw"))))
     (build-system gnu-build-system)
     (arguments
      '(#:phases

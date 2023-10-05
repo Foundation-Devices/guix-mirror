@@ -231,7 +231,7 @@ no issues with the upgrade.")
 (define-public julia-arraylayouts
   (package
     (name "julia-arraylayouts")
-    (version "0.8.16")
+    (version "0.8.18")
     (source
       (origin
         (method git-fetch)
@@ -240,16 +240,19 @@ no issues with the upgrade.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1j11jid4scw9icrbr8g6myp17nabjzmf4f40cichb20lzf1agz8l"))))
+         (base32 "11h0w1bqw2md5gh4dfmm1aazifcs2ydrc47hqzvav1xrx25b57z5"))))
     (build-system julia-build-system)
     (arguments
-     (list
-       #:phases
-       #~(modify-phases %standard-phases
-           (add-after 'unpack 'adjust-tests
-             (lambda _
-               (substitute* "test/test_layoutarray.jl"
-                 (("@test all\\(B") "@test_broken all(B")))))))
+     (if (not (target-x86-64?))
+         ;; This test is only broken when using openblas, not openblas-ilp64.
+         (list
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'adjust-tests
+                 (lambda _
+                   (substitute* "test/test_layoutarray.jl"
+                     (("test all\\(B") "test_broken all(B"))))))
+         '()))
     (propagated-inputs
      (list julia-fillarrays))
     (native-inputs
@@ -387,7 +390,17 @@ axes, allowing column names or interval selections.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "0nrcasjdpwf15z7l2lzyhxjqxlnqk5if78s15sh4gdgxf9kzj3a6"))))
+         (base32 "0nrcasjdpwf15z7l2lzyhxjqxlnqk5if78s15sh4gdgxf9kzj3a6"))
+        (snippet
+         #~(begin
+             (use-modules (guix build utils))
+             ;; From upstream commit 8bbf901bb7fb417fe90be26e0cd9a141cfdfe19c,
+             ;; included in 0.17.34.
+             (substitute* "src/BandedMatrices.jl"
+               (("const libblas = Base\\.libblas_name")
+                "const libblas = LinearAlgebra.BLAS.libblas")
+               (("const liblapack = Base\\.liblapack_name")
+                "const liblapack = LinearAlgebra.BLAS.liblapack"))))))
     (build-system julia-build-system)
     (propagated-inputs
      (list julia-aqua
@@ -1591,6 +1604,8 @@ to represent missing data.")
         (sha256
          (base32 "1gsbxb1d67g05h5bvzz3swdfih6404jrydy724a8dvbdgqvm3sds"))))
     (build-system julia-build-system)
+    ;; This package seems unmaintained but still has dependant packages.
+    (arguments (list #:tests? #f))
     (home-page "https://github.com/ssfrr/DeepDiffs.jl")
     (synopsis "Compute and pretty-print diffs for data structures")
     (description "@code{DeepDiffs.jl} provides the @code{deepdiff} function,
@@ -2353,7 +2368,7 @@ c-style numerical formatting.")
 (define-public julia-forwarddiff
   (package
     (name "julia-forwarddiff")
-    (version "0.10.34")
+    (version "0.10.36")
     (source
      (origin
        (method git-fetch)
@@ -2362,7 +2377,7 @@ c-style numerical formatting.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1lwjw2jzkffwk06hfc30vxhv36ng3gf12qjc43swmqiakkd3m5jx"))))
+        (base32 "0mg9b5p3farc05wdxzciykrlx9hy7ivm0dq50hwp0dgd600hdjxy"))))
     (build-system julia-build-system)
     (arguments
      ;; XXXX: Unexpected and non-deterministic failures for i686, e.g.,
@@ -2380,6 +2395,7 @@ c-style numerical formatting.")
            julia-diffresults
            julia-diffrules
            julia-difftests
+           julia-logexpfunctions
            julia-nanmath
            julia-specialfunctions
            julia-staticarrays))
@@ -2480,7 +2496,7 @@ update step.")
 (define-public julia-genericlinearalgebra
   (package
     (name "julia-genericlinearalgebra")
-    (version "0.2.5")
+    (version "0.3.0")
     (source
       (origin
         (method git-fetch)
@@ -2489,16 +2505,8 @@ update step.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "0ndwypa397z3pwzdgc3s9plaqlqf63g3d4px5pvym5psgr6lnm3l"))))
+         (base32 "16k1r02w5qivvr99n5a9impbnnzygpj705irf5ypy208np91xyyd"))))
     (build-system julia-build-system)
-    (arguments
-     (list
-      #:phases
-      #~(modify-phases %standard-phases
-          (add-after 'link-depot 'adjust-test-suite
-            (lambda _
-              (substitute* "test/runtests.jl"
-                ((".*lapack.*") "")))))))
     (native-inputs
      (list julia-quaternions))
     (home-page "https://github.com/JuliaLinearAlgebra/GenericLinearAlgebra.jl")
@@ -5535,7 +5543,7 @@ a loadable module.")
 (define-public julia-scanbyte
   (package
     (name "julia-scanbyte")
-    (version "0.3.2")
+    (version "0.4.0")
     (source
       (origin
         (method git-fetch)
@@ -5544,7 +5552,7 @@ a loadable module.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1c18hkcb0h6l437v2s02kijjkyly91mqark84czvh8yzxm19hr7k"))))
+         (base32 "1ww7bbh02s4l917dwkzg9pq71xk0db2rba247vz1xfm24msi8lwj"))))
     (build-system julia-build-system)
     (propagated-inputs
      (list julia-simd))
@@ -6084,7 +6092,8 @@ with ANSI escape sequences.")
                                  "test/runtests.jl")
                     (("Int64") "Int32"))))))))
     (propagated-inputs
-     (list julia-dataapi
+     (list julia-adapt
+           julia-dataapi
            julia-staticarrays
            julia-tables))
     (native-inputs

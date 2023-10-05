@@ -933,7 +933,7 @@ for use at smaller text sizes")))
 (define-public font-gnu-unifont
   (package
     (name "font-gnu-unifont")
-    (version "15.0.01")
+    (version "15.1.01")
     (source
      (origin
        (method url-fetch)
@@ -943,12 +943,11 @@ for use at smaller text sizes")))
              (string-append "mirror://gnu/unifont/unifont-"
                             version "/unifont-" version ".tar.gz")))
        (sha256
-        (base32 "1m9lfss6sbmcr0b6h7pxxmdl71j9dmnvk8idvxzylqrwpwjaj4bx"))
+        (base32 "1dydcqa2nvmnij5jzj10carrzssd3ar24i8zd18pk4zpl84l4pz1"))
        (snippet
         '(begin
            (use-modules (guix build utils))
-           (delete-file-recursively "font/precompiled")
-           (delete-file-recursively "hangul/precompiled")))))
+           (delete-file-recursively "font/precompiled")))))
     (build-system gnu-build-system)
     (outputs '("out"   ; TrueType/OpenType version
                "pcf"   ; PCF (bitmap) version
@@ -956,6 +955,7 @@ for use at smaller text sizes")))
                "bin")) ; Utilities to manipulate '.hex' format
     (arguments
      `(#:tests? #f          ; no check target
+       #:parallel-build? #f ; Race condition in the font Makefile
        #:make-flags
        (list (string-append "CC=" ,(cc-for-target))
              "BUILDFONT=TRUE")
@@ -977,20 +977,13 @@ for use at smaller text sizes")))
                    (psf (string-append (assoc-ref outputs "psf")
                                        "/share/consolefonts"))
                    (bin (assoc-ref outputs "bin")))
-              ;; This directory isn't created in fonts/Makefile.
-              (mkdir-p otf)
               (apply invoke "make" "install"
                      (string-append "PREFIX=" bin)
                      (string-append "TTFDEST=" ttf)
                      (string-append "OTFDEST=" otf)
                      (string-append "PCFDEST=" pcf)
                      (string-append "CONSOLEDEST=" psf)
-                     make-flags)
-              ;; Move Texinfo file to the right place.
-              (mkdir (string-append bin "/share/info"))
-              (invoke "gzip" "-9n" "doc/unifont.info")
-              (install-file "doc/unifont.info.gz"
-                            (string-append bin "/share/info"))))))))
+                     make-flags)))))))
     (native-inputs
      (list bdftopcf console-setup fontforge))
     (inputs
@@ -1944,7 +1937,7 @@ weights and five widths in both Roman and Italic, plus variable fonts.")
 (define-public font-sarasa-gothic
   (package
     (name "font-sarasa-gothic")
-    (version "0.41.8")
+    (version "0.42.1")
     (source
      (origin
        (method url-fetch)
@@ -1952,7 +1945,7 @@ weights and five widths in both Roman and Italic, plus variable fonts.")
                            "/releases/download/v" version
                            "/sarasa-gothic-ttc-" version ".7z"))
        (sha256
-        (base32 "0m2c3g8c6wxgyyvmraln4bx0qn949j9rin593s1c01hzah435cac"))))
+        (base32 "0lrhipis21cafpsf8wsrdavlblfgzz424r23rj78ik8npbws1a3v"))))
     (build-system font-build-system)
     (arguments
      `(#:phases (modify-phases %standard-phases
@@ -3151,7 +3144,7 @@ and readability.  This package bundles those icons into a font.")
 (define-public font-lxgw-wenkai
   (package
     (name "font-lxgw-wenkai")
-    (version "1.300")
+    (version "1.310")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -3159,7 +3152,7 @@ and readability.  This package bundles those icons into a font.")
                     version "/lxgw-wenkai-v" version ".tar.gz"))
               (sha256
                (base32
-                "1vywhvzj8l3hw2j0np5jhmwli037mxgs05s7n3y3xw3z46r7rwx4"))))
+                "10z8ilcpfxmll6j6ck4yj90x48vh3c7ck0lm61qjangpw9fcgfb1"))))
     (build-system font-build-system)
     (home-page "https://lxgw.github.io/2021/01/28/Klee-Simpchin/")
     (synopsis "Simplified Chinese Imitation Song typeface")
@@ -3173,7 +3166,7 @@ within GB 2312, standard glyphs for Mainland China is used.")
   (package
     (inherit font-lxgw-wenkai)
     (name "font-lxgw-wenkai-tc")
-    (version "1.000")
+    (version "1.010")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -3181,7 +3174,7 @@ within GB 2312, standard glyphs for Mainland China is used.")
                     version "/lxgw-wenkai-tc-v" version ".tar.gz"))
               (sha256
                (base32
-                "1jhmqwrx7311iwng3b00j3lwjzacam605dm4n6wd8amqc9azi9b2"))))
+                "1yppqrfmynai1canlq0hksl3yaj8kflbnj41ljl4lxwaz6q9i1ly"))))
     (home-page "https://github.com/lxgw/LxgwWenKaitc")
     (synopsis "Traditional Chinese Imitation Song typeface")
     (description
@@ -3216,7 +3209,7 @@ prevalent typefaces in Traditional Chinese regions.")
   (package
     (inherit font-chiron-sung-hk)
     (name "font-chiron-hei-hk")
-    (version "2.506")
+    (version "2.508")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3225,7 +3218,7 @@ prevalent typefaces in Traditional Chinese regions.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1v40wcj3h38ai9gacpjfd02nas97scpdkz3g3h8a5yzp0n0pfknw"))))
+                "0drvkqk629z63k62v3ds559phl82dmkyvpx2r8mi99nnsz22a8ps"))))
     (synopsis "Traditional Chinese Gothic typeface")
     (description
      "Chiron Hei HK is a Traditional Chinese Gothic typeface based on the Hong

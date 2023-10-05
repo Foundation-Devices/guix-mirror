@@ -50,7 +50,7 @@
 ;;; Copyright © 2021 Alexey Abramov <levenson@mmer.org>
 ;;; Copyright © 2021, 2022, 2023 Andrew Tropin <andrew@trop.in>
 ;;; Copyright © 2021 David Wilson <david@daviwil.com>
-;;; Copyright © 2021,2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2021 Raghav Gururajan <rg@raghavgururajan.name>
 ;;; Copyright © 2021 Thiago Jung Bauermann <bauermann@kolabnow.com>
@@ -117,10 +117,8 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
-  #:use-module (gnu packages build-tools)
   #:use-module (gnu packages cdrom)
   #:use-module (gnu packages check)
-  #:use-module (gnu packages cmake)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpp)
   #:use-module (gnu packages crates-io)
@@ -131,7 +129,6 @@
   #:use-module (gnu packages dns)
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages documentation)
-  #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
   #:use-module (gnu packages fonts)
@@ -157,9 +154,7 @@
   #:use-module (gnu packages libidn)
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages linux)
-  #:use-module (gnu packages llvm)
   #:use-module (gnu packages lua)
-  #:use-module (gnu packages m4)
   #:use-module (gnu packages man)
   #:use-module (gnu packages markup)
   #:use-module (gnu packages maths)
@@ -188,7 +183,6 @@
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
-  #:use-module (gnu packages rdesktop)
   #:use-module (gnu packages re2c)
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages rust-apps)
@@ -208,7 +202,6 @@
   #:use-module (gnu packages version-control)
   #:use-module (gnu packages vulkan)
   #:use-module (gnu packages web)
-  #:use-module (gnu packages webkit)
   #:use-module (gnu packages wget)
   #:use-module (gnu packages wxwidgets)
   #:use-module (gnu packages xdisorg)
@@ -748,36 +741,19 @@ stream decoding")
                (base32
                 "1vkh19gb76agvh4h87ysbrgy82hrw88lnsvhynjf4vng629dmpgv"))))
     (build-system gnu-build-system)
-    (native-inputs
-     `(("config" ,config)
-       ("makeinfo" ,texinfo)))
-    (inputs
-     (list ncurses))
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'update-config-scripts
-           (lambda* (#:key inputs native-inputs #:allow-other-keys)
-             ;; Replace outdated config.guess and config.sub.
-             (for-each (lambda (file)
-                         (install-file
-                          (search-input-file
-                           (or native-inputs inputs)
-                           (string-append "/bin/" file)) "."))
-                       '("config.guess" "config.sub"))))
-         (replace 'configure
-                  (lambda* (#:key build inputs outputs #:allow-other-keys)
-                    ;; This old `configure' script doesn't support
-                    ;; variables passed as arguments.
-                    (let ((out     (assoc-ref outputs "out"))
-                          (ncurses (assoc-ref inputs "ncurses")))
-                      (setenv "CONFIG_SHELL" (which "bash"))
-                      (invoke "./configure"
-                              "--disable-static"
-                              (string-append "--prefix=" out)
-                              (string-append "--build=" build)
-                              (string-append "--with-ncurses="
-                                             ncurses))))))))
+     (list
+      #:configure-flags
+      #~(list "--disable-static"
+              (string-append "--with-ncurses="
+                             #$(this-package-input "ncurses")))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'force-autoreconf
+            (lambda _
+              (delete-file "configure"))))))
+    (native-inputs (list autoconf automake libtool texinfo))
+    (inputs (list ncurses))
     (home-page "https://aa-project.sourceforge.net/aalib/")
     (synopsis "ASCII-art library")
     (description
@@ -2419,6 +2395,7 @@ To load this plugin, specify the following option when starting mpv:
   (package
     (name "libvpx")
     (version "1.12.0")
+    (replacement libvpx/fixed)
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2456,6 +2433,15 @@ To load this plugin, specify the following option when starting mpv:
     (description "libvpx is a codec for the VP8/VP9 video compression format.")
     (license license:bsd-3)
     (home-page "https://www.webmproject.org/")))
+
+(define libvpx/fixed
+  (package
+    (inherit libvpx)
+    (source
+     (origin
+       (inherit (package-source libvpx))
+       (patches (search-patches "libvpx-CVE-2016-2818.patch"
+                                "libvpx-CVE-2023-5217.patch"))))))
 
 (define-public orf-dl
   (let ((commit "2dbbe7ef4e0efe0f3c1d59c503108e22d9065999")
@@ -2621,7 +2607,7 @@ YouTube.com and many more sites.")
 (define-public yt-dlp
   (package/inherit youtube-dl
     (name "yt-dlp")
-    (version "2023.07.06")
+    (version "2023.09.24")
     (source
      (origin
        (method git-fetch)
@@ -2630,7 +2616,7 @@ YouTube.com and many more sites.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "14g3qc3j4px5jiv292yj5hh8vxlnnd5bzvsq7h37jvhmrn5r4bsw"))))
+        (base32 "15ngsg3cadf2bv700fa1k5az5xpsm0wqr0cixbz8fcbhwdflfq6f"))))
     (arguments
      (substitute-keyword-arguments (package-arguments youtube-dl)
        ((#:tests? _) (not (%current-target-system)))
@@ -3291,7 +3277,7 @@ from sites like Twitch.tv and pipes them into a video player of choice.")
 (define-public mlt
   (package
     (name "mlt")
-    (version "7.18.0")
+    (version "7.20.0")
     (source
      (origin
        (method git-fetch)
@@ -3300,7 +3286,7 @@ from sites like Twitch.tv and pipes them into a video player of choice.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1b79wcf4l099w6bp4jlhgdwnbaydkrp8rj1hflggihzn3awcrayy"))))
+        (base32 "1dc09j8yvis6ilba5a13qicf6wbgxnzwllab6h48kzfl1lc0n8g7"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -5010,7 +4996,7 @@ transitions, and effects and then export your film to many common formats.")
 (define-public shotcut
   (package
     (name "shotcut")
-    (version "23.07.29")
+    (version "23.09.29")
     (source
      (origin
        (method git-fetch)
@@ -5019,7 +5005,7 @@ transitions, and effects and then export your film to many common formats.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1xdybjs39bg361jl7i3rlqdiwhi2xai7x45j7f6cgzygdd833pw5"))))
+        (base32 "1r380lpa79i6821r3v84dm47vqxk4smx2k1wvf9afylw95v3i8zv"))))
     (build-system qt-build-system)
     (arguments
      `(#:tests? #f                      ;there are no tests

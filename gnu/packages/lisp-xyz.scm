@@ -1281,27 +1281,40 @@ timeouts.")
 (define-public sbcl-bordeaux-threads
   (package
     (name "sbcl-bordeaux-threads")
-    (version "0.8.8")
+    (version "0.9.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                     (url "https://github.com/sionescu/bordeaux-threads")
                     (commit (string-append "v" version))))
               (sha256
-               (base32 "19i443fz3488v1pbbr9x24y8h8vlyhny9vj6c9jk5prm702awrp6"))
-              (file-name
-               (git-file-name "bordeaux-threads" version))))
-    (inputs (list sbcl-alexandria))
+               (base32 "0d9sd7pm91yhln95z8nclhn6n4l5b2cp3pxpggpmpv7rsq84ssmh"))
+              (file-name (git-file-name "cl-bordeaux-threads" version))))
+    (inputs (list sbcl-alexandria
+                  sbcl-global-vars
+                  sbcl-trivial-features
+                  sbcl-trivial-garbage))
     (native-inputs (list sbcl-fiveam))
     (build-system asdf-build-system/sbcl)
     (arguments
      (list
        #:phases
        #~(modify-phases %standard-phases
+           (add-after 'unpack 'silence-deprecation-warning
+             (lambda _
+               ;; The deprecation warning for APIv1 makes the build of some
+               ;; of the dependents of bordeaux-threads fail because they
+               ;; interpret it as an error instead of a simple indication.
+               ;; Let's silence this warning for now.
+               (substitute* (cons* "apiv1/default-implementations.lisp"
+                                   (find-files "apiv1" "impl-.*\\.lisp"))
+                 (("\\(warn \"Bordeaux-Threads APIv1 is deprecated\\. Please migrate to APIv2\\.\"\\)")
+                  ""))))
            (add-after 'unpack 'adjust-test-sleep
              (lambda _
                ;; 0.001 is too short for some slower machines.
-               (substitute* "test/bordeaux-threads-test.lisp"
+               (substitute* '("test/tests-v1.lisp"
+                              "test/tests-v2.lisp")
                  (("sleep 0\\.001") "sleep 0.002")))))))
     (synopsis "Portable shared-state concurrency library for Common Lisp")
     (description "BORDEAUX-THREADS is a proposed standard for a minimal
@@ -2202,8 +2215,8 @@ antialiased TrueType font rendering using CLX and XRender extension.")
   (sbcl-package->ecl-package sbcl-clx-truetype))
 
 (define-public sbcl-slynk
-  (let ((commit "82b20a9a83209b4dbfbfb62a1536896aed5f85f7")
-        (revision "7"))
+  (let ((commit "df62abae73bd511885c9c7ec0ea7ea1469a00923")
+        (revision "8"))
     (package
       (name "sbcl-slynk")
       (version (git-version "1.0.43" revision commit))
@@ -2215,7 +2228,7 @@ antialiased TrueType font rendering using CLX and XRender extension.")
            (url "https://github.com/joaotavora/sly")
            (commit commit)))
          (sha256
-          (base32 "0dvr36qvb490gml0znay0slw63czp7azvajnv7srh8s0j8pqpcaj"))
+          (base32 "1nxijv52bja6la2i3asq7kklpj5li25454n52sgsc6xnnfvakbsv"))
          (file-name (git-file-name "cl-slynk" version))))
       (build-system asdf-build-system/sbcl)
       (outputs '("out" "image"))
@@ -3488,6 +3501,37 @@ values in other options.")
 
 (define-public ecl-py-configparser
   (sbcl-package->ecl-package sbcl-py-configparser))
+
+(define-public sbcl-cl-ini
+  (let ((commit "e630acb405022a7ae11969bf908669fee1191ab7")
+        (revision "0"))
+    (package
+      (name "sbcl-cl-ini")
+      (version (git-version "0.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/compufox/cl-ini")
+               (commit commit)))
+         (file-name (git-file-name "sbcl-cl-ini" version))
+         (sha256
+          (base32
+           "12vy3gspqn0wmkyz5id1xrgv1scgb16m7pkvmbmi19vlpj2iyq7p"))))
+      (build-system asdf-build-system/sbcl)
+      (native-inputs (list sbcl-prove))
+      (inputs (list sbcl-cl-str))
+      (home-page "https://github.com/compufox/cl-ini")
+      (synopsis "INI file parser for Common Lisp")
+      (description
+       "Parse INI formatted files into a Common Lisp list structure.")
+      (license license:expat))))
+
+(define-public cl-ini
+  (sbcl-package->cl-source-package sbcl-cl-ini))
+
+(define-public ecl-cl-ini
+  (sbcl-package->ecl-package sbcl-cl-ini))
 
 (define-public sbcl-pythonic-string-reader
   (let ((commit "47a70ba1e32362e03dad6ef8e6f36180b560f86a"))
@@ -22181,58 +22225,67 @@ fit together as required by any particular game.")
   (sbcl-package->cl-source-package sbcl-trial))
 
 (define-public sbcl-virality
-  (package
-    (name "sbcl-virality")
-    (version "0.3.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/bufferswap/ViralityEngine")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name "cl-virality" version))
-       (sha256
-        (base32 "0hvjcvyd628jh4if6swk1wrfb9qdlnpk9ax1y3jarr8ms7ghfcdb"))))
-    (build-system asdf-build-system/sbcl)
-    (arguments
-     `(#:asd-systems '("virality"
-                       "vorigin"
-                       "vorigin.test"
-                       "vshadow"
-                       "vumbra"
-                       "vutils")
-       #:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'delete-examples
-                    (lambda _
-                      ;; Don't install the big "examples" directory.
-                      (delete-file-recursively "examples"))))))
-    (inputs
-     (list sbcl-3b-bmfont
-           sbcl-babel
-           sbcl-cl-cpus
-           sbcl-cl-graph
-           sbcl-cl-opengl
-           sbcl-cl-ppcre
-           sbcl-cl-slug
-           sbcl-closer-mop
-           sbcl-fast-io
-           sbcl-global-vars
-           sbcl-glsl-packing
-           sbcl-jsown
-           sbcl-lparallel
-           sbcl-pngload
-           sbcl-printv
-           sbcl-queues
-           sbcl-sdl2
-           sbcl-serapeum
-           sbcl-split-sequence
-           sbcl-static-vectors
-           sbcl-trivial-features
-           sbcl-varjo))
-    (home-page "https://github.com/bufferswap/ViralityEngine")
-    (synopsis "Component-based game engine written in Common Lisp")
-    (description
-     "Virality Engine provides a system and workflow that helps describe the
+  (let ((commit "cdc19cca9b028f0c30d14ed8b3e51359dd46069a")
+        (revision "1"))
+    (package
+      (name "sbcl-virality")
+      (version (git-version "0.3.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/bufferswap/ViralityEngine")
+               (commit commit)))
+         (file-name (git-file-name "cl-virality" version))
+         (sha256
+          (base32 "1s25aapkqcr8fxi0i9wjw0n4jax7r4a9d9wflpr3sqz2vgrg2lz6"))))
+      (build-system asdf-build-system/sbcl)
+      (arguments
+       `(#:asd-systems '("virality"
+                         "vorigin"
+                         "vorigin.test"
+                         "vshadow"
+                         "vumbra"
+                         "vutils")
+         #:phases (modify-phases %standard-phases
+                    (add-after 'unpack 'delete-examples
+                      (lambda _
+                        ;; Don't install the big "examples" directory.
+                        (delete-file-recursively "examples")
+                        ;; Remove example asd files that cause issues during
+                        ;; the 'copy-source' phase because they have the same
+                        ;; names.
+                        (for-each
+                         delete-file
+                         (find-files "."
+                                     "^xXx-SYSTEM-NAME-xXx\\.asd$")))))))
+      (inputs
+       (list sbcl-3b-bmfont
+             sbcl-babel
+             sbcl-cl-cpus
+             sbcl-cl-graph
+             sbcl-cl-opengl
+             sbcl-cl-ppcre
+             sbcl-cl-slug
+             sbcl-closer-mop
+             sbcl-fast-io
+             sbcl-global-vars
+             sbcl-glsl-packing
+             sbcl-jsown
+             sbcl-lparallel
+             sbcl-pngload
+             sbcl-printv
+             sbcl-queues
+             sbcl-sdl2
+             sbcl-serapeum
+             sbcl-split-sequence
+             sbcl-static-vectors
+             sbcl-trivial-features
+             sbcl-varjo))
+      (home-page "https://github.com/bufferswap/ViralityEngine")
+      (synopsis "Component-based game engine written in Common Lisp")
+      (description
+       "Virality Engine provides a system and workflow that helps describe the
 elements needed to write 2D or 3D games.  It was designed with several domain
 specific languages that make it easier to describe, manipulate, and use assets
 commonly found in game making.  Such assets include (but are not limited to)
@@ -22246,7 +22299,7 @@ can be used with them.  Components are added to Actors which represent game
 concepts like players, scenery, effects, etc.  We define a component protocol
 invoked by Virality Engine to move your components to the next state and
 render them each frame.")
-    (license license:expat)))
+      (license license:expat))))
 
 (define-public cl-virality
   (sbcl-package->cl-source-package sbcl-virality))
@@ -25824,12 +25877,11 @@ change since last write.
     (inputs
      (cons (list "iolib" cl-iolib)
            (package-inputs sbcl-nfiles)))))
-
 (define-public sbcl-nasdf
-  (let ((commit "dd9fb2df7174464b54561b2a2f3c3e00fdd5d4f7"))
+  (let ((commit "ab7a018f3a67a999c72710644b10b4545130c139"))
     (package
       (name "sbcl-nasdf")
-      (version "0.1.7")
+      (version "0.1.8")
       (source
        (origin
          (method git-fetch)
@@ -25838,7 +25890,7 @@ change since last write.
                (commit commit)))
          (file-name (git-file-name "cl-ntemplate" version))
          (sha256
-          (base32 "1q8ky8hz8xrr37h7yyc6ysvrcwlsp1i6r2x44c060drspgjbqj70"))))
+          (base32 "15j7kqxvn0blr0i2xgk0il0ia91p28clfqxdh00vlp423v9a2wbx"))))
       (build-system asdf-build-system/sbcl)
       (arguments
        `(#:phases
@@ -26529,7 +26581,7 @@ in a native template application).")
 (define-public sbcl-nkeymaps
   (package
     (name "sbcl-nkeymaps")
-    (version "1.0.0")
+    (version "1.1.0")
     (source
      (origin
        (method git-fetch)
@@ -26538,11 +26590,12 @@ in a native template application).")
              (commit version)))
        (file-name (git-file-name "cl-nkeymaps" version))
        (sha256
-        (base32 "1f7s9g5s9riyyrbj8lyvzlvymdbh9x9sknxmjzfrkbz3iqlpanc3"))))
+        (base32 "08q3bmb3i7mjpm83msp1qgpifpzf019ggikbxwc2dk04i3c2w0vv"))))
     (build-system asdf-build-system/sbcl)
     (inputs
      (list sbcl-alexandria
            sbcl-fset
+           sbcl-cl-str
            sbcl-trivial-package-local-nicknames))
     (native-inputs
      (list sbcl-lisp-unit2))
@@ -26603,7 +26656,7 @@ instead of #'FOO.
 (define-public sbcl-njson
   (package
     (name "sbcl-njson")
-    (version "1.1.1")
+    (version "1.2.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -26612,7 +26665,7 @@ instead of #'FOO.
               (file-name (git-file-name "cl-njson" version))
               (sha256
                (base32
-                "0zdf6mlbpc2j95qm000ljf642af18sfz45yxh6rnxrbf8m4laxxa"))))
+                "0p3zvn3jfzcdzpvikdaw3g14wfsklq0msw0rjaxin3aa7vmqpyqk"))))
     (build-system asdf-build-system/sbcl)
     (inputs (list sbcl-cl-json sbcl-jzon))
     (native-inputs (list sbcl-lisp-unit2))

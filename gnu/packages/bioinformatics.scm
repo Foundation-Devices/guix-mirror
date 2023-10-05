@@ -3787,6 +3787,13 @@ UCSC genome browser.")
                       "-xf" (assoc-ref inputs "test-data"))
               ;; This one requires bowtie-build
               (delete-file "plastid/test/functional/test_crossmap.py")))
+          (add-after 'unpack 'patch-for-python-3.10
+            (lambda _
+              ;; Some classes were moved from collections to collections.abc
+              ;; in Python 3.10.
+              (substitute* "plastid/readers/bigbed.pyx"
+                ((", Iterable")
+                 "\nfrom collections.abc import Iterable"))))
           (add-before 'check 'build-extensions
             (lambda _
               ;; Cython extensions have to be built before running the tests.
@@ -6680,7 +6687,7 @@ performance.")
 (define-public htscodecs
   (package
     (name "htscodecs")
-    (version "1.5.0")
+    (version "1.5.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/samtools/htscodecs/"
@@ -6688,7 +6695,7 @@ performance.")
                                   version "/htscodecs-" version ".tar.gz"))
               (sha256
                (base32
-                "1cys6hp438m1rfmgq6xig3q0md7nh0m03jb17mc798q13lsggpil"))))
+                "0nykdf08wil6iiihgf5qlb04n70yv4zqqj7c27vpnpwpr2r2ns62"))))
     (build-system gnu-build-system)
     (inputs (list bzip2 zlib))
     (home-page "https://github.com/samtools/htscodecs")
@@ -6714,7 +6721,11 @@ name/ID compression and quality score compression derived from fqzcomp.")
                     version "/htslib-" version ".tar.bz2"))
               (sha256
                (base32
-                "093r1n4s134k50m9a925yn95gyi90ps5dlgc6gq4qwvkzxx7qsv0"))))
+                "093r1n4s134k50m9a925yn95gyi90ps5dlgc6gq4qwvkzxx7qsv0"))
+              (snippet
+               #~(begin
+                   (use-modules (guix build utils))
+                   (delete-file-recursively "htscodecs")))))
     (build-system gnu-build-system)
     ;; Let htslib translate "gs://" and "s3://" to regular https links with
     ;; "--enable-gcs" and "--enable-s3". For these options to work, we also
@@ -6722,12 +6733,13 @@ name/ID compression and quality score compression derived from fqzcomp.")
     (arguments
      `(#:configure-flags '("--enable-gcs"
                            "--enable-libcurl"
-                           "--enable-s3")))
+                           "--enable-s3"
+                           "--with-external-htscodecs")))
     (inputs
      (list bzip2 curl openssl xz))
     ;; This is referred to in the pkg-config file as a required library.
     (propagated-inputs
-     (list zlib))
+     (list htscodecs zlib))
     (native-inputs
      (list perl))
     (home-page "https://www.htslib.org")
@@ -6750,7 +6762,14 @@ data.  It also provides the @command{bgzip}, @command{htsfile}, and
                     version "/htslib-" version ".tar.bz2"))
               (sha256
                (base32
-                "0pwk8yhhvb85mi1d2qhwsb4samc3rmbcrq7b1s0jz0glaa7in8pd"))))))
+                "0pwk8yhhvb85mi1d2qhwsb4samc3rmbcrq7b1s0jz0glaa7in8pd"))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments htslib)
+       ((#:configure-flags cf #~'())
+        #~(delete "--with-external-htscodecs" #$cf))))
+    (propagated-inputs
+     (modify-inputs (package-propagated-inputs htslib)
+                    (delete "htscodecs")))))
 
 (define-public htslib-1.12
   (package/inherit htslib
@@ -6762,7 +6781,14 @@ data.  It also provides the @command{bgzip}, @command{htsfile}, and
                     version "/htslib-" version ".tar.bz2"))
               (sha256
                (base32
-                "1jplnvizgr0fyyvvmkfmnsywrrpqhid3760vw15bllz98qdi9012"))))))
+                "1jplnvizgr0fyyvvmkfmnsywrrpqhid3760vw15bllz98qdi9012"))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments htslib)
+       ((#:configure-flags cf #~'())
+        #~(delete "--with-external-htscodecs" #$cf))))
+    (propagated-inputs
+     (modify-inputs (package-propagated-inputs htslib)
+                    (delete "htscodecs")))))
 
 (define-public htslib-1.10
   (package/inherit htslib
@@ -11725,7 +11751,7 @@ replacement for strverscmp.")
                  (copy-recursively (assoc-ref inputs "tests") "/tmp/tests")
                  (with-directory-excursion "/tmp/tests"
                    (invoke "multiqc" "data" "--ignore" "data/modules")))))))))
-    (propagated-inputs
+    (inputs
      (list python-click
            python-coloredlogs
            python-future
@@ -16229,10 +16255,10 @@ includes operations like compartment, insulation or peak calling.")
      (list
       #:phases
       '(modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (invoke "python" "-m" "pytest" "-v")))))))
+         (add-after 'unpack 'remove-invalid-syntax
+           (lambda _
+             (substitute* "setup.py"
+               ((".\\*\"") "\"")))))))
     (propagated-inputs
      (list python-cooler
            python-intervaltree
@@ -16405,7 +16431,11 @@ genomic scores), long range contacts and the visualization of viewpoints.")
            (lambda _
              (substitute* "setup.py"
                (("matplotlib ==3.1.1")
-                "matplotlib >=3.1.1")))))))
+                "matplotlib >=3.1.1"))))
+         (add-after 'unpack 'remove-invalid-syntax
+           (lambda _
+             (substitute* "setup.py"
+               ((".\\*,") ",")))))))
     (propagated-inputs
      (list python-future
            python-gffutils
@@ -17809,8 +17839,10 @@ pycisTarget and SCENIC.")
      (list python-bokeh
            python-dask
            python-distributed
+           python-lz4
            python-numpy
            python-pandas
+           python-pyarrow
            python-scikit-learn
            python-scipy
            python-tornado-6))
@@ -18413,6 +18445,7 @@ Cflags: -I${includedir}~%"
     (description "The wavefront alignment (WFA) algorithm is an exact
 gap-affine algorithm that takes advantage of homologous regions between the
 sequences to accelerate the alignment process.")
+    (properties `((tunable? . #t)))
     (license license:expat)))
 
 (define-public vcflib
@@ -19246,77 +19279,77 @@ large-scale data-analysis.")
                 "1dvh23fx52m59y6304xi2j2pl2hiqadlqg8jyv2pm14j1hy71ych"))))
     (build-system perl-build-system)
     (arguments
-     `(#:modules ((guix build perl-build-system)
+     (list
+      #:modules '((guix build perl-build-system)
                   (guix build utils)
                   (srfi srfi-26))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'hardcode-references
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((bedtools (assoc-ref inputs "bedtools"))
-                   (r (assoc-ref inputs "r-minimal")))
-               (substitute* '("scripts/python/getEigenVectors.py"
-                              "scripts/python/matrix2EigenVectors.py")
-                 (("bedtools intersect")
-                  (string-append bedtools "/bin/bedtools intersect")))
-               (substitute* "lib/cworld/dekker.pm"
-                 (("bedtools --version")
-                  (string-append bedtools "/bin/bedtools --version")))
-               (substitute* '("scripts/perl/correlateMatrices.pl"
-                              "scripts/perl/matrix2scaling.pl"
-                              "scripts/perl/matrix2distance.pl"
-                              "scripts/perl/coverageCorrect.pl"
-                              "scripts/perl/matrix2anchorPlot.pl"
-                              "scripts/python/matrix2EigenVectors.py"
-                              "scripts/python/matrix2insulation-lite.py"
-                              "scripts/perl/matrix2compartment.pl"
-                              "scripts/perl/anchorPurge.pl"
-                              "scripts/perl/applyCorrection.pl"
-                              "scripts/perl/compareInsulation.pl"
-                              "scripts/perl/fillMissingData.pl"
-                              "scripts/perl/matrix2loess.pl"
-                              "scripts/python/getEigenVectors.py"
-                              "scripts/perl/aggregateBED.pl"
-                              "scripts/perl/collapseMatrix.pl"
-                              "scripts/perl/matrix2direction.pl"
-                              "scripts/perl/singletonRemoval.pl"
-                              "lib/cworld/dekker.pm"
-                              "scripts/perl/matrix2insulation.pl")
-                 (("(`|\")Rscript" _ pre)
-                  (string-append pre r "/bin/Rscript"))))))
-         (add-after 'install 'install-scripts
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out   (assoc-ref outputs "out"))
-                    (share (string-append out "/share/cworld-dekker")))
-               (mkdir-p share)
-               (copy-recursively "scripts" share)
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'hardcode-references
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((bedtools #$(this-package-input "bedtools"))
+                    (r #$(this-package-input "r-minimal")))
+                (substitute* '("scripts/python/getEigenVectors.py"
+                               "scripts/python/matrix2EigenVectors.py")
+                  (("bedtools intersect")
+                   (string-append bedtools "/bin/bedtools intersect")))
+                (substitute* "lib/cworld/dekker.pm"
+                  (("bedtools --version")
+                   (string-append bedtools "/bin/bedtools --version")))
+                (substitute* '("scripts/perl/correlateMatrices.pl"
+                               "scripts/perl/matrix2scaling.pl"
+                               "scripts/perl/matrix2distance.pl"
+                               "scripts/perl/coverageCorrect.pl"
+                               "scripts/perl/matrix2anchorPlot.pl"
+                               "scripts/python/matrix2EigenVectors.py"
+                               "scripts/python/matrix2insulation-lite.py"
+                               "scripts/perl/matrix2compartment.pl"
+                               "scripts/perl/anchorPurge.pl"
+                               "scripts/perl/applyCorrection.pl"
+                               "scripts/perl/compareInsulation.pl"
+                               "scripts/perl/fillMissingData.pl"
+                               "scripts/perl/matrix2loess.pl"
+                               "scripts/python/getEigenVectors.py"
+                               "scripts/perl/aggregateBED.pl"
+                               "scripts/perl/collapseMatrix.pl"
+                               "scripts/perl/matrix2direction.pl"
+                               "scripts/perl/singletonRemoval.pl"
+                               "lib/cworld/dekker.pm"
+                               "scripts/perl/matrix2insulation.pl")
+                  (("(`|\")Rscript" _ pre)
+                   (string-append pre r "/bin/Rscript"))))))
+          (add-after 'install 'install-scripts
+            (lambda _
+              (let ((share (string-append #$output "/share/cworld-dekker")))
+                (mkdir-p share)
+                (copy-recursively "scripts" share)
 
-               ;; Make all scripts executable and wrap them.
-               (let ((r     (find-files share "\\.R$"))
-                     (py    (find-files share "\\.py$"))
-                     (pl    (find-files share "\\.pl$"))
-                     (wrap  (lambda* (script var #:optional (extra ""))
-                              (let ((path (string-append (getenv var)
-                                                         extra)))
-                                (wrap-program script
-                                  `(,var ":" prefix (,path)))))))
-                 (for-each (cut chmod <> #o555) (append r py pl))
-                 (for-each (cut wrap <> "PERL5LIB"
-                                (string-append ":" out
-                                               "/lib/perl5/site_perl"))
-                           pl)
-                 (for-each (cut wrap <> "GUIX_PYTHONPATH") py))))))))
+                ;; Make all scripts executable and wrap them.
+                (let ((r     (find-files share "\\.R$"))
+                      (py    (find-files share "\\.py$"))
+                      (pl    (find-files share "\\.pl$"))
+                      (wrap  (lambda* (script var #:optional (extra ""))
+                               (let ((path (string-append (getenv var)
+                                                          extra)))
+                                 (wrap-program script
+                                   `(,var ":" prefix (,path)))))))
+                  (for-each (cut chmod <> #o555) (append r py pl))
+                  (for-each (cut wrap <> "PERL5LIB"
+                                 (string-append ":" #$output
+                                                "/lib/perl5/site_perl"))
+                            pl)
+                  (for-each (cut wrap <> "GUIX_PYTHONPATH") py))))))))
     (inputs
-     `(("libgd" ,gd)
-       ("perl-gd" ,perl-gd)
-       ("bedtools" ,bedtools)
-       ("python" ,python-wrapper)
-       ("python-scipy" ,python-scipy)
-       ("python-numpy" ,python-numpy)
-       ("python-matplotlib" ,python-matplotlib)
-       ("python-h5py" ,python-h5py)
-       ("python-scikit-learn" ,python-scikit-learn)
-       ("r-minimal" ,r-minimal)))
+     (list gd
+           perl-gd
+           bedtools
+           python-wrapper
+           python-scipy
+           python-numpy
+           python-matplotlib
+           python-h5py
+           python-scikit-learn
+           r-minimal))
     (native-inputs
      (list perl-module-build))
     (home-page "https://github.com/dekkerlab/cworld-dekker")
@@ -19846,7 +19879,7 @@ sequences")
     (inputs
      (list zlib))
     (home-page "https://github.com/ACEnglish/bwapy")
-    (synopsis "Python bindings to bwa alinger")
+    (synopsis "Python bindings to bwa aligner")
     (description "This package provides Python bindings to the bwa mem
 aligner.")
     ;; These Python bindings are licensed under Mozilla Public License 2.0,
@@ -20456,7 +20489,7 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
 (define-public wfmash
   (package
     (name "wfmash")
-    (version "0.8.1")
+    (version "0.10.5")
     (source
      (origin
        (method url-fetch)
@@ -20464,7 +20497,7 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
                            version "/wfmash-v" version ".tar.gz"))
        (sha256
         (base32
-         "031cm1arpfckvihb28vlk69mirpnmlag81zcscfba1bac58wvr7c"))
+         "1jsvnnh14h3ir4l13qhmglhd25kzwvni9apgvr1lbikqwgrpkiq4"))
        (snippet
         #~(begin
             (use-modules (guix build utils))
@@ -20475,14 +20508,12 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
                "<atomic_queue/atomic_queue.h>"))
             ;; Remove compiler optimizations.
             (substitute* (find-files "." "CMakeLists\\.txt")
-              (("-mcx16 ") "")
-              (("-march=native ") ""))
-            ;; Allow building on architectures other than x86_64.
-            (substitute* "src/common/dset64.hpp"
-              (("!__x86_64__") "0"))))))
+              (("-march=native ") ""))))))
     (build-system cmake-build-system)
     (arguments
      (list
+       #:configure-flags
+       #~(list "-DWFA_PNG_AND_TSV=ON")
        #:phases
        #~(modify-phases %standard-phases
            (replace 'check
@@ -20595,7 +20626,8 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
            jemalloc
            zlib))
     (native-inputs
-     (list samtools))
+     (list pkg-config
+           samtools))
     (synopsis "Base-accurate DNA sequence aligner")
     (description "@code{wfmash} is a DNA sequence read mapper based on mash
 distances and the wavefront alignment algorithm.  It is a fork of MashMap that

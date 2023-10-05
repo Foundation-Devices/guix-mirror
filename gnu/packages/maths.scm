@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2019, 2020 Andreas Enge <andreas@enge.fr>
+;;; Copyright © 2013, 2014, 2015, 2016, 2019, 2020, 2023 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2013 Nikita Karetnikov <nikita@karetnikov.org>
 ;;; Copyright © 2014, 2016, 2017 John Darrington <jmd@gnu.org>
 ;;; Copyright © 2014-2022 Eric Bavier <bavier@posteo.net>
@@ -48,7 +48,7 @@
 ;;; Copyright © 2021, 2022 Paul A. Patience <paul@apatience.com>
 ;;; Copyright © 2021 Ivan Gankevich <i.gankevich@spbu.ru>
 ;;; Copyright © 2021 Jean-Baptiste Volatier <jbv@pm.me>
-;;; Copyright © 2021 Guillaume Le Vaillant <glv@posteo.net>
+;;; Copyright © 2021, 2023 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2021 Pierre-Antoine Bouttier <pierre-antoine.bouttier@univ-grenoble-alpes.fr>
 ;;; Copyright © 2022 Zhu Zihao <all_but_last@163.com>
 ;;; Copyright © 2022 Sharlatan Hellseher <sharlatanus@gmail.com>
@@ -61,6 +61,7 @@
 ;;; Copyright © 2022 Roman Scherer <roman.scherer@burningswell.com>
 ;;; Copyright © 2023 Jake Leporte <jakeleporte@outlook.com>
 ;;; Copyright © 2023 Camilo Q.S. (Distopico) <distopico@riseup.net>
+;;; Copyright © 2023 David Elsing <david.elsing@posteo.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1292,6 +1293,137 @@ plotting engine by third-party applications like Octave.")
     (license (license:fsf-free
               "http://gnuplot.cvs.sourceforge.net/gnuplot/gnuplot/Copyright"))))
 
+(define-public hmat
+  (package
+    (name "hmat")
+    (version "1.9.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/jeromerobert/hmat-oss")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0ssjzf3sdhn80w03bhp694s413222cl0100bf36mx70q3a1b6vi5"))))
+    (build-system cmake-build-system)
+    (arguments
+     ;; Examples are the tests.
+     (list #:configure-flags #~(list "-DBUILD_EXAMPLES=ON")))
+    (inputs (list openblas))
+    (home-page "https://github.com/jeromerobert/hmat-oss")
+    (synopsis "Hierarchical matrix library")
+    (description "@code{hmat-oss} is hierarchical matrix library written in
+C++ with a C API.  It contains a LU and LLt solver, and a few other things.")
+    (license license:gpl2+)))
+
+(define-public primesieve
+  (package
+    (name "primesieve")
+    (version "11.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/kimwalisch/primesieve")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0ja3kxvpya7bwrib40hnyahsiiiavf65ppk7i7afvc093b7gg9bg"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list #:configure-flags #~(list "-DBUILD_STATIC_LIBS=off"
+                                     "-DBUILD_TESTS=ON")))
+    (home-page "https://github.com/kimwalisch/primesieve")
+    (synopsis "Prime number generator")
+    (description "@code{primesieve} is a command-line program and C/C++
+ library for quickly generating prime numbers.  It is very cache efficient,
+ it detects your CPU's L1 & L2 cache sizes and allocates its main data
+ structures accordingly.  It is also multi-threaded by default, it uses all
+ available CPU cores whenever possible i.e. if sequential ordering is not
+ required. primesieve can generate primes and prime k-tuplets up to 264.")
+    (license license:bsd-2)))
+
+(define-public cminpack
+  (package
+    (name "cminpack")
+    (version "1.3.8")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/devernay/cminpack")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1bg0954mwry22izsvikpai16pkfp8srz4z34n267bhkmrvvb0zgy"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list #:configure-flags #~(list "-DBUILD_SHARED_LIBS=ON")))
+    (home-page "https://github.com/devernay/cminpack")
+    (synopsis "C/C++ rewrite of the MINPACK software")
+    (description
+     "This is a C version of the minpack minimization package.  It has been
+derived from the fortran code using f2c and some limited manual editing.
+Extern C linkage permits the package routines to be called from C++.")
+    (license (license:non-copyleft ; original minpack license
+              "https://github.com/certik/minpack/blob/master/LICENSE"))))
+
+(define-public bonmin
+  (package
+    (name "bonmin")
+    (version "1.8.9")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/coin-or/Bonmin")
+                    (commit (string-append "releases/" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "153kj4wx386609g21hw3cv5yxps62qqrc64zwb9ryd2xad1w1a4y"))))
+    (build-system gnu-build-system)
+    (native-inputs (list gfortran pkg-config))
+    (inputs (list cbc ipopt lapack))
+    (home-page "https://coin-or.github.io/Bonmin/")
+    (synopsis "Basic Open-source Nonlinear Mixed INteger programming")
+    (description "Bonmin is a code for solving general MINLP (Mixed Integer
+NonLinear Programming) problems.  It builds on top of Cbc and Ipopt.")
+    (license license:epl1.0)))
+
+(define-public pagmo
+  (package
+    (name "pagmo")
+    (version "2.19.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/esa/pagmo2")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0g0j0k0cwp8kyyggj80s5cd24bl6gqmf6f5g7j2axswr2bdj16fg"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list #:configure-flags #~(list "-DPAGMO_BUILD_TESTS=ON"
+                                     "-DPAGMO_WITH_EIGEN3=ON")))
+    ;; Eigen is optional, enables some extra features.
+    (inputs (list boost eigen tbb))
+    (home-page "https://esa.github.io/pagmo2/")
+    (synopsis
+     "Platform to perform parallel computations of optimisation tasks")
+    (description "@code{pagmo} is a C++ scientific library for massively
+parallel optimization.  It is built around the idea of providing a unified
+interface to optimization algorithms and to optimization problems and to make
+their deployment in massively parallel environments easy.")
+    ;; Pagmo only supports 64-bit x86, ARM and PowerPC:
+    ;; https://esa.github.io/pagmo2/install.html
+    (supported-systems '("x86_64-linux" "aarch64-linux" "armhf-linux"
+                         "powerpc64le-linux"))
+    ;; Dual licensed, user choice.
+    (license (list license:lgpl3+ license:gpl3+))))
+
 (define-public gctp
   (package
     (name "gctp")
@@ -1321,18 +1453,16 @@ computations.")
 (define-public hdf4
   (package
     (name "hdf4")
-    (version "4.2.14")
+    (version "4.2.16-2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://support.hdfgroup.org/ftp/HDF/releases/HDF"
                            version "/src/hdf-" version ".tar.bz2"))
        (sha256
-        (base32 "0n29klrrbwan9307np0d9hr128dlpc4nnlf57a140080ll3jmp8l"))
-       (patches (search-patches "hdf4-architectures.patch"
-                                "hdf4-reproducibility.patch"
-                                "hdf4-shared-fortran.patch"
-                                "hdf4-tirpc.patch"))))
+        (base32 "0b395czhqr43mmbiifmg2mhb488wnd4zccj45vpql98ja15j7hy5"))
+       (patches (search-patches "hdf4-reproducibility.patch"
+                                "hdf4-shared-fortran.patch"))))
     (build-system gnu-build-system)
     (native-inputs
      (list gfortran bison flex))
@@ -1345,9 +1475,7 @@ computations.")
        #:configure-flags (list "--enable-shared"
                                "FCFLAGS=-fallow-argument-mismatch"
                                "FFLAGS=-fallow-argument-mismatch"
-                               (string-append "CPPFLAGS=-I"
-                                              (assoc-ref %build-inputs "libtirpc")
-                                              "/include/tirpc"))
+                               "--enable-hdf4-xdr")
        #:phases
        (modify-phases %standard-phases
          ;; This is inspired by two of Debian's patches.
@@ -1362,14 +1490,7 @@ computations.")
              (substitute*
                  '("mfhdf/hdfimport/testutil.sh.in" "hdf/util/testutil.sh.in")
                (("/bin/rm") "rm")
-               (("/bin/mkdir") "mkdir"))
-             (substitute* (find-files "." "^Makefile\\.in$")
-               (("@HDF_BUILD_XDR_TRUE@XDR_ADD = \
--R\\$\\(abs_top_builddir\\)/mfhdf/xdr/\\.libs") "")
-               (("@HDF_BUILD_SHARED_TRUE@AM_LDFLAGS = \
--R\\$\\(abs_top_builddir\\)/mfhdf/libsrc/\\.libs \
--R\\$\\(abs_top_builddir\\)/hdf/src/\\.libs \\$\\(XDR_ADD\\)") ""))
-             #t))
+               (("/bin/mkdir") "mkdir"))))
          (add-after 'configure 'patch-settings
            (lambda _
              ;; libhdf4.settings contains the full path of the
@@ -1389,8 +1510,7 @@ computations.")
                ;; files.  Fix it manually to avoid having to propagate it.
                (substitute* (find-files (string-append out "/lib") "\\.la$")
                  (("-ljpeg")
-                  (string-append "-L" libjpeg "/lib -ljpeg")))
-               #t))))))
+                  (string-append "-L" libjpeg "/lib -ljpeg")))))))))
     (home-page "https://www.hdfgroup.org/products/hdf4/")
     (synopsis
      "Library and multi-object file format for storing and managing data")
@@ -1753,27 +1873,52 @@ System (Grid, Point and Swath).")
 (define-public hdf-eos5
   (package
     (name "hdf-eos5")
-    (version "1.15")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "ftp://edhs1.gsfc.nasa.gov\
-/edhs/hdfeos5/latest_release/HDF-EOS5." version ".tar.Z"))
-              (sha256
-               (base32
-                "1p83333nzzy8rn5chxlm0hrkjjnhh2w1ji8ac0f9q4xzg838i58i"))
-              (patches (search-patches "hdf-eos5-build-shared.patch"
-                                       "hdf-eos5-remove-gctp.patch"
-                                       "hdf-eos5-fix-szip.patch"
-                                       "hdf-eos5-fortrantests.patch"))))
+    (version "2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://git.earthdata.nasa.gov/projects/DAS/repos/hdfeos5/raw/"
+             "hdf-eos5-" version "-src.tar.gz?at=refs/heads/HDFEOS5_" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0by82zznms00b0d5v4iv8a7jff6xm9hzswsx4mfzw2gyy1q4ghyp"))
+       (modules '((guix build utils)))
+       (snippet
+        #~(begin
+            (for-each delete-file (find-files "." "Makefile\\.in$"))
+            (for-each delete-file (find-files "m4" "^l.*\\.m4$"))
+            (delete-file "configure")
+            (delete-file "aclocal.m4")))))
     (native-inputs
-     (list gfortran))
+     (list autoconf automake gfortran libtool))
     (build-system gnu-build-system)
     (inputs
-     (list hdf5-1.8 zlib gctp))
+     (list hdf5-1.14 zlib gctp))
     (arguments
-     `(#:configure-flags '("--enable-install-include" "--enable-shared"
+     (list
+      #:configure-flags ''("--enable-install-include" "--enable-shared"
                            "CC=h5cc -Df2cFortran" "LIBS=-lgctp")
-       #:parallel-tests? #f))
+      #:parallel-tests? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'remove-single_module-flag
+            (lambda _
+              (substitute* "src/Makefile.am"
+                ((",-single_module") ""))))
+          (add-after 'unpack 'fix-parallel-tests
+            (lambda _
+              (substitute* (find-files "testdrivers" "\\.c$")
+                (("#include <HE5_HdfEosDef.h>" orig)
+                 (string-append "#include <HE5_config.h>\n" orig)))
+              ;; pthread is already linked.
+              (substitute* "testdrivers/threads/Makefile.am"
+                (("(LDADD=\\$\\(LIBHDFEOS5\\) \\$\\(LIBGCTP\\)) pthread" _ rest)
+                 rest))
+              ;; This file is missing in the testdrivers/threads directory.
+              (copy-file "testdrivers/point/simple.txt"
+                         "testdrivers/threads/simple.txt"))))))
     (synopsis "HDF5-based data format for NASA's Earth Observing System")
     (description
      "HDF-EOS5 is a software library built on HDF5 to support the construction
@@ -2715,16 +2860,10 @@ with constraints.")
                       (substitute* "CMakeLists.txt"
                         (("set\\(LIB_SUFFIX \"64\"\\)")
                          "set(LIB_SUFFIX \"\")")))))))
-    (native-inputs
-     (list pkg-config))
-    (propagated-inputs
-     (list glog))                           ;for #include <glog/glog.h>
-    (inputs
-     (list eigen
-           openblas
-           lapack
-           suitesparse
-           gflags))
+    (native-inputs (list pkg-config))
+    ;; These inputs need to be propagated to satisfy dependent packages.
+    (propagated-inputs (list eigen gflags glog))
+    (inputs (list openblas lapack suitesparse))
     (synopsis "C++ library for solving large optimization problems")
     (description
      "Ceres Solver is a C++ library for modeling and solving large,
@@ -2791,7 +2930,7 @@ can solve two kinds of problems:
 (define-public octave-cli
   (package
     (name "octave-cli")
-    (version "8.2.0")
+    (version "8.3.0")
     (source
      (origin
        (method url-fetch)
@@ -2799,7 +2938,7 @@ can solve two kinds of problems:
                            version ".tar.xz"))
        (sha256
         (base32
-         "1pkh4vmq4hcrmyl2gybd54i3qamyvmcjmpgy1i2kkw2g03jxdfdp"))))
+         "1aav8i88y2yl11g5d44wpjngkpldvzk90ja7wghkb91cy2a9974i"))))
     (build-system gnu-build-system)
     (inputs
      (list alsa-lib
@@ -4324,102 +4463,99 @@ to BMP, JPEG or PNG image formats.")
 (define-public maxima
   (package
     (name "maxima")
-    (version "5.46.0")
+    (version "5.47.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/maxima/Maxima-source/"
                            version "-source/" name "-" version ".tar.gz"))
        (sha256
-        (base32
-         "01wbm8jj43p7gpdj4h55aij0b44bjydn4bwb7q1wjrfs91mz143k"))
+        (base32 "0yhgsi7s22bpblrmrj60x0jsjdz98b5hjdcq7b0fhlzx4hdh414i"))
        (patches (search-patches "maxima-defsystem-mkdir.patch"))))
     (build-system gnu-build-system)
     (inputs
-     `(("bash" ,bash-minimal)
-       ("gnuplot" ,gnuplot)                       ;for plots
-       ("sbcl" ,sbcl)
-       ("sed" ,sed)
-       ("tk" ,tk)))                               ;Tcl/Tk is used by 'xmaxima'
+     (list bash-minimal
+           gnuplot                       ;for plots
+           sbcl
+           sed
+           tk))                          ;Tcl/Tk is used by 'xmaxima'
     (native-inputs
      (list texinfo perl python))
     (arguments
-     `(#:configure-flags
-       ,#~(list "--enable-sbcl"
-                (string-append "--with-sbcl=" #$sbcl "/bin/sbcl")
-                (string-append "--with-posix-shell=" #$bash-minimal "/bin/sh")
-                (string-append "--with-wish=" #$tk "/bin/wish"
-                               #$(version-major+minor (package-version tk))))
-       ;; By default Maxima attempts to write temporary files to
-       ;; '/tmp/nix-build-maxima-*', which won't exist at run time.
-       ;; Work around that.
-       #:make-flags (list "TMPDIR=/tmp")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-paths
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let* ((sed (search-input-file inputs "/bin/sed"))
-                    (coreutils (assoc-ref inputs "coreutils"))
-                    (dirname (string-append coreutils "/bin/dirname"))
-                    (head (string-append coreutils "/bin/head"))
-                    (perl (search-input-file inputs "/bin/perl"))
-                    (python (search-input-file inputs "/bin/python3")))
-               (substitute* "src/maxima.in"
-                 (("sed ") (string-append sed " "))
-                 (("dirname") dirname)
-                 (("head") head))
-               (substitute* "doc/info/Makefile.in"
-                 (("/usr/bin/env perl") perl))
-               (substitute* "doc/info/build_html.sh.in"
-                 (("python") python))
-               #t)))
-         (add-before 'check 'pre-check
-           (lambda _
-             (chmod "src/maxima" #o555)
-             #t))
-         (replace 'check
-           (lambda _
-             ;; This is derived from the testing code in the "debian/rules" file
-             ;; of Debian's Maxima package.
-             ;; If Maxima can successfully run this, the binary to be installed
-             ;; should be fine.
-             (invoke "sh" "-c"
-                     (string-append
-                      "./maxima-local "
-                      "--lisp=sbcl "
-                      "--batch-string=\"run_testsuite();\" "
-                      "| grep -q \"No unexpected errors found\""))))
-         ;; Make sure the doc and emacs files are found in the
-         ;; standard location.  Also configure maxima to find gnuplot
-         ;; without having it on the PATH.
-         (add-after 'install 'post-install
-           (lambda* (#:key outputs inputs #:allow-other-keys)
-             (let* ((gnuplot (assoc-ref inputs "gnuplot"))
-                    (out (assoc-ref outputs "out"))
-                    (datadir (string-append out "/share/maxima/" ,version))
-                    (binutils (dirname (search-input-file inputs "/bin/as"))))
-               (with-directory-excursion out
-                 (mkdir-p "share/emacs")
-                 (mkdir-p "share/doc")
-                 (symlink
-                  (string-append datadir "/doc/")
-                  (string-append out "/share/doc/maxima"))
-                 (with-atomic-file-replacement
-                  (string-append datadir "/share/maxima-init.lisp")
-                  (lambda (in out)
-                    (format out "~a ~s~a~%"
-                            "(setf $gnuplot_command "
-                            (string-append gnuplot "/bin/gnuplot") ")")
-                    (dump-port in out))))
-               ;; Ensure that Maxima will have access to the GNU binutils
-               ;; components at runtime.
-               (wrap-program (string-append out "/bin/maxima")
-                 `("PATH" prefix (,binutils))))
-             #t))
-         ;; The Maxima command ‘describe’ allows picking the relevant portions
-         ;; from Maxima’s Texinfo docs.  However it does not support reading
-         ;; gzipped info files.
-         (delete 'compress-documentation))))
+     (list
+      #:configure-flags
+      #~(list "--enable-sbcl"
+              (string-append "--with-sbcl=" #$sbcl "/bin/sbcl")
+              (string-append "--with-posix-shell=" #$bash-minimal "/bin/sh")
+              (string-append "--with-wish=" #$tk "/bin/wish"
+                             #$(version-major+minor (package-version tk))))
+      ;; By default Maxima attempts to write temporary files to
+      ;; '/tmp/nix-build-maxima-*', which won't exist at run time.
+      ;; Work around that.
+      #:make-flags #~(list "TMPDIR=/tmp")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-paths
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((sed (search-input-file inputs "/bin/sed"))
+                     (coreutils (assoc-ref inputs "coreutils"))
+                     (dirname (string-append coreutils "/bin/dirname"))
+                     (head (string-append coreutils "/bin/head"))
+                     (perl (search-input-file inputs "/bin/perl"))
+                     (python (search-input-file inputs "/bin/python3")))
+                (substitute* "src/maxima.in"
+                  (("sed ") (string-append sed " "))
+                  (("dirname") dirname)
+                  (("head") head))
+                (substitute* "doc/info/Makefile.in"
+                  (("/usr/bin/env perl") perl))
+                (substitute* "doc/info/build_html.sh.in"
+                  (("python") python)))))
+          (add-before 'check 'pre-check
+            (lambda _
+              (chmod "src/maxima" #o555)))
+          (replace 'check
+            (lambda _
+              ;; This is derived from the testing code in the "debian/rules" file
+              ;; of Debian's Maxima package.
+              ;; If Maxima can successfully run this, the binary to be installed
+              ;; should be fine.
+              (invoke "sh" "-c"
+                      (string-append
+                       "./maxima-local "
+                       "--lisp=sbcl "
+                       "--batch-string=\"run_testsuite();\" "
+                       "| grep -q \"No unexpected errors found\""))))
+          ;; Make sure the doc and emacs files are found in the
+          ;; standard location.  Also configure maxima to find gnuplot
+          ;; without having it on the PATH.
+          (add-after 'install 'post-install
+            (lambda* (#:key outputs inputs #:allow-other-keys)
+              (let* ((gnuplot (assoc-ref inputs "gnuplot"))
+                     (out (assoc-ref outputs "out"))
+                     (datadir (string-append out "/share/maxima/" #$version))
+                     (binutils (dirname (search-input-file inputs "/bin/as"))))
+                (with-directory-excursion out
+                  (mkdir-p "share/emacs")
+                  (mkdir-p "share/doc")
+                  (symlink
+                   (string-append datadir "/doc/")
+                   (string-append out "/share/doc/maxima"))
+                  (with-atomic-file-replacement
+                   (string-append datadir "/share/maxima-init.lisp")
+                   (lambda (in out)
+                     (format out "~a ~s~a~%"
+                             "(setf $gnuplot_command "
+                             (string-append gnuplot "/bin/gnuplot") ")")
+                     (dump-port in out))))
+                ;; Ensure that Maxima will have access to the GNU binutils
+                ;; components at runtime.
+                (wrap-program (string-append out "/bin/maxima")
+                  `("PATH" prefix (#$binutils))))))
+          ;; The Maxima command ‘describe’ allows picking the relevant portions
+          ;; from Maxima’s Texinfo docs.  However it does not support reading
+          ;; gzipped info files.
+          (delete 'compress-documentation))))
     (home-page "https://maxima.sourceforge.io")
     (synopsis "Numeric and symbolic expression manipulation")
     (description "Maxima is a system for the manipulation of symbolic and
@@ -4650,7 +4786,10 @@ parts of it.")
     (arguments
      (substitute-keyword-arguments (package-arguments openblas)
        ((#:make-flags flags #~'())
-        #~(append (list "INTERFACE64=1" "LIBNAMESUFFIX=ilp64")
+        ;; These should be '64' but julia hardcodes '64_'.
+        #~(append (list "INTERFACE64=1"
+                        "SYMBOLSUFFIX=64_"
+                        "LIBPREFIX=libopenblas64_")
                  #$flags))))
     (synopsis "Optimized BLAS library based on GotoBLAS (ILP64 version)")
     (license license:bsd-3)))
@@ -4978,95 +5117,6 @@ packages.")
     ;; GPLv2+:
     ;;  GPUQREngine, RBio, SuiteSparse_GPURuntime, SuiteSparseQR, UMFPACK
     (license (list license:gpl2+ license:lgpl2.1+))))
-
-
-;; This outdated version is used to build the scilab package.
-(define-public suitesparse-3
-  (package
-    (inherit suitesparse)
-    (name "suitesparse")
-    (version "3.1.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/DrTimothyAldenDavis/SuiteSparse")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0wxk755nzps0c9la24zqknqkzjp6rcj5q9jhd973mff1pqja3clz"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:tests? #f  ;no "check" target
-       #:make-flags
-       ,#~(list
-           (string-append "CC=gcc")
-           "AR=gcc -shared -o"
-           "RANLIB=touch"
-           "CFLAGS=-O3 -fPIC -I../Include"
-           "TBB=-ltbb"
-
-           ;; Disable metis@4 (nonfree) support.
-           "CHOLMOD_CONFIG=-DNPARTITION"
-           "METIS="
-           "METIS_PATH="
-
-           ;; The default is to link against netlib lapack.  Use OpenBLAS
-           ;; instead.
-           "BLAS=-lopenblas" "LAPACK=-lopenblas"
-
-           (string-append "INSTALL_LIB="
-                          (assoc-ref %outputs "out") "/lib")
-           (string-append "INSTALL_INCLUDE="
-                          (assoc-ref %outputs "out") "/include")
-           "library")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'correct-build-configuration
-           (lambda _
-             ;; Invert build order: CHOLMOD before KLU.
-             (substitute* "Makefile"
-               (("\t\\( cd CHOLMOD ; \\$\\(MAKE\\) \\)\n$")
-                "")
-               (("\\( cd KLU ; \\$\\(MAKE\\) \\)")
-                (string-append "( cd CHOLMOD ; $(MAKE) )\n\t"
-                               "( cd KLU ; $(MAKE) )")))
-             ;; Build shared libraries.
-             (substitute* (find-files "." "akefile$")
-               (("lib([a-z]+)\\.a" all libname)
-                (string-append "lib" libname ".so")))
-             ;; Delete broken KLU Demo step.
-             (substitute* "KLU/Makefile"
-               (("\\( cd Demo ; \\$\\(MAKE\\) \\)")
-                ""))))
-         (replace 'install
-           (lambda _
-             ;; Install libraries.
-             (for-each
-              (lambda (x)
-                (install-file
-                 x
-                 (string-append (assoc-ref %outputs "out") "/lib")))
-              (find-files "." "\\.so$"))
-             ;; Install header files.
-             (for-each
-              (lambda (x)
-                (install-file
-                 x
-                 (string-append (assoc-ref %outputs "out") "/include")))
-              (find-files "." "\\.h$"))))
-         ,@(if (target-riscv64?)
-               ;; GraphBLAS FTBFS on riscv64-linux
-               `((add-after 'unpack 'skip-graphblas
-                   (lambda _
-                     (substitute* "Makefile"
-                       ((".*cd GraphBLAS.*") "")
-                       (("metisinstall gbinstall moninstall")
-                        "moninstall")))))
-               '())
-         (delete 'configure))))         ;no configure script
-    (inputs
-     (list tbb openblas gmp mpfr))))
 
 (define-public atlas
   (package
@@ -8437,112 +8487,186 @@ computation is supported via MPI.")
 (define-public scilab
   (package
     (name "scilab")
-    (version "5.5.2")
+    (version "2023.1.0")
     (source
      (origin
-       (method url-fetch)
-       (uri
-        (string-append "https://www.scilab.org/download/"
-                       version "/scilab-" version "-src.tar.gz"))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.com/scilab/scilab")
+             (commit version)))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "0phg9pn24yw98hbh475ik84dnikf1225b2knh7qbhdbdx6fm2d57"))))
+        (base32
+         "0hbqsnc67b4f8zc690kl79bwhjaasykjlmqbln8iymnjcn3l5ypd"))
+       (modules '((guix build utils)
+                  (ice-9 ftw)))
+       (patches (search-patches "scilab-hdf5-1.8-api.patch"))
+       (snippet
+        #~(begin
+            ;; Delete everything except for scilab itself:
+            (for-each (lambda (file)
+                        (unless (member file '("." ".." "scilab"))
+                          (delete-file-recursively file)))
+                      (scandir "."))
+            (for-each (lambda (file)
+                        (unless (member file '("." ".."))
+                          (rename-file (string-append "scilab/" file) file)))
+                      (scandir "scilab"))
+
+            ;; Some clean-up in scilab:
+            (for-each delete-file-recursively
+                      '("scilab"
+                        "config"
+                        "libs/GetWindowsVersion"))
+            (for-each delete-file
+                      (cons* "aclocal.m4"
+                             "configure"
+                             "m4/ax_cxx_compile_stdcxx.m4"
+                             "m4/lib-ld.m4"
+                             "m4/libtool.m4"
+                             "m4/ltoptions.m4"
+                             "m4/ltsugar.m4"
+                             "m4/ltversion.m4"
+                             "m4/lt~obsolete.m4"
+                             "m4/pkg.m4"
+                             (find-files "." "^Makefile\\.in$")))
+
+            ;; And finally some files in the modules directory:
+            (for-each
+              (lambda (file)
+                (delete-file
+                  (string-append "modules/dynamic_link/src/scripts/" file)))
+              '("aclocal.m4"
+                "configure"
+                "compile"
+                "config.guess"
+                "config.sub"
+                "ltmain.sh"
+                "depcomp"
+                "install-sh"
+                "missing"))
+            (delete-file-recursively "modules/dynamic_link/src/scripts/m4")
+            (for-each delete-file
+                      '("modules/ast/src/cpp/parse/scanscilab.cpp"
+                        "modules/ast/src/cpp/parse/bison/parsescilab.output"
+                        "modules/ast/includes/parse/parsescilab.hxx"
+                        "modules/ast/src/cpp/parse/parsescilab.cpp"))))))
     (build-system gnu-build-system)
-    (native-inputs (list pkg-config gfortran))
-    (inputs (list libxml2
-                  `(,pcre "bin")
+    (native-inputs
+     (list autoconf
+           autoconf-archive
+           automake
+           bison
+           eigen
+           flex
+           gfortran
+           libtool
+           ocaml
+           ocaml-findlib
+           pkg-config))
+    (inputs (list `(,pcre "bin")
                   `(,pcre "out")
-                  readline
-                  hdf5-1.8
-                  curl
-                  openblas
-                  lapack
                   arpack-ng
+                  curl
                   fftw
                   gettext-minimal
-                  suitesparse-3
-                  tcl
-                  tk
+                  hdf5-1.14
+                  lapack
                   libx11
-                  matio))
+                  libxml2
+                  matio
+                  ocaml-num
+                  openblas
+                  readline
+                  suitesparse
+                  tcl
+                  tk))
     (arguments
-     `(#:tests? #f
-       #:configure-flags
-       ,#~(list
-           "--enable-relocatable"
-           "--disable-static-system-lib"
-           ;; Disable all java code.
-           "--without-gui"
-           "--without-javasci"
-           "--disable-build-help"
-           "--with-external-scirenderer"
-           ;; Tcl and Tk library locations.
-           (string-append "--with-tcl-include="
-                          (string-drop-right
-                           (search-input-file %build-inputs "include/tcl.h")
-                           (string-length "/tcl.h")))
-           (string-append "--with-tcl-library="
-                          (string-drop-right
-                           (search-input-directory %build-inputs "lib/tcl8")
-                           (string-length "/tcl8")))
-           (string-append "--with-tk-include="
-                          (string-drop-right
-                           (search-input-file %build-inputs "include/tk.h")
-                           (string-length "/tk.h")))
-           (string-append "--with-tk-library="
-                          (string-drop-right
-                           (search-input-directory %build-inputs "lib/tk8.6")
-                           (string-length "/tk8.6")))
-           ;; There are some 2018-fortran errors that are ignored
-           ;; with this fortran compiler flag.
-           "FFLAGS=-fallow-argument-mismatch")
-       #:phases
-       ,#~(modify-phases %standard-phases
-            (add-before 'build 'pre-build
-              (lambda _
-                ;; Fix scilab script.
-                (substitute* "bin/scilab"
-                  (("\\/bin\\/ls")
-                   (which "ls")))
-                ;; Fix core.start.
-                (substitute* "modules/core/etc/core.start"
-                  (("'SCI/modules")
-                   "SCI+'/modules"))
-                ;; Fix fortran compilation error.
-                (substitute*
-                    "modules/differential_equations/src/fortran/twodq.f"
-                  (("node\\(10\\),node1\\(10\\),node2\\(10\\),coef")
-                   "node(9),node1(9),node2(9),coef"))
-                ;; Fix C compilation errors.
-                ;; remove &
-                (substitute* "modules/hdf5/src/c/h5_readDataFromFile_v1.c"
-                  (("(H5Rdereference\\(_iDatasetId, H5R_OBJECT, )&(.*)\\);$"
-                    all common ref)
-                   (string-append common ref)))
-                ;; fix multiple definitions
-                (substitute* "modules/tclsci/src/c/TCL_Command.h"
-                  (("^__thread")
-                   "extern __thread"))
-                (substitute* "modules/tclsci/src/c/InitTclTk.c"
-                  (("BOOL TK_Started = FALSE;" all)
-                   (string-append all "\n"
-                                  "__threadId TclThread;" "\n"
-                                  "__threadSignal InterpReady;" "\n"
-                                  "__threadSignalLock InterpReadyLock;"
-                                  "\n")))
-                ;; Fix CPP compilation errors.
-                (substitute* "modules/output_stream/src/cpp/diary_manager.cpp"
-                  (("if \\(array_size > 0\\)")
-                   "if (*array_size > 0)"))
-                ;; Set SCIHOME to /tmp before macros compilation.
-                (setenv "SCIHOME" "/tmp"))))))
-    (home-page "https://scilab.org")
+     (list
+      ;; The tests require java code.
+      #:tests? #f
+      #:configure-flags
+      #~(list
+         "--enable-relocatable"
+         "--disable-static-system-lib"
+         "--enable-build-parser"
+         ;; Disable all java code.
+         "--without-gui"
+         "--without-javasci"
+         "--disable-build-help"
+         "--with-external-scirenderer"
+         ;; Tcl and Tk library locations.
+         (string-append "--with-tcl-include="
+                        (dirname
+                          (search-input-file %build-inputs "include/tcl.h")))
+         (string-append "--with-tcl-library="
+                        (dirname
+                          (search-input-directory %build-inputs "lib/tcl8")))
+         (string-append "--with-tk-include="
+                        (dirname
+                          (search-input-file %build-inputs "include/tk.h")))
+         (string-append "--with-tk-library="
+                        (dirname
+                          (search-input-directory %build-inputs "lib/tk8.6")))
+         (string-append "--with-eigen-include="
+                        (search-input-directory %build-inputs "include/eigen3"))
+         ;; Find and link to the OCaml Num package
+         "OCAMLC=ocamlfind ocamlc -package num"
+         "OCAMLOPT=ocamlfind ocamlopt -package num -linkpkg"
+         ;; There are some 2018-fortran errors that are ignored
+         ;; with this fortran compiler flag.
+         "FFLAGS=-fallow-argument-mismatch")
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; The Num library is specified with the OCAMLC and
+          ;; OCAMLOPT variables above.
+          (add-after 'unpack 'fix-ocaml-num
+            (lambda _
+              (substitute*
+                '("modules/scicos/Makefile.modelica.am"
+                  "modules/scicos/src/translator/makefile.mak"
+                  "modules/scicos/src/modelica_compiler/makefile.mak")
+                (("nums\\.cmx?a") ""))))
+          ;; Install only scilab-cli.desktop
+          (add-after 'unpack 'remove-desktop-files
+            (lambda _
+              (substitute* "desktop/Makefile.am"
+                (("desktop_DATA =")
+                 "desktop_DATA = scilab-cli.desktop\nDUMMY ="))))
+          ;; These generated files are assumed to be present during
+          ;; the build.
+          (add-after 'bootstrap 'bootstrap-dynamic_link-scripts
+            (lambda _
+              (with-directory-excursion "modules/dynamic_link/src/scripts"
+                ((assoc-ref %standard-phases 'bootstrap)))))
+          (add-before 'build 'pre-build
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; Fix scilab script.
+              (substitute* "bin/scilab"
+                (("\\/bin\\/ls")
+                 (search-input-file inputs "bin/ls")))
+              ;; Fix core.start.
+              (substitute* "modules/core/etc/core.start"
+                (("'SCI/modules")
+                 "SCI+'/modules"))
+              ;; Set SCIHOME to /tmp before macros compilation.
+              (setenv "SCIHOME" "/tmp")))
+          ;; Prevent race condition
+          (add-after 'pre-build 'build-parsers
+            (lambda* (#:key (make-flags #~'()) #:allow-other-keys)
+              (with-directory-excursion "modules/ast"
+                (apply invoke "make"
+                       "src/cpp/parse/parsescilab.cpp"
+                       "src/cpp/parse/scanscilab.cpp"
+                       make-flags)))))))
+    (home-page "https://www.scilab.org/")
     (synopsis "Software for engineers and scientists")
     (description "This package provides the non-graphical version of the Scilab
-software for engineers and scientists. Scilab is used for signal processing,
+software for engineers and scientists.  Scilab is used for signal processing,
 statistical analysis, image enhancement, fluid dynamics simulations, numerical
 optimization, and modeling, simulation of explicit and implicit dynamical
 systems and symbolic manipulations.")
-    (license license:cecill)))                    ;CeCILL v2.1
+    (license (list license:gpl2 license:bsd-3))))
 
 (define-public ruy
   (let ((commit "caa244343de289f913c505100e6a463d46c174de")

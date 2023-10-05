@@ -1089,7 +1089,7 @@ Emacs).")
 (define-public kicad
   (package
     (name "kicad")
-    (version "7.0.7")
+    (version "7.0.8")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1097,7 +1097,7 @@ Emacs).")
                     (commit version)))
               (sha256
                (base32
-                "1xbzf29rhqh6kl0vggdn2dblgp927096fc1lr3y4yw63b8n0qq50"))
+                "1gaj833hm3avyb7gyjnl4jk9cckcmj8084y6q45ysjvh283rxsy4"))
               (file-name (git-file-name name version))))
     (build-system cmake-build-system)
     (arguments
@@ -1197,7 +1197,7 @@ electrical diagrams), gerbview (viewing Gerber files) and others.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "00f51rcnki08x2jkyla5vmqx7nhck3cyz86wiy0qkmc8klb1a6ba"))))
+                "1ya9kwcbsh8cqbinjr1hr14sd0g6rls1awmvw8hwd7715f97x8fg"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags (list "-DBUILD_FORMATS=html")
@@ -1231,7 +1231,7 @@ electrical diagrams), gerbview (viewing Gerber files) and others.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1wr754m4ykidds3i14gqhvyrj3mbkchp2hkfnr0rjsdaqf4zmqdf"))))
+                "176zb7df25vz3wbhs94plmpabcgzxsnzbqmpdyssqr7m2wb2424a"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f))                    ; no tests exist
@@ -1260,7 +1260,7 @@ libraries.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0xnnivlqgcyaz9qay73p43jnvmvshp2b3fbh3569j7rmgi5pn8x0"))))
+                "1560m5mwwq0jrjhr8zdh2xrm1w7pgr250p81xzhdc4wj7zsb0rrp"))))
     (synopsis "Official KiCad footprint libraries")
     (description "This package contains the official KiCad footprint libraries.")))
 
@@ -1277,7 +1277,7 @@ libraries.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "141r5wd8s1bgyf77kvb9q14cpsiwwv4zmfzwbgcd42rflsk2lcbc"))))
+                "1ypy2nzs1x8i98jr5kmlxfd6y592qs22aq73yl8nq0s6640fc4kk"))))
     (synopsis "Official KiCad 3D model libraries")
     (description "This package contains the official KiCad 3D model libraries.")))
 
@@ -1294,7 +1294,7 @@ libraries.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1qi20mrsfn4fxmr1fyphmil2i9p2nzmwk5rlfchc5aq2194nj3lq"))))
+                "11582ldnv7hkljmhaym83962kixq1hjbfmdrn5laq7l4jk3l19vh"))))
     (synopsis "Official KiCad project and worksheet templates")
     (description "This package contains the official KiCad project and
 worksheet templates.")))
@@ -1487,7 +1487,7 @@ replacement for the OpenDWG libraries.")
 (define-public minicom
   (package
     (name "minicom")
-    (version "2.8")
+    (version "2.9")
     (source
      (origin
        (method git-fetch)
@@ -1495,31 +1495,28 @@ replacement for the OpenDWG libraries.")
              (url "https://salsa.debian.org/minicom-team/minicom.git")
              (commit (string-append "v" version))))
        (sha256
-        (base32 "0kfihxbh9qkjk9m1932ajyqx384c2aj3d9yaphh3i9i7y1shxlpx"))
+        (base32 "18k0hiljsiq80x93c3qrd1cmcjjvsk1ymin03vncjp1v35xn8248"))
        (file-name (git-file-name name version))))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags '("--enable-lock-dir=/var/lock")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'make-git-checkout-writable
-           (lambda _
-             (for-each make-file-writable (find-files "."))))
-         (replace 'bootstrap
-           ;; autogen.sh needlessly hard-codes aclocal-1.14.
-           (lambda _
-             (invoke "autoreconf" "-vif")
-             #t))
-         (add-before 'configure 'patch-lock-check
-           (lambda _
-             (substitute* "configure"
-               (("test -d [$]UUCPLOCK") "true"))
-             #t)))))
+     (list
+      #:configure-flags
+      #~(list "--enable-lock-dir=/var/lock")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'make-git-checkout-writable
+            (lambda _
+              (for-each make-file-writable (find-files "."))))
+          (replace 'bootstrap
+            ;; autogen.sh needlessly hard-codes aclocal-1.14.
+            (lambda _
+              (invoke "autoreconf" "-vif")))
+          (add-before 'configure 'patch-lock-check
+            (lambda _
+              (substitute* "configure"
+                (("test -d [$]UUCPLOCK") "true")))))))
     (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("gettext" ,gettext-minimal)
-       ("pkg-config" ,pkg-config)))
+     (list autoconf-2.71 automake gettext-minimal pkg-config))
     (inputs
      (list ncurses))
     (home-page "https://salsa.debian.org/minicom-team/minicom")
@@ -1801,7 +1798,7 @@ analyzer (FFT) and frequency sweep plot.")
 (define-public capstone
   (package
     (name "capstone")
-    (version "4.0.2")
+    (version "5.0.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1810,7 +1807,7 @@ analyzer (FFT) and frequency sweep plot.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0y5g74yjyliciawpn16zhdwya7bd3d7b1cccpcccc2wg8vni1k2w"))))
+                "1j4a6w8p3z5qrkzf0h5aklrnlpvscv6nlq7d3abbpxlyqvk8pach"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f
@@ -2607,7 +2604,7 @@ measurement devices and test equipment via GPIB, RS232, Ethernet or USB.")
 (define-public python-scikit-rf
   (package
     (name "python-scikit-rf")
-    (version "0.28.0")
+    (version "0.29.1")
     (source (origin
               (method git-fetch) ;PyPI misses some files required for tests
               (uri (git-reference
@@ -2615,7 +2612,7 @@ measurement devices and test equipment via GPIB, RS232, Ethernet or USB.")
                     (commit (string-append "v" version))))
               (sha256
                (base32
-                "11pxl8q356f6q4cvadasg52js3k446l87hwmc87b1n9cy8sxcfvi"))
+                "11pbcgbq34xyjv5gjwi3a8cpgqqwmd73ps1fwyjajl26q2nkmcdh"))
               (file-name (git-file-name name version))))
     (build-system pyproject-build-system)
     (propagated-inputs (list python-matplotlib
@@ -2633,6 +2630,7 @@ measurement devices and test equipment via GPIB, RS232, Ethernet or USB.")
                          python-networkx
                          python-pytest
                          python-pytest-cov
+                         python-pytest-mock
                          python-pyvisa))
     (home-page "https://scikit-rf.org/")
     (synopsis "Radio frequency and Microwave Engineering Scikit")
@@ -4235,7 +4233,7 @@ form, numpad.
 (define-public rizin
   (package
     (name "rizin")
-    (version "0.6.1")
+    (version "0.6.2")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -4243,7 +4241,7 @@ form, numpad.
                     version "/rizin-src-v" version ".tar.xz"))
               (sha256
                (base32
-                "14bcmjx64pgi9zj4zb7yppx69l1ykjwgf2q41s5672m7z354f1kn"))))
+                "0szq3wr7i7gwm8llgbhssjb63q70rjqqdlj6078vs110waih16p2"))))
     (build-system meson-build-system)
     (arguments
      (list
@@ -4279,9 +4277,18 @@ form, numpad.
                 (("'hash',\n") "")))))))
     (native-inputs (list pkg-config))
     (inputs
-     (list capstone file libuv libzip lz4 openssl tree-sitter xxhash zlib libmspack))
+     (list capstone
+           file
+           libuv
+           libzip
+           lz4
+           openssl
+           tree-sitter
+           xxhash
+           zlib
+           libmspack))
     (home-page "https://rizin.re")
-    (synopsis "Disasm, debug, analyze and manipulate binary files")
+    (synopsis "Disassemble, debug, analyze, and manipulate binary files")
     (description
      "Rizin is a reverse engineering framework and a set of small command-line
 utilities, providing a complete binary analysis experience with features like

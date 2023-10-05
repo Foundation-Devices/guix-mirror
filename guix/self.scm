@@ -1,6 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2017-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2020 Martin Becze <mjbecze@riseup.net>
+;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -68,6 +69,7 @@
       ("gzip"               . ,(ref 'compression 'gzip))
       ("bzip2"              . ,(ref 'compression 'bzip2))
       ("xz"                 . ,(ref 'compression 'xz))
+      ("git-minimal"        . ,(ref 'version-control 'git-minimal))
       ("po4a"               . ,(ref 'gettext 'po4a))
       ("gettext-minimal"    . ,(ref 'gettext 'gettext-minimal))
       ("gcc-toolchain"      . ,(ref 'commencement 'gcc-toolchain))
@@ -825,6 +827,9 @@ itself."
   (define guile-lzma
     (specification->package "guile-lzma"))
 
+  (define git
+    (specification->package "git-minimal"))
+
   (define dependencies
     (append-map transitive-package-dependencies
                 (list guile-gcrypt guile-gnutls guile-git guile-avahi
@@ -998,6 +1003,7 @@ itself."
                     => ,(make-config.scm #:gzip gzip
                                          #:bzip2 bzip2
                                          #:xz xz
+                                         #:git git
                                          #:package-name
                                          %guix-package-name
                                          #:package-version
@@ -1103,7 +1109,7 @@ itself."
     (%storedir . "/gnu/store")
     (%sysconfdir . "/etc")))
 
-(define* (make-config.scm #:key gzip xz bzip2
+(define* (make-config.scm #:key gzip xz bzip2 git
                           (package-name "GNU Guix")
                           (package-version "0")
                           (channel-metadata #f)
@@ -1133,6 +1139,7 @@ itself."
                                %state-directory
                                %store-database-directory
                                %config-directory
+                               %git
                                %gzip
                                %bzip2
                                %xz))
@@ -1175,6 +1182,8 @@ itself."
                      ;; information is used by (guix describe).
                      '#$channel-metadata)
 
+                   (define %git
+                     #+(and git (file-append git "/bin/git")))
                    (define %gzip
                      #+(and gzip (file-append gzip "/bin/gzip")))
                    (define %bzip2
@@ -1210,7 +1219,8 @@ containing MODULE-FILES and possibly other files as well."
                             '((guix build compile)
                               (guix build utils)))
       #~(begin
-          (use-modules (srfi srfi-26)
+          (use-modules (srfi srfi-1)
+                       (srfi srfi-26)
                        (ice-9 match)
                        (ice-9 format)
                        (ice-9 threads)
@@ -1243,13 +1253,23 @@ containing MODULE-FILES and possibly other files as well."
                     (* 100. (/ completed total)) total)
             (force-output))
 
-          (define (process-directory directory files output)
-            ;; Hide compilation warnings.
-            (parameterize ((current-warning-port (%make-void-port "w")))
-              (compile-files directory #$output files
-                             #:workers (parallel-job-count)
-                             #:report-load report-load
-                             #:report-compilation report-compilation)))
+          (define* (process-directory directory files output #:key (size 25))
+            (let ((chunks (unfold
+                           (lambda (seed) (< (length seed) size)) ;p
+                           (cute take <> size)                    ;f
+                           (cute drop <> size)                    ;g
+                           files                                  ;seed
+                           list)))                                ;tail
+              (for-each
+               (lambda (chunk)
+                 ;; Hide compilation warnings.
+                 (parameterize ((current-warning-port (%make-void-port "w")))
+                   (compile-files directory output chunk
+                                  #:workers (parallel-job-count)
+                                  #:report-load report-load
+                                  #:report-compilation report-compilation)
+                   (gc)))
+               chunks)))
 
           (setvbuf (current-output-port) 'line)
           (setvbuf (current-error-port) 'line)
@@ -1277,7 +1297,8 @@ containing MODULE-FILES and possibly other files as well."
 
           (mkdir #$output)
           (chdir #+module-tree)
-          (process-directory "." '#+module-files #$output)
+          (let ((size (if (equal? #$name "guix-packages-base") 10 25)))
+            (process-directory "." '#+module-files #$output #:size size))
           (newline))))
 
   (computed-file name build

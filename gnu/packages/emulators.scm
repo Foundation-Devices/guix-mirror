@@ -19,6 +19,7 @@
 ;;; Copyright © 2021 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2023 c4droid <c4droid@foxmail.com>
 ;;; Copyright © 2023 Yovan Naumovski <yovan@gorski.stream>
+;;; Copyright © 2023 Hendursaga <hendursaga@aol.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -46,6 +47,7 @@
   #:use-module (guix hg-download)
   #:use-module (guix utils)
   #:use-module (gnu packages)
+  #:use-module (gnu packages admin)
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages assembly)
   #:use-module (gnu packages audio)
@@ -56,7 +58,6 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
-  #:use-module (gnu packages build-tools)
   #:use-module (gnu packages cdrom)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
@@ -72,7 +73,6 @@
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages fribidi)
   #:use-module (gnu packages game-development)
-  #:use-module (gnu packages gcc)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
@@ -102,7 +102,6 @@
   #:use-module (gnu packages upnp)
   #:use-module (gnu packages video)
   #:use-module (gnu packages vulkan)
-  #:use-module (gnu packages wxwidgets)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xiph)
   #:use-module (gnu packages xml)
@@ -222,28 +221,39 @@ console.")
 (define-public desmume
   (package
     (name "desmume")
-    (version "0.9.11")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "mirror://sourceforge/desmume/desmume/"
-             version "/desmume-" version ".tar.gz"))
-       (sha256
-        (base32
-         "15l8wdw3q61fniy3h93d84dnm6s4pyadvh95a0j6d580rjk4pcrs"))
-       (patches (search-patches "desmume-gcc6-fixes.patch"
-                                "desmume-gcc7-fixes.patch"))))
-    (build-system gnu-build-system)
+    (version "0.9.13")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/TASEmulators/desmume")
+                    (commit (string-append "release_"
+                                           (string-replace-substring version
+                                                                     "." "_")))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1ylxv0gjcxwj6dgwly2fjhyr0wrs5yazkim9nvqb8p72mxfwls5y"))))
+    (build-system meson-build-system)
     (arguments
-     ;; Enable support for WiFi and microphone.
-     `(#:configure-flags '("--enable-wifi"
-                           "--enable-openal")))
-    (native-inputs
-     (list pkg-config intltool))
-    (inputs
-     (list zlib sdl glib gtk+-2 glu))
-    (home-page "http://desmume.org/")
+     (list #:configure-flags #~(list "-Dfrontend-cli=true"
+                                     "-Dfrontend-gtk=true"
+                                     "-Dgdb-stub=true"
+                                     "-Dopenal=true")
+           #:phases #~(modify-phases %standard-phases
+                        ;; meson.build is in a subdirectory.
+                        (add-after 'unpack 'chdir
+                          (lambda _
+                            (chdir "desmume/src/frontend/posix"))))))
+    (native-inputs (list `(,glib "bin") gettext-minimal intltool pkg-config))
+    (inputs (list agg
+                  alsa-lib
+                  gtk+
+                  libpcap
+                  openal
+                  sdl2
+                  soundtouch
+                  zlib))
+    (home-page "https://desmume.org/")
     (synopsis "Nintendo DS emulator")
     (description
      "DeSmuME is an emulator for the Nintendo DS handheld gaming console.")
@@ -253,8 +263,8 @@ console.")
 ;; Following commits and revision numbers of beta versions listed at
 ;; https://dolphin-emu.org/download/.
 (define-public dolphin-emu
-  (let ((commit "a34823df61df65168aa40ef5e82e44defd4a0138")
-        (revision "13178"))
+  (let ((commit "f9deb68aee962564b1495ff04c54c015e58d086f")
+        (revision "13669"))
     (package
       (name "dolphin-emu")
       (version (git-version "5.0" revision commit))
@@ -265,6 +275,8 @@ console.")
                (url "https://github.com/dolphin-emu/dolphin")
                (commit commit)))
          (file-name (git-file-name name version))
+         (sha256
+          (base32 "1p8qsxlabgmz3nic0a9ghh9d3lzl5f8i3kmdrrvx6w8kdlp33018"))
          (modules '((guix build utils)))
          (snippet
           '(begin
@@ -276,11 +288,8 @@ console.")
                          "gettext" "hidapi" "libpng" "libusb" "mbedtls"
                          "miniupnpc" "MoltenVK" "zlib"))
              ;; Clean up source.
-             (for-each delete-file (find-files "." ".*\\.(bin|dsy|exe|jar|rar)$"))
-             #t))
-         (sha256
-          (base32
-           "0j6hnj60iai366kl0kdbn1jkwc183l02g65mp2vq4qb2yd4399l1"))))
+             (for-each delete-file
+                       (find-files "." ".*\\.(bin|dsy|exe|jar|rar)$"))))))
       (build-system cmake-build-system)
       (arguments
        '(#:tests? #f
@@ -304,8 +313,7 @@ console.")
                  (substitute* "Source/Core/VideoBackends/Vulkan/VulkanLoader.cpp"
                    (("\"vulkan\", 1") (string-append "\"vulkan\""))
                    (("\"vulkan\"") (string-append "\"" libvulkan "\""))
-                   (("Common::DynamicLibrary::GetVersionedFilename") ""))
-                 #t))))
+                   (("Common::DynamicLibrary::GetVersionedFilename") ""))))))
 
          ;; The FindGTK2 cmake script only checks hardcoded directories for
          ;; glib/gtk headers.
@@ -319,8 +327,7 @@ console.")
                               "/lib/libX11.so")
                "-DX11_FOUND=1")))
       (native-inputs
-       `(("pkg-config" ,pkg-config)
-         ("gettext" ,gettext-minimal)))
+       (list gettext-minimal pkg-config))
       (inputs
        (list alsa-lib
              ao

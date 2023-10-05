@@ -128,6 +128,7 @@
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages docbook)
+  #:use-module (gnu packages emacs)
   #:use-module (gnu packages emulators)
   #:use-module (gnu packages flex)
   #:use-module (gnu packages fltk)
@@ -412,48 +413,6 @@ enemy, ally, weapon and mission types.  Features include simulated 4D texturing,
 mouse and joystick control, and original music.")
       (license license:gpl2))))
 
-(define-public alex4
-  (package
-    (name "alex4")
-    (version "1.2.1")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/carstene1ns/alex4")
-             (commit version)))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "098wy72mh4lsvq3gm0rhamjssf9l1hp6hhkpzrv7klpb97cwwc3h"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:tests? #f                      ; no check target
-       #:make-flags
-       (list "CC=gcc"
-             "CFLAGS=-D_FILE_OFFSET_BITS=64 -fcommon"
-             (string-append "PREFIX=" (assoc-ref %outputs "out")))
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure)            ; no configure script
-         (add-after 'install 'install-data
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((share (string-append (assoc-ref outputs "out")
-                                         "/share/" ,name)))
-               (install-file "alex4.ini" share)
-               #t))))))
-    (inputs
-     `(("allegro" ,allegro-4)
-       ("dumb" ,dumb-allegro4)))
-    (home-page "https://allegator.sourceforge.net/")
-    (synopsis "Retro platform game")
-    (description
-     "Guide Alex the Allegator through the jungle in order to save his
-girlfriend Lola from evil humans who want to make a pair of shoes out of her.
-Plenty of classic platforming in four nice colors guaranteed!
-
-The game includes a built-in editor so you can design and share your own maps.")
-    (license license:gpl2+)))
-
 (define-public anarch
   (let ((commit "2d78d0c69a3aac14dbd8f8aca62d0cbd9d27c860")
         (revision "1"))
@@ -491,27 +450,25 @@ Doom clone shooter game.")
 (define-public armagetronad
   (package
     (name "armagetronad")
-    (version "0.2.9.1.0")
+    (version "0.2.9.1.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://sourceforge/armagetronad/stable/"
                                   version "/armagetronad-" version ".tbz"))
               (sha256
                (base32
-                "18gn4sg4j5sw38ngb90sl50raliplrsgjcvy8fjwry733k0cgdjr"))))
+                "0cpxvzbssyf45fmanp1d6l992wln8zkjx4z2flgx27fg1rqdw5zn"))))
     (build-system gnu-build-system)
-    (native-inputs
-     (list pkg-config))
-    (inputs
-     (list libxml2
-           sdl
-           sdl-image
-           freeglut
-           libpng
-           libjpeg-turbo))
+    (native-inputs (list pkg-config))
+    (inputs (list libxml2
+                  (sdl-union (list sdl sdl-image sdl-mixer))
+                  freeglut
+                  libpng
+                  libjpeg-turbo))
     (home-page "https://www.armagetronad.org")
     (synopsis "Tron clone in 3D")
-    (description "Armagetron Advanced is a multiplayer game in 3d that
+    (description
+     "Armagetron Advanced is a multiplayer game in 3d that
 attempts to emulate and expand on the lightcycle sequence from the movie Tron.
 It's an old school arcade game slung into the 21st century.  Highlights
 include a customizable playing arena, HUD, unique graphics, and AI bots.  For
@@ -1148,6 +1105,7 @@ want what you have.")
              qtsvg-5
              qttools-5
              qtwebsockets-5
+             qtwayland-5
              xz
              zlib))
       (home-page "https://cockatrice.github.io")
@@ -3314,7 +3272,7 @@ that beneath its ruins lay buried an ancient evil.")
 (define-public angband
   (package
     (name "angband")
-    (version "4.2.4")
+    (version "4.2.5")
     (source
      (origin
        (method git-fetch)
@@ -3323,7 +3281,7 @@ that beneath its ruins lay buried an ancient evil.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1x0qqsv7xa3figcl4v35sin64ffgz32652vk541d8qaq4qcc378n"))
+        (base32 "0kg6npbfy42mhggsqvs04khc8198i980z52xm59pws29698qazaw"))
        (modules '((guix build utils)))
        (snippet
         ;; So, some of the sounds/graphics/tilesets are under different
@@ -3779,9 +3737,9 @@ Portable Game Notation.")
                               (substitute* file
                                 (("ncursesw/ncurses.h")
                                  "ncurses.h")))
-                            (find-files "." "configure$|\\.c$"))
-                  #t))))
+                            (find-files "." "configure$|\\.c$"))))))
     (build-system gnu-build-system)
+    (native-inputs (list emacs-minimal))
     (inputs (list ncurses perl))
     (home-page "https://www.gnu.org/software/gtypist/")
     (synopsis "Typing tutor")
@@ -5571,65 +5529,57 @@ fullscreen, use F5 or Alt+Enter.")
 (define-public tennix
   (package
     (name "tennix")
-    (version "1.3.1")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://repo.or.cz/tennix.git")
-             (commit (string-append "tennix-" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "02cj4lrdrisal5s9pnbf2smx7qz9czczjzndfkhfx0qy67b957sk"))
-       ;; Remove non-free images.
-       (modules '((guix build utils)))
-       (snippet
-        '(begin
-           (for-each delete-file
-                     '("data/loc_training_camp.png"
-                       "data/loc_austrian_open.png"
-                       "data/loc_olympic_green_tennis.png"))
-           #t))))
+    (version "1.3.4")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://repo.or.cz/tennix.git")
+                    (commit (string-append "tennix-" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1fmg0vw8c2spyxy4k64nwky80jsw9mc3vnlch49q6cagjsg9y8dj"))
+              ;; Remove non-free images.
+              (modules '((guix build utils)))
+              (snippet '(begin
+                          (for-each delete-file
+                                    '("data/loc_training_camp.png"
+                                      "data/loc_austrian_open.png"
+                                      "data/loc_olympic_green_tennis.png")) #t))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f                      ;no test
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-include
-           (lambda _
-             (substitute* '("src/graphics.h" "src/sound.h")
-               (("#include \"(SDL_(image|ttf|mixer)\\.h)\"" _ header)
-                (string-append "#include \"SDL/" header "\"")))
-             (substitute* '("src/tennix.h" "src/network.h" "src/SDL_rotozoom.h")
-               (("#include <SDL.h>") "#include <SDL/SDL.h>")
-               (("#include <SDL_net.h>") "#include <SDL/SDL_net.h>"))
-             #t))
-         (add-after 'unpack 'locate-install
-           ;; Build process cannot expand "$(INSTALL)" in Makefile.
-           (lambda _
-             (substitute* "makefile"
-               (("^CONFIGURE_OUTPUT :=.*" all)
-                (string-append "INSTALL := install -c\n" all)))
-             #t))
-         (replace 'configure
-           ;; The "configure" script is picky about the arguments it
-           ;; gets.  Call it ourselves.
-           (lambda _
-             (invoke "./configure" "--prefix" (assoc-ref %outputs "out")))))))
-    (native-inputs
-     (list which))
-    (inputs
-     `(("python" ,python-wrapper)
-       ("sdl" ,(sdl-union (list sdl sdl-image sdl-mixer sdl-ttf sdl-net)))))
+     (list
+      #:tests? #f ;no tests
+      #:phases #~(modify-phases %standard-phases
+                   (add-after 'unpack 'locate-install
+                     ;; Build process cannot expand "$(INSTALL)" in Makefile.
+                     (lambda _
+                       (substitute* "makefile"
+                         (("^CONFIGURE_OUTPUT :=.*" all)
+                          (string-append "INSTALL := install -c\n" all))) #t))
+                   (replace 'configure
+                     ;; The "configure" script is picky about the arguments it
+                     ;; gets.  Call it ourselves.
+                     (lambda _
+                       (invoke "./configure" "--prefix"
+                               (assoc-ref %outputs "out")))))))
+    (native-inputs (list which))
+    (inputs (list python
+                  (sdl-union (list sdl2
+                                   sdl2-image
+                                   sdl2-mixer
+                                   sdl2-ttf
+                                   sdl2-net
+                                   sdl2-gfx))))
     (home-page "https://icculus.org/tennix/")
     (synopsis "Play tennis against the computer or a friend")
-    (description "Tennix is a 2D tennis game.  You can play against the
+    (description
+     "Tennix is a 2D tennis game.  You can play against the
 computer or against another player using the keyboard.  The game runs
 in-window at 640x480 resolution or fullscreen.")
     ;; Project is licensed under GPL2+ terms.  It includes images
-    ;; released under Public Domain terms, and SDL_rotozoom, released
-    ;; under LGPL2.1 terms.
-    (license (list license:gpl2+ license:public-domain license:lgpl2.1))))
+    ;; released under Public Domain terms.
+    (license (list license:gpl2+ license:public-domain))))
 
 (define-public warzone2100
   (package
@@ -10469,15 +10419,14 @@ protect you.")
 (define-public 7kaa
   (package
     (name "7kaa")
-    (version "2.15.5")
+    (version "2.15.6")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "https://github.com/the3dfxdude/7kaa/"
-                           "releases/download/v" version "/"
-                           "7kaa-" version ".tar.xz"))
+       (uri (string-append "mirror://sourceforge/skfans/"
+                           "7KAA%20" version "/7kaa-" version ".tar.gz"))
        (sha256
-        (base32 "0axbv14fh87hwjabrb3zv7ivj88rs6kd2xq6s9qlpsszk20jc2im"))))
+        (base32 "15a0cl55bg479gw880yz48myg336q5lwp2zpyxyyhyadq26vjy9c"))))
     (build-system gnu-build-system)
     (native-inputs
      (list gettext-minimal pkg-config))
@@ -11059,7 +11008,7 @@ play; it will look for them at @file{~/.local/share/fheroes2} folder.")
 (define-public vcmi
   (package
     (name "vcmi")
-    (version "1.3.1")
+    (version "1.3.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -11068,7 +11017,7 @@ play; it will look for them at @file{~/.local/share/fheroes2} folder.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0jq84i6lxp96xkzq9mq8n2bbmincjzi39vijj9ws8i59c7xvjw5f"))
+                "1x1bzd89h0j4xci91d2v5aj5vgkx6vm12iml805wkia4hy1jp4ff"))
               (patches (search-patches "vcmi-disable-privacy-breach.patch"))))
     (build-system cmake-build-system)
     (arguments
@@ -11242,100 +11191,97 @@ and unsafe rides.  Which path will you take?")
     (license license:gpl2)))
 
 (define-public ultrastar-deluxe
-  ;; The last release is quite old and does not support recent ffmpeg versions.
-  (let ((commit "43484b0a10ce6aae339e19d81ae2f7b37caf6baa")
-        (revision "1"))
-    (package
-      (name "ultrastar-deluxe")
-      (version (git-version "2020.4.0" revision commit))
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/UltraStar-Deluxe/USDX.git")
-                      (commit commit)))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "078g1rbm1ympmwq9s64v68sxvcms7rr0qid12d2wgm4r04ana47r"))
-                (patches (search-patches "ultrastar-deluxe-no-freesans.patch"))
-                (modules '((guix build utils)))
-                (snippet
-                 #~(begin
-                     ;; Remove Windows binaries.
-                     (for-each delete-file (find-files "game" "\\.dll$"))
-                     ;; Remove font blobs.
-                     (let ((font-directories
-                            (list "DejaVu" "FreeSans" "NotoSans"
-                                  "wqy-microhei")))
-                       (for-each
-                        (lambda (d) (delete-file-recursively
-                                (string-append "game/fonts/" d)))
-                        font-directories))))))
-      (build-system gnu-build-system)
-      (arguments
-        (list
-         #:tests? #f ; No tests.
-         #:phases
-         #~(modify-phases %standard-phases
-             (add-after 'unpack 'fix-configure
-               (lambda* (#:key inputs configure-flags outputs #:allow-other-keys)
-                 (define (where inputs file)
-                   (dirname (search-input-file inputs file)))
-                 ;; The configure script looks for lua$version, but we
-                 ;; provide lua-$version.
-                 (substitute* "configure.ac"
-                   (("lua\\$i") "lua-$i"))
-                 ;; fpc does not pass -lfoo to the linker, but uses its own
-                 ;; linker script, which references libs.  Pass the libraries
-                 ;; listed in that linker script, so our custom linker adds
-                 ;; a correct rpath.
-                 (substitute* "src/Makefile.in"
-                   (("linkflags\\s+:= ")
-                    (string-append
-                     "linkflags := -lpthread -lsqlite3 -lSDL2"
-                     " -lSDL2_image -ldl "
-                     " -lz -lfreetype -lportaudio -lavcodec"
-                     " -lavformat -lavutil -lswresample"
-                     " -lswscale -llua -ldl -lX11 -lportmidi"
-                     " -L" (where inputs "lib/libz.so")
-                     " -L" (where inputs "lib/libX11.so")
-                     " -L" (where inputs "lib/libportmidi.so"))))))
-             (add-after 'install 'font-paths
-               (lambda* (#:key outputs #:allow-other-keys)
-                 (substitute* (string-append
-                               (assoc-ref outputs "out")
-                               "/share/ultrastardx/fonts/fonts.ini")
-                   (("=NotoSans/") (string-append "=" #$font-google-noto
-                                                  "/share/fonts/truetype/"))
-                   (("=DejaVu/") (string-append "=" #$font-dejavu
-                                                "/share/fonts/truetype/"))))))))
-      (inputs (list ffmpeg-5
-                    font-dejavu
-                    font-google-noto
-                    ; Not needed, since we don’t have freesans.
-                    ;font-wqy-microhei
-                    freetype
-                    libx11
-                    lua
-                    portaudio
-                    portmidi
-                    sdl2
-                    sdl2-image
-                    sqlite
-                    zlib))
-      (native-inputs (list pkg-config fpc autoconf automake))
-      (synopsis "Karaoke game")
-      (description
-       "UltraStar Deluxe (USDX) is a karaoke game.  It allows up to six players
+  (package
+    (name "ultrastar-deluxe")
+    (version "2023.9.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/UltraStar-Deluxe/USDX.git")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0sm0f67hpsys072yvp5phhza686ivbb18qlfy62vsdv0v9cizxia"))
+              (patches (search-patches "ultrastar-deluxe-no-freesans.patch"))
+              (modules '((guix build utils)))
+              (snippet
+               #~(begin
+                   ;; Remove Windows binaries.
+                   (for-each delete-file (find-files "game" "\\.dll$"))
+                   ;; Remove font blobs.
+                   (let ((font-directories
+                          (list "DejaVu" "FreeSans" "NotoSans"
+                                "wqy-microhei")))
+                     (for-each
+                      (lambda (d) (delete-file-recursively
+                              (string-append "game/fonts/" d)))
+                      font-directories))))))
+    (build-system gnu-build-system)
+    (arguments
+      (list
+       #:tests? #f ; No tests.
+       #:phases
+       #~(modify-phases %standard-phases
+           (add-after 'unpack 'fix-configure
+             (lambda* (#:key inputs configure-flags outputs #:allow-other-keys)
+               (define (where inputs file)
+                 (dirname (search-input-file inputs file)))
+               ;; The configure script looks for lua$version, but we
+               ;; provide lua-$version.
+               (substitute* "configure.ac"
+                 (("lua\\$i") "lua-$i"))
+               ;; fpc does not pass -lfoo to the linker, but uses its own
+               ;; linker script, which references libs.  Pass the libraries
+               ;; listed in that linker script, so our custom linker adds
+               ;; a correct rpath.
+               (substitute* "src/Makefile.in"
+                 (("linkflags\\s+:= ")
+                  (string-append
+                   "linkflags := -lpthread -lsqlite3 -lSDL2"
+                   " -lSDL2_image -ldl "
+                   " -lz -lfreetype -lportaudio -lavcodec"
+                   " -lavformat -lavutil -lswresample"
+                   " -lswscale -llua -ldl -lX11 -lportmidi"
+                   " -L" (where inputs "lib/libz.so")
+                   " -L" (where inputs "lib/libX11.so")
+                   " -L" (where inputs "lib/libportmidi.so"))))))
+           (add-after 'install 'font-paths
+             (lambda* (#:key outputs #:allow-other-keys)
+               (substitute* (string-append
+                             (assoc-ref outputs "out")
+                             "/share/ultrastardx/fonts/fonts.ini")
+                 (("=NotoSans/") (string-append "=" #$font-google-noto
+                                                "/share/fonts/truetype/"))
+                 (("=DejaVu/") (string-append "=" #$font-dejavu
+                                              "/share/fonts/truetype/"))))))))
+    (inputs (list ffmpeg-5
+                  font-dejavu
+                  font-google-noto
+                  ; Not needed, since we don’t have freesans.
+                  ;font-wqy-microhei
+                  freetype
+                  libx11
+                  lua
+                  portaudio
+                  portmidi
+                  sdl2
+                  sdl2-image
+                  sqlite
+                  zlib))
+    (native-inputs (list pkg-config fpc autoconf automake))
+    (synopsis "Karaoke game")
+    (description
+     "UltraStar Deluxe (USDX) is a karaoke game.  It allows up to six players
 to sing along with music using microphones in order to score points, depending
 on the pitch of the voice and the rhythm of singing.")
-      (home-page "https://usdx.eu/")
-      (license license:gpl2+))))
+    (home-page "https://usdx.eu/")
+    (license license:gpl2+)))
 
 (define-public steam-devices-udev-rules
   ;; Last release from 2019-04-10
-  (let ((commit "d87ef558408c5e7a1a793d738db4c9dc2cb5f8fa")
-        (revision "0"))
+  (let ((commit "13443480a64fe8f10676606bd57da6de89f8ccb1")
+        (revision "1"))
     (package
       (name "steam-devices-udev-rules")
       (version (git-version "1.0.0.61" revision commit))
@@ -11347,7 +11293,7 @@ on the pitch of the voice and the rhythm of singing.")
                 (file-name (git-file-name name version))
                 (sha256
                  (base32
-                  "1yqigraz9f19018ma5n2pbx7naadh9960lia3z8ayg7vz1fjdl54"))))
+                  "0i086gmnk93q76sw1laa9br6b7zj2r6nrrw7d64y4q9wcrlxw2bi"))))
       (build-system copy-build-system)
       (arguments
        '(#:install-plan '(("./" "lib/udev/rules.d"

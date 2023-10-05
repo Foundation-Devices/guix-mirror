@@ -37,6 +37,7 @@
 ;;; Copyright © 2023 Artyom V. Poptsov <poptsov.artyom@gmail.com>
 ;;; Copyright © 2023 Liliana Marie Prikler <liliana.prikler@gmail.com>
 ;;; Copyright © 2023 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
+;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -223,6 +224,34 @@ range-v3 ranges are an abstraction layer on top of iterators.")
       ;; Others
       license:boost1.0))))
 
+(define-public robin-hood-hashing
+  (package
+    (name "robin-hood-hashing")
+    (version "3.11.5")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/martinus/robin-hood-hashing")
+                    (commit version)))
+              (modules '((guix build utils)))
+              (snippet #~(delete-file-recursively "src/test/thirdparty"))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1qx6i09sp8c3l89mhyaql144nzh2h26ky9ms3n5l85qplx1vv2r7"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list #:tests? #f ;; Needs bundled libraries for tests.
+           ;; By default this option is set to ON and removes the ability to
+           ;; install the library.
+           #:configure-flags
+           #~(list "-DRH_STANDALONE_PROJECT=OFF")))
+    (home-page "https://github.com/martinus/robin-hood-hashing")
+    (synopsis "Unordered set and map data structures library")
+    (description "This library provides a header-only unordered set and map
+data structures for C++.")
+    (license license:expat)))
+
 (define-public c++-gsl
   (package
     (name "c++-gsl")
@@ -298,7 +327,7 @@ various formats, including @code{json}.")
 (define-public libzen
   (package
     (name "libzen")
-    (version "0.4.40")
+    (version "0.4.41")
     (source (origin
               (method url-fetch)
               ;; Warning: This source has proved unreliable 1 time at least.
@@ -309,7 +338,7 @@ various formats, including @code{json}.")
                                   "libzen_" version ".tar.bz2"))
               (sha256
                (base32
-                "17pnp5i1ppcxhxnfs9qlkzzy35h23pkdwhsgpbqdkf8lab2f4hsm"))))
+                "0b8yj3rmmcv2fn3b5bnchfkk82fy4w5446c70sxccvfa7myps8zb"))))
     (native-inputs
      (list autoconf automake libtool))
     (build-system gnu-build-system)
@@ -2018,6 +2047,20 @@ microparallel algorithms to implement a strict JSON parser with UTF-8
 validation.")
     (home-page "https://github.com/simdjson/simdjson")
     (license license:asl2.0)))
+
+(define-public simdjson-0.6
+  (package
+    (inherit simdjson)
+    (version "0.6.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/simdjson/simdjson")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name (package-name simdjson) version))
+              (sha256
+               (base32
+                "038i9nmk85vpxvs546w6cyci0ppdrrp5wnlv1kffxw29x71a3g5l"))))))
 
 (define-public bloomberg-bde-tools
   (let ((commit "f63dfe9114cd7df29623bd01f644b9f654253972"))

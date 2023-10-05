@@ -40,7 +40,6 @@
   #:use-module (guix build-system trivial)
   #:use-module (gnu packages)
   #:use-module (gnu packages admin)
-  #:use-module (gnu packages autotools)
   #:use-module (gnu packages assembly)
   #:use-module (gnu packages backup)
   #:use-module (gnu packages base)
@@ -58,7 +57,6 @@
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
-  #:use-module (gnu packages gnupg)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages hardware)
   #:use-module (gnu packages libusb)
@@ -77,7 +75,6 @@
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages version-control)
-  #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
   #:use-module (ice-9 match))
 
@@ -800,7 +797,7 @@ after an operating system boots.")
 (define-public edk2-tools
   (package
     (name "edk2-tools")
-    (version "202211")
+    (version "202308")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -809,11 +806,12 @@ after an operating system boots.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1264542mm0mffjcmw5sw34h94n405swz5z56rw1ragp3j62144iy"))))
+                "19g3g94hayvcwmn6sjs6mghq0qf5nsd785k5j8szcrj2p0vjh54f"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags
-           #~(list (string-append "BUILD_CC=" #$(cc-for-target)))
+           #~(list (string-append "BUILD_CC=" #$(cc-for-target))
+                   (string-append "CC=" #$(cc-for-target)))
            #:test-target "Tests"
            #:phases
            #~(modify-phases %standard-phases

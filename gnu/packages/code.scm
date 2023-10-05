@@ -17,6 +17,7 @@
 ;;; Copyright © 2021 lu hui <luhuins@163.com>
 ;;; Copyright © 2021, 2022 Foo Chuan Wei <chuanwei.foo@hotmail.com>
 ;;; Copyright © 2022 Michael Rohleder <mike@rohleder.de>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -434,7 +435,7 @@ features that are not supported by the standard @code{stdio} implementation.")
 (define-public universal-ctags
   (package
     (name "universal-ctags")
-    (version "6.0.20230212.0")
+    (version "6.0.20231001.0")
     (source
      (origin
        (method git-fetch)
@@ -444,7 +445,7 @@ features that are not supported by the standard @code{stdio} implementation.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0616y8sqbydh4baixs1fndknjvhfpf57p7a0yr1l5n732lknk2pm"))
+         "0qik6rsai254prydfx8k2bq7wpim3a272jiw1y37r734k4s9xbrb"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -622,7 +623,7 @@ results and determine build stability.")
 (define-public kcov
   (package
     (name "kcov")
-    (version "40")
+    (version "42")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -631,7 +632,7 @@ results and determine build stability.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0zayhmx6s377bxmkmvl9d9vjzfbpvh1k9ba6np4zdjvjjq327xag"))))
+                "14pyahpgadh845q2p1gjw2yrlqcan4n870icrn2yqdpf33cprzgk"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f                      ; no test target
@@ -639,10 +640,9 @@ results and determine build stability.")
        (modify-phases %standard-phases
          (add-after 'unpack 'fix-/bin/bash-references
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((bash (assoc-ref inputs "bash")))
              (substitute* (find-files "src" ".*\\.cc?$")
                (("/bin/(bash|sh)" shell)
-                (string-append (assoc-ref inputs "bash") shell)))))))))
+                (search-input-file inputs shell))))))))
     (inputs
      (list curl elfutils libelf openssl zlib))
     (native-inputs
@@ -773,11 +773,13 @@ produce colored output.")
         (base32 "1gjfk3d8qg3cla7qd2y7r9s03whlfwy83q8k76xfcnqrjjfavdgk"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:test-target "test"
-       #:make-flags (list "CC=gcc" (string-append "prefix=" %output))
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure))))
+     (list
+      #:test-target "test"
+      #:make-flags #~(list (string-append "CC=" #$(cc-for-target))
+                           (string-append "prefix=" #$output))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure))))
     (native-inputs
      (list graphviz))
     (home-page "https://github.com/lindenb/makefile2graph")
@@ -791,7 +793,7 @@ independent targets.")
 (define-public uncrustify
   (package
     (name "uncrustify")
-    (version "0.75.1")
+    (version "0.77.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -800,22 +802,20 @@ independent targets.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1mzzzd4alajjdshbjd2a5mddqcpag8yyss72n09mfpialzyf7g60"))))
+                "17x9p5pqgzjchi9xhskp4kq7ag4chmsgbkvwym5m2b9zwm6qykpm"))))
     (build-system cmake-build-system)
-    (native-inputs
-     `(("python" ,python-wrapper)))
+    (native-inputs (list python-wrapper))
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'unpack-etc
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; Configuration samples are not installed by default.
-             (let* ((output (assoc-ref outputs "out"))
-                    (etcdir (string-append output "/etc")))
-               (for-each (lambda (l)
-                           (install-file l etcdir))
-                         (find-files "etc" "\\.cfg$")))
-             #t)))))
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'unpack-etc
+                 (lambda* (#:key inputs outputs #:allow-other-keys)
+                   ;; Configuration samples are not installed by default.
+                   (let* ((output (assoc-ref outputs "out"))
+                          (etcdir (string-append output "/etc")))
+                     (for-each (lambda (l)
+                                 (install-file l etcdir))
+                               (find-files "etc" "\\.cfg$"))))))))
     (home-page "https://uncrustify.sourceforge.net/")
     (synopsis "Code formatter for C and other related languages")
     (description
@@ -834,54 +834,54 @@ Objective@tie{}C, D, Java, Pawn, and Vala).  Features:
 (define-public astyle
   (package
     (name "astyle")
-    (version "3.1")
+    (version "3.4.8")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/astyle/astyle/astyle%20"
                            version "/astyle_"  version "_linux.tar.gz"))
        (sha256
-        (base32
-         "1ms54wcs7hg1bsywqwf2lhdfizgbk7qxc9ghasxk8i99jvwlrk6b"))))
+        (base32 "1ms54wcs7hg1bsywqwf2lhdfizgbk7qxc9ghasxk8i99jvwlrk6b"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f                      ;no tests
-       #:make-flags (list (string-append "prefix=" %output)
-                          "INSTALL=install"
-                          "all")
-       #:modules ((guix build gnu-build-system) ;; FIXME use %default-modules
+     (list
+      #:tests? #f                       ;no tests
+      #:make-flags
+      #~(list (string-append "prefix=" #$output)
+              "INSTALL=install"
+              "release" "shared")
+      #:modules '((guix build gnu-build-system) ;FIXME use %default-modules
                   (guix build utils)
                   (ice-9 regex))
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'configure
-           (lambda _ (chdir "build/gcc") #t))
-         (add-after 'install 'install-libs
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Libraries and includes are not installed by default
-             (let* ((output (assoc-ref outputs "out"))
-                    (incdir (string-append output "/include"))
-                    (libdir (string-append output "/lib")))
-               (define (make-so-link sofile strip-pattern)
-                 (symlink
-                  (basename sofile)
-                  (regexp-substitute #f
-                                     (string-match strip-pattern sofile)
-                                     'pre)))
-               (mkdir-p incdir)
-               (copy-file "../../src/astyle.h"
-                          (string-append incdir "/astyle.h"))
-               (mkdir-p libdir)
-               (for-each (lambda (l)
-                           (copy-file
-                            l (string-append libdir "/" (basename l))))
-                         (find-files "bin" "lib*"))
-               (for-each
-                (lambda (sofile)
-                  (make-so-link sofile "(\\.[0-9]){3}$")  ;; link .so
-                  (make-so-link sofile "(\\.[0-9]){2}$")) ;; link .so.3
-                (find-files libdir "lib.*\\.so\\..*")))
-             #t)))))
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'configure
+            (lambda _
+              (chdir "build/gcc")))
+          (add-after 'install 'install-more
+            (lambda* (#:key outputs #:allow-other-keys)
+              ;; Libraries and headers aren't installed by default.
+              (let ((include (string-append #$output "/include"))
+                    (lib     (string-append #$output "/lib")))
+                (define (link.so file strip-pattern)
+                  (symlink
+                   (basename file)
+                   (regexp-substitute #f
+                                      (string-match strip-pattern file)
+                                      'pre)))
+                (mkdir-p include)
+                (copy-file "../../src/astyle.h"
+                           (string-append include "/astyle.h"))
+                (mkdir-p lib)
+                (for-each (lambda (l)
+                            (copy-file
+                             l (string-append lib "/" (basename l))))
+                          (find-files "bin" "^lib.*\\.so"))
+                (for-each
+                 (lambda (file)
+                   (link.so file "(\\.[0-9]+){3}$")  ;.so
+                   (link.so file "(\\.[0-9]+){2}$")) ;.so.3
+                 (find-files lib "lib.*\\.so\\..*"))))))))
     (home-page "https://astyle.sourceforge.net/")
     (synopsis "Source code indenter, formatter, and beautifier")
     (description
@@ -892,13 +892,13 @@ the C, C++, C++/CLI, Objective‑C, C#, and Java programming languages.")
 (define-public indent
   (package
    (name "indent")
-   (version "2.2.12")
+   (version "2.2.13")
    (source (origin
             (method url-fetch)
             (uri (string-append "mirror://gnu/indent/indent-" version
                                 ".tar.gz"))
             (sha256
-             (base32 "12xvcd16cwilzglv9h7sgh4h1qqjd1h8s48ji2dla58m4706hzg7"))))
+             (base32 "15c0ayp9rib7hzvrcxm5ijs0mpagw5y8kf5w0jr9fryfqi7n6r4y"))))
    (build-system gnu-build-system)
    (arguments
     `(#:phases

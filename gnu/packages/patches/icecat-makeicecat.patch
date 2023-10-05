@@ -15,16 +15,7 @@ index bf2b7a6..bc3b19b 100755
  
  
  ###############################################################################
-@@ -455,7 +455,7 @@ configure_search()
- 
- 
-     # Process various JSON pre-configuration dumps.
--    python3 ../../tools/process-json-files.py . browser/components/extensions/schemas/
-+    python3 "${DATADIR}"/../tools/process-json-files.py . browser/components/extensions/schemas/
- }
- 
- configure_mobile()
-@@ -837,12 +837,12 @@ finalize_sourceball()
+@@ -928,12 +928,12 @@ finalize_sourceball()
  # entry point
  ###############################################################################
  
@@ -43,7 +34,7 @@ index bf2b7a6..bc3b19b 100755
  apply_patches
  configure
  configure_search
-@@ -854,4 +854,4 @@ prepare_macos_packaging
+@@ -945,4 +945,4 @@ prepare_macos_packaging
  configure_extensions
  configure_onboarding
  apply_bugfixes

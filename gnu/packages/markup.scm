@@ -253,13 +253,13 @@ implementation.
 (define-public python-cmarkgfm
   (package
     (name "python-cmarkgfm")
-    (version "0.8.0")
+    (version "2022.10.27")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "cmarkgfm" version))
               (sha256
                (base32
-                "1jxk9cdir4q1bpjla7b7y1qfjmr7mkd0f802b2sb88njk079p1gy"))
+                "16875bazqd7p7qiky343w0fzasqziyvf72nipyh1r47a2rvsrnck"))
               (modules '((guix build utils)))
               (snippet
                '(begin
@@ -270,13 +270,6 @@ implementation.
     (arguments
      (list #:phases
            #~(modify-phases %standard-phases
-               (add-after 'unpack 'relax-requirements
-                 (lambda _
-                   ;; Don't depend on bleeding-edge CFFI, as it is
-                   ;; apparently only needed for Python >= 3.10.
-                   (substitute* "setup.py"
-                     (("cffi>=1\\.15\\.0")
-                      "cffi>=1.0"))))
                (add-after 'unpack 'copy-cmark-gfm
                  (lambda _
                    ;; This package needs the cmark-gfm source files
@@ -339,28 +332,28 @@ convert HTML to Markdown.")
 (define-public cmark
   (package
     (name "cmark")
-    (version "0.30.2")
+    (version "0.30.3")
     (source (origin
-             (method git-fetch)
-             (uri (git-reference
-                    (url "https://github.com/jgm/cmark")
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/commonmark/cmark")
                     (commit version)))
-             (file-name (git-file-name name version))
-             (sha256
-              (base32
-               "1426snw3mq8qmpdxznkhsyy75xd9v9nwlc7sph08qpdz8xnp4hr2"))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "07d30s5v893nb1m7qbam5c3x9b3d84m80kzlj7fmkwhgjrlz7d7z"))))
     (build-system cmake-build-system)
     (arguments
      '(#:test-target "test"))
     (native-inputs (list python))
     (synopsis "CommonMark Markdown reference implementation")
-    (description "CommonMark is a strongly defined, highly compatible
-specification of Markdown.  cmark is the C reference implementation of
-CommonMark.  It provides @code{libcmark} shared library for parsing
-CommonMark to an abstract syntax tree (@dfn{AST}) and rendering the document
-as HTML, groff man, LaTeX, CommonMark, or an XML representation of the
-AST.  The package also provides the command-line program @command{cmark}
-for parsing and rendering CommonMark.")
+    (description
+     "CommonMark is a strongly defined, highly compatible specification of
+Markdown.  @code{cmark} is the C reference implementation of CommonMark.  It
+provides the @code{libcmark} shared library for parsing CommonMark to an
+abstract syntax tree (@dfn{AST}) and rendering the document as HTML, groff man,
+LaTeX, CommonMark, or an XML representation of the AST.  It also provides the
+command-line program @command{cmark} for parsing and rendering CommonMark.")
     (home-page "https://commonmark.org")
     ;; cmark is distributed with a BSD-2 license, but some components are Expat
     ;; licensed. The CommonMark specification is Creative Commons CC-BY-SA 4.0

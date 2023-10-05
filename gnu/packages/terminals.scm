@@ -35,6 +35,7 @@
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
 ;;; Copyright © 2023 Aaron Covrig <aaron.covrig.us@ieee.org>
 ;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -102,7 +103,6 @@
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-check)
-  #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages serialization)
@@ -414,14 +414,14 @@ combining, and so on, with a simple interface.")
 (define-public mlterm
   (package
     (name "mlterm")
-    (version "3.9.2")
+    (version "3.9.3")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/mlterm/01release/mlterm-"
                            version "/mlterm-" version ".tar.gz"))
        (sha256
-        (base32 "0br1sdpxw3r7qv814b3qjb8mpigljr9wd5c5422ah76f09zh0h5r"))))
+        (base32 "1nah3fn055njwpr2nfl8zkr5r02n89mxxdxgcjyk9q8x74hngdxm"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no tests
@@ -629,23 +629,29 @@ should be thread-safe.")
 (define-public libvterm
   (package
     (name "libvterm")
-    (version "0.3.1")
+    (version "0.3.3")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "https://www.leonerd.org.uk/code/libvterm/"
-                           "libvterm-" version ".tar.gz"))
+       (uri (string-append
+             "https://launchpad.net/libvterm/trunk/v"
+             (version-major+minor version)
+             "/+download/libvterm-" version ".tar.gz"))
        (sha256
-        (base32 "15y3y23kfpcda7n79ym3gp1abzn8mshxrad8s3gnhls82nfava15"))))
+        (base32 "1q16fbznm54p24hqvw8c9v3347apk86ybsxyghsbsa11vm1ny589"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:make-flags
-       (list "CC=gcc"
-             (string-append "PREFIX=" (assoc-ref %outputs "out")))
-       #:test-target "test"
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure))))
+     (list #:make-flags
+           #~(list
+              ;; FIXME: cross build fails.
+              ;; ld: src/.libs/encoding.o: error adding symbols: file in wrong format
+              ;; collect2: error: ld returned 1 exit status
+              (string-append "CC=" #$(cc-for-target))
+              (string-append "PREFIX=" #$output))
+           #:test-target "test"
+           #:phases
+           #~(modify-phases %standard-phases
+               (delete 'configure))))
     (native-inputs
      (list libtool perl))
     (home-page "https://www.leonerd.org.uk/code/libvterm/")
@@ -826,7 +832,7 @@ eye-candy, customizable, and reasonably lightweight.")
 (define-public foot
   (package
     (name "foot")
-    (version "1.15.2")
+    (version "1.15.3")
     (home-page "https://codeberg.org/dnkl/foot")
     (source (origin
               (method git-fetch)
@@ -834,7 +840,7 @@ eye-candy, customizable, and reasonably lightweight.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1iz9l01fpryc335pb0c3qi67fmmfplizv5pbc9s578mxl5j9dxg4"))))
+                "1a224i2i7qk170kf2rzyxqcv3lnx9f548lwa37jgjr7i339x4zwf"))))
     (build-system meson-build-system)
     (arguments
      `(;; Using a "release" build is recommended both for performance, and
@@ -1481,7 +1487,7 @@ terminal are replicated to the others.
 (define-public tio
   (package
     (name "tio")
-    (version "2.5")
+    (version "2.7")
     (source
      (origin
        (method url-fetch)
@@ -1489,7 +1495,7 @@ terminal are replicated to the others.
              "https://github.com/tio/tio/releases/download/v"
              version "/tio-" version ".tar.xz"))
        (sha256
-        (base32 "19s41i8f3kxchlaibp7wkq8gqgbpfdn0srkf1wcfx357j3p54f86"))))
+        (base32 "19fswmyiwlify269h6nwdlbnhq4q7i8442xg81jinb4chhsf93xz"))))
     (build-system meson-build-system)
     (native-inputs (list pkg-config))
     (inputs (list libinih))
@@ -1503,7 +1509,7 @@ basic input/output.")
 (define-public alacritty
   (package
     (name "alacritty")
-    (version "0.12.2")
+    (version "0.12.3")
     (source
      (origin
        ;; XXX: The crate at "crates.io" has limited contents.  In particular,
@@ -1514,11 +1520,10 @@ basic input/output.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "17a7v32gxsy79cj1ap71ckrypxv7i9jv4lnibg0ymcpwk9zpwxjz"))))
+        (base32 "1jbyxnza38c22k7ri8apzn03q91l06isj8la9xca7cz06kn0hha9"))))
     (build-system cargo-build-system)
     (arguments
      `(#:install-source? #f     ; virtual manifest
-       #:cargo-test-flags '("--release" "--" "--skip=config_read_eof")
        #:cargo-inputs
        (("rust-alacritty-config" ,rust-alacritty-config-0.1)
         ("rust-alacritty-config-derive" ,rust-alacritty-config-derive-0.2)
@@ -1571,10 +1576,9 @@ basic input/output.")
                 (search-input-file inputs "lib/libEGL.so"))
                (("libGL\\.so")
                 (search-input-file inputs "lib/libGL.so"))
-               ;; Lots of libraries from rust-x11-dl.
-               ;; XXX: Not all X11 libraries are inside the build enclosure.
-               ;(("libX.*\\.so" all)
-               ; (search-input-file inputs (string-append "lib/" all)))
+               ;; Lots of libraries from rust-x11-dl and others.
+               (("libX[[:alpha:]]*\\.so" all)
+                (search-input-file inputs (string-append "lib/" all)))
 
                ;; There are several libwayland libraries.
                (("libwayland-.*\\.so" all)
@@ -1624,23 +1628,31 @@ basic input/output.")
                (install-file "extra/completions/alacritty.fish"
                              (string-append share "/fish/vendor_completions.d"))))))))
     (native-inputs
-     `(("ncurses" ,ncurses)
-       ("pkg-config" ,pkg-config)
-       ("python3" ,python)))
+     (list ncurses
+           pkg-config
+           python))
     (inputs
-     `(("expat" ,expat)
-       ("fontconfig" ,fontconfig)
-       ("freetype" ,freetype)
-       ("libx11" ,libx11)
-       ("libxcb" ,libxcb)
-       ("libxcursor" ,libxcursor)
-       ("libxi" ,libxi)
-       ("libxkbcommon" ,libxkbcommon)
-       ("libxrandr" ,libxrandr)
-       ("libxxf86vm" ,libxxf86vm)
-       ("mesa" ,mesa)
-       ("xdg-utils" ,xdg-utils)
-       ("wayland" ,wayland)))
+     (list expat
+           fontconfig
+           freetype
+           libx11
+           libxcb
+           libxcursor
+           libxext
+           libxft
+           libxi
+           libxinerama
+           libxkbcommon
+           libxmu
+           libxpresent
+           libxrandr
+           libxscrnsaver
+           libxt
+           libxtst
+           libxxf86vm
+           mesa
+           xdg-utils
+           wayland))
     (native-search-paths
      ;; FIXME: This should only be located in 'ncurses'.  Nonetheless it is
      ;; provided for usability reasons.  See <https://bugs.gnu.org/22138>.

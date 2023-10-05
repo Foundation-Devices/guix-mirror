@@ -116,9 +116,9 @@ Copyright @copyright{} 2022 Antero Mejr@*
 Copyright @copyright{} 2023 Karl Hallsby@*
 Copyright @copyright{} 2023 Nathaniel Nicandro@*
 Copyright @copyright{} 2023 Tanguy Le Carrour@*
+Copyright @copyright{} 2023 Zheng Junjie@*
 Copyright @copyright{} 2023 Brian Cully@*
 Copyright @copyright{} 2023 Felix Lechner@*
-Copyright @copyright{} 2023 Zheng Junjie@*
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -1011,6 +1011,7 @@ version 0.1.0 or later;
 @item
 @uref{https://gitlab.com/guile-git/guile-git, Guile-Git}, version 0.5.0
 or later;
+@item @uref{https://git-scm.com, Git} (yes, both!);
 @item @uref{https://savannah.nongnu.org/projects/guile-json/, Guile-JSON}
 4.3.0 or later;
 @item @url{https://www.gnu.org/software/make/, GNU Make}.
@@ -1483,6 +1484,14 @@ name, and they will be scheduled on matching build machines.
 
 @end table
 @end deftp
+
+@quotation Note
+On Guix System, instead of managing @file{/etc/guix/machines.scm}
+independently, you can choose to specify build machines directly in the
+@code{operating-system} declaration, in the @code{build-machines} field
+of @code{guix-configuration}.  @xref{guix-configuration-build-machines,
+@code{build-machines} field of @code{guix-configuration}}.
+@end quotation
 
 The @command{guix} command must be in the search path on the build
 machines.  You can check whether this is the case by running:
@@ -2167,12 +2176,15 @@ which they are installed.  The Elisp libraries are made available to
 Emacs through the @env{EMACSLOADPATH} environment variable, which is
 set when installing Emacs itself.
 
+@cindex guix-emacs-autoload-packages, refreshing Emacs packages
 Additionally, autoload definitions are automatically evaluated at the
 initialization of Emacs, by the Guix-specific
-@code{guix-emacs-autoload-packages} procedure.  If, for some reason, you
-want to avoid auto-loading the Emacs packages installed with Guix, you
-can do so by running Emacs with the @option{--no-site-file} option
-(@pxref{Init File,,, emacs, The GNU Emacs Manual}).
+@code{guix-emacs-autoload-packages} procedure.  This procedure can be
+interactively invoked to have newly installed Emacs packages discovered,
+without having to restart Emacs.  If, for some reason, you want to avoid
+auto-loading the Emacs packages installed with Guix, you can do so by
+running Emacs with the @option{--no-site-file} option (@pxref{Init
+File,,, emacs, The GNU Emacs Manual}).
 
 @quotation Note
 Emacs can now compile packages natively.  Under the default
@@ -6114,7 +6126,7 @@ the fingerprint of the OpenPGP used to sign it.
 @end enumerate
 
 Before pushing to your public Git repository, you can run @command{guix
-git-authenticate} to verify that you did sign all the commits you are
+git authenticate} to verify that you did sign all the commits you are
 about to push with an authorized key:
 
 @example
@@ -16834,23 +16846,36 @@ instance to support new system services.
 The operating system is configured by providing an
 @code{operating-system} declaration in a file that can then be passed to
 the @command{guix system} command (@pxref{Invoking guix system}).  A
-simple setup, with the default system services, the default Linux-Libre
-kernel, initial RAM disk, and boot loader looks like this:
+simple setup, with the default Linux-Libre
+kernel, initial RAM disk, and a couple of system services added to those
+provided by default looks like this:
 
 @findex operating-system
 @lisp
 @include os-config-bare-bones.texi
 @end lisp
 
-This example should be self-describing.  Some of the fields defined
+The configuration is declarative and hopefully mostly self-describing.
+It is actually code in the Scheme programming language; the whole
+@code{(operating-system @dots{})} expression produces a @dfn{record}
+with a number of @dfn{fields}.
+Some of the fields defined
 above, such as @code{host-name} and @code{bootloader}, are mandatory.
 Others, such as @code{packages} and @code{services}, can be omitted, in
-which case they get a default value.
+which case they get a default value.  @xref{operating-system Reference},
+for details about all the available fields.
 
-Below we discuss the effect of some of the most important fields
-(@pxref{operating-system Reference}, for details about all the available
-fields), and how to @dfn{instantiate} the operating system using
+Below we discuss the effect of some of the most important fields,
+and how to @dfn{instantiate} the operating system using
 @command{guix system}.
+
+@quotation Do not panic
+@cindex Scheme programming language, getting started
+Intimidated by the Scheme language or curious about it?  The Cookbook
+has a short section to get started that explains the fundamentals, which
+you will find helpful when hacking your configuration.  @xref{A Scheme
+Crash Course,,, guix-cookbook, GNU Guix Cookbook}.
+@end quotation
 
 @unnumberedsubsec Bootloader
 
@@ -17024,14 +17049,6 @@ Alternatively, the @code{modify-services} macro can be used:
 (modify-services %desktop-services
   (delete avahi-service-type))
 @end lisp
-
-@quotation Do not panic
-@cindex Scheme programming language, getting started
-Intimidated by the Scheme language or curious about it?  The Cookbook
-has a short section to get started that explains the fundamentals, which
-you will find helpful when hacking your configuration.  @xref{A Scheme
-Crash Course,,, guix-cookbook, GNU Guix Cookbook}.
-@end quotation
 
 @unnumberedsubsec Instantiating the System
 
@@ -19254,6 +19271,28 @@ The type of compression used for build logs---one of @code{gzip},
 Whether to discover substitute servers on the local network using mDNS
 and DNS-SD.
 
+@anchor{guix-configuration-build-machines}
+@item @code{build-machines} (default: @code{#f})
+This field must be either @code{#f} or a list of gexps evaluating to a
+@code{build-machine} record (@pxref{Daemon Offload Setup}).
+
+When it is @code{#f}, the @file{/etc/guix/machines.scm} file is left
+untouched.  Otherwise, the list of of gexps is written to
+@file{/etc/guix/machines.scm}; if a previously-existing file is found,
+it is backed up as @file{/etc/guix/machines.scm.bak}.  This allows you
+to declare build machines for offloading directly in the operating
+system declaration, like so:
+
+@lisp
+(guix-configuration
+  (build-machines
+    (list #~(build-machine (name "foo.example.org") @dots{})
+          #~(build-machine (name "bar.example.org") @dots{}))))
+@end lisp
+
+Additional build machines may be added @i{via} the @code{guix-extension}
+mechanism (see below).
+
 @item @code{extra-options} (default: @code{'()})
 List of extra command-line options for @command{guix-daemon}.
 
@@ -19291,7 +19330,6 @@ Environment variables to be set before starting the daemon, as a list of
 @end deftp
 
 @deftp {Data Type} guix-extension
-
 This data type represents the parameters of the Guix build daemon that
 are extendable. This is the type of the object that must be used within
 a guix service extension.
@@ -19303,6 +19341,16 @@ A list of file-like objects where each element contains a public key.
 
 @item @code{substitute-urls} (default: @code{'()})
 A list of strings where each element is a substitute URL.
+
+@item @code{build-machines} (default: @code{'()})
+A list of gexps that evaluate to @code{build-machine} records
+(@pxref{Daemon Offload Setup}).
+
+Using this field, a service may add new build machines to receive builds
+offloaded by the daemon.  This is useful for a service such as
+@code{hurd-vm-service-type}, which can make a GNU/Hurd virtual machine
+directly usable for offloading (@pxref{hurd-vm,
+@code{hurd-vm-service-type}}).
 
 @item @code{chroot-directories} (default: @code{'()})
 A list of file-like objects or strings pointing to additional directories the build daemon can use.
@@ -20456,10 +20504,16 @@ non-loopback interfaces that can be activated.  Otherwise the DHCP
 client listens only on the specified interfaces.
 
 @item @code{shepherd-requirement} (default: @code{'()})
+@itemx @code{shepherd-provision} (default: @code{'(networking)})
 This option can be used to provide a list of symbols naming Shepherd services
 that this service will depend on, such as @code{'wpa-supplicant} or
 @code{'iwd} if you require authenticated access for encrypted WiFi or Ethernet
 networks.
+
+Likewise, @code{shepherd-provision} is a list of Shepherd service names
+(symbols) provided by this service.  You might want to change the
+default value if you intend to run several DHCP clients, only one of
+which provides the @code{networking} Shepherd service.
 @end table
 @end deftp
 
@@ -35639,6 +35693,7 @@ host.  If empty, QEMU uses a default file name.
 @end deftp
 
 
+@anchor{hurd-vm}
 @subsubheading The Hurd in a Virtual Machine
 
 @cindex @code{hurd}
@@ -35667,10 +35722,14 @@ guix shell tigervnc-client -- vncviewer localhost:5900
 The default configuration (see @code{hurd-vm-configuration} below)
 spawns a secure shell (SSH) server in your GNU/Hurd system, which QEMU
 (the virtual machine emulator) redirects to port 10222 on the host.
-Thus, you can connect over SSH to the childhurd with:
+By default, the service enables @dfn{offloading} such that the host
+@code{guix-daemon} automatically offloads GNU/Hurd builds to the
+childhurd (@pxref{Daemon Offload Setup}).  This is what happens when
+running a command like the following one, where @code{i586-gnu} is the
+system type of 32-bit GNU/Hurd:
 
 @example
-ssh root@@localhost -p 10022
+guix build emacs-minimal -s i586-gnu
 @end example
 
 The childhurd is volatile and stateless: it starts with a fresh root
@@ -35680,6 +35739,57 @@ file system of the childhurd when it boots.  This allows you to
 initialize ``secrets'' inside the VM: SSH host keys, authorized
 substitute keys, and so on---see the explanation of @code{secret-root}
 below.
+
+You will probably find it useful to create an account for you in the
+GNU/Hurd virtual machine and to authorize logins with your SSH key.  To
+do that, you can define the GNU/Hurd system in the usual way
+(@pxref{Using the Configuration System}), and then pass that operating
+system as the @code{os} field of @code{hurd-vm-configuration}, as in
+this example:
+
+@lisp
+(define childhurd-os
+  ;; Definition of my GNU/Hurd system, derived from the default one.
+  (operating-system
+    (inherit %hurd-vm-operating-system)
+
+    ;; Add a user account.
+    (users (cons (user-account
+                  (name "charlie")
+                  (comment "This is me!")
+                  (group "users")
+                  (supplementary-groups '("wheel"))) ;for 'sudo'
+                 %base-user-accounts))
+
+    (services
+     ;; Modify the SSH configuration to allow login as "root"
+     ;; and as "charlie" using public key authentication.
+     (modify-services (operating-system-user-services
+                       %hurd-vm-operating-system)
+       (openssh-service-type
+        config => (openssh-configuration
+                   (inherit config)
+                   (authorized-keys
+                    `(("root"
+                       ,(local-file
+                         "/home/charlie/.ssh/id_rsa.pub"))
+                      ("charlie"
+                       ,(local-file
+                         "/home/charlie/.ssh/id_rsa.pub"))))))))))
+
+(operating-system
+  ;; @dots{}
+  (services
+    ;; Add the 'hurd-vm' service, configured to use the
+    ;; operating system configuration above.
+    (append (list (service hurd-vm-service-type
+                           (hurd-vm-configuration
+                             (os %childhurd-os))))
+            %base-services)))
+@end lisp
+
+That's it!  The remainder of this section provides the reference of the
+service configuration.
 
 @defvar hurd-vm-service-type
 This is the type of the Hurd in a Virtual Machine service.  Its value
@@ -35715,8 +35825,8 @@ permissive OpenSSH secure shell daemon listening on port 2222
 The QEMU package to use.
 
 @item @code{image} (default: @var{hurd-vm-disk-image})
-The procedure used to build the disk-image built from this
-configuration.
+The image object representing the disk image of this virtual machine
+(@pxref{System Images}).
 
 @item @code{disk-size} (default: @code{'guess})
 The size of the disk image.
@@ -35754,6 +35864,41 @@ with forwarded ports:
 @var{vnc-port}: @code{(+ 15900 (* 1000 @var{ID}))}
 @end example
 
+@cindex childhurd, offloading
+@cindex Hurd, offloading
+@item @code{offloading?} (default: @code{#t})
+Whether to automatically set up offloading of builds to the childhurd.
+
+When enabled, this lets you run GNU/Hurd builds on the host and have
+them transparently offloaded to the VM, for instance when running a
+command like this:
+
+@example
+guix build coreutils -s i586-gnu
+@end example
+
+This option automatically sets up offloading like so:
+
+@enumerate
+@item
+Authorizing the childhurd's key on the host so that the host accepts
+build results coming from the childhurd, which can be done like so
+(@pxref{Invoking guix archive, @command{guix archive --authorize}}, for
+more on that).
+
+@item
+Creating a user account called @code{offloading} dedicated to offloading
+in the childhurd.
+
+@item
+Creating an SSH key pair on the host and making it an authorized key of
+the @code{offloading} account in the childhurd.
+
+@item
+Adding the childhurd to @file{/etc/guix/machines.scm} (@pxref{Daemon
+Offload Setup}).
+@end enumerate
+
 @item @code{secret-root} (default: @file{/etc/childhurd})
 The root directory with out-of-band secrets to be installed into the
 childhurd once it runs.  Childhurds are volatile which means that on
@@ -35771,38 +35916,13 @@ with the following non-volatile secrets, unless they already exist:
 /etc/childhurd/etc/guix/acl
 /etc/childhurd/etc/guix/signing-key.pub
 /etc/childhurd/etc/guix/signing-key.sec
+/etc/childhurd/etc/ssh/authorized_keys.d/offloading
 /etc/childhurd/etc/ssh/ssh_host_ed25519_key
 /etc/childhurd/etc/ssh/ssh_host_ecdsa_key
 /etc/childhurd/etc/ssh/ssh_host_ed25519_key.pub
 /etc/childhurd/etc/ssh/ssh_host_ecdsa_key.pub
 @end example
 
-These files are automatically sent to the guest Hurd VM when it boots,
-including permissions.
-
-@cindex childhurd, offloading
-@cindex Hurd, offloading
-Having these files in place means that only a couple of things are
-missing to allow the host to offload @code{i586-gnu} builds to the
-childhurd:
-
-@enumerate
-@item
-Authorizing the childhurd's key on the host so that the host accepts
-build results coming from the childhurd, which can be done like so:
-
-@example
-guix archive --authorize < \
-  /etc/childhurd/etc/guix/signing-key.pub
-@end example
-
-@item
-Adding the childhurd to @file{/etc/guix/machines.scm} (@pxref{Daemon
-Offload Setup}).
-@end enumerate
-
-We're working towards making that happen automatically---get in touch
-with us at @email{guix-devel@@gnu.org} to discuss it!
 @end table
 @end deftp
 
@@ -38082,6 +38202,65 @@ File name of the file system key for the target volume.
 
 @node Guix Services
 @subsection Guix Services
+
+@subsubheading Build Farm Front-End (BFFE)
+The @uref{https://git.cbaines.net/guix/bffe/,Build Farm Front-End}
+assists with building Guix packages in bulk.  It's responsible for
+submitting builds and displaying the status of the build farm.
+
+@defvar bffe-service-type
+Service type for the Build Farm Front-End.  Its value must be a
+@code{bffe-configuration} object.
+@end defvar
+
+@deftp {Data Type} bffe-configuration
+Data type representing the configuration of the Build Farm Front-End.
+
+@table @asis
+@item @code{package} (default: @code{bffe})
+The Build Farm Front-End package to use.
+
+@item @code{user} (default: @code{"bffe"})
+The system user to run the service as.
+
+@item @code{group} (default: @code{"bffe"})
+The system group to run the service as.
+
+@item @code{arguments}
+A list of arguments to the Build Farm Front-End.  These are passed to
+the @code{run-bffe-service} procedure when starting the service.
+
+For example, the following value directs the Build Farm Front-End to
+submit builds for derivations available from @code{data.guix.gnu.org} to
+the Build Coordinator instance assumed to be running on the same
+machine.
+
+@example
+(list
+ #:build
+ (list
+  (build-from-guix-data-service
+   (data-service-url "https://data.guix.gnu.org")
+   (build-coordinator-url "http://127.0.0.1:8746")
+   (branches '("master"))
+   (systems '("x86_64-linux" "i686-linux"))
+   (systems-and-targets
+    (map (lambda (target)
+           (cons "x86_64-linux" target))
+         '("aarch64-linux-gnu"
+           "i586-pc-gnu")))
+   (build-priority (const 0))))
+ #:web-server-args
+ '(#:event-source "https://example.com"
+   #:controller-args
+   (#:title "example.com build farm")))
+@end example
+
+@item @code{extra-environment-variables} (default: @var{'()})
+Extra environment variables to set via the shepherd service.
+
+@end table
+@end deftp
 
 @subsubheading Guix Build Coordinator
 The @uref{https://git.cbaines.net/guix/build-coordinator/,Guix Build
@@ -40912,8 +41091,8 @@ QEMU monitor and the VM.
 @cindex image, creating disk images
 The @code{image} command can produce various image types.  The image
 type can be selected using the @option{--image-type} option.  It
-defaults to @code{mbr-raw}.  When its value is @code{iso9660}, the
-@option{--label} option can be used to specify a volume ID with
+defaults to @code{mbr-hybrid-raw}.  When its value is @code{iso9660},
+the @option{--label} option can be used to specify a volume ID with
 @code{image}.  By default, the root file system of a disk image is
 mounted non-volatile; the @option{--volatile} option can be provided to
 make it volatile instead.  When using @code{image}, the bootloader
@@ -40931,8 +41110,8 @@ qemu-system-x86_64 -enable-kvm -hda /tmp/my-image.qcow2 -m 1000 \
                    -bios $(guix build ovmf)/share/firmware/ovmf_x64.bin
 @end example
 
-When using the @code{mbr-raw} image type, a raw disk image is produced;
-it can be copied as is to a USB stick, for instance.  Assuming
+When using the @code{mbr-hybrid-raw} image type, a raw disk image is
+produced; it can be copied as is to a USB stick, for instance.  Assuming
 @code{/dev/sdc} is the device corresponding to a USB stick, one can copy
 the image to it using the following command:
 
@@ -41069,7 +41248,7 @@ of the image.
 For the @code{image} action, create an image with given @var{type}.
 
 When this option is omitted, @command{guix system} uses the
-@code{mbr-raw} image type.
+@code{mbr-hybrid-raw} image type.
 
 @cindex ISO-9660 format
 @cindex CD image format
@@ -45277,7 +45456,7 @@ then directly boot from it, without any kind of installation procedure.
 
 The @command{guix system image} command is able to turn an operating
 system definition into a bootable image.  This command supports
-different image types, such as @code{mbr-raw}, @code{iso9660} and
+different image types, such as @code{mbr-hybrid-raw}, @code{iso9660} and
 @code{docker}.  Any modern @code{x86_64} machine will probably be able
 to boot from an @code{iso9660} image.  However, there are a few machines
 out there that require specific image types.  Those machines, in general
@@ -45541,8 +45720,24 @@ from them to simplify the @code{image} definition.  The @code{(gnu
 system image)} module provides the following @code{image} definition
 variables.
 
+@defvar mbr-disk-image
+An MBR disk-image composed of a single ROOT partition.  The ROOT
+partition starts at a 1@tie{}MiB offset so that the bootloader can
+install itself in the post-MBR gap.
+@end defvar
+
+@defvar mbr-hybrid-disk-image
+An MBR disk-image composed of two partitions: a 64 bits ESP partition
+and a ROOT boot partition.  The ESP partition starts at a 1@tie{}MiB
+offset so that a BIOS compatible bootloader can install itself in the
+post-MBR gap.  The image can be used by @code{x86_64} and @code{i686}
+machines supporting only legacy BIOS booting.  The ESP partition ensures
+that it can also be used by newer machines relying on UEFI booting,
+hence the @emph{hybrid} denomination.
+@end defvar
+
 @defvar efi-disk-image
-A MBR disk-image composed of two partitions: a 64 bits ESP partition and
+A GPT disk-image composed of two partitions: a 64 bits ESP partition and
 a ROOT boot partition.  This image can be used on most @code{x86_64} and
 @code{i686} machines, supporting BIOS or UEFI booting.
 @end defvar
@@ -45631,6 +45826,10 @@ system image)} and the @code{(gnu system images @dots{})} modules.
 
 @defvar mbr-raw-image-type
 Build an image based on the @code{mbr-disk-image} image.
+@end defvar
+
+@defvar mbr-hybrid-raw-image-type
+Build an image based on the @code{mbr-hybrid-disk-image} image.
 @end defvar
 
 @defvar efi-raw-image-type

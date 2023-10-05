@@ -50,7 +50,6 @@
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
-  #:use-module (gnu packages golang)
   #:use-module (gnu packages graphviz)
   #:use-module (gnu packages image)
   #:use-module (gnu packages kde-frameworks)
@@ -62,7 +61,6 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
-  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
   #:use-module (gnu packages rsync)
@@ -376,7 +374,7 @@ silently and reliably flow across to every other.")
 (define-public onedrive
   (package
     (name "onedrive")
-    (version "2.4.23")
+    (version "2.4.25")
     (source
       (origin
         (method git-fetch)
@@ -385,7 +383,7 @@ silently and reliably flow across to every other.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1nj4g1rbbg6g9kw1k89dmjg4mnyh5q1b3wbjhrayvnjmssx66yn8"))))
+         (base32 "1i93mq4r9w8cqrdfsfv8wparfd3dbrppc5z04ab056545hk0x89k"))))
     (build-system gnu-build-system)
     (arguments
      (list
