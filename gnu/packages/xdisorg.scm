@@ -518,6 +518,7 @@ avoiding password prompts when X11 forwarding has already been setup.")
               (sha256
                (base32
                 "0fbb2dyjvf71p42y2jmwdcylsvj03w52f5rb23c2d00rwahhfg4l"))))
+    (outputs '("out" "doc"))
     (build-system meson-build-system)
     (inputs
      (list libx11
@@ -531,13 +532,22 @@ avoiding password prompts when X11 forwarding has already been setup.")
            ;; wayland-scanner is required at build time.
            wayland))
     (arguments
-     (list #:configure-flags
-           #~(list (string-append "-Dxkb-config-root="
-                                  (search-input-directory
-                                   %build-inputs "share/X11/xkb"))
-                   (string-append "-Dx-locale-root="
-                                  (search-input-directory
-                                   %build-inputs "share/X11/locale")))))
+     (list
+      #:configure-flags
+      #~(list (string-append "-Dxkb-config-root="
+                             (search-input-directory
+                              %build-inputs "share/X11/xkb"))
+              (string-append "-Dx-locale-root="
+                             (search-input-directory
+                              %build-inputs "share/X11/locale")))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'move-doc
+            (lambda _
+              (let ((old (string-append #$output "/share/doc"))
+                    (new (string-append #$output:doc "/share/doc")))
+                (mkdir-p (dirname new))
+                (rename-file old new)))))))
     (home-page "https://xkbcommon.org/")
     (synopsis "Library to handle keyboard descriptions")
     (description "Xkbcommon is a library to handle keyboard descriptions,
