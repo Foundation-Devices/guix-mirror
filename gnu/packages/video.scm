@@ -1822,7 +1822,7 @@ audio/video codec library.")
                "1rijdvcx8xjqwh084qchwz91vcj8wsvb4diax0g8miywpir00ccw"))))
     (arguments
      (substitute-keyword-arguments (package-arguments ffmpeg-4)
-       ((#:modules modules %default-gnu-imported-modules)
+       ((#:modules modules %default-gnu-modules)
         `((srfi srfi-1)
           ,@modules))
        ((#:configure-flags flags)
