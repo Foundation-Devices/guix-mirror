@@ -1757,16 +1757,6 @@ domains, their live performance and resource utilization statistics.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)            ; no configure script
-         (add-after 'unpack 'fix-documentation
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (substitute* "Documentation/Makefile"
-               (("-m custom.xsl")
-                (string-append
-                 "-m custom.xsl --skip-validation -x "
-                 (assoc-ref inputs "docbook-xsl") "/xml/xsl/"
-                 ,(package-name docbook-xsl) "-"
-                 ,(package-version docbook-xsl)
-                 "/manpages/docbook.xsl")))))
          (add-after 'unpack 'hardcode-variables
            (lambda* (#:key inputs outputs #:allow-other-keys)
              ;; Hardcode arm version detection
