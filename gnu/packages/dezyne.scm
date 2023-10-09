@@ -51,7 +51,7 @@
     (arguments
      (list
       #:modules `((ice-9 popen)
-                  ,@%default-gnu-imported-modules)
+                  ,@%default-gnu-modules)
       #:phases
       #~(modify-phases %standard-phases
           (add-before 'configure 'setenv
