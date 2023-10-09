@@ -5883,7 +5883,7 @@ set.")
      (list openblas lapack))
     (arguments
      `(#:modules ((srfi srfi-1)
-                  ,@%default-gnu-imported-modules)
+                  ,@%default-gnu-modules)
        #:configure-flags '("--enable-shared"
                            "--disable-fortran"
                            "--without-MPI"
