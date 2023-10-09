@@ -572,7 +572,7 @@ whole-system symbolic access, and can also handle simple tracing jobs.")
      (list
       #:modules
       `((ice-9 match)
-        ,@%default-gnu-imported-modules)
+        ,@%default-gnu-modules)
       #:make-flags
       #~(list
          (string-append "CC=" #$(cc-for-target)))
