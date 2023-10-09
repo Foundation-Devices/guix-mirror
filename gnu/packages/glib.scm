@@ -153,7 +153,6 @@
            docbook-xsl
            doxygen
            xmlto
-           libxml2 ;for XML_CATALOG_FILES
            libxslt
            yelp-tools))
     (inputs

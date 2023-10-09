@@ -738,7 +738,6 @@ highlighting and other features typical of a source code editor.")
            ;; For the documentation.
            docbook-xml-4.3
            docbook-xsl
-           libxml2                      ;for XML_CATALOG_FILES
            libxslt))                    ;for xsltproc
     (native-search-paths
      ;; This file is produced by the gdk-pixbuf-loaders-cache-file
