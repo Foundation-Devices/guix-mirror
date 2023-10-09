@@ -115,7 +115,7 @@
       #:imported-modules `((guix build python-build-system)
                            ,@%default-gnu-imported-modules)
       #:modules `(((guix build python-build-system) #:select (python-version))
-                  ,@%default-gnu-imported-modules)
+                  ,@%default-gnu-modules)
       #:tests? #f
       #:configure-flags
       #~(let ((icu (dirname (dirname (search-input-file
