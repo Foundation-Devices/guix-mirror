@@ -589,7 +589,7 @@ featuring various improvements and bug fixes.")))
        #:parallel-build? #f
        #:tests? #f ;; no tests-suite
        #:modules ((srfi srfi-1)
-                  ,@%gnu-build-system-modules)
+                  ,@%default-gnu-imported-modules)
        #:phases
        (modify-phases %standard-phases
          (add-after 'build 'make-doc
@@ -686,7 +686,7 @@ multipole-accelerated algorithm.")
        #:parallel-build? #f
        #:tests? #f ;; no tests-suite
        #:modules ((srfi srfi-1)
-                  ,@%gnu-build-system-modules)
+                  ,@%default-gnu-imported-modules)
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)

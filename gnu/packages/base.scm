@@ -1294,7 +1294,7 @@ to the @code{share/locale} sub-directory of this package.")
             ,@modules))
          ((#:imported-modules modules '())
           `((gnu build locale)
-            ,@%gnu-build-system-modules))
+            ,@%default-gnu-imported-modules))
          ((#:phases phases)
           `(modify-phases ,phases
              (replace 'build

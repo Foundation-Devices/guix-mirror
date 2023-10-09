@@ -1520,7 +1520,7 @@ driver for the X.Org X Server version 1.7 and later (X11R7.5 or later).")
          "1fi27b73x85qqar526dbd33av7mahca2ykaqwr7siqiw1qqcby6j"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:imported-modules (,@%gnu-build-system-modules
+     `(#:imported-modules (,@%default-gnu-imported-modules
                            (guix build python-build-system))
        #:phases
        (modify-phases %standard-phases

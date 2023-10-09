@@ -32,7 +32,7 @@
   ;; Build-side modules imported by default.
   `((guix build android-ndk-build-system)
     (guix build syscalls)
-    ,@%gnu-build-system-modules))
+    ,@%default-gnu-imported-modules))
 
 (define* (android-ndk-build name inputs
                             #:key

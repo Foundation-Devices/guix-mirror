@@ -636,9 +636,9 @@ transformed into common image formats for display or printing.")
                 "0wmvzx509lvigja6cfxh45r4b7wns64vmik0x4rz4y4fnxrhw2m2"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:imported-modules (,@%gnu-build-system-modules
+     `(#:imported-modules (,@%default-gnu-imported-modules
                            (guix build python-build-system))
-       #:modules (,@%gnu-build-system-modules
+       #:modules (,@%default-gnu-imported-modules
                   ((guix build python-build-system) #:select (site-packages)))
        #:configure-flags
        (list (string-append "--with-boost="

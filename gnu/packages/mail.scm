@@ -1170,7 +1170,7 @@ repository and Maildir/IMAP as LOCAL repository.")
           #:modules '((guix build gnu-build-system)
                       (guix build utils)
                       (guix build emacs-utils))
-          #:imported-modules `(,@%gnu-build-system-modules
+          #:imported-modules `(,@%default-gnu-imported-modules
                                (guix build emacs-utils))
           #:tests? #f
           #:configure-flags
@@ -4099,7 +4099,7 @@ It is a replacement for the @command{urlview} program.")
                      #:select (target-guile-effective-version))
                     (guix build utils))
         #:imported-modules `((guix build guile-build-system)
-                             ,@%gnu-build-system-modules)
+                             ,@%default-gnu-imported-modules)
 
         #:configure-flags '(list "--localstatedir=/var")
 
@@ -4680,7 +4680,7 @@ ex-like commands on it.")
                   ((guix build emacs-build-system) #:prefix emacs:)
                   (guix build utils)
                   (ice-9 string-fun))
-       #:imported-modules (,@%gnu-build-system-modules
+       #:imported-modules (,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
        #:make-flags (list (string-append "prefix=" %output)

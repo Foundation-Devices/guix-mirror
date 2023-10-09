@@ -616,7 +616,7 @@ formerly a part of telegram-cli, but now being maintained separately.")
        `(#:tests? #f                    ; No target
          #:imported-modules
          ((guix build copy-build-system)
-          ,@%gnu-build-system-modules)
+          ,@%default-gnu-imported-modules)
          #:modules
          (((guix build copy-build-system)
            #:prefix copy:)
@@ -686,7 +686,7 @@ formerly a part of telegram-cli, but now being maintained separately.")
        `(#:tests? #f                    ; No target
          #:imported-modules
          ((guix build copy-build-system)
-          ,@%gnu-build-system-modules)
+          ,@%default-gnu-imported-modules)
          #:modules
          (((guix build copy-build-system)
            #:prefix copy:)

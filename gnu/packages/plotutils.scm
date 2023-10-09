@@ -146,7 +146,7 @@ programs for plotting scientific data.")
     (build-system gnu-build-system)
     (arguments
      `(#:imported-modules ((guix build guile-build-system)
-                           ,@%gnu-build-system-modules)
+                           ,@%default-gnu-imported-modules)
        #:modules (((guix build guile-build-system)
                    #:select (target-guile-effective-version))
                   (guix build gnu-build-system)
@@ -340,7 +340,7 @@ colors, styles, options and details.")
                   (guix build gnu-build-system)
                   (guix build utils)
                   (srfi srfi-26))
-      #:imported-modules `(,@%gnu-build-system-modules
+      #:imported-modules `(,@%default-gnu-imported-modules
                            (guix build emacs-utils))
       #:configure-flags
       #~(list (string-append "--enable-gc=" #$(this-package-input "libgc"))

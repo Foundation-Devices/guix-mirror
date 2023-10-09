@@ -265,7 +265,7 @@ of 'uname -r' behind the Linux version numbers."
     (arguments
      (substitute-keyword-arguments
          (package-arguments linux)
-       ((#:imported-modules imported-modules %gnu-build-system-modules)
+       ((#:imported-modules imported-modules %default-gnu-imported-modules)
         `((guix build kconfig) ,@imported-modules))
        ((#:modules modules)
         `((guix build kconfig) ,@modules))
@@ -5624,7 +5624,7 @@ arrays when needed.")
                     (for-each delete-file-recursively directories)
                     (remove-store-references "sbin/mdadm")
                     (delete-file "sbin/mdmon")))))))
-       ((#:modules modules %gnu-build-system-modules)
+       ((#:modules modules %default-gnu-imported-modules)
         `((ice-9 ftw) ,@modules))
        ((#:strip-flags _ '())
         ''("--strip-all"))                        ;strip a few extra KiB
@@ -6982,7 +6982,7 @@ not as a replacement for it.")
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags (list "--disable-pywrap")
-       #:modules (,@%gnu-build-system-modules
+       #:modules (,@%default-gnu-imported-modules
                   (ice-9 binary-ports)
                   (rnrs bytevectors)
                   (srfi srfi-26))

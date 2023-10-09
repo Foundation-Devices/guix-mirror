@@ -499,8 +499,7 @@ display servers.  It supports many different languages and emoji.")
      (list
       #:tests? #f                       ;no check target
       #:modules `((srfi srfi-26)
-                  (guix build gnu-build-system)
-                  (guix build utils))
+                  ,@%default-gnu-modules)
       #:phases
       #~(modify-phases %standard-phases
         (add-after 'unpack 'patch-hardcoded-paths

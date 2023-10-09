@@ -60,7 +60,7 @@
   ;; Build-side modules imported by default.
   `((guix build dub-build-system)
     (guix build syscalls)
-    ,@%gnu-build-system-modules))
+    ,@%default-gnu-imported-modules))
 
 (define* (dub-build name inputs
                     #:key

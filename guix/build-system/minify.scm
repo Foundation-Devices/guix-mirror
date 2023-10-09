@@ -39,7 +39,7 @@
 (define %minify-build-system-modules
   ;; Build-side modules imported by default.
   `((guix build minify-build-system)
-    ,@%gnu-build-system-modules))
+    ,@%default-gnu-imported-modules))
 
 (define (default-uglify-js)
   "Return the default package to minify JavaScript source files."

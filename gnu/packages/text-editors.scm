@@ -1146,7 +1146,7 @@ used with the Scintilla editing component.")
            ))
     (arguments
      `(#:imported-modules ((guix build glib-or-gtk-build-system)
-                           ,@%gnu-build-system-modules)
+                           ,@%default-gnu-imported-modules)
        #:modules (((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
                   (guix build gnu-build-system)
                   (guix build utils))

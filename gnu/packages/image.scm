@@ -882,7 +882,7 @@ work.")
     (outputs (list "out" "pbmtools"))
     (arguments
      `(#:modules ((srfi srfi-26)
-                  ,@%gnu-build-system-modules)
+                  ,@%default-gnu-imported-modules)
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)            ; no configure script

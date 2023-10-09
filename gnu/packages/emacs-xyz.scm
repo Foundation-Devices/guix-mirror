@@ -2240,7 +2240,7 @@ for editing Racket's Scribble documentation syntax in Emacs.")
      `(#:modules ((guix build gnu-build-system)
                   ((guix build emacs-build-system) #:prefix emacs:)
                   (guix build utils))
-       #:imported-modules (,@%gnu-build-system-modules
+       #:imported-modules (,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
        #:configure-flags (list (string-append "--with-lispdir="
@@ -2353,8 +2353,8 @@ replacement.")
       #:modules `((ice-9 match)
                   (srfi srfi-26)
                   ((guix build emacs-build-system) #:prefix emacs:)
-                  ,@%gnu-build-system-modules)
-      #:imported-modules `(,@%gnu-build-system-modules
+                  ,@%default-gnu-imported-modules)
+      #:imported-modules `(,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
       #:phases
@@ -3139,7 +3139,7 @@ or unexpected behavior inside an elisp configuration file (typically
                   ((guix build emacs-build-system) #:prefix emacs:)
                   (guix build utils)
                   (guix build emacs-utils))
-      #:imported-modules `(,@%gnu-build-system-modules
+      #:imported-modules `(,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
       #:configure-flags
@@ -3694,7 +3694,7 @@ defined in RFC 2425 and RFC 2426 to/from The Insidious Big Brother Database
                   ((guix build emacs-build-system) #:prefix emacs:)
                   (guix build utils)
                   (guix build emacs-utils))
-      #:imported-modules `(,@%gnu-build-system-modules
+      #:imported-modules `(,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
       #:configure-flags
@@ -4256,7 +4256,7 @@ a set of simplified face specifications and a user-supplied color palette.")
        #:modules ((guix build gnu-build-system)
                   ((guix build emacs-build-system) #:prefix emacs:)
                   (guix build utils))
-       #:imported-modules (,@%gnu-build-system-modules
+       #:imported-modules (,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
        #:phases
@@ -5207,7 +5207,7 @@ during idle time, while Emacs is doing nothing else.")
                   ((guix build emacs-build-system) #:prefix emacs:)
                   (guix build utils)
                   (guix build emacs-utils))
-       #:imported-modules (,@%gnu-build-system-modules
+       #:imported-modules (,@%default-gnu-imported-modules
                            (guix build emacs-build-system)
                            (guix build emacs-utils))
        #:phases
@@ -5415,7 +5415,7 @@ type, for example: packages, buffers, files, etc.")
         #:modules '((guix build gnu-build-system)
                     ((guix build emacs-build-system) #:prefix emacs:)
                     (guix build utils))
-        #:imported-modules `(,@%gnu-build-system-modules
+        #:imported-modules `(,@%default-gnu-imported-modules
                              (guix build emacs-build-system)
                              (guix build emacs-utils))
         #:configure-flags
@@ -8466,7 +8466,7 @@ completion of relevant keywords.")
         #:modules `((guix build gnu-build-system)
                     ((guix build emacs-build-system) #:prefix emacs:)
                     (guix build utils))
-        #:imported-modules `(,@%gnu-build-system-modules
+        #:imported-modules `(,@%default-gnu-imported-modules
                              (guix build emacs-build-system)
                              (guix build emacs-utils))
         #:configure-flags
@@ -35419,7 +35419,7 @@ a @samp{date} keywords, and optionally, a @samp{filetags} keyword.")
        `(#:modules ((guix build gnu-build-system)
                     (guix build utils)
                     (guix build emacs-utils))
-         #:imported-modules (,@%gnu-build-system-modules
+         #:imported-modules (,@%default-gnu-imported-modules
                              (guix build emacs-utils))
          #:test-target "test"
          #:phases

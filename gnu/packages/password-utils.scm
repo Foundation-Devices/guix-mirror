@@ -845,7 +845,7 @@ key URIs using the standard otpauth:// scheme.")
      `(#:modules ((guix build gnu-build-system)
                   (guix build qt-utils)
                   (guix build utils))
-       #:imported-modules (,@%gnu-build-system-modules
+       #:imported-modules (,@%default-gnu-imported-modules
                             (guix build qt-utils))
        #:phases
        (modify-phases %standard-phases
