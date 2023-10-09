@@ -449,7 +449,7 @@ Go.  It also includes runtime support libraries for these languages.")
            ;; For native builds of GCC 4.9 and GCC 5, the C++ include path needs
            ;; to be adjusted so it does not interfere with GCC's own build processes.
            (substitute-keyword-arguments (package-arguments parent)
-             ((#:modules modules %default-gnu-imported-modules)
+             ((#:modules modules %default-gnu-modules)
               `((srfi srfi-1)
                 ,@modules))
              ((#:phases phases)
