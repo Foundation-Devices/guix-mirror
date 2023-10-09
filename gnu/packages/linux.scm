@@ -6982,7 +6982,7 @@ not as a replacement for it.")
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags (list "--disable-pywrap")
-       #:modules (,@%default-gnu-imported-modules
+       #:modules (,@%default-gnu-modules
                   (ice-9 binary-ports)
                   (rnrs bytevectors)
                   (srfi srfi-26))
