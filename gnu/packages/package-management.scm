@@ -1529,7 +1529,7 @@ environments.")
        (list
         #:modules `(((guix build guile-build-system)
                      #:select (target-guile-effective-version))
-                    ,@%default-gnu-imported-modules)
+                    ,@%default-gnu-modules)
         #:imported-modules `((guix build guile-build-system)
                              ,@%default-gnu-imported-modules)
         #:phases
