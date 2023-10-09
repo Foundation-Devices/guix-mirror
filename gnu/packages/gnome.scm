@@ -3065,11 +3065,18 @@ configuring CUPS.")
        (sha256
         (base32
          "0qa7cx6ra5hwqnxw95b9svgjg5q6ynm8y843iqjszxvds5z53h36"))))
+    (outputs '("out" "doc"))
     (build-system meson-build-system)
     (arguments
      (list
       #:phases
       #~(modify-phases %standard-phases
+          (add-after 'install 'move-doc
+            (lambda _
+              (let* ((old (string-append #$output "/share/gtk-doc"))
+                     (new (string-append #$output:doc "/share/gtk-doc")))
+                (mkdir-p (dirname new))
+                (rename-file old new)))))))
     (propagated-inputs (list gdk-pixbuf glib)) ;in Requires of libnotify.pc.
     (inputs (list gtk+ libpng))
     (native-inputs
