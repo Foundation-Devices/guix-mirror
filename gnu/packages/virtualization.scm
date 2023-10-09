@@ -1753,7 +1753,7 @@ domains, their live performance and resource utilization statistics.")
                             (search-input-file %build-inputs
                                                "/bin/xmlto")))
        #:modules ((ice-9 ftw)
-                  ,@%default-gnu-imported-modules)
+                  ,@%default-gnu-modules)
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)            ; no configure script
