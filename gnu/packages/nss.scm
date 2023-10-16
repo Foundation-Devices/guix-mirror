@@ -174,10 +174,7 @@ in the Mozilla clients.")
           (replace 'configure
             (lambda _
               (setenv "CC" #$(cc-for-target))
-              ;; TODO: Set this unconditionally
-              #$@(if (%current-target-system)
-                     #~((setenv "CCC" #$(cxx-for-target)))
-                     #~())
+              (setenv "CCC" #$(cxx-for-target))
               ;; No VSX on powerpc-linux.
               #$@(if (target-ppc32?)
                      #~((setenv "NSS_DISABLE_CRYPTO_VSX" "1"))
