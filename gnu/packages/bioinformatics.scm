@@ -4995,8 +4995,7 @@ quantitative phenotypes.")
                        (substitute* "rchive.go"
                          ;; This go library does not have any license.
                          (("github.com/fiam/gounidecode/unidecode")
-                          "golang.org/rainycape/unidecode"))
-                       #t))))
+                          "golang.org/rainycape/unidecode"))))))
     (build-system perl-build-system)
     (arguments
      `(#:phases
@@ -5009,8 +5008,7 @@ quantitative phenotypes.")
              ;; Ignore errors about missing xtract.Linux and rchive.Linux.
               (substitute* "pm-refresh"
                 (("cat \\\"\\$target")
-                 "grep ^[[:digit:]] \"$target"))
-              #t))
+                 "grep ^[[:digit:]] \"$target"))))
          (replace 'install
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let ((bin (string-append (assoc-ref outputs "out") "/bin"))
@@ -5026,8 +5024,7 @@ quantitative phenotypes.")
                (symlink (string-append edirect-go "/bin/xtract.Linux")
                         (string-append bin "/xtract"))
                (symlink (string-append edirect-go "/bin/rchive.Linux")
-                        (string-append bin "/rchive")))
-             #t))
+                        (string-append bin "/rchive")))))
          (add-after 'install 'wrap-program
            (lambda* (#:key outputs #:allow-other-keys)
               ;; Make sure everything can run in a pure environment.
@@ -5044,16 +5041,15 @@ quantitative phenotypes.")
                                            ,(dirname (which "grep"))
                                            ,(dirname (which "perl"))
                                            ,(dirname (which "uname"))))))
-                  (find-files out ".")))
-              #t))
+                  (find-files out ".")))))
          (add-after 'wrap-program 'check
            (lambda* (#:key outputs #:allow-other-keys)
              (invoke (string-append (assoc-ref outputs "out")
                                     "/bin/edirect.pl")
-                     "-filter" "-help")
-             #t)))))
+                     "-filter" "-help"))))))
     (inputs
-     (list edirect-go-programs
+     (list bash-minimal
+           edirect-go-programs
            perl-html-parser
            perl-encode-locale
            perl-file-listing
