@@ -2664,10 +2664,10 @@ modification time.")
                                                     "/lib/perl5/site_perl"))
                          '("perl-encode-locale" "perl-http-date"
                            "perl-http-message" "perl-html-parser" "perl-libwww"
-                           "perl-uri" "perl-try-tiny"))))
-               #t))))))
+                           "perl-uri" "perl-try-tiny"))))))))))
     (inputs
-     (list perl
+     (list bash-minimal                 ;for wrap-program
+           perl
            perl-encode-locale
            perl-html-parser
            perl-http-date
