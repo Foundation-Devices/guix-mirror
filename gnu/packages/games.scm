@@ -8181,6 +8181,7 @@ original.")
            unzip))
     (inputs
      (list alsa-lib
+           bash-minimal
            curl
            libjpeg-turbo
            libmodplug
