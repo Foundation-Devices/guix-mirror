@@ -7584,8 +7584,7 @@ predicts the locations of structural units in the sequences.")
               (snippet
                '(begin
                   ;; remove pre-built scripts
-                  (delete-file-recursively "src/BUILD/")
-                  #t))))
+                  (delete-file-recursively "src/BUILD/")))))
     (build-system gnu-build-system)
     (arguments
      `(#:test-target "test"
@@ -7598,13 +7597,11 @@ predicts the locations of structural units in the sequences.")
              (substitute* "Makefile"
                (("INSTALLDIR=.*")
                 (string-append
-                 "INSTALLDIR=" (assoc-ref outputs "out") "/bin\n")))
-             #t))
+                 "INSTALLDIR=" (assoc-ref outputs "out") "/bin\n")))))
          (add-before 'install 'make-install-directory
            ;; The install directory is not created during 'make install'.
            (lambda* (#:key outputs #:allow-other-keys)
-             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))
-             #t))
+             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))))
          (add-after 'install 'wrap-programs
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let ((path (getenv "PATH"))
@@ -7614,16 +7611,16 @@ predicts the locations of structural units in the sequences.")
                            (wrap-script script #:guile guile
                                         `("PATH" ":" prefix (,path))))
                          (cons (string-append out "/bin/proteinortho")
-                               (find-files out "\\.(pl|py)$"))))
-             #t)))))
+                               (find-files out "\\.(pl|py)$")))))))))
     (inputs
-     `(("guile" ,guile-3.0) ; for wrap-script
-       ("diamond" ,diamond)
-       ("perl" ,perl)
-       ("python" ,python-wrapper)
-       ("blast+" ,blast+)
-       ("lapack" ,lapack)
-       ("openblas" ,openblas)))
+     (list bash-minimal
+           guile-3.0         ; for wrap-script
+           diamond
+           perl
+           python-wrapper
+           blast+
+           lapack
+           openblas))
     (native-inputs
      (list which))
     (home-page "https://www.bioinf.uni-leipzig.de/Software/proteinortho")
