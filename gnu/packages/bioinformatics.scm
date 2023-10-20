@@ -17067,7 +17067,8 @@ choosing which reads pass the filter.")
                                          `("PERL5LIB" ":" prefix (,perl5lib))))
                           (find-files scripts "\\.pl"))))))))
     (inputs
-     (list guile-3.0                    ;for wrappers
+     (list bash-minimal
+           guile-3.0                    ;for wrappers
            eigen
            hdf5
            htslib
