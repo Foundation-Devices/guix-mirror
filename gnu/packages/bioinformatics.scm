@@ -11422,8 +11422,7 @@ secondary structure and comparative analysis in R.")
            ;; its R expression ‘1.10.1 >= 1.3.4’ evaluates to false.
            (lambda _
              (substitute* "configure"
-               (("1\\.3\\.4") "0.0.0"))
-             #t))
+               (("1\\.3\\.4") "0.0.0"))))
          (add-after 'install 'wrap-executable
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
@@ -11435,14 +11434,14 @@ secondary structure and comparative analysis in R.")
                (wrap-program (string-append out "/bin/rcas-web")
                  `("GUILE_LOAD_PATH" ":" = (,path))
                  `("GUILE_LOAD_COMPILED_PATH" ":" = (,path))
-                 `("R_LIBS_SITE" ":" = (,(getenv "R_LIBS_SITE")))))
-             #t)))))
+                 `("R_LIBS_SITE" ":" = (,(getenv "R_LIBS_SITE"))))))))))
     (inputs
-     `(("r-minimal" ,r-minimal)
-       ("r-rcas" ,r-rcas)
-       ("guile" ,guile-2.2)
-       ("guile-json" ,guile-json-1)
-       ("guile-redis" ,guile2.2-redis)))
+     (list bash-minimal
+           r-minimal
+           r-rcas
+           guile-2.2
+           guile-json-1
+           guile2.2-redis))
     (native-inputs
      (list pkg-config))
     (home-page "https://github.com/BIMSBbioinfo/rcas-web")
