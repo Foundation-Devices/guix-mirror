@@ -30,12 +30,14 @@
 ;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2021 Solene Rapenne <solene@perso.pw>
 ;;; Copyright © 2021 Petr Hodina <phodina@protonmail.com>
+;;; Copyright © 2021 Stefan Reichör <stefan@xsteve.at>
 ;;; Copyright © 2022 Felipe Balbi <balbi@kernel.org>
 ;;; Copyright © 2022 ( <paren@disroot.org>
-;;; Copyright © 2022 jgart <jgart@dismail.de>
+;;; Copyright © 2022, 2023 jgart <jgart@dismail.de>
 ;;; Copyright © 2023 Aaron Covrig <aaron.covrig.us@ieee.org>
 ;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 Jaeme Sifat <jaeme@runbox.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -76,6 +78,7 @@
   #:use-module (gnu packages crates-io)
   #:use-module (gnu packages crates-graphics)
   #:use-module (gnu packages crypto)
+  #:use-module (gnu packages curl)
   #:use-module (gnu packages dlang)
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages fontutils)
@@ -153,38 +156,56 @@ less to gain, as only the helper process is running with privileges (e.g.,
   (package
     (name "tilda")
     (version "1.5.4")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/lanoxx/tilda")
-                    (commit (string-append "tilda-" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "0q2i9ny8sh7zjzgvkx8vcvk593wcvchjc4xq4nrlqdd377r7cg5q"))))
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/lanoxx/tilda")
+             (commit (string-append "tilda-" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0q2i9ny8sh7zjzgvkx8vcvk593wcvchjc4xq4nrlqdd377r7cg5q"))))
     (build-system glib-or-gtk-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'make-po-writable
-           (lambda _
-             (for-each make-file-writable (find-files "po" "."))
-             #t)))))
-    (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("gettext" ,gettext-minimal)
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     (list libconfuse vte))
+     `(#:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'make-po-writable
+                    (lambda _
+                      (for-each make-file-writable
+                                (find-files "po" ".")) #t)))))
+    (native-inputs (list autoconf automake gettext-minimal pkg-config))
+    (inputs (list libconfuse vte))
     (synopsis "GTK+-based drop-down terminal")
-    (description "Tilda is a terminal emulator similar to normal terminals like
+    (description
+     "Tilda is a terminal emulator similar to normal terminals like
 gnome-terminal (GNOME) or Konsole (KDE), with the difference that it drops down
 from the edge of a screen when a certain configurable hotkey is pressed.  This
 is similar to the built-in consoles in some applications.  Tilda is highly
 configurable through a graphical wizard.")
     (home-page "https://github.com/lanoxx/tilda")
     (license license:gpl2+)))
+
+(define-public tilda-dbus
+  (package
+    (inherit tilda)
+    (name "tilda")
+    (version "1.6-alpha")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/lanoxx/tilda")
+             (commit "51a980a55ad6d750daa21d43a66d44577dad277b")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1pdarmlxkap9v689s88b89l5hi4vspsrrysh7pbm9rhdjmzk5m2c"))))
+    (synopsis "GTK+-based drop-down terminal with experimental D-Bus support")
+    (description
+     "Tilda is a terminal emulator similar to normal terminals like
+gnome-terminal (GNOME) or Konsole (KDE), with the difference that it drops down
+from the edge of a screen when a certain configurable hotkey is pressed.  This
+is similar to the built-in consoles in some applications.  Tilda is highly
+configurable through a graphical wizard.  This version enables D-Bus support
+which is necessary for using Tilda on Wayland.")))
 
 (define-public termite
   (package
@@ -228,7 +249,7 @@ managers.")
 (define-public asciinema
   (package
     (name "asciinema")
-    (version "2.3.0")
+    (version "2.4.0")
     (source
      (origin
        (method git-fetch)
@@ -237,7 +258,7 @@ managers.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0mqn12h51nqdmn1ya7hw1l2z2893937dqq4b1zh32y6bazd807fl"))))
+        (base32 "0qhf4sc5fl81rpq3rgzy7qcch620dh12scvsbdfczfbyjb10ps2i"))))
     (build-system pyproject-build-system)
     (arguments
      (list #:phases
@@ -581,7 +602,18 @@ to all types of devices that provide serial consoles.")
                      ;; The build environment lacks /dev/{console,tty*}.
                      ;; In fact, even nckx's regular Guix System lacks ttyS1…
                      ((": Permission denied")
-                      ": No such file or directory")))))))
+                      ": No such file or directory"))))
+               (add-before 'install 'install-rules
+                 (lambda _
+                   (mkdir-p (string-append #$output "/etc/udev/rules.d"))
+                   (with-output-to-file
+                       (string-append #$output
+                                      "/etc/udev/rules.d/70-pcspkr-beep.rules")
+                     (lambda _
+                       (display (string-append "\
+ACTION==\"add\", SUBSYSTEM==\"input\", ATTRS{name}==\"PC Speaker\", "
+                                               "ENV{DEVNAME}!=\"\", "
+                                               "TAG+=\"uaccess\"")))))))))
     (synopsis "Linux command-line utility to control the PC speaker")
     (description "beep allows the user to control the PC speaker with precision,
 allowing different sounds to indicate different events.  While it can be run
@@ -831,33 +863,34 @@ eye-candy, customizable, and reasonably lightweight.")
 (define-public foot
   (package
     (name "foot")
-    (version "1.15.3")
+    (version "1.16.2")
     (home-page "https://codeberg.org/dnkl/foot")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference (url home-page) (commit version)))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "1a224i2i7qk170kf2rzyxqcv3lnx9f548lwa37jgjr7i339x4zwf"))))
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url home-page)
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "00wac8li1ac8ncmnlqvz3xnr5pi8gj4v3v341n0h2zzaayv9ngw5"))))
     (build-system meson-build-system)
     (arguments
-     `(;; Using a "release" build is recommended both for performance, and
-       ;; also to address a GCC 10 issue when doing PGO builds.
-       #:build-type "release"
-       ;; Enable LTO as recommended by INSTALL.md.
-       #:configure-flags '("-Db_lto=true")))
-    (native-inputs
-     (list ncurses ;for 'tic'
-           pkg-config scdoc wayland-protocols))
+     (list
+      ;; Using a "release" build is recommended both for performance, and
+      ;; also to address a GCC 10 issue when doing PGO builds.
+      #:build-type "release"
+      ;; Enable LTO as recommended by INSTALL.md.
+      #:configure-flags #~'("-Db_lto=true")))
+    (native-inputs (list ncurses ;for 'tic'
+                         pkg-config scdoc wayland-protocols))
     (native-search-paths
      ;; FIXME: This should only be located in 'ncurses'.  Nonetheless it is
      ;; provided for usability reasons.  See <https://bugs.gnu.org/22138>.
      (list (search-path-specification
             (variable "TERMINFO_DIRS")
             (files '("share/terminfo")))))
-    (inputs
-     (list fcft libxkbcommon wayland))
+    (inputs (list fcft libxkbcommon wayland))
     (synopsis "Wayland-native terminal emulator")
     (description
      "@command{foot} is a terminal emulator for systems using the Wayland
@@ -1075,14 +1108,14 @@ usable with any list--including files, command history, processes and more.")
 (define-public python-pyte
   (package
     (name "python-pyte")
-    (version "0.7.0")
+    (version "0.8.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pyte" version))
        (sha256
         (base32
-         "1an54hvyjm8gncx8cgabz9mkpgjkdb0bkyjlkh7g7f94nr3wnfl7"))))
+         "1c4pn2qijk6q8q25klfq365gbvlkrh8c0lz5lrr7b7kmh6vx3gxr"))))
     (build-system python-build-system)
     (arguments
      '(#:phases
@@ -1384,30 +1417,20 @@ comfortably in a pager or editor.
 (define-public eternalterminal
   (package
     (name "eternalterminal")
-    (version "6.0.13")
+    (version "6.2.4")
     (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/MisterTea/EternalTerminal")
-               (commit (string-append "et-v" version))))
-        (file-name (git-file-name name version))
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/MisterTea/EternalTerminal")
+             (commit (string-append "et-v" version))))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "0sb1hypg2276y8c2a5vivrkcxp70swddvhnd9h273if3kv6j879r"))))
+        (base32 "13vhr701j85ga37d53339bxgrf9fqa6z1zcp6s3ly5bb8p7lyvzm"))))
     (build-system cmake-build-system)
     (arguments
-     '(#:configure-flags '("-DBUILD_TEST=ON")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'insert-googletests
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((tests (assoc-ref inputs "googletest")))
-               (copy-recursively tests "external/googletest"))
-             #t)))))
-    (inputs
-     (list gflags libsodium protobuf))
-    (native-inputs
-     `(("googletest" ,(package-source googletest))))
+     '(#:configure-flags '("-DBUILD_TEST=ON" "-DDISABLE_VCPKG=1")))
+    (inputs (list libsodium protobuf openssl zlib curl))
     (home-page "https://mistertea.github.io/EternalTerminal/")
     (synopsis "Remote shell that reconnects without interrupting the session")
     (description "@dfn{Eternal Terminal} (ET) is a remote shell that

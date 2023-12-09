@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2017-2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2018 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2021, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
@@ -30,7 +30,7 @@
   #:use-module (guix modules)
   #:use-module (guix utils)
   #:use-module (gnu packages)
-  #:use-module ((gnu packages base) #:select (glibc-utf8-locales))
+  #:use-module ((gnu packages base) #:select (libc-utf8-locales-for-target))
   #:use-module (gnu packages bootstrap)
   #:use-module ((gnu packages package-management) #:select (rpm))
   #:use-module ((gnu packages compression) #:select (squashfs-tools))
@@ -45,12 +45,6 @@
 
 ;; Globally disable grafts because they can trigger early builds.
 (%graft? #f)
-
-(define-syntax-rule (test-assertm name store exp)
-  (test-assert name
-    (let ((guile (package-derivation store %bootstrap-guile)))
-      (run-with-store store exp
-                      #:guile-for-build guile))))
 
 (define %gzip-compressor
   ;; Compressor that uses the bootstrap 'gzip'.
@@ -82,8 +76,14 @@
 ;; dependencies may be already there, or we can get substitutes or build them
 ;; quite inexpensively; see <https://bugs.gnu.org/32184>.
 (with-external-store store
+  (define-syntax-rule (test-assertm name exp)
+    (test-assert name
+      (let ((guile (package-derivation store %bootstrap-guile)))
+        (run-with-store store exp
+                        #:guile-for-build guile))))
+
   (unless store (test-skip 1))
-  (test-assertm "self-contained-tarball" store
+  (test-assertm "self-contained-tarball"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (profile -> (profile
@@ -136,7 +136,7 @@
       (built-derivations (list check))))
 
   (unless store (test-skip 1))
-  (test-assertm "self-contained-tarball + localstatedir" store
+  (test-assertm "self-contained-tarball + localstatedir"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (profile -> (profile
@@ -159,7 +159,7 @@
       (built-derivations (list check))))
 
   (unless store (test-skip 1))
-  (test-assertm "self-contained-tarball + localstatedir, UTF-8 file names" store
+  (test-assertm "self-contained-tarball + localstatedir, UTF-8 file names"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (tree    (interned-file-tree
@@ -197,8 +197,9 @@
                              ;; Make sure non-ASCII file names are properly
                              ;; handled.
                              (setenv "GUIX_LOCPATH"
-                                     #+(file-append glibc-utf8-locales
-                                                    "/lib/locale"))
+                                     #+(file-append
+                                        (libc-utf8-locales-for-target)
+                                        "/lib/locale"))
                              (setlocale LC_ALL "en_US.utf8")
 
                              (mkdir #$output)
@@ -210,7 +211,7 @@
       (built-derivations (list check))))
 
   (unless store (test-skip 1))
-  (test-assertm "docker-image + localstatedir" store
+  (test-assertm "docker-image + localstatedir"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (profile -> (profile
@@ -250,7 +251,7 @@
       (built-derivations (list check))))
 
   (unless store (test-skip 1))
-  (test-assertm "squashfs-image + localstatedir" store
+  (test-assertm "squashfs-image + localstatedir"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (profile -> (profile
@@ -289,7 +290,7 @@
       (built-derivations (list check))))
 
   (unless store (test-skip 1))
-  (test-assertm "deb archive with symlinks and control files" store
+  (test-assertm "deb archive with symlinks and control files"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (profile -> (profile
@@ -378,7 +379,7 @@
       (built-derivations (list check))))
 
   (unless store (test-skip 1))
-  (test-assertm "rpm archive can be installed/uninstalled" store
+  (test-assertm "rpm archive can be installed/uninstalled"
     (mlet* %store-monad
         ((guile   (set-guile-for-build (default-guile)))
          (profile -> (profile

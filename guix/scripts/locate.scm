@@ -114,14 +114,24 @@ alter table Packages
 add column output text;
 ")))
 
+;; XXX: missing in guile-sqlite3@0.1.3
+(define SQLITE_BUSY 5)
+
 (define (call-with-database file proc)
-  (let ((db (sqlite-open file)))
-    (dynamic-wind
-      (lambda () #t)
-      (lambda ()
-        (ensure-latest-database-schema db)
-        (proc db))
-      (lambda () (sqlite-close db)))))
+  (catch 'sqlite-error
+    (lambda ()
+      (let ((db (sqlite-open file)))
+        (dynamic-wind
+          (lambda () #t)
+          (lambda ()
+            (ensure-latest-database-schema db)
+            (proc db))
+          (lambda () (sqlite-close db)))))
+    (lambda (key who code errmsg)
+      (if (= code SQLITE_BUSY)
+          (leave (G_ "~a: database is locked by another process~%")
+                 file)
+          (throw key who code errmsg)))))
 
 (define (ensure-latest-database-schema db)
   "Ensure DB follows the latest known version of the schema."
@@ -196,10 +206,15 @@ SELECT version FROM SchemaVersion ORDER BY version DESC LIMIT 1;"
   ;; System-wide database file name.
   (string-append %localstatedir "/cache/guix/locate/db.sqlite"))
 
-(define (suitable-database create?)
+(define (file-age stat)
+  "Return the age of the file denoted by STAT in seconds."
+  (- (current-time) (stat:mtime stat)))
+
+(define (suitable-database create? age-update-threshold)
   "Return a suitable database file.  When CREATE? is true, the returned
 database will be opened for writing; otherwise, return the most recent one,
-user or system."
+user or system.  Do not return the system database if it is older than
+AGE-UPDATE-THRESHOLD seconds."
   (if (zero? (getuid))
       system-database-file
       (if create?
@@ -207,10 +222,13 @@ user or system."
           (let ((system (stat system-database-file #f))
                 (user   (stat user-database-file #f)))
             (if user
-                (if (and system (> (stat:mtime system) (stat:mtime user)))
+                (if (and system
+                         (> (stat:mtime system) (stat:mtime user))
+                         (< (file-age system) age-update-threshold))
                     system-database-file
                     user-database-file)
-                (if system
+                (if (and system
+                         (< (file-age system) age-update-threshold))
                     system-database-file
                     user-database-file))))))
 
@@ -543,7 +561,7 @@ Locate FILE and return the list of packages that contain it.\n"))
 
 (define %options
   (list (option '(#\h "help") #f #f
-                (lambda args (show-help) (exit 0)))
+                (lambda args (leave-on-EPIPE (show-help)) (exit 0)))
         (option '(#\V "version") #f #f
                 (lambda (opt name arg result)
                   (show-version-and-exit "guix locate")))
@@ -595,10 +613,6 @@ Locate FILE and return the list of packages that contain it.\n"))
     ;; database.
     (* 9 30 (* 24 60 60)))
 
-  (define (file-age stat)
-    ;; Return true if TIME denotes an "old" time.
-    (- (current-time) (stat:mtime stat)))
-
   (with-error-handling
     (let* ((opts     (parse-command-line args %options
                                          (list %default-options)
@@ -610,7 +624,7 @@ Locate FILE and return the list of packages that contain it.\n"))
            (clear?   (assoc-ref opts 'clear?))
            (update?  (assoc-ref opts 'update?))
            (glob?    (assoc-ref opts 'glob?))
-           (database ((assoc-ref opts 'database) update?))
+           (database ((assoc-ref opts 'database) update? age-update-threshold))
            (method   (assoc-ref opts 'method))
            (files    (reverse (filter-map (match-lambda
                                             (('argument . arg) arg)
@@ -653,7 +667,7 @@ Locate FILE and return the list of packages that contain it.\n"))
                                  files)))
             (()
              (if (null? files)
-                 (unless update?
+                 (unless (or update? (assoc-ref opts 'clear?))
                    (leave (G_ "no files to search for~%")))
                  (leave (N_ "file~{ '~a'~} not found in database '~a'~%"
                             "files~{ '~a'~} not found in database '~a'~%"

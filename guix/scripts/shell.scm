@@ -26,6 +26,7 @@
   #:autoload   (guix transformations) (options->transformation
                                        transformation-option-key?
                                        show-transformation-options-help)
+  #:autoload   (guix grafts) (%graft?)
   #:use-module (guix scripts)
   #:use-module (guix packages)
   #:use-module (guix profiles)
@@ -115,7 +116,7 @@ interactive shell in that environment.\n"))
     (append
         (list (option '(#\h "help") #f #f
                       (lambda args
-                        (show-help)
+                        (leave-on-EPIPE (show-help))
                         (exit 0)))
               (option '(#\V "version") #f #f
                       (lambda args
@@ -354,6 +355,7 @@ performed--e.g., because the package cache is not authoritative."
         ;; be insufficient: <https://lwn.net/Articles/866582/>.
         (sha256 (string->utf8
                  (string-append primary-key ":" system ":"
+                                (if (%graft?) "" "ungrafted:")
                                 (number->string (stat:dev stat)) ":"
                                 (number->string (stat:ino stat))))))))))
 
@@ -366,6 +368,7 @@ is a list of package specs.  Return #f if caching is not possible."
      (bytevector->base32-string
       (sha256 (string->utf8
                (string-append primary-key ":" system ":"
+                              (if (%graft?) "" "ungrafted:")
                               (object->string specs))))))))
 
 (define (profile-cached-gc-root opts)
@@ -396,9 +399,16 @@ return #f and #f."
       ((('nesting? . #t) . rest)
        (loop rest system file (append specs '("nested guix"))))
       ((('load . ('package candidate)) . rest)
+       ;; This is 'guix shell -D -f guix.scm'.
        (if (and (not file) (null? specs))
            (loop rest system candidate specs)
            (values #f #f)))
+      ((('load . ('ad-hoc-package candidate)) . rest)
+       ;; When running 'guix shell -f guix.scm', one typically expects
+       ;; 'guix.scm' to be evaluated every time because it may contain
+       ;; references like (local-file "." #:recursive? #t).  Thus, disable
+       ;; caching.
+       (values #f #f))
       ((('manifest . candidate) . rest)
        (if (and (not file) (null? specs))
            (loop rest system candidate specs)

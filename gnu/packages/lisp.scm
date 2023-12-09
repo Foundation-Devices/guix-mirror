@@ -999,7 +999,7 @@ the HTML documentation of TXR.")
 (define-public txr
   (package
     (name "txr")
-    (version "291")
+    (version "292")
     (source
      (origin
        (method git-fetch)
@@ -1008,7 +1008,7 @@ the HTML documentation of TXR.")
              (commit (string-append "txr-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0nsb302arpd2mw2z2l12j6yg9pp94lfb79h3sym72ih7rmklnfx7"))))
+        (base32 "0lly446pinfrr5d4rgsas8c7kqal2g03bbsbmn0yvhvazb39c15g"))))
     (build-system gnu-build-system)
     (arguments
      (list #:configure-flags
@@ -1061,8 +1061,9 @@ the HTML documentation of TXR.")
                                '("txr-manpage.html" "txr-manpage.pdf")))))
                (add-after 'install 'install-vim-files
                  (lambda _
-                   (let ((syntax (string-append #$output
-                                                "/share/vim/vimfiles/syntax")))
+                   (let ((syntax (string-append
+                                   #$output
+                                   "/share/vim/vimfiles/pack/guix/start/txr/syntax")))
                      (install-file "tl.vim" syntax)
                      (install-file "txr.vim" syntax)))))))
     (native-inputs
@@ -1246,7 +1247,7 @@ including a built-in database engine and a GUI system.")
 (define-public janet
   (package
     (name "janet")
-    (version "1.29.1")
+    (version "1.32.1")
     (source
      (origin
        (method git-fetch)
@@ -1255,7 +1256,7 @@ including a built-in database engine and a GUI system.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "18684mxnb0jk63mkzi36zlmd8rjjv0msx3xxpmn67mhrnwz4x861"))))
+        (base32 "1nnqbpql6749597m0lp56i2zqm003pg690399l0g8kb9kwvpv1yv"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags
@@ -1439,7 +1440,7 @@ executable Common Lisp image.  It is similar to cl-launch and hu.dwim.build.")
 (define-public eisl
   (package
     (name "eisl")
-    (version "3.00")
+    (version "3.50")
     (source
      (origin
        (method git-fetch)
@@ -1448,7 +1449,7 @@ executable Common Lisp image.  It is similar to cl-launch and hu.dwim.build.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0nppbzfdx4cjy72b4n0yk177i7063a0nhsrs9b1y45y4avbrbl00"))))
+        (base32 "18alxwpvkcjfm63bc5kp6nn8351fl0p0ccxc8j9a7nb3fmg4fvyb"))))
     (build-system gnu-build-system)
     (inputs
      (list bash-minimal freeglut gdbm libiconv ncurses tcl tk))

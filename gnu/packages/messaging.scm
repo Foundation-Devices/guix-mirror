@@ -28,7 +28,7 @@
 ;;; Copyright © 2020, 2022 Raghav Gururajan <rg@raghavgururajan.name>
 ;;; Copyright © 2020, 2021 Robert Karszniewicz <avoidr@posteo.de>
 ;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
-;;; Copyright © 2021 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
+;;; Copyright © 2021, 2023 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
 ;;; Copyright © 2021 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 jgart <jgart@dismail.de>
 ;;; Copyright © 2022 Aleksandr Vityazev <avityazev@posteo.org>
@@ -1483,14 +1483,14 @@ Qt-based XMPP library QXmpp.")
 (define-public prosody
   (package
     (name "prosody")
-    (version "0.12.3")
+    (version "0.12.4")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://prosody.im/downloads/source/"
                                   "prosody-" version ".tar.gz"))
               (sha256
                (base32
-                "0091vc0v8xnxkpdi4qpy4dirn92y4pa09q1qssi40q7l3w1hvnim"))))
+                "0mjqss1h2cw0nlyj9nkxdg1bnq1j0zndlv1g8665aa9g7hki5ms7"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ;tests require "busted"
@@ -2640,11 +2640,11 @@ replacement.")
     (license license:gpl2+)))
 
 (define-public tdlib
-  (let ((commit "4d1d22d6f477d61f6ff2b8f6e49de1847092c5b4")
+  (let ((commit "4ed0b23c9c99868ab4d2d28e8ff244687f7b3144")
         (revision "0"))
     (package
       (name "tdlib")
-      (version (git-version "1.8.16" revision commit))
+      (version (git-version "1.8.20" revision commit))
       (source
        (origin
          (method git-fetch)
@@ -2652,7 +2652,7 @@ replacement.")
                (url "https://github.com/tdlib/td")
                (commit commit)))
          (sha256
-          (base32 "0nv921k795kq0l993rxzd5pm5v3l3mnwbaxb7d7d0m0506l4w9fk"))
+          (base32 "16kprlcnphi89yfwgnlaxjwwb1xx24az8xd710rx8cslb4zv00qw"))
          (file-name (git-file-name name version))))
       (build-system cmake-build-system)
       (arguments
@@ -3198,7 +3198,7 @@ designed for experienced users.")
 (define-public matterbridge
   (package
     (name "matterbridge")
-    (version "1.25.2")
+    (version "1.26.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3207,7 +3207,7 @@ designed for experienced users.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0csvxsgl62fjkrmk0wy64h2qaiy16m0wh6pqfbhz0kfacq16p9an"))))
+                "0939fiy7z53izznfhlr7c6vaskbmkbj3ncb09fzx5dmz9cjngy80"))))
     ;; Using the go-build-system results in the same error message
     ;; than in the bug 1551[1]. So we fix it by running go build
     ;; manually in the git repository as-is as this is the solution
@@ -3384,7 +3384,7 @@ Weechat communicate over the Matrix protocol.")
 (define-public weechat-wee-slack
   (package
     (name "weechat-wee-slack")
-    (version "2.9.1")
+    (version "2.10.1")
     (source
      (origin
        (method git-fetch)
@@ -3394,7 +3394,7 @@ Weechat communicate over the Matrix protocol.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1zhiwbljh4rgbj8i9rrcimi9v3a7g1nm7v2m2f754rnddck9343z"))))
+         "0ykzmn4q592ih9d6m5ks2dzbxkz3mj81sxwsn9g2vzsxj7w3p2r7"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -3419,9 +3419,9 @@ Weechat communicate over the Matrix protocol.")
              (when tests?
                (invoke "pytest")))))))
     (inputs
-     (list python-mock python-websocket-client))
+     (list python-websocket-client))
     (native-inputs
-     (list python-pytest))
+     (list python-mock python-pytest))
     (home-page "https://github.com/wee-slack/wee-slack")
     (synopsis "Weechat Slack script")
     (description "@code{weechat-wee-slack} is a WeeChat native client for
@@ -3523,5 +3523,58 @@ RPC client written in Python.")
 phone numbers (get validity information, reformat them, or extract numbers from
 a text snippet), using @code{libphonenumber}.")
     (license license:asl2.0)))
+
+(define-public senpai
+  (package
+    (name "senpai")
+    (version "0.2.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://git.sr.ht/~taiite/senpai")
+         (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1qw955i5f3jr42h4afr23v7wq616bcsyq68if75qdw8j1yibnpmb"))))
+    (build-system go-build-system)
+    (arguments
+      (list #:import-path "git.sr.ht/~taiite/senpai/cmd/senpai"
+            #:unpack-path "git.sr.ht/~taiite/senpai"
+            #:install-source? #f
+            #:phases
+            #~(modify-phases %standard-phases
+                (add-after 'build 'build-doc
+                  (lambda* (#:key unpack-path #:allow-other-keys)
+                    (invoke "make" "doc/senpai.1" "doc/senpai.5"
+                            "-C" (string-append "src/" unpack-path))))
+                (add-after 'install 'install-doc
+                  (lambda* (#:key unpack-path #:allow-other-keys)
+                    (let ((man1 (string-append #$output "/share/man/man1"))
+                          (man5 (string-append #$output "/share/man/man5")))
+                      (mkdir-p man1)
+                      (mkdir-p man5)
+                      (install-file
+                        (string-append "src/" unpack-path "/doc/senpai.1")
+                        man1)
+                      (install-file
+                        (string-append "src/" unpack-path "/doc/senpai.5")
+                        man5)))))))
+    (native-inputs (list go-git-sr-ht-emersion-go-scfg
+                         go-github-com-delthas-go-libnp
+                         go-github-com-delthas-go-localeinfo
+                         go-github-com-gdamore-tcell-v2
+                         go-github-com-mattn-go-runewidth
+                         go-golang-org-x-net
+                         go-golang-org-x-term
+                         go-golang-org-x-time
+                         go-mvdan-cc-xurls
+                         scdoc))
+    (home-page "https://sr.ht/~taiite/senpai")
+    (synopsis "Modern terminal IRC client")
+    (description
+     "@code{senpai} is an IRC client that works best with bouncers.")
+    (license license:isc)))
 
 ;;; messaging.scm ends here

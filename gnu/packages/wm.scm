@@ -64,6 +64,7 @@
 ;;; Copyright © 2023 Jonathan Brielamier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2023 Vessel Wave <vesselwave@disroot.org>
 ;;; Copyright © 2023 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2023 Jaeme Sifat <jaeme@runbox.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -786,7 +787,7 @@ desktop environment.")
 (define-public icewm
   (package
     (name "icewm")
-    (version "3.4.2")
+    (version "3.4.4")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -794,7 +795,7 @@ desktop environment.")
                     version "/icewm-" version ".tar.lz"))
               (sha256
                (base32
-                "1qki2r0x9d3yhxypa4i875qzr4dsjig6prs8pvj1w83yb0z4nk5n"))))
+                "0cdsb2d45dwcr2dm4jfh0z5g6pkb0ghd4jaybxqiz74mbw5rmjhv"))))
     (build-system gnu-build-system)
     (native-inputs (list pkg-config))
     (inputs (list fontconfig
@@ -1083,7 +1084,8 @@ drags, snap-to-border support, and virtual desktops.")
          (add-after 'install 'install-vim-files
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
-                    (syntax (string-append out "/share/vim/vimfiles/syntax")))
+                    (syntax (string-append
+                              out "/share/vim/vimfiles/pack/guix/start/fluxbox/syntax")))
                (copy-recursively "3rd/vim/vim/syntax" syntax)
                #t)))
          (add-after 'install 'install-xsession
@@ -1487,6 +1489,56 @@ It is inspired by Xmonad and dwm.  Its major features include:
     (description "Cwm is a stacking window manager for X11.  It is an OpenBSD
 project derived from the original Calm Window Manager.")
     (license license:isc)))
+
+(define-public dunst
+  (package
+    (name "dunst")
+    (version "1.9.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dunst-project/dunst")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "17zrw7jrnlyln81pxw7p4jgvl7j1w1gf488nfskhns6j6dcz90gh"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f ;no check target
+      #:make-flags #~(list (string-append "CC="
+                                          #$(cc-for-target))
+                           (string-append "PREFIX=" %output)
+                           (string-append "SYSCONFDIR=" %output "/etc")
+                           ;; Otherwise it tries to install service file
+                           ;; to "dbus" store directory.
+                           (string-append "SERVICEDIR_DBUS=" %output
+                                          "/share/dbus-1/services")
+                           "dunstify")
+      #:phases #~(modify-phases %standard-phases
+                   (delete 'configure))))
+    (native-inputs (list pkg-config perl ;for pod2man
+                         which))
+    (inputs (list dbus
+                  (librsvg-for-system) ;for svg support
+                  glib
+                  cairo
+                  pango
+                  libnotify ;for dunstify
+                  libx11
+                  libxscrnsaver
+                  libxinerama
+                  libxrandr
+                  libxdg-basedir
+                  wayland)) ;for wayland support
+    (home-page "https://dunst-project.org/")
+    (synopsis "Customizable and lightweight notification daemon")
+    (description
+     "Dunst is a highly configurable and minimalistic notification daemon.
+It provides @code{org.freedesktop.Notifications} D-Bus service, so it is
+started automatically on the first call via D-Bus.")
+    (license license:bsd-3)))
 
 (define-public dwl
   (package
@@ -1986,7 +2038,7 @@ core/thread.")
 (define-public wlr-randr
   (package
     (name "wlr-randr")
-    (version "0.3.0")
+    (version "0.3.1")
     (source
      (origin
        (method git-fetch)
@@ -1995,7 +2047,7 @@ core/thread.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0cj24fb6s7n8nphvhrp8ldrivjdcrjw64i5v9rsfb6z80q4qg548"))))
+        (base32 "13mya6j5z7cwg2a973y28ya8w36kxhj0fgj8bk9z6yf2w0ryr5xv"))))
     (build-system meson-build-system)
     (inputs (list wayland))
     (native-inputs (list pkg-config))
@@ -2941,7 +2993,7 @@ read and write, and compatible with JSON.")
 (define-public labwc
   (package
     (name "labwc")
-    (version "0.6.4")
+    (version "0.6.5")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2950,13 +3002,14 @@ read and write, and compatible with JSON.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "00ajr7s8qywdfa9vhlfc02p1wwdcqaaa09pm1im9w6mrvb904lzh"))))
+                "04401k1i6b9s2v6mbhw5llla8fdpkhmgz826iva246iqch9z20lx"))))
     (build-system meson-build-system)
     (native-inputs
      (list pkg-config gettext-minimal scdoc))
     (inputs
      (list cairo
            glib
+           librsvg
            libxcb
            libxml2
            pango

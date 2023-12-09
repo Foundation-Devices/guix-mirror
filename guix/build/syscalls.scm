@@ -192,6 +192,7 @@
             terminal-window-size
             terminal-columns
             terminal-rows
+            terminal-string-width
             openpty
             login-tty
 
@@ -836,7 +837,8 @@ fdatasync(2) on the underlying file descriptor."
 (define-syntax fsword                             ;fsword_t
   (identifier-syntax long))
 
-(define linux? (string-contains %host-type "linux-gnu"))
+(define musl-libc? (string-contains %host-type "linux-musl"))
+(define linux? (string-contains %host-type "linux-"))
 
 (define-syntax define-statfs-flags
   (syntax-rules (linux hurd)
@@ -905,7 +907,7 @@ fdatasync(2) on the underlying file descriptor."
   (spare            (array fsword 4)))
 
 (define statfs
-  (let ((proc (syscall->procedure int "statfs64" '(* *))))
+  (let ((proc (syscall->procedure int (if musl-libc? "statfs" "statfs64") '(* *))))
     (lambda (file)
       "Return a <file-system> data structure describing the file system
 mounted at FILE."
@@ -1232,7 +1234,7 @@ system to PUT-OLD."
 
 (define (readdir-procedure name-field-offset sizeof-dirent-header
                            read-dirent-header)
-  (let ((proc (syscall->procedure '* "readdir64" '(*))))
+  (let ((proc (syscall->procedure '* (if musl-libc? "readdir" "readdir64") '(*))))
     (lambda* (directory #:optional (pointer->string pointer->string/utf-8))
       (let ((ptr (proc directory)))
         (and (not (null-pointer? ptr))
@@ -1244,7 +1246,7 @@ system to PUT-OLD."
 
 (define readdir*
   ;; Decide at run time which one must be used.
-  (if (string-contains %host-type "linux-gnu")
+  (if linux?
       (readdir-procedure (c-struct-field-offset %struct-dirent-header/linux
                                                 name)
                          sizeof-dirent-header/linux
@@ -1664,7 +1666,7 @@ bytevector BV at INDEX."
            (error "unsupported socket address" sockaddr)))))
 
 (define write-socket-address!
-  (if (string-contains %host-type "linux-gnu")
+  (if linux?
       write-socket-address!/linux
       write-socket-address!/hurd))
 
@@ -1696,7 +1698,7 @@ bytevector BV at INDEX."
            (vector family)))))
 
 (define read-socket-address
-  (if (string-contains %host-type "linux-gnu")
+  (if linux?
       read-socket-address/linux
       read-socket-address/hurd))
 
@@ -2334,6 +2336,26 @@ always a positive integer."
 PORT, trying to guess a reasonable value if all else fails.  The result is
 always a positive integer."
   (terminal-dimension window-size-rows port (const 25)))
+
+(define terminal-string-width
+  (let ((mbstowcs (and=> (false-if-exception
+                          (dynamic-func "mbstowcs" (dynamic-link)))
+                         (cute pointer->procedure int <> (list '* '* size_t))))
+        (wcswidth (and=> (false-if-exception
+                          (dynamic-func "wcswidth" (dynamic-link)))
+                         (cute pointer->procedure int <> (list '* size_t)))))
+    (if (and mbstowcs wcswidth)
+        (lambda (str)
+          "Return the width of a string as it would be printed on the terminal.
+This procedure accounts for characters that have a different width than 1, such
+as CJK double-width characters."
+          (let ((wchar (make-bytevector (* (+ (string-length str) 1) 4))))
+            (mbstowcs (bytevector->pointer wchar)
+                      (string->pointer str)
+                      (string-length str))
+            (wcswidth (bytevector->pointer wchar)
+                      (string-length str))))
+        string-length)))                      ;using a statically-linked Guile
 
 (define openpty
   (let ((proc (syscall->procedure int "openpty" '(* * * * *)

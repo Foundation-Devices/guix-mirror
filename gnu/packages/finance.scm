@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015, 2016, 2023 Andreas Enge <andreas@enge.fr>
-;;; Copyright © 2016, 2017, 2018 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016-2018, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2016, 2020 Hartmut Goebel <h.goebel@crazy-compilers.com>
 ;;; Copyright © 2017 Carlo Zancanaro <carlo@zancanaro.id.au>
@@ -143,7 +143,7 @@
   ;; <https://bitcoincore.org/en/lifecycle/#schedule>.
   (package
     (name "bitcoin-core")
-    (version "25.0")
+    (version "25.1")
     (source (origin
               (method url-fetch)
               (uri
@@ -151,7 +151,7 @@
                               version "/bitcoin-" version ".tar.gz"))
               (sha256
                (base32
-                "1hpbw6diyla75a6jrwsis9c5pnhpnnxwbznsik1s1fd35ks7rxjx"))))
+                "1jcq2686x6f1g8xk91h3qfw89v1klw931wbpbcvc5a6zv2cabhmy"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf
@@ -684,7 +684,7 @@ blockchain.")
   ;; the system's dynamically linked library.
   (package
     (name "monero")
-    (version "0.18.2.2")
+    (version "0.18.3.1")
     (source
      (origin
        (method git-fetch)
@@ -702,7 +702,7 @@ blockchain.")
             delete-file-recursively
             '("external/miniupnp" "external/rapidjson"))))
        (sha256
-        (base32 "0hi6grf2xnnra60g3dzspahi0rwyiad6hc07n3pq3aknmz5xx8d4"))))
+        (base32 "1k6mrgsvmqsfk95w8kjmp9v2fghjmmpj40667zndrw9jx1h85mwx"))))
     (build-system cmake-build-system)
     (native-inputs
      (list doxygen
@@ -789,7 +789,7 @@ the Monero command line client and daemon.")
 (define-public monero-gui
   (package
     (name "monero-gui")
-    (version "0.18.2.2")
+    (version "0.18.3.1")
     (source
      (origin
        (method git-fetch)
@@ -805,7 +805,7 @@ the Monero command line client and daemon.")
            ;; See the 'extract-monero-sources' phase.
            (delete-file-recursively "monero")))
        (sha256
-        (base32 "07gfvrxm3n0844ximm4rd3f3n0m125shpawdzg8blfjjbfr1k1ij"))))
+        (base32 "1fjx8gdzc1pmfsi14r09gfmkglvh560pnxk70p0k82a4gbs1vyz2"))))
     (build-system qt-build-system)
     (native-inputs
      `(,@(package-native-inputs monero)
@@ -954,7 +954,9 @@ Bech32 and segwit addresses.")
              (when tests?
                (invoke "pytest" "-v")))))))
     (propagated-inputs
-     (list python-configargparse
+     (list python-bech32
+           python-configargparse
+           python-cryptography
            python-daemon
            python-docutils
            python-ecdsa
@@ -967,8 +969,6 @@ Bech32 and segwit addresses.")
            python-wheel))
     (native-inputs ; Only needed for running the tests
      (list gnupg
-           python-bech32
-           python-cryptography
            python-mock
            python-pytest))
     (home-page "https://github.com/romanz/trezor-agent")
@@ -1959,13 +1959,13 @@ that allows you to run services and through them access the Bitcoin Cash network
 (define-public beancount
   (package
     (name "beancount")
-    (version "2.3.5")
+    (version "2.3.6")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "beancount" version))
        (sha256
-        (base32 "0sn3x6c5vwvdfak1qm0y4vv284izrc4dly31mqyd9jz9l8jmdqql"))
+        (base32 "0nj7sdh7wxc0hv8wxwqhw9v1zgx1sn4w92368ci2wzdmssz967w0"))
        (patches (search-patches "beancount-disable-googleapis-fonts.patch"))))
     (build-system python-build-system)
     (arguments
@@ -2301,7 +2301,7 @@ mining.")
 (define-public p2pool
   (package
     (name "p2pool")
-    (version "3.6.2")
+    (version "3.7")
     (source
      (origin
        (method git-fetch)
@@ -2310,7 +2310,7 @@ mining.")
              (commit (string-append "v" version))
              (recursive? #t)))
        (file-name (git-file-name name version))
-       (sha256 (base32 "0lki6yrzmmpd5hj55m6s71y1cr81lbk1f3h9h70gmm4p4qjrv5f2"))
+       (sha256 (base32 "1sghdk8yq8si0bq0z83fji48q8yrq0ymvsxbbh5mscw6223syrjq"))
        (modules '((guix build utils)))
        (snippet
         #~(for-each delete-file-recursively

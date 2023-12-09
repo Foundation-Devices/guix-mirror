@@ -137,7 +137,8 @@ dependencies are registered."
 
             ;; Make sure non-ASCII file names are properly handled.
             (setenv "GUIX_LOCPATH"
-                    #+(file-append glibc-utf8-locales "/lib/locale"))
+                    #+(file-append (libc-utf8-locales-for-target (%current-system))
+                                   "/lib/locale"))
             (setlocale LC_ALL "en_US.utf8")
 
             (sql-schema #$schema)
@@ -209,7 +210,10 @@ GLIBC-UT8-LOCALES package."
           (profile-locales? profile))
       #~(begin
           (setenv "GUIX_LOCPATH"
-                  #+(file-append glibc-utf8-locales "/lib/locale"))
+                  #+(file-append (let-system (system target)
+                                   (libc-utf8-locales-for-target
+                                    (or target system)))
+                                 "/lib/locale"))
           (setlocale LC_ALL "en_US.utf8"))
       #~(setenv "GUIX_LOCPATH" "unset for tests")))
 
@@ -507,7 +511,7 @@ added to the pack."
 image is a tarball conforming to the Docker Image Specification, compressed
 with COMPRESSOR.  It can be passed to 'docker load'.  If TARGET is true, it
 must a be a GNU triplet and it is used to derive the architecture metadata in
-the image."
+the image.  EXTRA-OPTIONS may contain the IMAGE-TAG keyword argument."
   (define database
     (and localstatedir?
          (file-append (store-database (list profile))
@@ -531,7 +535,7 @@ the image."
                          (guix build utils)
                          (guix profiles) (guix search-paths)
                          (srfi srfi-1) (srfi srfi-19)
-                         (ice-9 match))
+                         (ice-9 match) (ice-9 optargs))
 
             #$(procedure-source manifest->friendly-name)
 
@@ -560,23 +564,30 @@ the image."
 
             (setenv "PATH" #+(file-append archiver "/bin"))
 
-            (build-docker-image #$output
-                                (map store-info-item
-                                     (call-with-input-file "profile"
-                                       read-reference-graph))
-                                #$profile
-                                #:repository (manifest->friendly-name
-                                              (profile-manifest #$profile))
-                                #:database #+database
-                                #:system (or #$target %host-type)
-                                #:environment environment
-                                #:entry-point
-                                #$(and entry-point
-                                       #~(list (string-append #$profile "/"
-                                                              #$entry-point)))
-                                #:extra-files directives
-                                #:compressor #+(compressor-command compressor)
-                                #:creation-time (make-time time-utc 0 1))))))
+            (let-keywords '#$extra-options #f
+                          ((image-tag #f))
+              (build-docker-image #$output
+                                  (map store-info-item
+                                       (call-with-input-file "profile"
+                                         read-reference-graph))
+                                  #$profile
+                                  #:repository
+                                  (or image-tag
+                                      (manifest->friendly-name
+                                       (profile-manifest #$profile)))
+                                  #:database #+database
+                                  #:system (or #$target %host-type)
+                                  #:environment environment
+                                  #:entry-point
+                                  #$(and entry-point
+                                         #~(list
+                                            (string-append #$profile "/"
+                                                           #$entry-point)))
+                                  #:extra-files directives
+                                  #:compressor
+                                  #+(compressor-command compressor)
+                                  #:creation-time
+                                  (make-time time-utc 0 1)))))))
 
   (gexp->derivation (string-append name ".tar"
                                    (compressor-extension compressor))
@@ -1287,6 +1298,20 @@ last resort for relocation."
                    (alist-cons symbol arg result)
                    rest))))
 
+(define %docker-format-options
+  (list (required-option 'image-tag)))
+
+(define (show-docker-format-options)
+  (display (G_ "
+      --help-docker-format  list options specific to the docker format")))
+
+(define (show-docker-format-options/detailed)
+  (display (G_ "
+      --image-tag=NAME
+                         Use the given NAME for the Docker image repository"))
+  (newline)
+  (exit 0))
+
 (define %deb-format-options
   (list (required-option 'control-file)
         (required-option 'postinst-file)
@@ -1339,7 +1364,7 @@ last resort for relocation."
   ;; Specifications of the command-line options.
   (cons* (option '(#\h "help") #f #f
                  (lambda args
-                   (show-help)
+                   (leave-on-EPIPE (show-help))
                    (exit 0)))
          (option '(#\V "version") #f #f
                  (lambda args
@@ -1407,6 +1432,10 @@ last resort for relocation."
                  (lambda (opt name arg result)
                    (alist-cons 'bootstrap? #t result)))
 
+         (option '("help-docker-format") #f #f
+                 (lambda args
+                   (show-docker-format-options/detailed)))
+
          (option '("help-deb-format") #f #f
                  (lambda args
                    (show-deb-format-options/detailed)))
@@ -1415,7 +1444,8 @@ last resort for relocation."
                  (lambda args
                    (show-rpm-format-options/detailed)))
 
-         (append %deb-format-options
+         (append %docker-format-options
+                 %deb-format-options
                  %rpm-format-options
                  %transformation-options
                  %standard-build-options
@@ -1433,6 +1463,7 @@ Create a bundle of PACKAGE.\n"))
   (newline)
   (show-transformation-options-help)
   (newline)
+  (show-docker-format-options)
   (show-deb-format-options)
   (show-rpm-format-options)
   (newline)
@@ -1586,6 +1617,9 @@ Create a bundle of PACKAGE.\n"))
                                       manifest)))
                    (pack-format (assoc-ref opts 'format))
                    (extra-options (match pack-format
+                                    ('docker
+                                     (list #:image-tag
+                                           (assoc-ref opts 'image-tag)))
                                     ('deb
                                      (list #:control-file
                                            (process-file-arg opts 'control-file)

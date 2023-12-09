@@ -2056,7 +2056,7 @@ scripted in a Python-like language.")
 (define-public godot
   (package
     (name "godot")
-    (version "4.1.1")
+    (version "4.1.3")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2065,7 +2065,7 @@ scripted in a Python-like language.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1byy4zdsj8nq54rhmij7kl0mdh4zv3c056y6c7rjy17bqjq2n8fh"))
+                "1mwwzf77ixkalciqakn6q42g9sl2570didfll406sfs42wz534ng"))
               (modules '((guix build utils)
                          (ice-9 ftw)
                          (srfi srfi-1)))

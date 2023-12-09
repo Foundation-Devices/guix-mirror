@@ -1,5 +1,10 @@
-#!@GUILE@ \
---no-auto-compile -s
+#!/bin/sh
+# -*- mode: scheme; -*-
+# Extra care is taken here to ensure this script can run in most environments,
+# since it is invoked by 'git send-email'.
+pre_inst_env_maybe=
+command -v guix > /dev/null || pre_inst_env_maybe=./pre-inst-env
+exec $pre_inst_env_maybe guix repl -- "$0" "$@"
 !#
 
 ;;; GNU Guix --- Functional package management for GNU
@@ -295,6 +300,7 @@ asdf-build-system."
   (team 'go
         #:name "Go team"
         #:scope (list "gnu/packages/golang.scm"
+                      "gnu/packages/golang-check.scm"
                       "guix/build/go-build-system.scm"
                       "guix/build-system/go.scm"
                       "guix/import/go.scm"
@@ -518,6 +524,21 @@ GLib/GIO, GTK, GStreamer and Webkit."
         #:scope (list "gnu/packages/lxqt.scm"
                       "gnu/packages/qt.scm")))
 
+(define-team audio
+  (team 'audio
+        #:name "Audio team"
+        #:description "Audio related packages."
+        #:scope (list "gnu/packages/audio.scm")))
+
+(define-team zig
+  (team 'zig
+        #:name "Zig team"
+        #:description "Zig, Zig packages, and the zig-build system"
+        #:scope (list "gnu/packages/zig.scm"
+                      "gnu/packages/zig-xyz.scm"
+                      "guix/build/zig-build-system.scm"
+                      "guix/build-system/zig.scm")))
+
 
 (define-member (person "Eric Bavier"
                        "bavier@posteo.net")
@@ -647,6 +668,14 @@ GLib/GIO, GTK, GStreamer and Webkit."
                        "me@bonfacemunyoki.com")
   python lisp)
 
+(define-member (person "Gabriel Wicki"
+                       "gabriel@erlikon.ch")
+  audio)
+
+(define-member (person "Ekaitz Zarraga"
+                       "ekaitz@elenq.tech")
+  bootstrap zig)
+
 
 (define (find-team name)
   (or (hash-ref %teams (string->symbol name))
@@ -770,13 +799,16 @@ and REV-END, two git revision strings."
     files))
 
 (define (git-patch->commit-id file)
-  "Parse the commit ID from the first line of FILE, a patch produced with git."
+  "Parse the commit ID from FILE, a patch produced with git."
   (call-with-input-file file
     (lambda (port)
-      (let ((m (string-match "^From ([0-9a-f]{40})" (read-line port))))
-        (unless m
-          (error "invalid patch file:" file))
-        (match:substring m 1)))))
+      (let loop ((line (read-line port)))
+        (when (eof-object? line)
+          (error "could not find 'from' commit in patch" file))
+        (let ((m (string-match "^From ([0-9a-f]{40})" line)))
+          (if m
+           (match:substring m 1)
+           (loop (read-line port))))))))
 
 (define (git-patch->revisions file)
   "Return the start and end revisions of FILE, a patch file produced with git."

@@ -17,7 +17,7 @@
 ;;; Copyright © 2019 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2019 Ben Sturmfels <ben@sturm.com.au>
 ;;; Copyright © 2019,2020 Hartmut Goebel <h.goebel@crazy-compilers.com>
-;;; Copyright © 2020-2022 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2020-2023 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Timotej Lazar <timotej.lazar@araneo.si>
 ;;; Copyright © 2020, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
@@ -117,7 +117,7 @@
 (define-public capypdf
   (package
     (name "capypdf")
-    (version "0.5.0")
+    (version "0.6.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -125,7 +125,7 @@
                     (commit version)))
               (file-name (git-file-name name version))
               (sha256
-               (base32 "1mb3i0jq04gg5cm1l07mn9kal5s748miql97j6fpaf1x1j2lcrsx"))))
+               (base32 "15l8zwc83l65xh739s0qddlv5qv537wnx74s8fcwlm1r8y7kf2x4"))))
     (build-system meson-build-system)
     (arguments
      (list #:meson meson/newer
@@ -824,14 +824,14 @@ and based on PDF specification 1.7.")
 (define-public mupdf
   (package
     (name "mupdf")
-    (version "1.23.3")
+    (version "1.23.7")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://mupdf.com/downloads/archive/"
-                           "mupdf-" version "-source.tar.gz"))
+                           "mupdf-" version "-source.tar.lz"))
        (sha256
-        (base32 "1b8ajj5xmi2p9c92l8fd46amfshmxdw6zcg1hqajg8y0kd0ady8y"))
+        (base32 "0d0ig1amxyy50jvfbn6rz49zd0980p6syqzcx5v7wg0c3pl2iwwm"))
        (modules '((guix build utils)
                   (ice-9 ftw)
                   (srfi srfi-1)))
@@ -1003,7 +1003,7 @@ using a stylus.")
 (define-public xournalpp
   (package
     (name "xournalpp")
-    (version "1.1.3")
+    (version "1.2.2")
     (source
      (origin
        (method git-fetch)
@@ -1012,11 +1012,11 @@ using a stylus.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "17qq3clfmiyrcah89h8c5r6pc58xcskm5z1czbasv67bfq7chzhy"))))
+        (base32 "1svmdj43z1shm3wnkrdrq1h6rba843mp4x4d8jmxsx7kwiiz9l78"))))
     (build-system cmake-build-system)
     (arguments
      (list
-      #:configure-flags #~(list "-DENABLE_CPPUNIT=ON") ;enable tests
+      #:configure-flags #~(list "-DENABLE_GTEST=ON")
       #:imported-modules `((guix build glib-or-gtk-build-system)
                            ,@%cmake-build-system-modules)
       #:modules '(((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
@@ -1033,10 +1033,13 @@ using a stylus.")
                  (string-append "\""
                                 (search-input-file inputs "/bin/addr2line")
                                 " ")))))
+          (add-after 'build 'prepare-tests
+            (lambda _
+              (invoke "cmake" "--build" "." "--target" "test-units")))
           (add-after 'install 'glib-or-gtk-wrap
             (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap)))))
     (native-inputs
-     (list cppunit gettext-minimal help2man pkg-config))
+     (list cppunit gettext-minimal googletest help2man pkg-config))
     (inputs
      (list alsa-lib
            gtk+

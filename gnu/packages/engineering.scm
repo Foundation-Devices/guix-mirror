@@ -38,6 +38,7 @@
 ;;; Copyright © 2022, 2023 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2023 Theofilos Pechlivanis <theofilos.pechlivanis@gmail.com>
 ;;; Copyright © 2023 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2023 pinoaffe <pinoaffe@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -123,7 +124,9 @@
   #:use-module (gnu packages lisp)
   #:use-module (gnu packages m4)
   #:use-module (gnu packages man)
+  #:use-module (gnu packages markup)
   #:use-module (gnu packages maths)
+  #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages mpi)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages ncurses)
@@ -854,25 +857,30 @@ and others.")
 (define-public gerbv
   (package
     (name "gerbv")
-    (version "2.7.0")
+    (version "2.10.0")
     (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://sourceforge/gerbv/gerbv/gerbv-"
-                                  version "/gerbv-" version ".tar.gz"))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/gerbv/gerbv")
+                    (commit (string-append "v" version))))
               (sha256
                (base32
-                "1d2k43k7i4yvbpi4sw1263a8d0q98z2n7aqhmpinpkih8a681vn5"))))
+                "06bcm5zw7whsnnmfld3gl2j907lxc68gnsbzr2pc4w6qc923rgmj"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags '("CFLAGS=-fcommon")))
-    (native-inputs
-     `(("glib:bin" ,glib "bin")         ; for glib-compile-schemas, etc.
-       ("desktop-file-utils" ,desktop-file-utils)
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("cairo" ,cairo)
-       ("gtk" ,gtk+-2)))
-    (home-page "http://gerbv.geda-project.org/")
+    (native-inputs (list autoconf
+                         automake
+                         desktop-file-utils
+                         gettext-minimal
+                         `(,glib "bin")
+                         libtool
+                         pkg-config))
+    (inputs (list cairo
+                  ;; As of 2.10.0 gerbv is still GTK+2 only.  GTK 3/4 porting
+                  ;; issue: https://github.com/gerbv/gerbv/issues/71.
+                  gtk+-2))
+    (home-page "https://gerbv.github.io/")
     (synopsis "Gerber file viewer")
     (description
      "Gerbv is a viewer for files in the Gerber format (RS-274X only), which
@@ -1086,7 +1094,7 @@ Emacs).")
 (define-public kicad
   (package
     (name "kicad")
-    (version "7.0.8")
+    (version "7.0.9")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1094,7 +1102,7 @@ Emacs).")
                     (commit version)))
               (sha256
                (base32
-                "1gaj833hm3avyb7gyjnl4jk9cckcmj8084y6q45ysjvh283rxsy4"))
+                "1hq9rba1gcks14zwbr8nbicpsil4imslgfch6ll33fhizbks3fq4"))
               (file-name (git-file-name name version))))
     (build-system cmake-build-system)
     (arguments
@@ -1194,7 +1202,7 @@ electrical diagrams), gerbview (viewing Gerber files) and others.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1ya9kwcbsh8cqbinjr1hr14sd0g6rls1awmvw8hwd7715f97x8fg"))))
+                "14dg99fvl6av9sn6gig6d6k1sdcf2svxy4fipqcz994z2khhz1sj"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags (list "-DBUILD_FORMATS=html")
@@ -1228,7 +1236,7 @@ electrical diagrams), gerbview (viewing Gerber files) and others.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "176zb7df25vz3wbhs94plmpabcgzxsnzbqmpdyssqr7m2wb2424a"))))
+                "0ynsnjq3z126cjkgm1fjbjvdvpc0walnr42ya9dv46l27kxy2j77"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f))                    ; no tests exist
@@ -1257,7 +1265,7 @@ libraries.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1560m5mwwq0jrjhr8zdh2xrm1w7pgr250p81xzhdc4wj7zsb0rrp"))))
+                "16a4c2xs4i8wbm01a901yxabxk0qdsjkzlccfawddv82bkh4b87h"))))
     (synopsis "Official KiCad footprint libraries")
     (description "This package contains the official KiCad footprint libraries.")))
 
@@ -1274,7 +1282,7 @@ libraries.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1ypy2nzs1x8i98jr5kmlxfd6y592qs22aq73yl8nq0s6640fc4kk"))))
+                "1cly28vc07i54v487zbb8d1h70nrd3naxvq146b0xnbrjwnd2q28"))))
     (synopsis "Official KiCad 3D model libraries")
     (description "This package contains the official KiCad 3D model libraries.")))
 
@@ -1351,42 +1359,47 @@ the 'showing the effect of'-style of operation.")
     (license license:gpl2+)))
 
 (define-public valeronoi
-(package
-  (name "valeronoi")
-  (version "0.1.6")
-  (source
-   (origin
-     (method git-fetch)
-     (uri
-      (git-reference
-       (url "https://github.com/ccoors/Valeronoi")
-       (commit (string-append "v" version))))
-     (file-name (git-file-name name version))
-     (sha256
-      (base32 "1hpyh4mmjnxgkij7a6rynk2ril5413nkdvf8syn0lqvrmibdg7wv"))))
-  (build-system cmake-build-system)
-  (arguments
-   `(#:phases
-     (modify-phases %standard-phases
-       (replace 'check
-         (lambda* (#:key tests? #:allow-other-keys)
-           (when tests?
-             (invoke "./valeronoi-tests")))))))
-  (inputs
-   (list boost
-         cgal
-         gmp
-         libxkbcommon
-         mpfr
-         openssl
-         qtbase-5
-         qtsvg-5))
-  (home-page "https://github.com/ccoors/Valeronoi")
-  (synopsis "WiFi mapping companion application for Valetudo")
-  (description
-   "Valeronoi (Valetudo + Voronoi) is a companion for Valetudo for generating
+  (package
+    (name "valeronoi")
+    (version "0.2.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/ccoors/Valeronoi")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1qkhrqkjsmm0h1bxf2ihkqfhdr18xx5x1i2ds1mla13zm0bw2570"))
+       (snippet #~(begin
+                    (use-modules (guix build utils))
+                    (delete-file-recursively "3rdparty")
+                    (substitute* '("tests/test_colormap.cpp"
+                                   "tests/test_main.cpp")
+                      (("catch\\.hpp")
+                       "catch2/catch.hpp"))))))
+    (build-system cmake-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda* (#:key tests? #:allow-other-keys)
+                      (when tests?
+                        (invoke "./valeronoi-tests")))))))
+    (inputs (list boost
+                  cgal
+                  gmp
+                  libxkbcommon
+                  mpfr
+                  openssl
+                  qtbase
+                  qtsvg))
+    (native-inputs (list catch2))
+    (home-page "https://github.com/ccoors/Valeronoi")
+    (synopsis "WiFi mapping companion application for Valetudo")
+    (description
+     "Valeronoi (Valetudo + Voronoi) is a companion for Valetudo for generating
 WiFi signal strength maps.  It visualizes them using a Voronoi diagram.")
-  (license license:gpl3+)))
+    (license license:gpl3+)))
 
 (define-public volk
   (package
@@ -2318,33 +2331,101 @@ parallel computing platforms.  It also supports serial execution.")
 (define-public librepcb
   (package
     (name "librepcb")
-    (version "0.1.5")
+    (version "1.0.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://download.librepcb.org/releases/"
                            version "/librepcb-" version "-source.zip"))
+       (modules `((guix build utils)))
+       (snippet
+        ;; Delete libraries that we already have or don't need.
+        ;; TODO: try to unbundle more (see lib/).
+        `(begin
+           (let ((third-parties '("fontobene-qt5"
+                                  "googletest"
+                                  "hoedown"
+                                  "muparser"
+                                  "polyclipping"
+                                  "quazip")))
+             (with-directory-excursion "libs"
+               (map (lambda (third-party)
+                      (delete-file-recursively third-party))
+                    third-parties)))))
        (sha256
-        (base32 "0smp1p7wnrj0vh4rmz1cr2krfawc2lzx0pbzmgyay7xdp6jxympr"))))
-    (build-system gnu-build-system)
+        (base32 "02qfwyhdq1pklb5gkwn3rbsdhwvcgiksd21swaphz3kw6s4p9i8v"))))
+    (build-system cmake-build-system)
     (inputs
-     (list qtbase-5 qtsvg-5 zlib))
+     (list clipper
+           fontconfig
+           fontobene-qt5
+           glu
+           hoedown
+           muparser
+           opencascade-occt
+           qtbase-5
+           qtdeclarative-5
+           qtquickcontrols2-5
+           qtsvg-5
+           quazip
+           zlib))
     (native-inputs
-     (list qttools-5 ; for lrelease
+     (list googletest
+           pkg-config
+           qttools-5
            unzip))
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'configure
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (mkdir-p "build")
-             (chdir "build")
-             (let ((lrelease (search-input-file inputs "/bin/lrelease"))
-                   (out (assoc-ref outputs "out")))
-               (invoke "qmake"
-                       (string-append "QMAKE_LRELEASE=" lrelease)
-                       (string-append "PREFIX=" out)
-                       "../librepcb.pro")))))))
+     `(#:configure-flags (list
+                          "-DUNBUNDLE_FONTOBENE_QT5=ON"
+                          "-DUNBUNDLE_GTEST=ON"
+                          "-DUNBUNDLE_HOEDOWN=ON"
+                          "-DUNBUNDLE_MUPARSER=ON"
+                          "-DUNBUNDLE_POLYCLIPPING=ON"
+                          "-DUNBUNDLE_QUAZIP=ON")
+       #:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda* (#:key tests? #:allow-other-keys)
+                      (when tests?
+                        (let ((test-include (list "*"))
+                              (test-exclude
+                               (list
+                                ;; These tests all fail when run by the build
+                                ;; process even though they pass when manually
+                                ;; run as a normal user.
+
+                                ;; TODO: verify that the failing tests don't
+                                ;; point to any actual underlying issues
+                                "SystemInfoTest.testGetUsername"
+                                "OrderPcbDialogTest.testAutoOpenBrowser"
+                                "DxfImportDialogTest.testLayerName"
+                                "DxfImportDialogTest.testCirclesAsDrills"
+                                "DxfImportDialogTest.testJoinTangentPolylines"
+                                "DxfImportDialogTest.testLineWidth"
+                                "DxfImportDialogTest.testScaleFactor"
+                                "DxfImportDialogTest.testPlacementPosition"
+                                "GraphicsExportDialogTest.testPageSize"
+                                "GraphicsExportDialogTest.testOrientation"
+                                "GraphicsExportDialogTest.testMargins"
+                                "GraphicsExportDialogTest.testShowPinNumbers"
+                                "GraphicsExportDialogTest.testRotate"
+                                "GraphicsExportDialogTest.testMirror"
+                                "GraphicsExportDialogTest.testScale"
+                                "GraphicsExportDialogTest.testPixmapDpi"
+                                "GraphicsExportDialogTest.testBlackWhite"
+                                "GraphicsExportDialogTest.testBackgroundColor"
+                                "GraphicsExportDialogTest.testMinLineWidth"
+                                "GraphicsExportDialogTest.testLayerColors"
+                                "GraphicsExportDialogTest.testOpenExportedFiles"
+                                "AddComponentDialogTest.testAddMore")))
+                          (setenv "QT_QPA_PLATFORM" "offscreen")
+                          (setenv "QT_QUICK_BACKEND" "software")
+                          (display "Running unittests...\n")
+                          (invoke "./tests/unittests/librepcb-unittests"
+                                  (string-append
+                                   "--gtest_filter="
+                                   (string-join test-include ":")
+                                   "-"
+                                   (string-join test-exclude ":"))))))))))
     (home-page "https://librepcb.org/")
     (synopsis "Electronic Design Automation tool")
     (description "LibrePCB is @dfn{Electronic Design Automation} (EDA)
@@ -2352,17 +2433,12 @@ software to develop printed circuit boards.  It features human readable file
 formats and complete project management with library, schematic and board
 editors.")
     (license (list license:gpl3+
-                   license:boost1.0 ; libs/clipper,
-                                    ; libs/optional/tests/catch.hpp,
-                                    ; libs/sexpresso/tests/catch.hpp
+                   license:boost1.0 ; libs/optional/tests/catch.hpp,
                    license:expat ; libs/delaunay-triangulation,
                                  ; libs/parseagle, libs/type_safe
-                   license:asl2.0 ; libs/fontobene, libs/googletest,
-                                  ; libs/parseagle
-                   license:isc ; libs/hoedown
-                   license:cc0 ; libs/optional, libs/sexpresso
-                   license:bsd-2 ; libs/optional/tests/catch.hpp
-                   license:lgpl2.1+)))) ; libs/quazip
+                   license:asl2.0 ; libs/parseagle
+                   license:cc0 ; libs/optional
+                   license:bsd-2)))) ; libs/optional/tests/catch.hpp
 
 (define-public gpx
   (package
@@ -2600,7 +2676,7 @@ measurement devices and test equipment via GPIB, RS232, Ethernet or USB.")
 (define-public python-scikit-rf
   (package
     (name "python-scikit-rf")
-    (version "0.29.1")
+    (version "0.30.0")
     (source (origin
               (method git-fetch) ;PyPI misses some files required for tests
               (uri (git-reference
@@ -2608,7 +2684,7 @@ measurement devices and test equipment via GPIB, RS232, Ethernet or USB.")
                     (commit (string-append "v" version))))
               (sha256
                (base32
-                "11pbcgbq34xyjv5gjwi3a8cpgqqwmd73ps1fwyjajl26q2nkmcdh"))
+                "1fbws80glrakd08xzhifna831yk0bd8b0cizhfcjkg4km2nyx65c"))
               (file-name (git-file-name name version))))
     (build-system pyproject-build-system)
     (propagated-inputs (list python-matplotlib
@@ -2745,7 +2821,7 @@ comments.")))
 (define-public freecad
   (package
     (name "freecad")
-    (version "0.21.1")
+    (version "0.21.2")
     (source
      (origin
        (method git-fetch)
@@ -2754,7 +2830,7 @@ comments.")))
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0qwh6b1s432j5piwgfkphvz0slmxf0m8m8pdr3ny9zna9mghz42k"))))
+        (base32 "0s720q6vxlh78jzahqp69nl8wagb42l05dym5aqhfnr31dx666hc"))))
     (build-system qt-build-system)
     (native-inputs
      (list doxygen
@@ -3179,18 +3255,21 @@ program that can perform mesh processing tasks in batch mode, without a GUI.")
                   (delete-file "libpoke/pvm-vm1.c")
                   (delete-file "libpoke/pvm-vm2.c")))))
     (build-system gnu-build-system)
-    ;; The GUI, which we elide, requires tcl and tk.
     (native-inputs (list bison dejagnu flex libtool pkg-config))
     ;; FIXME: Enable NBD support by adding `libnbd' (currently unpackaged).
-    (inputs (list json-c libgc readline libtextstyle))
+    (inputs (list libgc readline libtextstyle))
     (arguments
-     ;; To build the GUI, add the `--enable-gui' configure flag.
-     ;; To enable the "hyperlink server", add the `--enable-hserver' flag.
-     `(#:configure-flags
-       '("--enable-mi"
-         "--disable-static"
-         ;; The emacs files are provided in emacs-poke.
-         "--with-lispdir=/tmp/share/emacs")))
+     (list
+      #:imported-modules `((guix build emacs-build-system)
+                           (guix build emacs-utils)
+                           ,@%default-gnu-imported-modules)
+      #:modules '((guix build gnu-build-system)
+                  ((guix build emacs-build-system) #:prefix emacs:)
+                  (guix build utils))
+      #:configure-flags
+      #~(list "--disable-static"
+              (string-append "--with-lispdir="
+                             (emacs:elpa-directory #$output)))))
     (home-page "https://www.gnu.org/software/poke/#documentation")
     (synopsis "Editing of arbitrary binary data")
     (description "GNU poke is an interactive, extensible editor for binary data.
@@ -3200,22 +3279,9 @@ data structures and to operate on them.")
     (license license:gpl3+)))
 
 (define-public emacs-poke
-  (package
-    (inherit poke)
-    (name "emacs-poke")
-    (build-system emacs-build-system)
-    (arguments
-     (list
-       #:phases
-       #~(modify-phases %standard-phases
-           (add-before 'expand-load-path 'change-working-directory
-             (lambda _ (chdir "etc"))))))
-    (inputs '())
-    (native-inputs '())
-    (synopsis "GNU Poke major modes for Emacs")
-    (description
-     "This package provides two Emacs major modes for working with GNU Poke:
-@code{Poke Ras mode} and @code{Poke Map mode}.")))
+  ;; The 'emacs-poke' name may eventually refer to 'poke' from ELPA, which is
+  ;; a different beast.
+  (deprecated-package "emacs-poke" poke))
 
 (define-public pcb2gcode
   (package

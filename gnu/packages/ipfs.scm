@@ -29,6 +29,7 @@
   #:use-module (guix download)
   #:use-module (guix build-system go)
   #:use-module (gnu packages golang)
+  #:use-module (gnu packages golang-check)
   #:use-module (gnu packages python)
   #:use-module (gnu packages shells)
   #:use-module (gnu packages syncthing))
@@ -218,18 +219,18 @@ powerful and simple.")
 written in Go.")
     (license license:expat)))
 
-(define-public go-ipfs
+(define-public kubo
   (package
-    (name "go-ipfs")
-    (version "0.13.0")
+    (name "kubo")
+    (version "0.15.0")
     (source
      (origin
        (method url-fetch/tarbomb)
        (uri (string-append
-             "https://dist.ipfs.io/go-ipfs/v" version
-             "/go-ipfs-source.tar.gz"))
+             "https://dist.ipfs.io/kubo/v" version
+             "/kubo-source.tar.gz"))
        (sha256
-        (base32 "1cx47ais2zn62c0r7lmrpfzia2gjyr61qi8my5wg3pj3dfr0fhkq"))
+        (base32 "0ss5k8xnzn9qk977dni5ja89yygcysdw7r3mdk67cac2dpa9hhqs"))
        (file-name (string-append name "-" version "-source"))
        (modules '((guix build utils)))
        (snippet '(for-each delete-file-recursively
@@ -282,8 +283,8 @@ written in Go.")
     (build-system go-build-system)
     (arguments
      (list
-      #:unpack-path "github.com/ipfs/go-ipfs"
-      #:import-path "github.com/ipfs/go-ipfs/cmd/ipfs"
+      #:unpack-path "github.com/ipfs/kubo"
+      #:import-path "github.com/ipfs/kubo/cmd/ipfs"
       #:phases
       #~(modify-phases %standard-phases
           ;; https://github.com/ipfs/kubo/blob/master/docs/command-completion.md
@@ -367,3 +368,6 @@ like a single bittorrent swarm, exchanging git objects.  IPFS provides an
 interface as simple as the HTTP web, but with permanence built in.  You can
 also mount the world at @code{/ipfs}.")
     (license license:expat)))
+
+(define-public go-ipfs
+  (deprecated-package "go-ipfs" kubo))

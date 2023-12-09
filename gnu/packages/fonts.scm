@@ -58,6 +58,7 @@
 ;;; Copyright © 2023 gemmaro <gemmaro.dev@gmail.com>
 ;;; Copyright © 2023 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
 ;;; Copyright © 2023 chris <chris@bumblehead.com>
+;;; Copyright © 2023 Luis Felipe López Acevedo <sirgazil@zoho.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -579,6 +580,10 @@ The unified Libertinus family consists of:
     (outputs (list "out" "pcf-8bit" "otb"))
     (arguments
      `(#:tests? #f                      ; no test target in tarball
+       #:modules
+       ((guix build gnu-build-system)
+        (guix build utils)
+        (ice-9 match))
        #:phases
        (modify-phases %standard-phases
          (add-after 'build 'build-more-bits
@@ -600,7 +605,16 @@ The unified Libertinus family consists of:
            (lambda* (#:key make-flags outputs #:allow-other-keys)
              (let ((otb (assoc-ref outputs "otb")))
                (apply invoke "make" "install-otb" (string-append "prefix=" otb)
-                      make-flags)))))))
+                      make-flags))))
+         (add-after 'install 'install-documentation
+           ;; There's no way to decypher the cryptic file names without this.
+           (lambda* (#:key outputs #:allow-other-keys)
+             (for-each (match-lambda
+                         ((name . directory)
+                          (install-file "README"
+                                        (string-append directory "/share/doc/"
+                                                       ,name "-" ,version))))
+                       outputs))))))
     (native-inputs
      (list bdftopcf font-util mkfontdir pkg-config python))
     (home-page "https://terminus-font.sourceforge.net/")
@@ -1001,15 +1015,16 @@ utilities to ease adding new glyphs to the font.")
 (define-public font-google-noto
   (package
     (name "font-google-noto")
-    (version "20171025")
+    (version "23.11.1")
     (source
      (origin
-       (method url-fetch/zipbomb)
-       (uri (string-append "https://noto-website-2.storage.googleapis.com/"
-                           "pkgs/Noto-hinted.zip"))
-       (file-name (string-append name "-" version ".zip"))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/notofonts/notofonts.github.io")
+             (commit (string-append "noto-monthly-release-" version))))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "1bp42whyin7xcgmrbnfvz3rvd98xmxaz3ywqybbjmqzwaa9llyw3"))))
+        (base32 "0vvxhky35l4i0ha60yw0gj26f3v33hpf2zax17yyj16mww4cn4d8"))))
     (build-system font-build-system)
     (home-page "https://www.google.com/get/noto/")
     (synopsis "Fonts to cover all languages")
@@ -1937,7 +1952,7 @@ weights and five widths in both Roman and Italic, plus variable fonts.")
 (define-public font-sarasa-gothic
   (package
     (name "font-sarasa-gothic")
-    (version "0.42.1")
+    (version "0.42.6")
     (source
      (origin
        (method url-fetch)
@@ -1945,7 +1960,7 @@ weights and five widths in both Roman and Italic, plus variable fonts.")
                            "/releases/download/v" version
                            "/sarasa-gothic-ttc-" version ".7z"))
        (sha256
-        (base32 "0lrhipis21cafpsf8wsrdavlblfgzz424r23rj78ik8npbws1a3v"))))
+        (base32 "0czx10yph2lxg2k4w6qjnil73zb2pgg3g400apm9gay41m04990v"))))
     (build-system font-build-system)
     (arguments
      `(#:phases (modify-phases %standard-phases
@@ -3144,7 +3159,7 @@ and readability.  This package bundles those icons into a font.")
 (define-public font-lxgw-wenkai
   (package
     (name "font-lxgw-wenkai")
-    (version "1.310")
+    (version "1.311")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -3152,7 +3167,7 @@ and readability.  This package bundles those icons into a font.")
                     version "/lxgw-wenkai-v" version ".tar.gz"))
               (sha256
                (base32
-                "10z8ilcpfxmll6j6ck4yj90x48vh3c7ck0lm61qjangpw9fcgfb1"))))
+                "0f5fnqcwp8kicrbkncn5j1w06cil771jfdcjf2w48vl62m4gmf27"))))
     (build-system font-build-system)
     (home-page "https://lxgw.github.io/2021/01/28/Klee-Simpchin/")
     (synopsis "Simplified Chinese Imitation Song typeface")
@@ -3166,7 +3181,7 @@ within GB 2312, standard glyphs for Mainland China is used.")
   (package
     (inherit font-lxgw-wenkai)
     (name "font-lxgw-wenkai-tc")
-    (version "1.010")
+    (version "1.011")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -3174,7 +3189,7 @@ within GB 2312, standard glyphs for Mainland China is used.")
                     version "/lxgw-wenkai-tc-v" version ".tar.gz"))
               (sha256
                (base32
-                "1yppqrfmynai1canlq0hksl3yaj8kflbnj41ljl4lxwaz6q9i1ly"))))
+                "0x83a7zg1w82bpilk84ajlisccf90kl01gz89fipgqji9nii71bv"))))
     (home-page "https://github.com/lxgw/LxgwWenKaitc")
     (synopsis "Traditional Chinese Imitation Song typeface")
     (description
@@ -3457,3 +3472,29 @@ interfaces.")
 is to provide fonts that conform to existing standards and recommendations, so
 that it can be a reference implementation.")
    (license license:gpl2+)))
+
+(define-public font-orbitron
+  (let ((version "0")
+        (commit "13e6a5222aa6818d81c9acd27edd701a2d744152")
+        (revision "0"))
+    (package
+      (name "font-orbitron")
+      (version (git-version version revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/theleagueof/orbitron")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "1c6jb7ayr07j1pbnzf3jxng9x9bbqp3zydf8mqdw9ifln1b4ycyf"))))
+      (build-system font-build-system)
+      (home-page "https://github.com/theleagueof/orbitron")
+      (synopsis "Futuristic geometric sans-serif")
+      (description "Orbitron is a geometric sans-serif typeface intended
+for display purposes.  It features four weights (light, medium, bold,
+and black), a stylistic alternative, small caps, and many alternate
+glyphs.")
+      (license license:silofl1.1))))

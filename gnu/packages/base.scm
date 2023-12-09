@@ -77,6 +77,8 @@
   #:use-module (srfi srfi-26)
   #:export (glibc
             libc-for-target
+            libc-locales-for-target
+            libc-utf8-locales-for-target
             make-ld-wrapper
             libiconv-if-needed
             %final-inputs))
@@ -1110,7 +1112,8 @@ with the Linux kernel.")
               (sha256
                (base32
                 "0bpm1kfi09dxl4c6aanc5c9951fmf6ckkzay60cx7k37dcpp68si"))
-              (patches (search-patches "glibc-ldd-powerpc.patch"
+              (patches (search-patches "glibc-2.35-CVE-2023-4911.patch"
+                                       "glibc-ldd-powerpc.patch"
                                        "glibc-ldd-x86_64.patch"
                                        "glibc-dl-cache.patch"
                                        "glibc-versioned-locpath.patch"
@@ -1560,6 +1563,11 @@ command.")
            (delete 'build)))))                  ; nothing to build
     (supported-systems %hurd-systems)))
 
+(define-public glibc-utf8-locales/hurd
+  ;; Locales for the libc version used on GNU/Hurd.
+  (hidden-package
+   (make-glibc-utf8-locales glibc/hurd)))
+
 (define* (libc-for-target #:optional
                           (target (or (%current-target-system)
                                       (%current-system))))
@@ -1568,6 +1576,26 @@ command.")
      glibc/hurd)
     (_
      glibc)))
+
+(define-public glibc-locales/hurd
+  ;; Locales again; hide them because their 'supported-systems' field suggests
+  ;; they're Hurd-only, making them non-installable on GNU/Linux.
+  (hidden-package
+   (make-glibc-locales glibc/hurd)))
+
+(define* (libc-locales-for-target #:optional
+                                  (target (or (%current-target-system)
+                                              (%current-system))))
+  (if (target-hurd? target)
+      glibc-locales/hurd
+      glibc-locales))
+
+(define* (libc-utf8-locales-for-target #:optional
+                                       (target (or (%current-target-system)
+                                                   (%current-system))))
+  (if (target-hurd? target)
+      glibc-utf8-locales/hurd
+      glibc-utf8-locales))
 
 (define-public tzdata
   (package

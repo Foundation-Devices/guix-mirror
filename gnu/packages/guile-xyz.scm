@@ -46,6 +46,7 @@
 ;;; Copyright © 2022, 2023 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2022 Evgeny Pisemsky <evgeny@pisemsky.com>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
+;;; Copyright © 2023 Andrew Tropin <andrew@trop.in>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -119,6 +120,7 @@
   #:use-module (gnu packages tex)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages tls)
+  #:use-module (gnu packages tree-sitter)
   #:use-module (gnu packages version-control)
   #:use-module (gnu packages webkit)
   #:use-module (gnu packages xdisorg)
@@ -728,7 +730,7 @@ you send to a FIFO file.")
 (define-public guile-dsv
   (package
     (name "guile-dsv")
-    (version "0.7.0")
+    (version "0.7.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -737,7 +739,7 @@ you send to a FIFO file.")
               (file-name (string-append name "-" version "-checkout"))
               (sha256
                (base32
-                "0shrzmbh6x3n3xzpcijkxk3f73z6m1i50zgc2dnnccwf4j1c78p2"))))
+                "18v8snh45ibh13mvihhajs226yflxpl6v09wqndyfj1da8cdmkzk"))))
     (build-system gnu-build-system)
     (native-inputs (list autoconf
                          automake
@@ -757,6 +759,7 @@ you send to a FIFO file.")
        #:imported-modules ((guix build guile-build-system)
                            ,@%default-gnu-imported-modules)
        #:phases (modify-phases %standard-phases
+                  (delete 'strip)
                   (add-after 'install 'wrap-program
                     (lambda* (#:key inputs outputs #:allow-other-keys)
                       (let* ((out (assoc-ref outputs "out"))
@@ -1100,6 +1103,35 @@ for calling methods on remote servers by exchanging JSON objects.")
     (home-page "https://codeberg.org/rgherdt/scheme-json-rpc/")
     (license license:expat)))
 
+(define-public guile-ares-rs
+  (package
+    (name "guile-ares-rs")
+    (version "0.9.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://git.sr.ht/~abcdw/guile-ares-rs")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0jl4k54ydi1qxdvif4di0ri5jznlfc2gg1qhs94bhk4y22k0gp8c"))))
+    (build-system guile-build-system)
+    (arguments
+     (list
+      #:source-directory "src"))
+    ;; Remove guile-next dependency, when guile package get custom text port
+    (inputs `(("guile" ,guile-next)))
+    (propagated-inputs (list guile-fibers))
+    (home-page "https://git.sr.ht/~abcdw/guile-ares-rs")
+    (synopsis "Asyncronous Reliable Extensible Sleek RPC Server for Guile")
+    (description "Asynchronous Reliable Extensible Sleek RPC Server for
+ Guile.  It's based on nREPL protocol and can be used for programmable
+ interactions with a running guile processes, for implementing REPLs, IDEs,
+ test runners or other tools.")
+    (license license:gpl3+)))
+
 (define-public guile-squee
   (let ((commit "9f2609563fc53466e46d37c8d8d2fbcfce67b2ba")
         (revision "5"))
@@ -1281,8 +1313,8 @@ works with Guile 1.4.x to 2.0.x.")
     (license license:gpl3+)))
 
 (define-public guile-prometheus
-  (let ((commit "35dc26c0ea44c3d70f1819f240d84e2cbb4b7b4c")
-        (revision "5"))
+  (let ((commit "4aaf902eb45b3a4c1003f854bda56c516fdf4f5b")
+        (revision "6"))
     (package
     (name "guile-prometheus")
     (version (git-version "0" revision commit))
@@ -1293,7 +1325,7 @@ works with Guile 1.4.x to 2.0.x.")
                     (commit commit)))
               (sha256
                (base32
-                "07822jj4appw37lf444kc4xlgl7nm64mgldag56072l55kwashgb"))
+                "03sr7wgksi9ys6jyzsnwanl2qqa8csi8jzcgrc3wfzp17vcc16yi"))
               (file-name (string-append name "-" version "-checkout"))))
     (build-system gnu-build-system)
     (native-inputs
@@ -1370,6 +1402,31 @@ non-mutating insert, delete, and search operations, with support for
 convenient nested tree operations.")
     (license license:gpl3+)))
 
+(define-public guile-algorithms
+  (package
+    (name "guile-algorithms")
+    (version "0.1")
+      (source
+        (origin
+          (method git-fetch)
+          (uri (git-reference
+                 (url "https://git@git.sr.ht/~filiplajszczak/guile-algorithms")
+                 (commit (string-append "v" version))))
+          (file-name (git-file-name name version))
+          (sha256
+            (base32
+             "1a4ffnnhw92gqphjji5ajy3xfaqzww7xv3h8p82gkawx0rqvj5ni"))))
+    (build-system gnu-build-system)
+    (native-inputs (list autoconf automake pkg-config texinfo))
+    (inputs (list guile-3.0))
+    (synopsis "Guile port of racket-algorithms")
+    (description
+     "Guile port of @url{https://docs.racket-lang.org/algorithms/index.html,
+racket-algorithms}, a package containing useful algorithms borrowed from other
+programming languages).")
+    (home-page "https://guile-algorithms.lajszczak.dev/")
+    (license license:gpl3+)))
+
 (define-public guile-aws
   (let ((commit "f32bea12333e1054b97ab50e58a72636edabb5b7")
         (revision "1"))
@@ -1401,8 +1458,8 @@ the Guile compiler tower to generate the DSL from AWS JSON specifications.")
       (license license:gpl3+))))
 
 (define-public guile-simple-zmq
-  (let ((commit "ff0b39aec9312517fb48681564e261bd000aaf63")
-        (revision "10"))
+  (let ((commit "d25d1865e3378d93c44e2b4f5246a70b078a489d")
+        (revision "11"))
     (package
       (name "guile-simple-zmq")
       (version (git-version "0.0.0" revision commit))
@@ -1414,7 +1471,7 @@ the Guile compiler tower to generate the DSL from AWS JSON specifications.")
                (commit commit)))
          (sha256
           (base32
-           "0qfnljap1cxkfsydadarvhcw4p6cgayxzbhqr6r1y0as0m8250q3"))
+           "1aq1s0f0z5g6qsv9jqr0663qv4rwxd9j1pmg1g8v6rl09xb8g8lp"))
          (file-name (git-file-name name version))))
       (build-system gnu-build-system)
       (arguments
@@ -3289,6 +3346,32 @@ serializing continuations or delimited continuations.")
 from @code{tree-il}.")
     (license license:lgpl2.0+)))
 
+(define-public guile-hoot
+  (package
+    (name "guile-hoot")
+    (version "0.2.0")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://spritely.institute/files/releases"
+                                  "/guile-hoot/guile-hoot-"
+                                  version ".tar.gz"))
+              (sha256
+               (base32
+                "1byshh7092q2yzqwpi59j4xjsppvp1xqnqsv94yv541qfm0plnc2"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:make-flags '("GUILE_AUTO_COMPILE=0"
+                      "WASM_HOST=hoot")))
+    (native-inputs
+     (list autoconf automake pkg-config texinfo))
+    (inputs
+     (list guile-next))
+    (synopsis "WebAssembly compiler backend for Guile")
+    (description "Guile Hoot is a WebAssembly compiler backend for GNU Guile
+and standalone WASM toolchain.")
+    (home-page "https://spritely.institute/hoot")
+    (license (list license:asl2.0 license:lgpl3+))))
+
 (define-public guile-file-names
   (package
     (name "guile-file-names")
@@ -4557,6 +4640,52 @@ models and also supports a rich set of boolean query operators.")
 according to Bitorrent BEP003.")
     (license license:gpl3+)))
 
+(define-public guile-ts
+  (package
+    (name "guile-ts")
+    (version "0.2.0")
+    (source (origin (method git-fetch)
+                    (uri (git-reference
+                          (url
+                           "https://github.com/Z572/guile-ts")
+                          (commit (string-append "v" version))))
+                    (file-name (git-file-name name version))
+                    (sha256
+                     (base32
+                      "1iqbr9rcpmq2f1zxxvl36ajwm81rkp38rrp42ixr4q59154r5513"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list #:make-flags #~(list "GUILE_AUTO_COMPILE=0")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'set-extension-path
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (substitute*
+                       (find-files "." ".*\\.scm")
+                     (("\\(load-extension \"libguile_ts\" *\"(.*)\"\\)" _ o)
+                      (string-append
+                       (object->string
+                        `(or (false-if-exception
+                              (load-extension "libguile_ts" ,o))
+                             (load-extension
+                              ,(string-append
+                                #$output
+                                "/lib/libguile_ts.so")
+                              ,o)))))))))))
+    (native-inputs
+     (list autoconf automake libtool texinfo pkg-config guile-3.0))
+    (inputs
+     (list guile-3.0 tree-sitter))
+    (native-search-paths
+     (list (search-path-specification
+            (variable "TREE_SITTER_GRAMMAR_PATH")
+            (files '("lib/tree-sitter")))))
+    (synopsis "Guile bindings to the Tree-sitter parsing library")
+    (description "This package provides Guile bindings to the Tree-sitter
+parsing library.")
+    (home-page "https://github.com/Z572/guile-ts")
+    (license license:gpl3+)))
+
 (define-public guile-irc
   (let ((commit "7d08ce6fdcb87ac668c5d3bfd5584247805507bb")
         (revision "1"))
@@ -5262,7 +5391,7 @@ locations.")
 (define-public guile-netlink
   (package
     (name "guile-netlink")
-    (version "1.2")
+    (version "1.2.1")
     (source
      (origin
        (method git-fetch)
@@ -5272,7 +5401,7 @@ locations.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "06ls830nrshzi2j532di5vdf03fp8cy1275ll4ms93x1hv2g8dk0"))))
+         "181drjshcz7pi5zwydwd702h7v8p1nh50q6slsw9q372k2bzyl4a"))))
     (build-system gnu-build-system)
     (inputs
      (list guile-3.0))
@@ -5440,7 +5569,7 @@ with a FSM is being built (for example, from a Makefile.)")
 (define-public guile-ini
   (package
     (name "guile-ini")
-    (version "0.5.3")
+    (version "0.5.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -5449,7 +5578,7 @@ with a FSM is being built (for example, from a Makefile.)")
               (file-name (string-append name "-" version))
               (sha256
                (base32
-                "03pdbas7f6r2q3jbcn68xpm57hika3byb4rhsf0544kw6yk3bm8q"))))
+                "10glfdhyv8h58cmf0xl1g7jk05pd5hzdncc2c709b8pyncrdiakh"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags '("GUILE_AUTO_COMPILE=0") ;to prevent guild warnings
@@ -5464,7 +5593,7 @@ with a FSM is being built (for example, from a Makefile.)")
                          guile-lib
                          guile-smc))
     (inputs (list bash-minimal guile-3.0 guile-lib))
-    (propagated-inputs (list guile-smc))
+    (propagated-inputs (list guile-lib guile-smc))
     (home-page "https://github.com/artyom-poptsov/guile-ini")
     (synopsis "Guile library for INI format support")
     (description

@@ -94,6 +94,7 @@
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages gd)
   #:use-module (gnu packages golang)
+  #:use-module (gnu packages golang-check)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages graph)
   #:use-module (gnu packages graphics)
@@ -876,6 +877,38 @@ attributes of microbiome data - zero-inflation and over-dispersion, are
 simultaneously considered.")
       (license license:gpl3))))
 
+(define-public r-ewastools
+  (let ((commit "f7646cacd73266708479b3fea5d625054d179f95")
+        (revision "1"))
+    (package
+      (name "r-ewastools")
+      (version (git-version "1.7.2" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/hhhh5/ewastools/")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0irarlnxfnasa755adxsn67rxsy01zwhjhw18g4cag08cqiyyw41"))))
+      (properties `((upstream-name . "ewastools")))
+      (build-system r-build-system)
+      (propagated-inputs
+       (list r-data-table
+             r-igraph
+             r-illuminaio
+             r-mblm
+             r-quadprog))
+      (native-inputs (list r-knitr))
+      (home-page "https://github.com/hhhh5/ewastools/")
+      (synopsis
+       "Quality control toolset for the Illumina Infinium DNA methylation")
+      (description
+       "This package provides a collection of useful functions for working
+with DNA methylation micro-array data.")
+      (license license:unlicense))))
+
 (define-public r-numbat
   (let ((commit "4ab7752e7d267a3f443756675728521a9b0a7295")
         (revision "1"))
@@ -1063,11 +1096,11 @@ plotnames, filenames and paths.")
       (license license:gpl3))))
 
 (define-public r-readwriter
-  (let ((commit "71454f4aa706f5d2fbe606acd95abc14224e7058")
+  (let ((commit "12d32cb6533ef4b9eab4d707d1502525c2034aee")
         (revision "1"))
     (package
       (name "r-readwriter")
-      (version (git-version "0.2.9" revision commit))
+      (version (git-version "0.3.2" revision commit))
       (source (origin
                 (method git-fetch)
                 (uri (git-reference
@@ -1076,7 +1109,7 @@ plotnames, filenames and paths.")
                 (file-name (git-file-name name version))
                 (sha256
                  (base32
-                  "0sp27smhdva2hi2x0svia2l56k8xrh7p5akn78g5b0lcvz4x3hd7"))))
+                  "1hy47g8d7zppr2i9zlkwl2yb0ii8x710hqk07h089ldx9171qxab"))))
       (properties `((upstream-name . "ReadWriter")))
       (build-system r-build-system)
       (propagated-inputs
@@ -4697,26 +4730,16 @@ accurately delineate genomic rearrangements throughout the genome.")
     (arguments
      (list
       #:install-source? #false          ;fails
-      #:tests? #false                   ;"cargo test" ignores build.rs
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'unpack 'prepare-test-files
             (lambda _
               (delete-file "Cargo.lock")
-              (substitute* "liftover-rs/Cargo.toml"
-                (("anyhow = \"1\"") "anyhow = \"1.0.65\""))
               (substitute* "liftover-rs/prepare-test.sh"
                 (("/bin/bash")
                  (string-append #$(this-package-native-input "bash")
                                 "/bin/bash")))
               (invoke "bash" "prepare-test-files.sh")))
-          (add-before 'patch-cargo-checksums 'do-not-build-xz
-            (lambda _
-              ;; Detection of liblzma (in rust-lzma-sys, pulled in by
-              ;; rust-hts-sys) doesn't seem to work, or perhaps it really does
-              ;; request a static build somewhere.
-              (substitute* "guix-vendor/rust-lzma-sys-0.1.17.tar.xz/build.rs"
-                (("if .want_static && .msvc && pkg_config::probe_library\\(\"liblzma\"\\).is_ok\\(\\)") ""))))
           (add-before 'install 'chdir
             (lambda _ (chdir "transanno"))))
       #:cargo-inputs
@@ -4738,7 +4761,8 @@ accurately delineate genomic rearrangements throughout the genome.")
       #:cargo-development-inputs
       `(("rust-clap" ,rust-clap-2)
         ("rust-lazy-static" ,rust-lazy-static-1))))
-    (native-inputs (list bash))
+    (native-inputs (list bash pkg-config))
+    (inputs (list xz))
     (home-page "https://github.com/informationsea/transanno")
     (synopsis "LiftOver tool for new genome assemblies")
     (description "This package provides an accurate VCF/GFF3/GTF LiftOver tool
@@ -5171,13 +5195,25 @@ software to answer ad hoc questions.")
            python-pysam
            python-pyyaml
            python-scipy
+           r-biocmanager
+           r-dplyr
+           r-genomicranges
+           r-here
+           r-openxlsx
+           r-optparse
+           r-readr
+           r-rsamtools
+           r-stringr
+           r-tidyr
+           r-upsetr
+           r-yaml
            snakemake-7))
     (native-inputs (list python-cython python-pyfakefs python-pytest))
     (home-page "https://github.com/dieterich-lab/Baltica")
     (synopsis "Integrated splice junction usage analysis")
     (description
      "This framework facilitates the execution of @dfn{differential junction
-usage} (DJU) methods. Additionally, it enables the integration of results from
+usage} (DJU) methods.  Additionally, it enables the integration of results from
 multiple DJU methods.")
     (license license:expat)))
 
@@ -9879,6 +9915,51 @@ tasks.")
 Pore-C concatemers.")
       (license license:gpl3))))
 
+(define-public r-dnamcrosshyb
+  ;; There aren't any releases.
+  (let ((commit "fe8acb33667e81f00dcb84e0fa75c87ab2db5d8f")
+        (revision "1"))
+    (package
+      (name "r-dnamcrosshyb")
+      (version (git-version "0.0.0.9000" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/pjhop/DNAmCrosshyb")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "12j1xsiqpvny5rp23z1az0k4cj5ajbcwkg65z00s16vywi2rx6nb"))))
+      (properties `((upstream-name . "DNAmCrosshyb")))
+      (build-system r-build-system)
+      (propagated-inputs
+       (list r-biocgenerics
+             r-biocparallel
+             r-biostrings
+             r-bsgenome-hsapiens-ucsc-hg19-masked
+             r-bsgenome-hsapiens-ucsc-hg38-masked
+             r-dplyr
+             r-genomicranges
+             r-ggplot2
+             r-iranges
+             r-magrittr
+             r-minfi
+             r-purrr
+             r-s4vectors
+             r-shiny
+             r-stringi
+             r-stringr
+             r-tibble
+             r-tidyr
+             r-watermelon))
+      (home-page "https://github.com/pjhop/DNAmCrosshyb")
+      (synopsis "DNAmCrosshyb")
+      (description
+       "This package provides helper functions to detect cross-hybridization
+on Illumina DNAm arrays.")
+      (license license:gpl3))))
+
 (define-public r-doubletcollection
   (let ((commit "c0d62f1853942ee6a087eaf7b000d9e4261e2dfd")
         (revision "1"))
@@ -10277,6 +10358,66 @@ figures.  This tool will create clean markdown reports about what you just
 discovered.")
       (license license:gpl3))))
 
+(define-public r-metacell
+  (let ((commit "d6a6926d103ee0cb34a611c753572429c94a53d9")
+        (revision "1"))
+    (package
+      (name "r-metacell")
+      (version (git-version "0.3.41" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/tanaylab/metacell/")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0zrsckr3y35x37mj3ibm6scyqx925s84wzrz1i42fnm9n3msc265"))))
+      (properties `((upstream-name . "metacell")))
+      (build-system r-build-system)
+      (propagated-inputs (list r-cluster
+                               r-cowplot
+                               r-data-table
+                               r-dbscan
+                               r-domc
+                               r-dplyr
+                               r-entropy
+                               r-ggplot2
+                               r-graph
+                               r-igraph
+                               r-kernsmooth
+                               r-magrittr
+                               r-matrix
+                               r-matrixstats
+                               r-pdist
+                               r-pheatmap
+                               r-plyr
+                               r-rcolorbrewer
+                               r-rcurl
+                               r-rgraphviz
+                               r-slam
+                               r-singlecellexperiment
+                               r-svglite
+                               r-tgconfig
+                               r-tgstat
+                               r-tgutil
+                               r-tidyr
+                               r-umap
+                               r-umap
+                               r-zoo))
+      (native-inputs (list r-knitr))
+      (home-page "https://github.com/tanaylab/metacell/")
+      (synopsis "Meta cell analysis for single cell RNA-seq data")
+      (description
+       "This package facilitates the analysis of single-cell RNA-seq UMI matrices.
+It does this by computing partitions of a cell similarity graph into
+small homogeneous groups of cells, which are defined as metacells (MCs).
+The derived MCs are then used for building different representations of
+the data, allowing matrix or 2D graph visualization forming a basis for
+analysis of cell types, subtypes, transcriptional gradients,cell-cycle
+variation, gene modules and their regulatory models and more.")
+      (license license:expat))))
+
 (define-public r-snapatac
   (package
     (name "r-snapatac")
@@ -10592,6 +10733,40 @@ which applies pathway and gene set overdispersion analysis to identify aspects
 of transcriptional heterogeneity among single cells.")
     ;; See https://github.com/hms-dbmi/scde/issues/38
     (license license:gpl2)))
+
+(define-public r-miamiplot
+  (let ((commit "beede9c5d6431b4d822aa42e064e01baeb5dd4a0")
+        (revision "1"))
+    (package
+      (name "r-miamiplot")
+      (version (git-version "1.1.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/juliedwhite/miamiplot")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0wxxk1lk9jbf0imf59qp302ffasvs84idinkvzirs3dw9w3589n9"))))
+      (properties `((upstream-name . "miamiplot")))
+      (build-system r-build-system)
+      (propagated-inputs (list r-checkmate
+                               r-dplyr
+                               r-ggplot2
+                               r-ggrepel
+                               r-gridextra
+                               r-magrittr
+                               r-rlang))
+      (native-inputs (list r-knitr))
+      (home-page "https://github.com/juliedwhite/miamiplot")
+      (synopsis "Create a ggplot2 miami plot")
+      (description
+       "This package generates a Miami plot with centered chromosome labels.
+The output is a ggplot2 object.  Users can specify which data they want
+plotted on top vs. bottom, whether to display significance line(s), what
+colors to give chromosomes, and what points to label.")
+      (license license:gpl2))))
 
 (define-public r-millefy
   (package
@@ -15474,6 +15649,41 @@ analysing cytometry data in R.")
 spatial single-cell expression data.")
       (license license:expat))))
 
+;; Variant of r-illuminahumanmethylationepicmanifest in the
+;; (gnu packages bioconductor) module.
+(define-public r-illuminahumanmethylationepicmanifest-latest
+  (let ((commit "a9ffbad36f5e496ece6c4c37b80e2f4f7e02d0c3")
+        (revision "1"))
+    (package
+      (name "r-illuminahumanmethylationepicmanifest")
+      (version (git-version "1.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url
+                "https://github.com/achilleasNP/IlluminaHumanMethylationEPICmanifest")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0v8f0hl0v8gwi61vgqw56rn5j09h95hj54rb8pzbn0znm162n4fc"))))
+      (properties `((upstream-name . "IlluminaHumanMethylationEPICmanifest")))
+      (build-system r-build-system)
+      (home-page
+       "https://github.com/achilleasNP/IlluminaHumanMethylationEPICmanifest")
+      (synopsis "Illumina Human Methylation Manifest 1.0 B5 for R and minfi")
+      (description
+       "This is a drop-in replacement for the
+@code{IlluminaHumanMethylationEPIC} package.  It utilizes a Manifest based on
+1.0B5 annotation.  As of version 0.3.0, the
+@code{IlluminaHumanMethylationEPIC} package still employs the 1.0B2 annotation
+manifest.  A corresponding annotation package,
+@code{IlluminaHumanMethylationEPICanno.ilm10b5.hg38}, is available to ensure
+proper annotation.  The decision to maintain the same name is due to
+complications in downstream processing caused by array name lookup in certain
+preprocessing options.")
+      (license license:artistic2.0))))
+
 (define-public r-illuminahumanmethylationepicanno-ilm10b5-hg38
   (let ((commit "3db06910e27f626e0cc8b335ff45cf9a4050a36a")
         (revision "1"))
@@ -18739,6 +18949,73 @@ pairs.")
 transcriptional derivatives and visualization of the resulting velocity
 patterns.")
       (license license:gpl3))))
+
+(define-public r-voltron
+  (let ((commit "5057b703479239a9aaba761f07e65d849f6111f8")
+        (revision "1"))
+    (package
+      (name "r-voltron")
+      (version (git-version "1.0.0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/BIMSBbioinfo/VoltRon")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1nximl4708a7fdwn8ysxpni3mp6dx33cphavlay7hh1pa55pnzgn"))
+                (modules '((guix build utils)))
+                ;; The tripack package is not available under a free license,
+                ;; but interp provides free implementations of "tri.mesh" and
+                ;; "neighbours".
+                (snippet
+                 '(substitute* '("DESCRIPTION" "NAMESPACE" "R/spatial.R")
+                    (("tripack") "interp")))))
+      (properties `((upstream-name . "VoltRon")))
+      (build-system r-build-system)
+      (inputs (list opencv tbb zlib))
+      (propagated-inputs (list r-anndata
+                               r-data-table
+                               r-dplyr
+                               r-ebimage
+                               r-fastdummies
+                               r-fnn
+                               r-ggforce
+                               r-ggplot2
+                               r-ggpubr
+                               r-ggrepel
+                               r-hdf5r
+                               r-htmltools
+                               r-igraph
+                               r-interp
+                               r-irlba
+                               r-magick
+                               r-matrix
+                               r-morpho
+                               r-raster
+                               r-rcpp
+                               r-reshape2
+                               r-rjson
+                               r-rlang
+                               r-s4vectors
+                               r-scales
+                               r-shiny
+                               r-shinyjs
+                               r-stringr
+                               r-terra
+                               r-umap
+                               r-xml))
+      (native-inputs (list pkg-config))
+      (home-page "https://github.com/BIMSBbioinfo/VoltRon")
+      (synopsis "VoltRon for Spatial Data Integration and Analysis")
+      (description
+       "@code{VoltRon} is a toolbox for spatial data analysis, multi-omics
+integration using spatial image registration.  @code{VoltRon} is capable of
+analyzing multiple types and modalities of spatially-aware datasets.
+@code{VoltRon} visualizes and analyzes regions of interests (ROIs), spots,
+cells and even molecules.")
+      (license license:expat))))
 
 (define-public methyldackel
   (package

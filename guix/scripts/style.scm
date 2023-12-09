@@ -547,7 +547,7 @@ bailing out~%"))
 
         (option '(#\h "help") #f #f
                 (lambda args
-                  (show-help)
+                  (leave-on-EPIPE (show-help))
                   (exit 0)))
         (option '(#\l "list-stylings") #f #f
                 (lambda args
@@ -625,6 +625,8 @@ Update package definitions to the latest style.\n"))
                                    opts)))
             (unless (eq? format-package-definition style)
               (warning (G_ "'--styling' option has no effect in whole-file mode~%")))
+            (when (null? files)
+              (warning (G_ "no files specified, nothing to do~%")))
             (for-each format-whole-file files))
           (let ((packages (filter-map (match-lambda
                                         (('argument . spec)

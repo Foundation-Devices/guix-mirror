@@ -2358,14 +2358,14 @@ programs, something like CSmith, a random generator of C programs.")
 (define-public python-lit
   (package
     (name "python-lit")
-    (version "16.0.0")
+    (version "17.0.6")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "lit" version))
         (sha256
          (base32
-          "04dyv8b2nbdbn61zdgm042a21dwidyapn9zbinlf879a29rc6jiw"))))
+          "06z3p85gsy5hw3rbk0ym8aig9mvry1327gz7dfjhjigwandszafz"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -2374,8 +2374,8 @@ programs, something like CSmith, a random generator of C programs.")
            (lambda* (#:key tests? #:allow-other-keys)
              (when tests?
                (invoke "python" "lit.py" "tests")))))))
-    (native-inputs
-     (list llvm-14))
+    ;; This can be built with any version of llvm.
+    (native-inputs (list llvm))
     (home-page "https://llvm.org/")
     (synopsis "LLVM Software Testing Tool")
     (description "@code{lit} is a portable tool for executing LLVM and Clang
@@ -2551,7 +2551,7 @@ mypy plugins.")
 (define-public python-pytest-perf
   (package
     (name "python-pytest-perf")
-    (version "0.12.0")
+    (version "0.13.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2560,26 +2560,21 @@ mypy plugins.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "05mgknvrmyz1kmkgw8jzvisavc68wz1g2wxv69i6xvzgqxf17m9f"))))
-    (build-system python-build-system)
+                "1hrccvrbccqwba04pqj749hdzn4sgldmbpg74nf3fzz7wyg6jxqk"))))
+    (build-system pyproject-build-system)
     (arguments
      (list
-      #:phases
-      #~(modify-phases %standard-phases
-          (replace 'check
-            (lambda* (#:key tests? #:allow-other-keys)
-              (when tests?
-                (invoke "pytest" "-k"
-                        (string-append
-                         ;; Do not test the myproject.toml build as it tries to pull
-                         ;; dependencies from the internet.
-                         "not project "
-                         ;; The benchmark test attempts to install the
-                         ;; package, failing to pull its dependencies from the
-                         ;; network.
-                         "and not BenchmarkRunner "
-                         ;; The upstream_url test requires networking.
-                         "and not upstream_url"))))))))
+      #:test-flags '(list "-k"
+                          (string-append
+                           ;; Do not test the myproject.toml build as it tries to pull
+                           ;; dependencies from the internet.
+                           "not project "
+                           ;; The benchmark test attempts to install the
+                           ;; package, failing to pull its dependencies from the
+                           ;; network.
+                           "and not BenchmarkRunner "
+                           ;; The upstream_url test requires networking.
+                           "and not upstream_url"))))
     (native-inputs
      (list python-pytest
            python-pytest-black
@@ -2726,7 +2721,7 @@ possible to write plugins to add your own checks.")
                (base32
                 "16a1ac5n7k7sx15cnk03gw3fmslab3a7m74dc45rgpldgiff3577"))))
     (build-system python-build-system)
-    (propagated-inputs (list python-pylint))
+    (propagated-inputs (list python-tomli python-pylint))
     (home-page "https://github.com/johnnoone/setuptools-pylint")
     (synopsis "Run pylint with @command{python setup.py lint}")
     (description "This package expose pylint as a lint command into
@@ -3548,7 +3543,7 @@ that can be used to verify that future runs produce the same data.")
 (define-public guile-proba
   (package
     (name "guile-proba")
-    (version "0.3.0")
+    (version "0.3.1")
     (source
      (origin
        (method git-fetch)
@@ -3557,7 +3552,7 @@ that can be used to verify that future runs produce the same data.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1mjnrbb6gv5f95i1ihn75yh7ya445pcnj13cy34x2v58h9n2r80s"))))
+        (base32 "17ab304ylylm9z980ij5lv188inx6331r1mn1s7qrlxly9fzx888"))))
     (build-system guile-build-system)
     (inputs (list bash-minimal guile-3.0))
     (native-inputs (list texinfo))
@@ -3599,8 +3594,8 @@ that can be used to verify that future runs produce the same data.")
                 (copy-file "proba.scm" script)
                 (chmod script #o555)
                 (wrap-program script
-                  `("GUILE_LOAD_PATH" = (,(getenv "GUILE_LOAD_PATH")))
-                  `("GUILE_LOAD_COMPILED_PATH" =
+                  `("GUILE_LOAD_PATH" prefix (,(getenv "GUILE_LOAD_PATH")))
+                  `("GUILE_LOAD_COMPILED_PATH" prefix
                     (,(getenv "GUILE_LOAD_COMPILED_PATH")))))))
           (add-after 'install 'install-manual
             (lambda* (#:key outputs #:allow-other-keys)

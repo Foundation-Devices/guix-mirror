@@ -1485,13 +1485,13 @@ to create databases that are optimized for rendering/tile/map-services.")
 (define-public python-metpy
   (package
     (name "python-metpy")
-    (version "1.5.0")
+    (version "1.5.1")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "MetPy" version))
               (sha256
                (base32
-                "0g9m8qb920mvi0kqw7vbagj08xvv96zj6gjyc7dawlvh15vb55qq"))))
+                "1is6rradl97k04hf27dhzla4y4j98hibran3rbz6xh226q1r9vmb"))))
     (build-system pyproject-build-system)
     (arguments
      ;; Too many of the tests in the files below require online data.
@@ -1940,7 +1940,7 @@ to the OSM opening hours specification.")
 (define-public josm
   (package
     (name "josm")
-    (version "18646")
+    (version "18822")
     (source (origin
               (method svn-fetch)
               (uri (svn-reference
@@ -1949,7 +1949,7 @@ to the OSM opening hours specification.")
                      (recursive? #f)))
               (sha256
                (base32
-                "0zr3p1i39wi0f29lgb3xrnv6lijrq5ia8jxn4wnq1yz0xdlbg98i"))
+                "0b4q6n3jbqrh7dsfmcf2g0xdd1wjj62sjq8lwvggvrpqlk1fyn1b"))
               (file-name (string-append name "-" version "-checkout"))
               (modules '((guix build utils)))
             (snippet
@@ -1963,17 +1963,19 @@ to the OSM opening hours specification.")
      (list java-commons-jcs
            java-commons-compress
            java-jmapviewer
-           java-jsonp-api
-           java-jsonp-impl ; runtime dependency
+           java-jakarta-json
            java-jsr305
            java-metadata-extractor
            java-opening-hours-parser
            java-openjfx-media
+           java-parsson ; runtime dependency
            java-signpost-core
-           java-svg-salamander))
+           java-svg-salamander
+           openjdk11))
     (arguments
      `(#:tests? #f
        #:jar-name "josm.jar"
+       #:jdk ,openjdk11
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'rm-build.xml
@@ -2069,9 +2071,16 @@ to the OSM opening hours specification.")
                  (lambda _
                    (display
                      (string-append "#!/bin/sh\n"
-                                    (assoc-ref inputs "jdk") "/bin/java"
+                                    (assoc-ref inputs "openjdk") "/bin/java"
                                     " -cp " out "/share/java/josm.jar:"
-                                    (getenv "CLASSPATH")
+                                    ;; CLASSPATH, but remove native inputs
+                                    (string-join
+                                      (filter
+                                        (lambda (jar)
+                                          (and (not (string-contains jar "-jdk/"))
+                                               (not (string-contains jar "-javacc-"))))
+                                        (string-split (getenv "CLASSPATH") #\:))
+                                      ":")
                                     " org.openstreetmap.josm.gui.MainApplication"))))
                (chmod (string-append bin "/josm") #o755))
              #t)))))

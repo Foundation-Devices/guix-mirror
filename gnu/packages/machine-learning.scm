@@ -151,6 +151,42 @@ representations and sentence classification.")
     (inputs (list fasttext))
     (native-inputs (list pybind11))))
 
+(define-public python-funsor
+  (package
+    (name "python-funsor")
+    (version "0.4.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "funsor" version))
+       (sha256
+        (base32 "0cgysij0dix0fikyz2x4f8jvaskm5s5a04s07chzaz2dw1fpxdq8"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-makefun python-multipledispatch
+                             python-numpy python-opt-einsum
+                             python-typing-extensions))
+    (native-inputs (list python-black
+                         python-flake8
+                         python-isort
+                         python-nbsphinx
+                         python-pandas
+                         python-pillow
+                         python-pyro-api
+                         python-pytest
+                         python-pytest-xdist
+                         python-requests
+                         python-scipy
+                         python-sphinx
+                         python-sphinx-gallery
+                         python-sphinx-rtd-theme
+                         python-torchvision))
+    (home-page "https://github.com/pyro-ppl/funsor")
+    (synopsis "Tensor-like library for functions and distributions")
+    (description
+     "This package provides a tensor-like library for functions and
+distributions.")
+    (license license:asl2.0)))
+
 (define-public fann
   ;; The last release is >100 commits behind, so we package from git.
   (let ((commit "d71d54788bee56ba4cf7522801270152da5209d7"))
@@ -259,6 +295,42 @@ classification.")
     (inputs
      (list python))
     (synopsis "Python bindings of libSVM")))
+
+(define-public python-ml-collections
+  (package
+    (name "python-ml-collections")
+    (version "0.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "ml_collections" version))
+       (sha256
+        (base32 "1k38psfzqsqnl99fl578bd07zdmvfkja61r3sgjs2fj3xircrvrz"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                ;; TODO: we can't seem to run the config_flags tests, because
+                ;; the installed Python files conflict with those from the
+                ;; source directory, resulting in constants to be defined more
+                ;; than once.
+                (invoke "pytest" "ml_collections/config_dict/tests"
+                        ;; This one fails because we're testing the __main__
+                        ;; class, not config_dict_test.
+                        "-k" "not testJSONConversionBestEffort")))))))
+    (propagated-inputs
+     (list python-absl-py python-contextlib2 python-pyyaml python-six))
+    (native-inputs (list python-mock python-pytest))
+    (home-page "https://github.com/google/ml_collections")
+    (synopsis "Python collections designed for Machine Learning usecases")
+    (description
+     "ML Collections is a library of Python collections designed for Machine
+Learning usecases.")
+    (license license:asl2.0)))
 
 (define-public ghmm
   ;; The latest release candidate is several years and a couple of fixes have
@@ -1460,6 +1532,54 @@ computing environments.")
 data analysis.")
     (license license:bsd-3)))
 
+(define-public python-scikit-learn-extra
+  (package
+    (name "python-scikit-learn-extra")
+    (version "0.3.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/scikit-learn-contrib/scikit-learn-extra")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0yy6ka94ss88f3r7b6mpjf1l8lnv7aabhsg844pigfj8lfiv0wvl"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'build 'build-ext
+                 (lambda _
+                   (invoke "python" "setup.py" "build_ext"
+                           "--inplace")))
+               (replace 'check
+                 (lambda* (#:key tests? #:allow-other-keys)
+                   (when tests?
+                     ;; Restrict OpenBLAS threads to prevent segfaults while testing!
+                     (setenv "OPENBLAS_NUM_THREADS" "1")
+
+                     ;; Some tests require write access to $HOME.
+                     (setenv "HOME" "/tmp")
+
+                     ;; Step out of the source directory to avoid interference;
+                     ;; we want to run the installed code with extensions etc.
+                     (with-directory-excursion "/tmp"
+                       (invoke "pytest" "-vv" "--pyargs"
+                               "sklearn_extra"
+                               ;; ignore tests that require network
+                               "-k" "not test_build"))))))))
+    (propagated-inputs (list python-numpy python-scikit-learn python-scipy))
+    (native-inputs (list python-pytest python-pytest-cov python-cython))
+    (home-page "https://github.com/scikit-learn-contrib/scikit-learn-extra")
+    (synopsis "Set of tools for scikit-learn")
+    (description
+     "This package provides a Python module for machine learning that extends
+scikit-learn.  It includes algorithms that are useful but do not satisfy the
+scikit-learn inclusion criteria, for instance due to their novelty or lower
+citation number.")
+    (license license:bsd-3)))
+
 (define-public python-thinc
   (package
     (name "python-thinc")
@@ -1591,45 +1711,42 @@ and forecasting.")
 (define-public python-imbalanced-learn
   (package
     (name "python-imbalanced-learn")
-    (version "0.9.1")
-    (source (origin
-              (method url-fetch)
-              (uri (pypi-uri "imbalanced-learn" version))
-              (sha256
-               (base32
-                "0qnrmysnqpc8ii1w5n8mci20gcjhmjr7khvk7f2apdbqc2pgf52f"))))
+    (version "0.11.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "imbalanced-learn" version))
+       (sha256
+        (base32 "1p4gdgc8nsq0vjmw4y4d2bp9g0m1c23d0zgrzs90pnz6b24ax0km"))))
     (build-system pyproject-build-system)
     (arguments
      (list
-      #:phases
-      '(modify-phases %standard-phases
-         (add-after 'unpack 'unbreak-tests
-           (lambda _
-             ;; The doctests require tensorflow
-             (substitute* "setup.cfg"
-               (("--doctest-modules") ""))
-             ;; Some tests require a home directory
-             (setenv "HOME" (getcwd))
-             ;; We don't have keras
-             (delete-file "imblearn/keras/tests/test_generator.py")
-             ;; We don't have tensorflow
-             (delete-file "imblearn/tensorflow/tests/test_generator.py"))))))
-    (propagated-inputs
-     (list python-joblib
-           python-numpy
-           python-scikit-learn
-           python-scipy
-           python-threadpoolctl))
-    (native-inputs
-     (list python-black
-           python-flake8
-           python-mypy
-           python-pandas
-           python-pytest
-           python-pytest-cov))
+      #:test-flags '(list "-k"
+                     ;; Although we cannot satify the Tensorflow and Keras requirements
+                     ;; (python-keras >= 2.4.3 and tensorflow >= 2.4.3), all tests
+                     ;; besides these pass.
+                     "not balanced_batch_generator and not BalancedBatchGenerator")
+      #:phases '(modify-phases %standard-phases
+                  (add-after 'unpack 'unbreak-tests
+                    (lambda _
+                      ;; Some tests require a home directory
+                      (setenv "HOME"
+                              (getcwd)))))))
+    (propagated-inputs (list python-joblib python-numpy python-scikit-learn
+                             python-scipy python-threadpoolctl))
+    (native-inputs (list python-black
+                         python-flake8
+                         python-keras
+                         python-mypy
+                         python-numpydoc
+                         python-pandas
+                         python-pytest
+                         python-pytest-cov
+                         tensorflow))
     (home-page "https://github.com/scikit-learn-contrib/imbalanced-learn")
     (synopsis "Toolbox for imbalanced dataset in machine learning")
-    (description "This is a Python package offering a number of re-sampling
+    (description
+     "This is a Python package offering a number of re-sampling
 techniques commonly used in datasets showing strong between-class imbalance.
 It is compatible with @code{scikit-learn}.")
     (license license:expat)))
@@ -1672,7 +1789,7 @@ for k-neighbor-graph construction and approximate nearest neighbor search.")
 (define-public python-opentsne
   (package
     (name "python-opentsne")
-    (version "0.7.1")
+    (version "1.0.0")
     (source
      (origin
        (method git-fetch) ; no tests in PyPI release
@@ -1681,7 +1798,7 @@ for k-neighbor-graph construction and approximate nearest neighbor search.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "12wp98mh67v6v683yi7wbv8zhpafrfz21z349bww4wgi2q7bl3il"))))
+        (base32 "05qzpq1zjs42bl0z8girfwcj3nfxs1a99c5525vp3589sglk351g"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1851,9 +1968,9 @@ Covariance Matrix Adaptation Evolution Strategy (CMA-ES) for Python.")
     (license license:expat)))
 
 (define-public python-autograd
-  (let* ((commit "442205dfefe407beffb33550846434baa90c4de7")
+  (let* ((commit "c6d81ce7eede6db801d4e9a92b27ec5d409d0eab")
          (revision "0")
-         (version (git-version "0.0.0" revision commit)))
+         (version (git-version "1.5" revision commit)))
     (package
       (name "python-autograd")
       (home-page "https://github.com/HIPS/autograd")
@@ -1864,19 +1981,14 @@ Covariance Matrix Adaptation Evolution Strategy (CMA-ES) for Python.")
                       (commit commit)))
                 (sha256
                  (base32
-                  "189sv2xb0mwnjawa9z7mrgdglc1miaq93pnck26r28fi1jdwg0z4"))
+                  "04kljgydng42xlg044h6nbzxpban1ivd6jzb8ydkngfq88ppipfk"))
                 (file-name (git-file-name name version))))
       (version version)
-      (build-system python-build-system)
+      (build-system pyproject-build-system)
       (native-inputs
        (list python-nose python-pytest))
       (propagated-inputs
        (list python-future python-numpy))
-      (arguments
-       `(#:phases (modify-phases %standard-phases
-                    (replace 'check
-                      (lambda _
-                        (invoke "py.test" "-v"))))))
       (synopsis "Efficiently computes derivatives of NumPy code")
       (description "Autograd can automatically differentiate native Python and
 NumPy code.  It can handle a large subset of Python's features, including loops,
@@ -2030,13 +2142,13 @@ discrete, and conditional dimensions.")
 (define-public python-deepxde
   (package
     (name "python-deepxde")
-    (version "1.9.3")
+    (version "1.10.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "DeepXDE" version))
               (sha256
                (base32
-                "1zw2gqssc0s3maf4gdjckxmzx1d3036hbp1iir26kd08hxj93vzs"))))
+                "0fdxrjrm7l19yx6n8vaklxlhwzx0bw9n08vp8idikzdifybz5gij"))))
     (build-system pyproject-build-system)
     (arguments
      (list #:tests? #f                  ; there are no tests

@@ -15,6 +15,7 @@
 ;;; Copyright © 2021 Jean-Baptiste Volatier <jbv@pm.me>
 ;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2023 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -64,15 +65,14 @@
 (define-public curl
   (package
     (name "curl")
-    (version "7.85.0")
-    (replacement curl/fixed)
+    (version "8.4.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://curl.se/download/curl-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "1rjbn0h5rddclhvxb8p5gddxszcrpbf5cw1whx6wnj4s9dnlmdc8"))
+                "0bd8y8v66biyqvg70ka1sdd0aixs6yzpnvfsig907xzh9af2mihn"))
               (patches (search-patches "curl-use-ssl-cert-env.patch"))))
     (build-system gnu-build-system)
     (outputs '("out"
@@ -118,15 +118,28 @@
               (rename-file (string-append #$output "/share/man/man3")
                            (string-append #$output:doc "/share/man/man3"))))
           (replace 'check
-            (lambda* (#:key tests? #:allow-other-keys)
+            (lambda* (#:key tests? parallel-tests? make-flags #:allow-other-keys)
               (substitute* "tests/runtests.pl"
                 (("/bin/sh") (which "sh")))
-
               (when tests?
-                ;; The top-level "make check" does "make -C tests quiet-test", which
-                ;; is too quiet.  Use the "test" target instead, which is more
-                ;; verbose.
-                (invoke "make" "-C" "tests" "test"))))
+                (let* ((job-count (string-append
+                                   "-j"
+                                   (if parallel-tests?
+                                       (number->string (parallel-job-count))
+                                       "1")))
+                       (arguments `("-C" "tests" "test"
+                                    ,@make-flags
+                                    ,(if #$(or (system-hurd?)
+                                               (target-arm32?)
+                                               (target-aarch64?))
+                                         ;; protocol FAIL
+                                         (string-append "TFLAGS=\"~1474 "
+                                                        job-count "\"")
+                                         (string-append "TFLAGS=" job-count)))))
+                  ;; The top-level "make check" does "make -C tests quiet-test", which
+                  ;; is too quiet.  Use the "test" target instead, which is more
+                  ;; verbose.
+                  (apply invoke "make" arguments)))))
           #$@(if (system-hurd?)
                  #~((add-after 'unpack 'skip-tests
                       (lambda _
@@ -137,6 +150,7 @@
                           (display "533\n" port)
                           (display "537\n" port)
                           (display "546\n" port)
+                          (display "564\n" port)
                           (display "575\n" port)
                           (display "1021\n" port)
                           (display "1501\n" port)
@@ -154,20 +168,6 @@ tunneling, and so on.")
     (license (license:non-copyleft "file://COPYING"
                                    "See COPYING in the distribution."))
     (home-page "https://curl.haxx.se/")))
-
-(define curl/fixed
-  (let ((%version "8.3.0"))
-    (package
-      (inherit curl)
-      (version "8.3.0a")               ; add lowercase 'a' for grafting
-      (source (origin
-                (method url-fetch)
-                (uri (string-append "https://curl.se/download/curl-"
-                                    %version ".tar.xz"))
-                (sha256
-                 (base32
-                  "0qza6yf20y2l4aaxkn8dfw8p3fls1mxljvdb0m8z1i6ncxvn4v9p"))
-                (patches (search-patches "curl-use-ssl-cert-env.patch")))))))
 
 (define-public curl-ssh
   (package/inherit curl
@@ -386,7 +386,7 @@ asynchronously via cURL in C++.")
 (define-public curlie
   (package
     (name "curlie")
-    (version "1.6.9")
+    (version "1.7.2")
     (source
      (origin
        (method git-fetch)
@@ -396,7 +396,7 @@ asynchronously via cURL in C++.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1b94wfliivfq06i5sf664nhmp3v1k0lpz33cv9lyk6s59awb2hnw"))))
+         "04gwd9sqpykappnzyw9icgn5253cx1vwpr2h1fg7sgkyq3fjmsv0"))))
     (build-system go-build-system)
     (arguments
      `(#:import-path "github.com/rs/curlie"))

@@ -406,7 +406,7 @@ interface and is based on GNU Guile.")
 (define-public swineherd
   (package
     (name "swineherd")
-    (version "0.0.1")
+    (version "0.0.3")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -415,7 +415,7 @@ interface and is based on GNU Guile.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "18nk0sy5s0dm2rhxnrrn8g0m098b110mxnnxa2vnl1dnvfdzszw8"))))
+                "0il1ikaj478n7xs4vqgawbshvmwq3nd0gp235mwqvmf4knra6j3g"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags '("--localstatedir=/var")
@@ -1480,14 +1480,18 @@ connection alive.")
                  (("^RELEASEVER=.*")
                   (format #f "RELEASEVER=~a\n" ,bind-release-version)))))
            ,@(if (%current-target-system)
-                 '((add-before 'configure 'fix-bind-cross-compilation
+                 `((add-before 'configure 'fix-bind-cross-compilation
                      (lambda _
                        (substitute* "configure"
                          (("--host=\\$host")
                           "--host=$host_alias"))
                        ;; BIND needs a native compiler because the DHCP
                        ;; build system uses the built 'gen' executable.
-                       (setenv "BUILD_CC" "gcc"))))
+                       (setenv "BUILD_CC" "gcc")
+                       ;; powerpc-linux needs to be told to use -latomic.
+                       ,@(if (target-ppc32?)
+                           `((setenv "LIBS" "-latomic"))
+                           '()))))
                  '())
            (add-before 'configure 'update-config-scripts
              (lambda* (#:key native-inputs inputs #:allow-other-keys)
@@ -1550,7 +1554,6 @@ connection alive.")
                       (coreutils (assoc-ref inputs "coreutils*"))
                       (inetutils (assoc-ref inputs "inetutils"))
                       (grep      (assoc-ref inputs "grep*"))
-                      (net-tools (assoc-ref inputs "net-tools"))
                       (sed       (assoc-ref inputs "sed*")))
                  (substitute* "client/scripts/linux"
                    (("/sbin/ip")
@@ -1566,16 +1569,16 @@ connection alive.")
                      ,(map (lambda (dir)
                              (string-append dir "/bin:"
                                             dir "/sbin"))
-                           (list inetutils net-tools coreutils grep sed))))))))))
+                           (list inetutils coreutils grep sed))))))))))
 
       (native-inputs
        (list config perl file))
 
       (inputs `(("inetutils" ,inetutils)
                 ("bash" ,bash-minimal)
-                ,@(if (target-hurd?) '()
-                      `(("net-tools" ,net-tools)
-                        ("iproute" ,iproute)))
+                ,@(if (target-hurd?)
+                      '()
+                      `(("iproute" ,iproute)))
 
                 ;; isc-dhcp bundles a copy of BIND, which has proved vulnerable
                 ;; in the past.  Use a BIND-VERSION of our choosing instead.
@@ -2831,13 +2834,13 @@ specified directories.")
 (define-public ansible-core
   (package
     (name "ansible-core")
-    (version "2.14.4")
+    (version "2.15.5")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "ansible-core" version))
        (sha256
-        (base32 "057g87smxcn6zc558xk4zr6ga4q8clmkyxghn5gx60a94sy61clh"))))
+        (base32 "00hnwjk4dxgxbz4xlza2wqx20yks5xr7074hzlzsyja3ip5kkicc"))))
     (build-system python-build-system)
     (arguments
      `(#:modules ((guix build python-build-system)
@@ -2907,14 +2910,6 @@ test_context)" all)
              (when tests?
                ;; Otherwise Ansible fails to create its config directory.
                (setenv "HOME" "/tmp")
-               ;; This test module messes up with sys.path and causes many
-               ;; test failures.
-               (delete-file "test/units/_vendor/test_vendor.py")
-               ;; The test fails when run in the container, for reasons
-               ;; unknown.
-               (delete-file "test/units/utils/test_display.py")
-               ;; This test fail for reasons unknown.
-               (delete-file "test/units/cli/test_adhoc.py")
                ;; These tests fail in the container; it appears that the
                ;; mocking of the absolute file names such as /usr/bin/svcs do
                ;; not work as intended there.
@@ -2929,7 +2924,7 @@ test_command_nonexisting.py")
                ;; does some extra environment setup.  Taken from
                ;; https://raw.githubusercontent.com/ansible/ansible/\
                ;; devel/test/utils/shippable/shippable.sh.
-               (invoke "ansible-test" "units" "-v"
+               (invoke "./bin/ansible-test" "units" "-v"
                        "--num-workers" (number->string
                                         (parallel-job-count)))))))))
     (native-inputs
@@ -2950,7 +2945,7 @@ test_command_nonexisting.py")
            python-jinja2
            python-pyyaml
            python-packaging             ;for version number parsing
-           python-resolvelib-0.5))
+           python-resolvelib))
     (home-page "https://www.ansible.com/")
     (synopsis "Radically simple IT automation")
     (description "Ansible aims to be a radically simple IT automation system.
@@ -2977,13 +2972,13 @@ provides the following commands:
 (define-public ansible
   (package
     (name "ansible")
-    (version "7.4.0")
+    (version "8.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "ansible" version))
        (sha256
-        (base32 "142barhwz0wx5kn74xi0bfl21iwq2yq3jp14kxajsg9nggndcr09"))))
+        (base32 "0bazj5h12wraf30bb2schzwk553y20n9vh45km4b5kgmvadm0z1j"))))
     (build-system python-build-system)
     (propagated-inputs (list ansible-core))
     ;; The Ansible collections are found by ansible-core via the Python search
@@ -3506,7 +3501,7 @@ throughput (in the same interval).")
 (define-public dool
   (package
     (name "dool")
-    (version "1.1.0")
+    (version "1.3.0")
     (source
      (origin
        (method git-fetch)
@@ -3515,7 +3510,7 @@ throughput (in the same interval).")
              (commit (string-append "v" version))))
        (file-name (git-file-name "dool" version))
        (sha256
-        (base32 "13qq52lq7z3pl2mgrhwqh8c69p9x5rkyjqjswszd6vdbzm7zk7yq"))))
+        (base32 "1728wxy338gf2l06b0b4j9j8vihadw5whzzj7mi9p3by633h5s8m"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -3947,7 +3942,7 @@ buffers.")
 (define-public igt-gpu-tools
   (package
     (name "igt-gpu-tools")
-    (version "1.27.1")
+    (version "1.28")
     (source
      (origin
        (method git-fetch)
@@ -3956,9 +3951,7 @@ buffers.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0d6jsj77qddccv0vfmqmbw3k2prvxzvmgc8zdi83gdi3wpp5i7zd"))
-       (patches
-        (search-patches "igt-gpu-tools-Use-libproc2.patch"))))
+        (base32 "15mnsgzlpd4jkr2zy3jzx0b021g89fa61b8sdm8rjp27gxqkl8mm"))))
     (build-system meson-build-system)
     (arguments
      `(#:tests? #f              ; many of the tests try to load kernel modules
@@ -3976,7 +3969,8 @@ buffers.")
            libdrm
            libpciaccess
            libunwind
-           procps))
+           procps
+           python))
     (native-inputs
      (list bison flex pkg-config python-docutils))
     (home-page "https://gitlab.freedesktop.org/drm/igt-gpu-tools")
@@ -4437,6 +4431,9 @@ late.")
                      " *lmonpl = '\\0'"))
                   #t))))
     (build-system gnu-build-system)
+    (arguments
+     ;; GCC 11 defaults to c++17 but this package needs something older.
+     (list #:configure-flags #~'("CXXFLAGS=-std=c++14 -O2 -g")))
     (inputs
      (list openmpi
            munge
@@ -4444,7 +4441,7 @@ late.")
            libelf
            libgcrypt
            libgpg-error))
-    (synopsis "Infrastructue for large scale tool daemon launching")
+    (synopsis "Infrastructure for large-scale tool daemon launching")
     (description
      "LaunchMON is a software infrastructure that enables HPC run-time
 tools to co-locate tool daemons with a parallel job.  Its API allows a
@@ -4457,7 +4454,7 @@ launch daemons into the relevant nodes.")
 (define-public spindle
   (package
     (name "spindle")
-    (version "0.10")
+    (version "0.13")
     (source (origin
               ;; We use git checkout to avoid github auto-generated tarballs
               (method git-fetch)
@@ -4467,16 +4464,15 @@ launch daemons into the relevant nodes.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "15n3ay0qq81r5v7fif61q1vdjcq44pp2nynkh3fvbzc9fj3c39wd"))))
+                "1z594nhash1him9v00qmyqv9jvikzrs4wxqy1cvnfwqwnrrkp707"))))
     (build-system gnu-build-system)
     (arguments '(#:configure-flags '("--enable-sec-launchmon"
                                      "--enable-sec-munge"
-                                     "--enable-sec-none")))
+                                     "--enable-sec-none"
+                                     ;; Fails to build as c++17.
+                                     "CXXFLAGS=-std=c++14 -O2 -g")))
     (inputs
-     `(("mpi" ,openmpi)
-       ("munge" ,munge)
-       ("launchmon" ,launchmon)
-       ("libgcrypt" ,libgcrypt)))
+     (list openmpi munge launchmon libgcrypt))
     (synopsis "Scalable library loading in HPC environments")
     (description
      "Spindle is a tool for improving the performance of dynamic library and
@@ -5488,7 +5484,7 @@ interfering with any pam-mount configuration.")))
 (define-public wlgreet
   (package
     (name "wlgreet")
-    (version "0.4")
+    (version "0.4.1")
     (source (origin
              (method git-fetch)
              (uri (git-reference
@@ -5497,25 +5493,24 @@ interfering with any pam-mount configuration.")))
              (file-name (git-file-name name version))
              (sha256
               (base32
-               "00grp63n9nrgqls3knxfv9wjbc7p0jwr7i2vzxy750dz85gi2kzn"))))
+               "1k0jmgh0rjbnb49gkvs0a4d7z9xb6pad8v5w5f7my4s0rfpk7wd9"))))
     (build-system cargo-build-system)
     (arguments
      (list #:cargo-inputs
            `(("rust-chrono" ,rust-chrono-0.4)
              ("rust-getopts" ,rust-getopts-0.2)
-             ("rust-greetd-ipc" ,rust-greetd-ipc-0.8)
+             ("rust-greetd-ipc" ,rust-greetd-ipc-0.9)
              ("rust-lazy-static" ,rust-lazy-static-1)
              ("rust-memmap2" ,rust-memmap2-0.3)
-             ("rust-nix" ,rust-nix-0.15)
-             ("rust-os-pipe" ,rust-os-pipe-0.8)
-             ("rust-rusttype" ,rust-rusttype-0.7)
+             ("rust-nix" ,rust-nix-0.25)
+             ("rust-os-pipe" ,rust-os-pipe-1)
+             ("rust-rusttype" ,rust-rusttype-0.9)
              ("rust-serde" ,rust-serde-1)
              ("rust-smithay-client-toolkit"
               ,rust-smithay-client-toolkit-0.15)
              ("rust-toml" ,rust-toml-0.5)
              ("rust-wayland-client" ,rust-wayland-client-0.29)
-             ("rust-wayland-protocols" ,rust-wayland-protocols-0.29)
-             ("rust-xml-rs" ,rust-xml-rs-0.8))
+             ("rust-wayland-protocols" ,rust-wayland-protocols-0.29))
            #:phases
            #~(modify-phases %standard-phases
                (add-after 'unpack 'remove-bundled-fonts
@@ -5907,34 +5902,54 @@ file or files to several hosts.")
 (define-public du-dust
   (package
     (name "du-dust")
-    (version "0.8.3")
+    (version "0.8.6")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "du-dust" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1daif13rdd7wb8m5fbp6zif5b8znqcvmkxrjpp2w2famsp36sahx"))))
+                "1w52xdz1vi6awsvf4lph791zv13phjvz4ypmxr7f6pgxd3crr77c"))))
     (build-system cargo-build-system)
     (arguments
-     `(#:cargo-inputs (("rust-ansi-term" ,rust-ansi-term-0.12)
-                       ("rust-clap" ,rust-clap-3)
+     `(#:cargo-test-flags
+       (list "--release" "--"
+             "--skip=test_apparent_size")
+       #:install-source? #f
+       #:cargo-inputs (("rust-ansi-term" ,rust-ansi-term-0.12)
+                       ("rust-atty" ,rust-atty-0.2)
                        ("rust-clap" ,rust-clap-3)
                        ("rust-clap-complete" ,rust-clap-complete-3)
+                       ("rust-clap-mangen" ,rust-clap-mangen-0.1)
                        ("rust-config-file" ,rust-config-file-0.2)
                        ("rust-directories" ,rust-directories-4)
-                       ("rust-lscolors" ,rust-lscolors-0.7)
+                       ("rust-lscolors" ,rust-lscolors-0.13)
                        ("rust-rayon" ,rust-rayon-1)
                        ("rust-regex" ,rust-regex-1)
                        ("rust-serde" ,rust-serde-1)
                        ("rust-stfu8" ,rust-stfu8-0.2)
-                       ("rust-sysinfo" ,rust-sysinfo-0.15)
-                       ("rust-terminal-size" ,rust-terminal-size-0.1)
+                       ("rust-sysinfo" ,rust-sysinfo-0.27)
+                       ("rust-terminal-size" ,rust-terminal-size-0.2)
                        ("rust-thousands" ,rust-thousands-0.2)
                        ("rust-unicode-width" ,rust-unicode-width-0.1)
                        ("rust-winapi-util" ,rust-winapi-util-0.1))
-       #:cargo-development-inputs (("rust-assert-cmd" ,rust-assert-cmd-1)
-                                   ("rust-tempfile" ,rust-tempfile-3))))
+       #:cargo-development-inputs (("rust-assert-cmd" ,rust-assert-cmd-2)
+                                   ("rust-tempfile" ,rust-tempfile-3))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'install-extras
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (share (string-append out "/share")))
+               (install-file "man-page/dust.1"
+                             (string-append share "/man/man1"))
+               (mkdir-p (string-append out "/etc/bash_completion.d"))
+               (copy-file "completions/dust.bash"
+                          (string-append out "/etc/bash_completion.d/dust"))
+               (install-file "completions/dust.fish"
+                             (string-append share "/fish/vendor_completions.d"))
+               (install-file "completions/_dust"
+                             (string-append share "/zsh/site-fuctions"))))))))
     (home-page "https://github.com/bootandy/dust")
     (synopsis "Graphical disk usage analyzer")
     (description "This package provides a graphical disk usage analyzer in
@@ -5990,7 +6005,7 @@ Discover other RouterOS devices or @command{mactelnetd} hosts.
 (define-public bfs
   (package
     (name "bfs")
-    (version "3.0.2")
+    (version "3.0.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -5999,7 +6014,7 @@ Discover other RouterOS devices or @command{mactelnetd} hosts.
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "055qn2bhnyk9k96w8aviz7v4wip9hwsv7ak1m3yygm1x3fhdyhyz"))))
+                "0n2y9m81278j85m8vk242m9nsxdcw62rxsar4hzwszs6p5cjz5ny"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags #~(list (string-append "CC="
@@ -6019,6 +6034,6 @@ Discover other RouterOS devices or @command{mactelnetd} hosts.
     (description
      "Bfs is a variant of the UNIX @command{find} command that operates
 breadth-first rather than depth-first.  It is otherwise compatible with many
-versions of command{find}, including POSIX, GNU, and *BSD find.")
+versions of @command{find}, including POSIX, GNU, and *BSD find.")
     (home-page "https://tavianator.com/projects/bfs.html")
     (license license:bsd-0)))

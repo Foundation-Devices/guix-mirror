@@ -66,6 +66,7 @@
 ;;; Copyright © 2023 Ott Joon <oj@vern.cc>
 ;;; Copyright © 2023 Dominik Delgado Steuter <dds@disroot.org>
 ;;; Copyright © 2023 Saku Laesvuori <saku@laesvuori.fi>
+;;; Copyright © 2023 Jaeme Sifat <jaeme@runbox.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -116,6 +117,7 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
+  #:use-module (gnu packages bittorrent)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages cdrom)
   #:use-module (gnu packages check)
@@ -179,6 +181,7 @@
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
+  #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
@@ -194,6 +197,7 @@
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages ssh)
   #:use-module (gnu packages swig)
+  #:use-module (gnu packages terminals)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages tls)
@@ -208,6 +212,78 @@
   #:use-module (gnu packages xiph)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages xorg))
+
+(define-public ani-cli
+  (package
+    (name "ani-cli")
+    (version "4.6")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pystardust/ani-cli")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1ni9pzjb5qh87iz7c8252bx79qadr1qx6jnkqvvjcqrchh7q473a"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f                       ;no test suite
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)           ;nothing to configure
+          (delete 'build)               ;nothing to build
+          (replace 'install
+            (lambda _
+              (install-file "ani-cli" (string-append #$output "/bin"))
+              (install-file "ani-cli.1"
+                            (string-append #$output "/share/man/man1"))))
+          (add-after 'install 'wrap
+            (lambda* (#:key inputs #:allow-other-keys)
+              (define (bin command)
+                (dirname (search-input-file
+                          inputs (string-append "bin/" command))))
+              (wrap-program (string-append #$output "/bin/ani-cli")
+                `("PATH" ":" prefix
+                  ,(map bin (list "aria2c"
+                                  "curl"
+                                  "ffmpeg"
+                                  "fzf"
+                                  "grep"
+                                  "mpv"
+                                  "sed"
+                                  "tput"
+                                  "uname"
+                                  "yt-dlp")))))))))
+    (inputs (list aria2
+                  bash-minimal
+                  coreutils
+                  curl
+                  ffmpeg
+                  fzf
+                  grep
+                  mpv
+                  ncurses
+                  sed
+                  yt-dlp))
+    (native-search-paths
+     ;; This was copied from the curl package.
+     (list (search-path-specification
+            (variable "CURL_CA_BUNDLE")
+            (file-type 'regular)
+            (separator #f)              ;single entry
+            (files '("etc/ssl/certs/ca-certificates.crt")))))
+    (home-page "https://github.com/pystardust/ani-cli")
+    (synopsis "Browse and watch anime from the command line")
+    (description
+     "ani-cli is a @acronym{CLI, command-line interface} to browse and watch
+anime by streaming videos from @uref{https://allanime.to,All Anime}.
+
+There are different features such as episode browsing, history tracking,
+streaming at multiple resolutions, and much more, depending on what programs the
+user has installed.")
+    (license license:gpl3+)))
 
 (define-public transcode
   (package
@@ -1783,14 +1859,14 @@ audio/video codec library.")
 (define-public ffmpeg-5
   (package
     (inherit ffmpeg)
-    (version "5.1.3")
+    (version "5.1.4")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://ffmpeg.org/releases/ffmpeg-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "0biil32xnshg1b4lwzbdc5rxv1g7lpfsr5gdgaz96wlhzy9ka48v"))))))
+                "0qwhyhil805hns7yksdxagnrcc90h60al7lz1rc65kd1j2w3nf2l"))))))
 
 (define-public ffmpeg-4
   (package
@@ -1813,14 +1889,14 @@ audio/video codec library.")
 (define-public ffmpeg-3.4
   (package
     (inherit ffmpeg-4)
-    (version "3.4.11")
+    (version "3.4.13")
     (source (origin
              (method url-fetch)
              (uri (string-append "https://ffmpeg.org/releases/ffmpeg-"
                                  version ".tar.xz"))
              (sha256
               (base32
-               "1rijdvcx8xjqwh084qchwz91vcj8wsvb4diax0g8miywpir00ccw"))))
+               "0np0yalqdrm7rn7iykgfzz3ly4vbgigrajg48c1l6n7qrzqvfszv"))))
     (arguments
      (substitute-keyword-arguments (package-arguments ffmpeg-4)
        ((#:modules modules %default-gnu-modules)
@@ -1838,14 +1914,14 @@ audio/video codec library.")
 (define-public ffmpeg-2.8
   (package
     (inherit ffmpeg-3.4)
-    (version "2.8.20")
+    (version "2.8.22")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://ffmpeg.org/releases/ffmpeg-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "1ivnfqmfnp3zmn1q2dxy4p85427y3r6d3jbnl5kprr7lqckf6rl5"))))
+                "0c8m4hhv2k5fybha908wzrpnf3wqkq52hayl658jq4bah0igdfqz"))))
     (arguments
      `(#:tests? #f               ; XXX: Enable them later, if required
        #:configure-flags
@@ -1940,6 +2016,81 @@ can be used by file managers to create thumbnails for your video files.  The
 thumbnailer uses ffmpeg to decode frames from the video files, so supported
 videoformats depend on the configuration flags of ffmpeg.")
     (license license:gpl2+)))
+
+(define-public ffmpeg-progress-yield
+  (package
+    (name "ffmpeg-progress-yield")
+    (version "0.7.8")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "ffmpeg-progress-yield" version))
+              (sha256
+               (base32
+                "07j6m8p8z8ybl75h0d4xzjl1pvkfzr0i73siysqcgrrahdgsxrls"))))
+    (build-system pyproject-build-system)
+    (arguments
+     ;; Not sure if the test file actually does anything.
+     (list #:phases #~(modify-phases %standard-phases
+                        (replace 'check
+                          (lambda* (#:key tests? #:allow-other-keys)
+                            (when tests?
+                              (invoke "python" "test/test.py"))))
+                        (add-after 'wrap 'wrap-program
+                          ;; Wrap ffmpeg on the executable.
+                          (lambda* (#:key inputs outputs #:allow-other-keys)
+                            (let ((fpy "bin/ffmpeg-progress-yield")
+                                  (ffm "bin/ffmpeg"))
+                              (wrap-program (search-input-file outputs fpy)
+                                `("PATH" ":" prefix
+                                  (,(search-input-file inputs ffm))))))))))
+    (inputs (list bash-minimal ffmpeg))
+    (home-page "https://github.com/slhck/ffmpeg-progress-yield")
+    (synopsis "Run an ffmpeg command with progress")
+    (description "This package allows an ffmpeg command to run with progress.
+It is usually a complement to @code{ffmpeg-normalize}.")
+    (license license:expat)))
+
+(define-public ffmpeg-normalize
+  (package
+    (name "ffmpeg-normalize")
+    (version "1.27.7")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "ffmpeg-normalize" version))
+              (sha256
+               (base32
+                "0idqqgsr3p840vx2x3idn851qwghjdbm6v4yrq2kprppyfvglni7"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (replace 'check
+                 (lambda* (#:key tests? #:allow-other-keys)
+                   (when tests?
+                     (invoke "python" "-m" "pytest"
+                             "test/test.py"))))
+               (add-after 'wrap 'wrap-ffmpeg
+                 ;; Wrap ffmpeg on the executable.
+                 (lambda* (#:key inputs outputs #:allow-other-keys)
+                   (let ((ffn (search-input-file outputs
+                                                 "bin/ffmpeg-normalize"))
+                         (ffm (search-input-file inputs "bin/ffmpeg")))
+                     (wrap-program ffn
+                       `("FFMPEG_PATH" = (,ffm)))))))))
+    (native-inputs (list python-pytest))
+    (inputs (list bash-minimal ffmpeg))
+    (propagated-inputs (list ffmpeg-progress-yield
+                             python-colorama
+                             python-colorlog
+                             python-tqdm))
+    (home-page "https://github.com/slhck/ffmpeg-normalize")
+    (synopsis "Normalize audio via ffmpeg")
+    (description "This program normalizes media files to a certain loudness
+level using the EBU R128 loudness normalization procedure.  It can also
+perform RMS-based normalization (where the mean is lifted or attenuated),
+or peak normalization to a certain target level.  Batch processing of several
+input files is possible, including video files.")
+    (license license:expat)))
 
 (define-public vlc
   (package
@@ -2354,7 +2505,7 @@ images and image hosting sites.")
 (define-public mpv-mpris
   (package
     (name "mpv-mpris")
-    (version "1.0")
+    (version "1.1")
     (source
       (origin
         (method git-fetch)
@@ -2363,7 +2514,7 @@ images and image hosting sites.")
                (commit version)))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1vpx4kzyg4pssn1hql2ci4s9x08sdx2v0kphw4aryywnz04yjhzf"))))
+         (base32 "1384y8n3l0xk8hbad1nsj9ljzb1h02g3ln3jysd8bd6shbl0x4mx"))))
     (build-system copy-build-system)
     (arguments
      '(#:install-plan
@@ -2377,7 +2528,7 @@ images and image hosting sites.")
     (native-inputs
      (list pkg-config))
     (inputs
-     (list glib mpv))
+     (list ffmpeg glib mpv))
     (home-page "https://github.com/hoyon/mpv-mpris")
     (synopsis "MPRIS plugin for mpv")
     (description "This package provides an @dfn{MPRIS} (Media Player Remote
@@ -2606,7 +2757,7 @@ YouTube.com and many more sites.")
 (define-public yt-dlp
   (package/inherit youtube-dl
     (name "yt-dlp")
-    (version "2023.09.24")
+    (version "2023.10.13")
     (source
      (origin
        (method git-fetch)
@@ -2615,7 +2766,7 @@ YouTube.com and many more sites.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "15ngsg3cadf2bv700fa1k5az5xpsm0wqr0cixbz8fcbhwdflfq6f"))))
+        (base32 "1cy8cpqwq6yfsbrnln3qqp9lsjckn20m6w7b890ha7jahyir5m1n"))))
     (arguments
      (substitute-keyword-arguments (package-arguments youtube-dl)
        ((#:tests? _) (not (%current-target-system)))
@@ -3194,33 +3345,45 @@ and custom quantization matrices.")
 (define-public streamlink
   (package
     (name "streamlink")
-    (version "3.2.0")
+    (version "6.3.1")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "streamlink" version))
         (sha256
          (base32
-          "09nrspga15svzi0hmakcarbciav0nzf30hg1ff53gia473cd4w4p"))))
+          "0i2qym2plm4gpcq50vl67j69m8a4zz9mb8gi2xryx28pbnpdzh4k"))
+        (snippet
+         #~(begin (use-modules (guix build utils))
+                  (substitute* "pyproject.toml"
+                    (("trio >=0\\.22") "trio >=0.21"))))))
     (build-system python-build-system)
     (arguments
-     `(#:phases (modify-phases %standard-phases
+     `(#:phases
+       (modify-phases %standard-phases
          (replace 'check
           (lambda* (#:key tests? #:allow-other-keys)
               (when tests?
                   (invoke "python" "-m" "pytest")))))))
     (native-inputs
-     (list python-freezegun python-mock python-pytest
-           python-requests-mock))
+     (list python-freezegun
+           python-requests-mock
+           python-pytest
+           python-pytest-asyncio
+           python-pytest-trio))
     (propagated-inputs
-     (list python-pysocks
-           python-websocket-client
+     (list python-certifi
            python-isodate
            python-lxml
            python-pycountry
            python-pycryptodome
+           python-pysocks
            python-requests
-           python-urllib3))
+           python-trio
+           python-trio-websocket
+           python-typing-extensions
+           python-urllib3
+           python-websocket-client))
     (home-page "https://github.com/streamlink/streamlink")
     (synopsis "Extract streams from various services")
     (description "Streamlink is command-line utility that extracts streams
@@ -3274,7 +3437,7 @@ from sites like Twitch.tv and pipes them into a video player of choice.")
 (define-public mlt
   (package
     (name "mlt")
-    (version "7.20.0")
+    (version "7.22.0")
     (source
      (origin
        (method git-fetch)
@@ -3283,7 +3446,7 @@ from sites like Twitch.tv and pipes them into a video player of choice.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1dc09j8yvis6ilba5a13qicf6wbgxnzwllab6h48kzfl1lc0n8g7"))))
+        (base32 "1aa23kni64751x0kd54lr87ns9kdc8pblhqp8m8608ah8xwak4mw"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -3527,18 +3690,15 @@ and JACK.")
 (define-public obs-looking-glass
   (package
     (name "obs-looking-glass")
-    (version "B5")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/gnif/LookingGlass")
-             (commit version)
-             (recursive? #t)))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32
-         "09mn544x5hg1z31l92ksk7fi7yj9r8xdk0dcl9fk56ivcr452ylm"))))
+    (version "B6")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://looking-glass.io/artifact/" version
+                                  "/source"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "15d7wwbzfw28yqbz451b6n33ixy50vv8acyzi8gig1mq5a8gzdib"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -5338,16 +5498,19 @@ result in several formats:
 (define-public rav1e
   (package
     (name "rav1e")
-    (version "0.6.3")
+    (version "0.6.6")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "rav1e" version))
-       (file-name
-        (string-append name "-" version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32
-         "0if94sfviy5cwljlnsy0f470ixfs090k54g416kcc0qd9w4rhy17"))))
+        (base32 "1h9fhmamb7mh3cv86y1qja9qb7r6w2jv3p8ydngvsyjy59lq7hqn"))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin (substitute* "Cargo.toml"
+                  (("\"= ?([[:digit:]]+(\\.[[:digit:]]+)*)" _ version)
+                   (string-append "\"^" version)))))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
@@ -5365,8 +5528,8 @@ result in several formats:
         ("rust-cfg-if" ,rust-cfg-if-1)
         ("rust-clap" ,rust-clap-4)
         ("rust-clap-complete" ,rust-clap-complete-4)
+        ("rust-clap-lex" ,rust-clap-lex-0.3)
         ("rust-console" ,rust-console-0.15)
-        ("rust-const-fn-assert" ,rust-const-fn-assert-0.1)
         ("rust-crossbeam" ,rust-crossbeam-0.8)
         ("rust-dav1d-sys" ,rust-dav1d-sys-0.7)
         ("rust-fern" ,rust-fern-0.6)
@@ -5400,12 +5563,16 @@ result in several formats:
         ("rust-toml" ,rust-toml-0.5)
         ("rust-v-frame" ,rust-v-frame-0.3)
         ("rust-wasm-bindgen" ,rust-wasm-bindgen-0.2)
-        ("rust-y4m" ,rust-y4m-0.7))
+        ("rust-winnow" ,rust-winnow-0.4)
+        ("rust-y4m" ,rust-y4m-0.8))
        #:cargo-development-inputs
        (("rust-assert-cmd" ,rust-assert-cmd-2)
         ("rust-criterion" ,rust-criterion-0.4)
         ("rust-interpolate-name" ,rust-interpolate-name-0.2)
         ("rust-nom" ,rust-nom-7)
+        ("rust-predicates" ,rust-predicates-2)
+        ("rust-predicates-core" ,rust-predicates-core-1)
+        ("rust-predicates-tree" ,rust-predicates-tree-1)
         ("rust-pretty-assertions" ,rust-pretty-assertions-1)
         ("rust-quickcheck" ,rust-quickcheck-1)
         ("rust-quickcheck-macros" ,rust-quickcheck-macros-1)
@@ -5421,7 +5588,7 @@ result in several formats:
                        (string-append "--prefix=" out)))))
          (add-after 'install 'delete-static-library
            (lambda* (#:key outputs #:allow-other-keys)
-             ;; Delete 80 MiB (!) static library.
+             ;; Delete 93 MiB (!) static library.
              (delete-file (string-append (assoc-ref outputs "out")
                                          "/lib/librav1e.a")))))))
     (native-inputs

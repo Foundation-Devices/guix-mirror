@@ -60,6 +60,7 @@
 ;;; Copyright © 2023 Bruno Victal <mirai@makinata.eu>
 ;;; Copyright © 2023 Yovan Naumovski <yovan@gorski.stream>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 Artyom V. Poptsov <poptsov.artyom@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -127,6 +128,7 @@
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages image)
   #:use-module (gnu packages kde-frameworks)
+  #:use-module (gnu packages libbsd)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages libidn)
   #:use-module (gnu packages libusb)
@@ -154,7 +156,6 @@
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
-  #:use-module (gnu packages ruby)
   #:use-module (gnu packages samba)
   #:use-module (gnu packages serialization)
   #:use-module (gnu packages shells)
@@ -327,42 +328,26 @@ Unix Domain Sockets, SCTP for both IPv4 and IPv6.")
 (define-public lcsync
   (package
     (name "lcsync")
-    (version "0.2.1")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://codeberg.org/librecast/lcsync")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "0bsd3dkir2i647nmrmyb7skbv16v0f6f3gfwkpxz8g42978dlms5"))))
+    (version "0.3.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://codeberg.org/librecast/lcsync")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1rhk80ybd2zranay76z1ysifnnm786lg9kiiijcwv76qy95in9ks"))))
     (build-system gnu-build-system)
     (arguments
      `(#:parallel-tests? #f
-       #:configure-flags
-       (list
-        (string-append "--prefix="
-                       (assoc-ref %outputs "out")))
+       #:configure-flags (list (string-append "--prefix="
+                                              (assoc-ref %outputs "out")))
        #:make-flags (let ((target ,(%current-target-system)))
                       (list ,(string-append "CC="
                                             (cc-for-target))))
-       #:test-target "test"
-       #:phases (modify-phases %standard-phases
-                  (add-after 'unpack 'use-prefix-from-configure-in-doc-makefile
-                    ;; Use prefix from configure. Fixed upstream:
-                    ;; https://codeberg.org/librecast/lcsync/commit/4ba00f6
-                    ;; XXX: Remove for 0.2.2+
-                    (lambda _
-                      (substitute* "doc/Makefile.in"
-                        (("PREFIX .= /usr/local") "PREFIX ?= @prefix@"))))
-                  (add-before 'build 'add-library-paths
-                    (lambda* (#:key inputs #:allow-other-keys)
-                      (let* ((librecast (assoc-ref inputs "librecast")))
-                        (substitute* (list "./src/Makefile" "./test/Makefile")
-                          (("-llibrecast")
-                           (string-append "-L" librecast "/lib -llibrecast")))))))))
-    (inputs (list lcrq librecast libsodium))
+       #:test-target "test"))
+    (inputs (list lcrq librecast libsodium libbsd))
     (home-page "https://librecast.net/lcsync.html")
     (synopsis "Librecast file and data syncing tool")
     (description
@@ -391,7 +376,7 @@ them in order to efficiently transfer a minimal amount of data.")
     (build-system meson-build-system)
     (outputs '("out" "doc" "gst" "tools"))
     (arguments
-     (list #:glib-or-gtk? #t ; To wrap binaries and/or compile schemas
+     (list #:glib-or-gtk? #t         ; To wrap binaries and/or compile schemas
            #:configure-flags
            #~(list (string-append "-Dbindir="
                                   (assoc-ref %outputs "tools") "/bin")
@@ -400,6 +385,16 @@ them in order to efficiently transfer a minimal amount of data.")
                    "-Dpycamera=disabled")
            #:phases
            #~(modify-phases %standard-phases
+               #$@(if (target-aarch64?)
+                      ;; The 'log_process' test fails on aarch64-linux with a
+                      ;; SIGinvalid error (see:
+                      ;; https://bugs.libcamera.org/show_bug.cgi?id=173).
+                      #~((add-after 'unpack 'disable-problematic-tests
+                           (lambda _
+                             (substitute* "test/log/meson.build"
+                               ((".*'name': 'log_process'.*")
+                                "")))))
+                      #~())
                (add-after 'install 'move-doc-and-gst
                  (lambda* (#:key outputs #:allow-other-keys)
                    (let* ((out (assoc-ref outputs "out"))
@@ -513,16 +508,16 @@ GLib-based library, libnice, as well as GStreamer elements to use it.")
 (define-public librecast
   (package
     (name "librecast")
-    (version "0.7.0")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://codeberg.org/librecast/librecast")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "0y0km0fv39m3i227pyg7fcr7d94gbji51fkcywqyrjgmk4j1hp1n"))))
+    (version "0.8.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://codeberg.org/librecast/librecast")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "01m0q4n2hy3csbzil8ivjyzb1mh4w9jlh9iiv6z53kasl7aas27i"))))
     (build-system gnu-build-system)
     (arguments
      `(#:parallel-tests? #f
@@ -532,7 +527,7 @@ GLib-based library, libnice, as well as GStreamer elements to use it.")
                             (string-append "PREFIX="
                                            (assoc-ref %outputs "out"))))
        #:test-target "test"))
-    (inputs (list libsodium lcrq))
+    (inputs (list libsodium lcrq libbsd))
     (synopsis "IPv6 multicast library")
     (description "Librecast is a C library which supports IPv6 multicast
 networking.")
@@ -857,25 +852,9 @@ publish/subscribe, RPC-style request/reply, or service discovery.")
        (sha256
         (base32 "01ddfzjlkf2dgijrmm3j3j8irccsnbgfvjcnwslsfaxnrmrq5s64"))))
     (build-system cmake-build-system)
-    (outputs '("out" "doc"))
     (arguments
      `(#:configure-flags
-       (list
-        "-DNN_ENABLE_COVERAGE=ON")
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'install 'move-docs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (doc (assoc-ref outputs "doc")))
-               (mkdir-p (string-append doc "/share/doc"))
-               (rename-file
-                (string-append out "/share/doc/nanomsg")
-                (string-append doc "/share/doc/nanomsg"))
-               #t))))))
-    (native-inputs
-     `(("asciidoctor" ,ruby-asciidoctor)
-       ("pkg-config" ,pkg-config)))
+       (list "-DNN_ENABLE_COVERAGE=ON")))
     (synopsis "Scalable socket library")
     (description "Nanomsg is a socket library that provides several common
 communication patterns.  It aims to make the networking layer fast, scalable,
@@ -3967,7 +3946,7 @@ powerful route filtering syntax and an easy-to-use configuration interface.")
 (define-public iwd
   (package
     (name "iwd")
-    (version "2.7")
+    (version "2.8")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3976,7 +3955,7 @@ powerful route filtering syntax and an easy-to-use configuration interface.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0xn0db37x0nrvwlw0r4w6q3yk57ijqh9zxd15wf3qqvs01hqkk2j"))))
+                "0bpksqyaqr624bj7zm9hi22rnp6wnjbngx4q08l7lbd0r7r93vcb"))))
     (build-system gnu-build-system)
     (inputs
      (list dbus ell (package-source ell) readline))
@@ -4021,7 +4000,7 @@ powerful route filtering syntax and an easy-to-use configuration interface.")
                ;; Don't try to 'mkdir /var'.
                (("\\$\\(MKDIR_P\\) -m 700") "true")))))))
     (home-page "https://git.kernel.org/pub/scm/network/wireless/iwd.git/")
-    (synopsis "Internet Wireless Daemon")
+    (synopsis "iNet Wireless Daemon")
     (description "iwd is a wireless daemon for Linux that aims to replace WPA
 Supplicant.  It optimizes resource utilization by not depending on any external
 libraries and instead utilizing features provided by the Linux kernel to the
@@ -4413,10 +4392,31 @@ client and server.  It allows you to use remote block devices over a TCP/IP
 network.")
     (license license:gpl2)))
 
+(define-public ngtcp2
+  (package
+    (name "ngtcp2")
+    (version "1.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/ngtcp2/ngtcp2/"
+                           "releases/download/v" version "/"
+                           "ngtcp2-" version ".tar.xz"))
+       (sha256
+        (base32 "0l84hnj9n4bfxjizgmqsqbz71jx7m00a7l1z43fg5ls3apx9ij11"))))
+    (build-system gnu-build-system)
+    (native-inputs (list cunit))
+    (home-page "https://nghttp2.org/ngtcp2/")
+    (synopsis "QUIC protocol implementation")
+    (description
+     "The ngtcp2 project is an effort to implement the RFC9000 (IETF)
+QUIC protocol.")
+    (license license:expat)))
+
 (define-public yggdrasil
   (package
     (name "yggdrasil")
-    (version "0.4.7")
+    (version "0.5.2")
     (source
      (origin
        (method git-fetch)
@@ -4427,8 +4427,8 @@ network.")
          (recursive? #t)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "01mllfrsr55lnfivxwa57cfrjas6w4shsvx9k81pw8jixc124myk"))
-       (patches (search-patches "yggdrasil-extra-config.patch"))))
+        (base32 "0ahgb94s30sq1wwyc8h53mjj3j43ifr0aanj8262rsm6rqk04kzq"))
+      (patches (search-patches "yggdrasil-extra-config.patch"))))
     (build-system go-build-system)
     (arguments
      (list #:import-path "github.com/yggdrasil-network/yggdrasil-go"
@@ -4454,32 +4454,37 @@ network.")
                       (list "github.com/yggdrasil-network/yggdrasil-go/cmd/yggdrasil"
                             "github.com/yggdrasil-network/yggdrasil-go/cmd/yggdrasilctl"
                             "github.com/yggdrasil-network/yggdrasil-go/cmd/genkeys"))))))))
-    ;; https://github.com/kardianos/minwinsvc is windows only
     (propagated-inputs
-     (list ;;("go-golang-zx2c4-com-wireguard-windows"
-           ;; ,go-golang-zx2c4-com-wireguard-windows)
-           go-golang-zx2c4-com-wireguard
-           go-golang-org-x-text
-           go-golang-org-x-sys
-           go-golang-org-x-net
-           go-golang-org-x-crypto
-           go-golang-org-x-tools
-           go-netns
-           go-netlink
-           go-github-com-olekukonko-tablewriter
-           go-github-com-mitchellh-mapstructure
-           go-github-com-mattn-go-runewidth
-           go-github-com-mattn-go-isatty
-           go-github-com-mattn-go-colorable
-           go-github-com-kardianos-minwinsvc
-           go-github-com-hjson-hjson-go
-           go-github-com-hashicorp-go-syslog
-           go-github-com-gologme-log
-           go-github-com-fatih-color
-           go-github-com-cheggaaa-pb-v3
-           go-github-com-vividcortex-ewma
-           go-github-com-arceliar-phony
-           go-github-com-arceliar-ironwood))
+     (let ((p (package-input-rewriting
+               `((,go-golang-org-x-sys . ,go-golang-org-x-sys-0.8))
+               #:deep? #true)))
+       (cons go-golang-org-x-sys-0.8
+             (map p
+                  (list go-golang-zx2c4-com-wireguard
+                        go-golang-org-x-text
+                        go-golang-org-x-net
+                        go-golang-org-x-crypto
+                        go-golang-org-x-tools
+                        go-netns
+                        go-netlink
+                        go-github-com-bits-and-blooms-bitset
+                        go-github-com-bits-and-blooms-bloom
+                        go-github-com-quic-go-quic-go
+                        go-github-com-hjson-hjson-go
+                        go-github-com-olekukonko-tablewriter
+                        go-github-com-mitchellh-mapstructure
+                        go-github-com-mattn-go-runewidth
+                        go-github-com-mattn-go-isatty
+                        go-github-com-mattn-go-colorable
+                        go-github-com-kardianos-minwinsvc
+                        go-github-com-hjson-hjson-go
+                        go-github-com-hashicorp-go-syslog
+                        go-github-com-gologme-log
+                        go-github-com-fatih-color
+                        go-github-com-cheggaaa-pb-v3
+                        go-github-com-vividcortex-ewma
+                        go-github-com-arceliar-phony
+                        go-github-com-arceliar-ironwood)))))
     (home-page "https://yggdrasil-network.github.io/blog.html")
     (synopsis
      "Experiment in scalable routing as an encrypted IPv6 overlay network")
@@ -4538,7 +4543,7 @@ on hub/switched networks.  It is based on @acronym{ARP} packets, it will send
 (define-public phantomsocks
   (package
     (name "phantomsocks")
-    (version "0.0.0-20230829023258-013a0002abe2")
+    (version "0.0.0-20231031033204-8b0ac27fc450")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -4547,10 +4552,11 @@ on hub/switched networks.  It is based on @acronym{ARP} packets, it will send
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0pqq4mh6dr7fb7i001wggwkxpvavxq0ps9h2cmm4gv8ygh4v6f10"))))
+                "1q4i8pgj6hzry9wzlczx729dmmgqdqfb26rfaim2ngmp1dyy9drl"))))
     (build-system go-build-system)
     (arguments
-     (list #:install-source? #f
+     (list #:go go-1.20
+           #:install-source? #f
            #:import-path "github.com/macronut/phantomsocks"
            #:build-flags #~'("-tags" #$(if (target-linux?)
                                            "rawsocket"

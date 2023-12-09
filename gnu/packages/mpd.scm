@@ -57,6 +57,7 @@
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages readline)
+  #:use-module (gnu packages ruby)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages curl)
@@ -116,7 +117,7 @@ interfacing MPD in the C, C++ & Objective C languages.")
 (define-public mpd
   (package
     (name "mpd")
-    (version "0.23.13")
+    (version "0.23.14")
     (source (origin
               (method url-fetch)
               (uri
@@ -125,7 +126,7 @@ interfacing MPD in the C, C++ & Objective C languages.")
                               "/mpd-" version ".tar.xz"))
               (sha256
                (base32
-                "06fmy68lfrsi5y03l53dnwcynqhwh5f5vhdpbsr8lzmvzgk02sx9"))))
+                "1lh9nn4a7ng6i08df7rbs8c4nbgmz883pss9p2gswa6m4rsadfc5"))))
     (build-system meson-build-system)
     (arguments
      (list
@@ -246,7 +247,16 @@ protocol.")
                  ;; actually invoked.
                  (lambda _
                    (substitute* "doc/meson.build"
-                     (("rsync") "ls")))))))
+                     (("rsync") "ls"))))
+               (add-after 'install 'move-completion
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (let* ((out (assoc-ref outputs "out"))
+                          (contrib (string-append out "/share/doc/mpc/contrib"))
+                          (completion
+                           (string-append out "/etc/bash_completion.d/")))
+                     (mkdir-p completion)
+                     (rename-file (string-append contrib "/mpc-completion.bash")
+                                  (string-append completion "/mpc"))))))))
     (inputs (list libmpdclient))
     (native-inputs
      (list pkg-config python-sphinx))
@@ -614,7 +624,7 @@ mpdevil loads all tags and covers on demand.")
 (define-public mympd
   (package
     (name "mympd")
-    (version "12.0.2")
+    (version "13.0.5")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -623,22 +633,29 @@ mpdevil loads all tags and covers on demand.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "19139ina79jdfmc2vh6xcp5n0z8c41fi2fz2fmvg623bpix3fcgf"))))
+                "1ly3iw4irybfxyafgrldldwc28a879wwnd1pg32m2sgrwyhr0czm"))))
+    (outputs '("out" "doc"))
     (build-system cmake-build-system)
     (arguments
      (list
       #:configure-flags
-      #~(list "-DMYMPD_BUILD_TESTING=ON"
-              ;; Handled by 'strip' phase.
-              "-DMYMPD_STRIP_BINARY=OFF")
+      #~(list "-DCMAKE_INSTALL_LOCALSTATEDIR=/var"
+              "-DMYMPD_BUILD_TESTING=ON"
+              "-DMYMPD_DOC_HTML=ON")
       #:phases
       #~(modify-phases %standard-phases
           (replace 'check
             (lambda* (#:key tests? #:allow-other-keys)
               (when tests?
                 ;; The following test requires network connectivity.
-                (invoke "ctest" "--exclude-regex" "test_http_client")))))))
-    (native-inputs (list jq perl pkg-config))
+                (invoke "ctest" "--exclude-regex" "test_http_client"))))
+          (add-after 'install 'move-doc
+            (lambda _
+              (let ((old (string-append #$output "/share/doc"))
+                    (new (string-append #$output:doc "/share/doc")))
+                (mkdir-p (dirname new))
+                (rename-file old new)))))))
+    (native-inputs (list jekyll jq perl pkg-config))
     (inputs (list flac libid3tag lua openssl pcre2))
     (home-page "https://jcorporation.github.io/")
     (synopsis "Web-based MPD client")

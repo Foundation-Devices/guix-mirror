@@ -551,7 +551,7 @@ graphical interface.")
 (define-public libcue
   (package
     (name "libcue")
-    (version "2.2.1")
+    (version "2.3.0")
     (source (origin
              (method git-fetch)
              (uri (git-reference
@@ -560,7 +560,7 @@ graphical interface.")
              (file-name (git-file-name name version))
              (sha256
               (base32
-               "1iqw4n01rv2jyk9lksagyxj8ml0kcfwk67n79zy1r6zv1xfp5ywm"))))
+               "1lkcj31fc0wjqr9lgr1ws6invx6ayvrk7v5kd9lm7956q1mi9ib4"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags '("-DBUILD_SHARED_LIBS=ON")))
@@ -951,7 +951,7 @@ CD data, and more.  It's mostly compatible with @code{cdrtools}.")
 (define-public libmirage
   (package
     (name "libmirage")
-    (version "3.2.6")
+    (version "3.2.7")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -959,7 +959,7 @@ CD data, and more.  It's mostly compatible with @code{cdrtools}.")
                     version ".tar.xz"))
               (sha256
                (base32
-                "19pjdmxhzl8y3brhg8fsv99b6jg4lfnl8jvcjgm4jmqrr684czr5"))))
+                "1lxkpmad8l2wl0afp26jahzf5cxp10p0zl1a56lcqjwmsy0292gs"))))
     (build-system cmake-build-system)
     (native-inputs
      (list pkg-config intltool))

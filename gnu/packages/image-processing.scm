@@ -1413,7 +1413,12 @@ combine the information contained in both.")
        (uri (string-append "mirror://sourceforge/itk/itk/4.12/"
                            "InsightToolkit-" version ".tar.xz"))
        (sha256
-        (base32 "1qw9mxbh083siljygahl4gdfv91xvfd8hfl7ghwii19f60xrvn2w"))))))
+        (base32 "1qw9mxbh083siljygahl4gdfv91xvfd8hfl7ghwii19f60xrvn2w"))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments insight-toolkit-4)
+       ((#:configure-flags cf #~'())
+        ;; error: ISO C++17 does not allow dynamic exception specifications
+        #~(cons* "-DCMAKE_CXX_FLAGS=-std=c++14" #$cf))))))
 
 (define-public itk-snap
   (package
@@ -1680,7 +1685,13 @@ purposes.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1bm0wdv5p26i8nl4kx3145cz553v401sgbpgc96sddzjfmfiydcw"))))
+        (base32 "1bm0wdv5p26i8nl4kx3145cz553v401sgbpgc96sddzjfmfiydcw"))
+      (snippet
+       #~(begin (use-modules (guix build utils))
+                (substitute* "imgviz/draw.py"
+                  (("collections\\.Iterable") "collections.abc.Iterable"))
+                (substitute* "imgviz/tile.py"
+                  (("collections\\.Sequence") "collections.abc.Sequence"))))))
     (build-system python-build-system)
     (arguments
      `(#:phases

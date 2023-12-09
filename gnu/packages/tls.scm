@@ -200,6 +200,7 @@ living in the same process.")
   (package
     (name "gnutls")
     (version "3.7.7")
+    (replacement gnutls-3.8.1)
     (source (origin
               (method url-fetch)
               ;; Note: Releases are no longer on ftp.gnu.org since the
@@ -302,6 +303,35 @@ required structures.")
                   (ftp-directory . "/gcrypt/gnutls")))))
 
 (define-deprecated/public-alias gnutls-latest gnutls)
+
+;; Replacement for gnutls@3.7.7 to address GNUTLS-SA-2020-07-14 /
+;; CVE-2023-0361
+(define-public gnutls-3.8.1
+  (package
+    (inherit gnutls)
+    (version "3.8.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://gnupg/gnutls/v"
+                                  (version-major+minor version)
+                                  "/gnutls-" version ".tar.xz"))
+              (patches (search-patches "gnutls-skip-trust-store-test.patch"))
+              (sha256
+               (base32
+                "1742jiigwsfhx7nj5rz7dwqr8d46npsph6b68j7siar0mqarx2xs"))))
+    (arguments
+     (if (target-hurd?)
+         ;; Fix reference to undefined 'PATH_MAX'.  This is fixed in GnuTLS
+         ;; commit 3b6ec1e01de4e96d36276dfe34ee9e183f285264.
+         (substitute-keyword-arguments (package-arguments gnutls)
+           ((#:phases phases #~%standard-phases)
+            #~(modify-phases #$phases
+                (add-after 'unpack 'set-path-max
+                  (lambda _
+                    (substitute* "lib/pathbuf.h"
+                      (("^#define GNUTLS_PATH_MAX PATH_MAX")
+                       "#define GNUTLS_PATH_MAX 8192\n")))))))
+         (package-arguments gnutls)))))
 
 (define-public gnutls/dane
   ;; GnuTLS with build libgnutls-dane, implementing DNS-based
@@ -961,7 +991,7 @@ number generator")
     (name "mbedtls-apache")
     ;; XXX Check whether ‘-Wformat-signedness’ still breaks mbedtls-for-hiawatha
     ;; when updating.
-    (version "2.28.0")
+    (version "2.28.5")
     (source
      (origin
        (method git-fetch)
@@ -970,7 +1000,7 @@ number generator")
              (commit (string-append "mbedtls-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0s37dsi29v7146fi9k4frvx5rz2snxdm6c3rwq2fvnca2r80hfjl"))))
+        (base32 "1jlkvvyigpjvv404b8vmx68f1v6g1h2zr6rd78dhc0xgqi018phs"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags

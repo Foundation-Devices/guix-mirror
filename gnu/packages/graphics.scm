@@ -2,7 +2,7 @@
 ;;; Copyright © 2015, 2016, 2021, 2022 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015 Tomáš Čech <sleep_walker@gnu.org>
 ;;; Copyright © 2016, 2019 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2016, 2017, 2019 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2016, 2017, 2019, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016, 2018, 2021, 2023 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2017 Manolis Fragkiskos Ragkousis <manolis837@gmail.com>
@@ -28,7 +28,7 @@
 ;;; Copyright © 2021 Ekaitz Zarraga <ekaitz@elenq.tech>
 ;;; Copyright © 2021, 2022 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2022 Michael Rohleder <mike@rohleder.de>
-;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
+;;; Copyright © 2022, 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2022 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2022 Tobias Kortkamp <tobias.kortkamp@gmail.com>
 ;;; Copyright © 2022 Paul A. Patience <paul@apatience.com>
@@ -121,6 +121,7 @@
   #:use-module (gnu packages tbb)
   #:use-module (gnu packages toolkits)
   #:use-module (gnu packages upnp)
+  #:use-module (gnu packages version-control)
   #:use-module (gnu packages video)
   #:use-module (gnu packages vulkan)
   #:use-module (gnu packages xiph)
@@ -1038,7 +1039,7 @@ distills complex, animated scenes into a set of baked geometric results.")
 (define-public mangohud
   (package
     (name "mangohud")
-    (version "0.6.8")
+    (version "0.7.0")
     (source
      (origin
        (method git-fetch)
@@ -1047,21 +1048,18 @@ distills complex, animated scenes into a set of baked geometric results.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "19dp8l5njzl9xah0bhwlkl39vc8w2rnpvpdrhgaz3hnhz8b0r5df"))))
+        (base32 "1m4a2dqzqdhk9w1gvzppid7k0fxvplh5hmivvj9sda529s1g24rc"))))
     (build-system meson-build-system)
     (arguments
      (list
       #:build-type "release"
       #:configure-flags
-      #~(list "-Duse_system_vulkan=enabled"
-              "-Duse_system_spdlog=enabled"
+      #~(list "-Duse_system_spdlog=enabled"
               "-Dwith_xnvctrl=disabled"
-              "-Dappend_libdir_mangohud=false"
-              (string-append "-Dvulkan_datadir="
-                             #$(this-package-input "vulkan-headers") "/share"))
+              "-Dappend_libdir_mangohud=false")
       #:phases
       #~(modify-phases %standard-phases
-          ;; Mangohud tries to build the imgui library as a meson submodule,
+          ;; MangoHud tries to build the imgui library as a meson submodule,
           ;; so we change the dependency to the imgui input instead.
           (add-after 'unpack 'unbundle-imgui
             (lambda _
@@ -1073,6 +1071,23 @@ distills complex, animated scenes into a set of baked geometric results.")
                   "declare_dependency(dependencies: "
                   "cpp.find_library('imgui'), include_directories: '"
                   #$(this-package-input "imgui") "/include/imgui')")))))
+          ;; Likewise, MangoHud bundles a Vulkan headers submodule to use a
+          ;; specific version, which we provide as an input and adjust the
+          ;; build accordingly.
+          (add-after 'unbundle-imgui 'unbundle-vulkan-headers
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "meson.build"
+                (("vkh_sp = .*")
+                 "")
+                (("vkh_sp.get_variable\\('vulkan_api_xml'\\)")
+                 (string-append "files('"
+                                (search-input-file inputs "registry/vk.xml")
+                                "')"))
+                (("dep_vulkan = .*")
+                 ""))
+              (substitute* "src/meson.build"
+                (("dep_vulkan,")
+                 ""))))
           (add-after 'unpack 'patch-paths
             (lambda* (#:key inputs #:allow-other-keys)
               (substitute* "src/meson.build"
@@ -1098,11 +1113,20 @@ distills complex, animated scenes into a set of baked geometric results.")
            libx11
            mesa
            mesa-utils
+           nlohmann-json
            python-mako
            spdlog
-           vulkan-headers
+           (origin
+             (method git-fetch)
+             (uri (git-reference
+                   (url "https://github.com/KhronosGroup/Vulkan-Headers")
+                   (commit "v1.2.158")))
+             (file-name (git-file-name "vulkan" "v1.2.158"))
+             (sha256
+              (base32
+               "0jvaqj87792yccpr290djb18pqaisspq9dw6bqim6mrhfgda9v76")))
            vulkan-loader))
-    (native-inputs (list pkg-config python))
+    (native-inputs (list git-minimal/pinned pkg-config python))
     (home-page "https://github.com/flightlessmango/MangoHud/")
     (synopsis "Vulkan and OpenGL overlay for monitoring performance and hardware")
     (description "MangoHud is a Vulkan and OpenGL overlay for monitoring
@@ -1505,7 +1529,7 @@ in Julia).")
 (define-public povray
   (package
     (name "povray")
-    (version "3.7.0.8")
+    (version "3.7.0.10")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1514,43 +1538,41 @@ in Julia).")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1q114n4m3r7qy3yn954fq7p46rg7ypdax5fazxr9yj1jklf1lh6z"))
+                "19bv962clwc6sk53kq8bqf77fh0v46afm2knjbki8yj0m1mnyyd0"))
               (modules '((guix build utils)))
               (snippet
-               '(begin
-                  ;; Delete bundled libraries.
-                  (delete-file-recursively "libraries")
-                  #t))))
+               ;; Delete bundled libraries.
+               '(delete-file-recursively "libraries"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf automake pkg-config))
     (inputs
-     `(("boost" ,boost)
-       ("libjpeg" ,libjpeg-turbo)
-       ("libpng" ,libpng)
-       ("libtiff" ,libtiff)
-       ("openexr" ,openexr-2)
-       ("sdl" ,sdl)
-       ("zlib" ,zlib)))
+     (list boost
+           libjpeg-turbo
+           libpng
+           libtiff
+           openexr-2
+           sdl
+           zlib))
     (arguments
-     '(#:configure-flags
-       (list "COMPILED_BY=Guix"
-             (string-append "--with-boost-libdir="
-                            (assoc-ref %build-inputs "boost") "/lib")
-             "--disable-optimiz-arch")
+     (list
+      #:configure-flags
+      #~(list "COMPILED_BY=Guix"
+              (string-append "--with-boost-libdir="
+                             #$(this-package-input "boost") "/lib")
+              "--disable-optimiz-arch")
        #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'run-prebuild
-           (lambda _
-             (setenv "HOME" (getcwd))
-             (with-directory-excursion "unix"
-               (substitute* "prebuild.sh"
-                 (("/bin/sh") (which "sh")))
-               (invoke "sh" "prebuild.sh"))
-             #t))
-         ;; The bootstrap script is run by the prebuild script in the
-         ;; "run-prebuild" phase.
-         (delete 'bootstrap))))
+       '(modify-phases %standard-phases
+          (add-after 'unpack 'run-prebuild
+            (lambda _
+              (setenv "HOME" (getcwd))
+              (with-directory-excursion "unix"
+                (substitute* "prebuild.sh"
+                  (("/bin/sh") (which "sh")))
+                (invoke "sh" "prebuild.sh"))))
+          ;; The bootstrap script is run by the prebuild script in the
+          ;; "run-prebuild" phase.
+          (delete 'bootstrap))))
     (synopsis "Tool for creating three-dimensional graphics")
     (description
      "@code{POV-Ray} is short for the Persistence of Vision Raytracer, a tool
@@ -2182,6 +2204,10 @@ Cflags: -I${includedir}~%" #$output #$version)))))
                           "_" "_" "_" "Codec_partialAnim"
                           "_" "_" "_" "Codec_InvalidImages"
                           "_" "_" "_" "Codec_GifInterlacedTruncated"
+                          ;; This test started failing possibly after mesa
+                          ;; being updated to 23.2.1 and possibly only on some
+                          ;; hardware.
+                          "_" "_" "_" "SkRuntimeBlender_GPU"
                           "_" "_" "_" "SkText_UnicodeText_Flags"
                           "_" "_" "_" "SkParagraph_FontStyle"
                           "_" "_" "_" "flight_animated_image"
@@ -2528,7 +2554,7 @@ generated discrete signed distance field using the cubic spline kernel.
 (define-public mmg
   (package
     (name "mmg")
-    (version "5.7.1")
+    (version "5.7.2")
     (source
      (origin
        (method git-fetch)
@@ -2537,7 +2563,7 @@ generated discrete signed distance field using the cubic spline kernel.
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0skb7yzsw6y44zp9gb729i5xks7qd97nvn3z6jhz4jksqksx7lz0"))))
+        (base32 "007d0mvqhnxxj6dbcip9s615asrbpgrbkpm5xn6m8k3n9sljr153"))))
     (build-system cmake-build-system)
     (outputs '("out" "lib" "doc"))
     (arguments
@@ -2738,7 +2764,7 @@ desired local properties.")
 (define-public f3d
   (package
     (name "f3d")
-    (version "2.0.0")
+    (version "2.2.1")
     (source
      (origin
        (method git-fetch)
@@ -2747,22 +2773,12 @@ desired local properties.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1gcwpdkz3ylaxi133zri1cxkvj6za5s1hbgqqc8fn10q2dkkdd44"))
+        (base32 "0f076754zsxb4gwk6bxj94iyjj0dfxmmc8w88f55xd6hbm3qdnwd"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
-            (delete-file "external/cxxopts.hpp")
-            (delete-file "external/json.hpp")
-            (substitute* "application/F3DOptionsParser.cxx"
-              (("^#include \"cxxopts\\.hpp\"")
-               "#include <cxxopts.hpp>")
-              (("^#include \"json\\.hpp\"")
-               "#include <nlohmann/json.hpp>")
-              (("cxxopts::OptionException")
-               "cxxopts::exceptions::parsing"))
-            (substitute* "library/src/engine.cxx"
-              (("^#include <json\\.hpp>")
-               "#include <nlohmann/json.hpp>"))))))
+            (delete-file-recursively "external/cxxopts")
+            (delete-file-recursively "external/nlohmann_json")))))
     (build-system cmake-build-system)
     ;; The package cannot easily be split into out and lib outputs because
     ;; VTK's vtkModule.cmake complains, and also the CMake files in
@@ -2785,15 +2801,29 @@ desired local properties.")
       #~(list (string-append "-DCMAKE_INSTALL_DOCDIR=" #$output
                              "/share/doc/" #$name "-" #$version)
               "-DBUILD_TESTING=OFF"
-              "-DF3D_GENERATE_MAN=ON"
-              "-DF3D_INSTALL_DEFAULT_CONFIGURATION_FILE=ON"
-              "-DF3D_INSTALL_DEFAULT_CONFIGURATION_FILE_IN_PREFIX=ON"
-              "-DF3D_INSTALL_MIME_TYPES_FILES=ON"
-              "-DF3D_INSTALL_THUMBNAILER_FILES=ON"
-              "-DF3D_MODULE_ALEMBIC=ON"
-              "-DF3D_MODULE_ASSIMP=ON"
+              "-DF3D_LINUX_GENERATE_MAN=ON"
+              "-DF3D_USE_EXTERNAL_CXXOPTS=ON"
+              "-DF3D_USE_EXTERNAL_NLOHMANN_JSON=ON"
               "-DF3D_MODULE_EXTERNAL_RENDERING=ON"
-              "-DF3D_MODULE_OCCT=ON")))
+              "-DF3D_MODULE_EXR=ON"
+              "-DF3D_PLUGIN_BUILD_ALEMBIC=ON"
+              "-DF3D_PLUGIN_BUILD_ASSIMP=ON"
+              "-DF3D_PLUGIN_BUILD_OCCT=ON")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-cmake-rpath
+            (lambda _
+              ;; Expand $ORIGIN, and add VTK to library RPATH, because it is
+              ;; not added automatically.
+              (substitute* "application/CMakeLists.txt"
+                (("(set_target_properties.*PROPERTIES.*INSTALL_RPATH ).*"
+                  _ prefix)
+                 (string-append prefix "\"" #$output "/lib\")\n")))
+              (substitute* "library/CMakeLists.txt"
+                (("(set_target_properties.*PROPERTIES.*INSTALL_RPATH ).*"
+                  _ prefix)
+                 (string-append prefix "\"" #$output "/lib:"
+                                #$(this-package-input "vtk") "/lib\")\n"))))))))
     (native-inputs
      (list cxxopts
            help2man
@@ -2817,6 +2847,7 @@ desired local properties.")
            lz4
            netcdf
            opencascade-occt
+           openexr
            vtk
            zlib))
     (home-page "https://f3d-app.github.io/f3d/")

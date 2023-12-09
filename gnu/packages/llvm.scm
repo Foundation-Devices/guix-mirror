@@ -3,7 +3,7 @@
 ;;; Copyright © 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016 Dennis Mungai <dmngaie@gmail.com>
-;;; Copyright © 2016, 2018, 2019, 2020, 2021 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2016, 2018, 2019, 2020, 2021, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2018–2022 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2018, 2019 Tobias Geerinckx-Rice <me@tobias.gr>
@@ -26,6 +26,7 @@
 ;;; Copyright © 2022 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2022 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2022 Zhu Zihao <all_but_last@163.com>
+;;; Copyright © 2023 Hilton Chain <hako@ultrarare.space>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -72,11 +73,13 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
   #:use-module (gnu packages swig)
+  #:use-module (gnu packages vulkan)
   #:use-module (gnu packages xml)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match)
   #:export (make-lld-wrapper
-            system->llvm-target))
+            system->llvm-target
+            clang-properties))
 
 (define* (system->llvm-target #:optional
                               (system (or (and=> (%current-target-system)
@@ -85,19 +88,32 @@
   "Return the LLVM target name that corresponds to SYSTEM, a system type such
 as \"x86_64-linux\"."
   ;; See the 'lib/Target' directory of LLVM for a list of supported targets.
+  (match (system->llvm-target-arch system)
+    ("RISCV64" "RISCV")
+    ("X86_64" "X86")
+    (x x)))
+
+(define* (system->llvm-target-arch #:optional
+                                   (system (or (and=> (%current-target-system)
+                                                      gnu-triplet->nix-system)
+                                               (%current-system))))
+  "Return the LLVM target arch name that corresponds to SYSTEM, a system type such
+as \"x86_64-linux\"."
+  ;; See the 'cmake/config-ix.cmake' file of LLVM for a list of supported targets arch.
+  ;; start with # Determine the native architecture.
   (letrec-syntax ((matches (syntax-rules (=>)
                              ((_ (system-prefix => target) rest ...)
                               (if (string-prefix? system-prefix system)
                                   target
                                   (matches rest ...)))
                              ((_)
-                              (error "LLVM target for system is unknown" system)))))
+                              (error "LLVM target arch for system is unknown" system)))))
     (matches ("aarch64"     => "AArch64")
              ("armhf"       => "ARM")
              ("mips64el"    => "Mips")
              ("powerpc"     => "PowerPC")
-             ("riscv"       => "RISCV")
-             ("x86_64"      => "X86")
+             ("riscv64"     => "RISCV64")
+             ("x86_64"      => "X86_64")
              ("i686"        => "X86")
              ("i586"        => "X86"))))
 
@@ -126,9 +142,19 @@ as \"x86_64-linux\"."
            (patches (map search-patch patches)))
          (llvm-monorepo (package-version llvm))))
     (build-system cmake-build-system)
-    (native-inputs (package-native-inputs llvm))
+    (native-inputs
+     (if (version>=? version "15")
+         ;; TODO: Remove this when GCC 12 is the default.
+         ;; libfuzzer fails to build with GCC 11
+         (modify-inputs (package-native-inputs llvm)
+           (prepend gcc-12))
+         (package-native-inputs llvm)))
     (inputs
-     (list llvm))
+     (append
+      (list llvm)
+      (if (version>=? version "15")
+          (list libffi)
+          '())))
     (arguments
      `(;; Don't use '-g' during the build to save space.
        #:build-type "Release"
@@ -137,6 +163,11 @@ as \"x86_64-linux\"."
                   (ice-9 match)
                   ,@%cmake-build-system-modules)
        #:phases (modify-phases (@ (guix build cmake-build-system) %standard-phases)
+                  ,@(if hash
+                        '()
+                        '((add-after 'unpack 'change-directory
+                            (lambda _
+                              (chdir "compiler-rt")))))
                   (add-after 'set-paths 'hide-glibc
                     ;; Work around https://issues.guix.info/issue/36882.  We need to
                     ;; remove glibc from CPLUS_INCLUDE_PATH so that the one hardcoded
@@ -329,6 +360,15 @@ until LLVM/Clang 14."
                                 (("@GLIBC_LIBDIR@")
                                  (string-append libc "/lib"))))))
                         #t)))
+                  ,@(if (version>=? version "17")
+                        '((add-after 'unpack 'include-test-runner
+                            (lambda _
+                              (substitute* "CMakeLists.txt"
+                                ((".*llvm_gtest" line)
+                                 (string-append
+                                  "add_subdirectory(${LLVM_THIRD_PARTY_DIR}/uni\
+ttest third-party/unittest)\n" line))))))
+                        '())
                   ;; Awkwardly, multiple phases added after the same phase,
                   ;; e.g. unpack, get applied in the reverse order.  In other
                   ;; words, adding 'change-directory last means it occurs
@@ -561,11 +601,15 @@ output), and Binutils.")
 
 (define %llvm-monorepo-hashes
   '(("14.0.6" . "14f8nlvnmdkp9a9a79wv67jbmafvabczhah8rwnqrgd5g3hfxxxx")
-    ("15.0.7" . "12sggw15sxq1krh1mfk3c1f07h895jlxbcifpwk3pznh4m1rjfy2")))
+    ("15.0.7" . "12sggw15sxq1krh1mfk3c1f07h895jlxbcifpwk3pznh4m1rjfy2")
+    ("16.0.6" . "0jxmapg7shwkl88m4mqgfjv4ziqdmnppxhjz6vz51ycp2x4nmjky")
+    ("17.0.5" . "149flpr96vcn7a1ckya6mm93m9yp85l47w156fjd0r99ydxrw5kv")))
 
 (define %llvm-patches
   '(("14.0.6" . ("clang-14.0-libc-search-path.patch"))
-    ("15.0.7" . ("clang-15.0-libc-search-path.patch"))))
+    ("15.0.7" . ("clang-15.0-libc-search-path.patch"))
+    ("16.0.6" . ("clang-16.0-libc-search-path.patch"))
+    ("17.0.5" . ("clang-17.0-libc-search-path.patch"))))
 
 (define (llvm-monorepo version)
   (origin
@@ -598,7 +642,7 @@ output), and Binutils.")
                    #$(string-append "-DLLVM_DEFAULT_TARGET_TRIPLE="
                                     (%current-target-system))
                    #$(string-append "-DLLVM_TARGET_ARCH="
-                                    (system->llvm-target))
+                                    (system->llvm-target-arch))
                    #$(string-append "-DLLVM_TARGETS_TO_BUILD="
                                     (system->llvm-target)))
                 '())
@@ -658,7 +702,7 @@ of programming tools as well as libraries with equivalent functionality.")
                    #$(string-append "-DLLVM_DEFAULT_TARGET_TRIPLE="
                                     (%current-target-system))
                    #$(string-append "-DLLVM_TARGET_ARCH="
-                                    (system->llvm-target))
+                                    (system->llvm-target-arch))
                    #$(string-append "-DLLVM_TARGETS_TO_BUILD="
                                     (system->llvm-target)))
                 '())
@@ -690,34 +734,10 @@ of programming tools as well as libraries with equivalent functionality.")
        ("perl"   ,perl)))))
 
 (define-public clang-runtime-15
-  (let ((template (clang-runtime-from-llvm llvm-15)))
-    (package
-      (inherit template)
-      (arguments
-       (substitute-keyword-arguments (package-arguments template)
-         ((#:phases phases '(@ (guix build cmake-build-system) %standard-phases))
-          #~(modify-phases #$phases
-              (add-after 'unpack 'change-directory
-                (lambda _
-                  (chdir "compiler-rt")))))))
-      (native-inputs
-       (modify-inputs (package-native-inputs template)
-         (prepend gcc-12)))             ;libfuzzer fails to build with GCC 11
-      (inputs
-       (modify-inputs (package-inputs template)
-         (append libffi))))))
+  (clang-runtime-from-llvm llvm-15))
 
 (define-public clang-runtime-14
-  (let ((template (clang-runtime-from-llvm llvm-14)))
-    (package
-      (inherit template)
-      (arguments
-       (substitute-keyword-arguments (package-arguments template)
-         ((#:phases phases '(@ (guix build cmake-build-system) %standard-phases))
-          #~(modify-phases #$phases
-              (add-after 'unpack 'change-directory
-                (lambda _
-                  (chdir "compiler-rt"))))))))))
+  (clang-runtime-from-llvm llvm-14))
 
 (define-public clang-15
   (clang-from-llvm
@@ -901,7 +921,7 @@ Library.")
                       #$(string-append "-DLLVM_DEFAULT_TARGET_TRIPLE="
                                        (%current-target-system))
                       #$(string-append "-DLLVM_TARGET_ARCH="
-                                       (system->llvm-target))
+                                       (system->llvm-target-arch))
                       #$(string-append "-DLLVM_TARGETS_TO_BUILD="
                                        (system->llvm-target)))
                    #~())
@@ -1445,6 +1465,74 @@ Library.")
                    #:legacy-build-shared-libs? #t
                    #:patches '("clang-3.5-libc-search-path.patch")))
 
+(define-public llvm-16
+  (package
+    (inherit llvm-15)
+    (version "16.0.6")
+    (source (llvm-monorepo version))))
+
+(define-public clang-runtime-16
+  (clang-runtime-from-llvm llvm-16))
+
+(define-public clang-16
+  (clang-from-llvm
+   llvm-16 clang-runtime-16
+   #:tools-extra
+   (origin
+     (method url-fetch)
+     (uri (llvm-uri "clang-tools-extra"
+                    (package-version llvm-16)))
+     (sha256
+      (base32
+       "0cbgffciql06a1i0ybyyqbnkkr4g7x8cxaar5a5v3415vd27hk0p")))))
+
+(define-public libomp-16
+  (package
+    (inherit libomp-15)
+    (version (package-version llvm-16))
+    (source (llvm-monorepo version))
+    (native-inputs
+     (modify-inputs (package-native-inputs libomp-15)
+       (replace "clang" clang-16)
+       (replace "llvm" llvm-16)))))
+
+(define-public clang-toolchain-16
+  (make-clang-toolchain clang-16 libomp-16))
+
+(define-public llvm-17
+  (package
+    (inherit llvm-15)
+    (version "17.0.5")
+    (source (llvm-monorepo version))))
+
+(define-public clang-runtime-17
+  (clang-runtime-from-llvm llvm-17))
+
+(define-public clang-17
+  (clang-from-llvm
+   llvm-17 clang-runtime-17
+   #:tools-extra
+   (origin
+     (method url-fetch)
+     (uri (llvm-uri "clang-tools-extra"
+                    (package-version llvm-17)))
+     (sha256
+      (base32
+       "12dbp10bhq25a44qnvz978mf9y6pdycwpp7sgq8a93by0fpgb72r")))))
+
+(define-public libomp-17
+  (package
+    (inherit libomp-15)
+    (version (package-version llvm-17))
+    (source (llvm-monorepo version))
+    (native-inputs
+     (modify-inputs (package-native-inputs libomp-15)
+       (replace "clang" clang-17)
+       (replace "llvm" llvm-17)))))
+
+(define-public clang-toolchain-17
+  (make-clang-toolchain clang-17 libomp-17))
+
 ;; Default LLVM and Clang version.
 (define-public libomp libomp-13)
 (define-public llvm llvm-13)
@@ -1588,6 +1676,20 @@ components which highly leverage existing libraries in the larger LLVM Project."
                 "077xyh7sij6mhp4dc4kdcmp9whrpz332fa12rwxnzp3wgd5bxrzg"))))
     (inputs (modify-inputs (package-inputs lld)
               (replace "llvm" llvm-11)))))
+
+(define-public lld-16
+  (package
+    (inherit lld-15)
+    (version (package-version llvm-16))
+    (source (llvm-monorepo version))
+    (inputs (list llvm-16))))
+
+(define-public lld-17
+  (package
+    (inherit lld-15)
+    (version (package-version llvm-17))
+    (source (llvm-monorepo version))
+    (inputs (list llvm-17))))
 
 (define-public lld lld-14)
 
@@ -1846,37 +1948,37 @@ standard C++ library.")
 (define-public libclc
   (package
     (name "libclc")
-    (version "9.0.1")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/llvm/llvm-project")
-             (commit (string-append "llvmorg-" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32
-         "1d1qayvrvvc1di7s7jfxnjvxq2az4lwq1sw1b2gq2ic0nksvajz0"))))
+    (version (package-version llvm-15))
+    (source (llvm-monorepo version))
     (build-system cmake-build-system)
     (arguments
-     `(#:configure-flags
-       (list (string-append "-DLLVM_CLANG="
-                            (assoc-ref %build-inputs "clang")
-                            "/bin/clang")
-             (string-append "-DPYTHON="
-                            (assoc-ref %build-inputs "python")
-                            "/bin/python3"))
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'chdir
-           (lambda _ (chdir "libclc") #t)))))
+     (list
+      #:configure-flags
+      #~(list (string-append "-DLLVM_CLANG="
+                             (assoc-ref %build-inputs "clang")
+                             "/bin/clang")
+              (string-append "-DLLVM_SPIRV="
+                             (assoc-ref %build-inputs "spirv-llvm-translator")
+                             "/bin/llvm-spirv"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'enter-subdirectory
+            (lambda _
+              (chdir "libclc")))
+          (add-after 'enter-subdirectory 'skip-clspv-tests
+            (lambda _
+              (substitute* "CMakeLists.txt"
+                (("ptx\\.\\*") "[ptx|clspv].*")))))))
+    (propagated-inputs
+     (list spirv-llvm-translator spirv-tools))
     (native-inputs
-     (list clang-9 llvm-9 python))
+     (list clang-15 llvm-15 python))
     (home-page "https://libclc.llvm.org")
     (synopsis "Libraries for the OpenCL programming language")
     (description
      "This package provides an implementation of the OpenCL library
 requirements according to version 1.1 of the OpenCL specification.")
+    (properties `((release-monitoring-url . ,%llvm-release-monitoring-url)))
     ;; Apache license 2.0 with LLVM exception
     (license license:asl2.0)))
 
@@ -1957,25 +2059,27 @@ requirements according to version 1.1 of the OpenCL specification.")
     (build-system python-build-system)
     (outputs '("out"))
     (arguments
-     '(#:phases (modify-phases %standard-phases
-                  (add-before 'build 'change-directory
-                    (lambda _
-                      (chdir "bindings/python")))
-                  (add-before 'build 'create-setup-py
-                    (lambda _
-                      ;; Generate a basic "setup.py", enough so it can be
-                      ;; built and installed.
-                      (with-output-to-file "setup.py"
-                        (lambda ()
-                          (display "from setuptools import setup
-setup(name=\"clang\", packages=[\"clang\"])\n")))))
-                  (add-before 'build 'set-libclang-file-name
-                    (lambda* (#:key inputs #:allow-other-keys)
-                      ;; Record the absolute file name of libclang.so.
-                      (let ((libclang (search-input-file inputs
-                                                         "/lib/libclang.so")))
-                        (substitute* "clang/cindex.py"
-                          (("libclang\\.so") libclang))))))))
+     (list
+      #:phases #~(modify-phases %standard-phases
+                   (add-before 'build 'change-directory
+                     (lambda _
+                       (chdir "bindings/python")))
+                   (add-before 'build 'create-setup-py
+                     (lambda _
+                       ;; Generate a basic "setup.py", enough so it can be
+                       ;; built and installed.
+                       (with-output-to-file "setup.py"
+                         (lambda ()
+                           (format #true "from setuptools import setup
+setup(name=\"clang\", version=\"~a\", packages=[\"clang\"])\n"
+                                   #$(package-version this-package))))))
+                   (add-before 'build 'set-libclang-file-name
+                     (lambda* (#:key inputs #:allow-other-keys)
+                       ;; Record the absolute file name of libclang.so.
+                       (let ((libclang (search-input-file inputs
+                                                          "/lib/libclang.so")))
+                         (substitute* "clang/cindex.py"
+                           (("libclang\\.so") libclang))))))))
     (inputs (list clang))
     (synopsis "Python bindings to libclang")))
 

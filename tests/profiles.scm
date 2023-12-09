@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013-2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014 Alex Kost <alezost@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -382,6 +382,28 @@
        (_          (built-derivations (list drv))))
     (return (file-exists? (string-append bindir "/guile")))))
 
+(test-assertm "profile-derivation, #:system, and hooks"
+  ;; Make sure all the profile hooks are built for the system specified with
+  ;; #:system, even if that does not match (%current-system).
+  ;; See <https://issues.guix.gnu.org/65225>.
+  (mlet* %store-monad
+      ((system -> (if (string=? (%current-system) "riscv64-linux")
+                      "x86_64-linux"
+                      "riscv64-linux"))
+       (entry -> (package->manifest-entry packages:coreutils))
+       (_        (set-guile-for-build (default-guile) system))
+       (drv      (profile-derivation (manifest (list entry))
+                                     #:system system))
+       (refs     (references* (derivation-file-name drv))))
+    (return (and (string=? (derivation-system drv) system)
+                 (pair? refs)
+                 (every (lambda (ref)
+                          (or (not (string-suffix? ".drv" ref))
+                              (let ((drv (read-derivation-from-file ref)))
+                                (string=? (derivation-system drv)
+                                          system))))
+                        refs)))))
+
 (test-assertm "profile-derivation relative symlinks, one entry"
   (mlet* %store-monad
       ((entry ->   (package->manifest-entry %bootstrap-guile))
@@ -441,7 +463,7 @@
        (target ->   "arm-linux-gnueabihf")
        (grep        (package->cross-derivation packages:grep target))
        (sed         (package->cross-derivation packages:sed target))
-       (locales     (package->derivation packages:glibc-utf8-locales))
+       (locales     (package->derivation (packages:libc-utf8-locales-for-target)))
        (drv         (profile-derivation manifest
                                         #:hooks '()
                                         #:locales? #t
@@ -460,7 +482,7 @@
                            (derivation-file-name grep))
                  (string=? (find-input packages:sed)
                            (derivation-file-name sed))
-                 (string=? (find-input packages:glibc-utf8-locales)
+                 (string=? (find-input (packages:libc-utf8-locales-for-target))
                            (derivation-file-name locales))))))
 
 (test-assert "package->manifest-entry defaults to \"out\""

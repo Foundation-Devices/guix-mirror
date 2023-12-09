@@ -46,7 +46,7 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages admin)
   #:use-module (gnu packages autotools)
-  #:use-module ((gnu packages base) #:prefix base:)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages check)
@@ -672,7 +672,7 @@ language.")
      (list autoconf
            automake
            libtool
-           base:which
+           which
            pkg-config
            texinfo))
     (inputs
@@ -1152,7 +1152,7 @@ simulator.")
          ("flex" ,flex)
          ("bison" ,bison)
          ("guile-1.8" ,guile-1.8)
-         ("which" ,base:which)))
+         ("which" ,which)))
       (synopsis "Binutils for VC4")
       (description "This package provides @code{binutils} for VideoCore IV,
 the Raspberry Pi chip.")
@@ -1241,7 +1241,7 @@ hardware.  The utility support USB and UART as serial link.")
     (inputs
      (list libftdi python))
     (native-inputs
-     (list pkg-config swig base:which))
+     (list pkg-config swig which))
     (arguments
      `(#:tests? #f ; No tests exist.
        #:parallel-build? #f  ; Would be buggy.
@@ -1592,7 +1592,7 @@ handling communication with eBUS devices connected to a 2-wire bus system
 (define-public ucsim
   (package
     (name "ucsim")
-    (version "0.8.0")
+    (version "0.8.2")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -1601,7 +1601,7 @@ handling communication with eBUS devices connected to a 2-wire bus system
                     "ucsim_" version "_orig.tar.gz"))
               (sha256
                (base32
-                "0qyrrna2ssvwla15al183r9zqnqdxxlqawyhx9c86a10m8q8qqlz"))))
+                "1zdvzfhdsbydyyjy5rf2934bn06skdlnky6l9ngbp2k645g0ynlh"))))
     (build-system gnu-build-system)
     (arguments
      (list

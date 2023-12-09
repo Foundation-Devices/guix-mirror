@@ -174,8 +174,8 @@
   ;; Note: the 'update-guix-package.scm' script expects this definition to
   ;; start precisely like this.
   (let ((version "1.4.0")
-        (commit "b9fae146d6cc4a6968a8eb18beef29aa1414a31e")
-        (revision 12))
+        (commit "aeb494322ca9dec4a4d66a7d063239c8536bd538")
+        (revision 16))
     (package
       (name "guix")
 
@@ -191,7 +191,7 @@
                       (commit commit)))
                 (sha256
                  (base32
-                  "1pxdfd2g1q3vb5wmv5c53zphsv9q8m835vd00vhjaijzvz9ri7ja"))
+                  "1xl769lkpvkjpvq4vwkxm4dp77sr9finvr6izvf4kvyi6s3hbsys"))
                 (file-name (string-append "guix-" version "-checkout"))))
       (build-system gnu-build-system)
       (arguments
@@ -525,7 +525,7 @@ $(prefix)/etc/openrc\n")))
 
          ("git-minimal" ,git-minimal)             ;for 'guix perform-download'
 
-         ("glibc-utf8-locales" ,glibc-utf8-locales)))
+         ("glibc-utf8-locales" ,(libc-utf8-locales-for-target))))
       (propagated-inputs
        `(("guile-gnutls" ,guile-gnutls)
          ;; Avahi requires "glib" which doesn't cross-compile yet.
@@ -1511,8 +1511,8 @@ environments.")
                   "0k9zkdyyzir3fvlbcfcqy17k28b51i20rpbjwlx2i1mwd2pw9cxc")))))))
 
 (define-public guix-build-coordinator
-  (let ((commit "9c42dcb726fc925606b12695e195ae1dc7e28cc3")
-        (revision "89"))
+  (let ((commit "78df0b3a9f4f27df8341da36d4dfa8e49dfad900")
+        (revision "92"))
     (package
       (name "guix-build-coordinator")
       (version (git-version "0" revision commit))
@@ -1523,7 +1523,7 @@ environments.")
                       (commit commit)))
                 (sha256
                  (base32
-                  "18m368rgmaiscmr1jlz77qkfw5fp4m8szgh90l6wbi9w68yfmr4n"))
+                  "06xp38k6yfvsvl20hrqvmarpysd07nkbj53an729lqr50qdd4jcq"))
                 (file-name (string-append name "-" version "-checkout"))))
       (build-system gnu-build-system)
       (arguments
@@ -1755,8 +1755,8 @@ in an isolated environment, in separate namespaces.")
     (license license:gpl3+)))
 
 (define-public nar-herder
-  (let ((commit "53682fac7e00cd2801406edbd014922c1720c347")
-        (revision "21"))
+  (let ((commit "5ccd6cbbdf5fc41e43a491d3414c1663e1fba64d")
+        (revision "23"))
     (package
       (name "nar-herder")
       (version (git-version "0" revision commit))
@@ -1767,7 +1767,7 @@ in an isolated environment, in separate namespaces.")
                       (commit commit)))
                 (sha256
                  (base32
-                  "18mzrpc5ni8d6xbp1bg0nzdj0brmnji4jm1gyiq77dm17c118zyz"))
+                  "1lid5k4wgghl9lzhazx1c473qv18yxp0xxrvj04b33pdvxnaawl8"))
                 (file-name (string-append name "-" version "-checkout"))))
       (build-system gnu-build-system)
       (arguments
@@ -2053,7 +2053,7 @@ cp -r /tmp/locale/*/en_US.*")))
            dbus ; for dbus-daemon
            gettext-minimal
            `(,glib "bin") ; for glib-mkenums + gdbus-codegen
-           glibc-utf8-locales
+           (libc-utf8-locales-for-target)
            gobject-introspection
            libcap
            pkg-config

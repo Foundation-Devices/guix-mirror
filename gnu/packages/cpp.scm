@@ -31,13 +31,14 @@
 ;;; Copyright © 2022 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2022, 2023 David Elsing <david.elsing@posteo.net>
 ;;; Copyright © 2022, 2023 Zheng Junjie <873216071@qq.com>
-;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Antero Mejr <antero@mailbox.org>
 ;;; Copyright © 2023 Sughosha <Sughosha@proton.me>
 ;;; Copyright © 2023 Artyom V. Poptsov <poptsov.artyom@gmail.com>
 ;;; Copyright © 2023 Liliana Marie Prikler <liliana.prikler@gmail.com>
 ;;; Copyright © 2023 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
 ;;; Copyright © 2023 Foundation Devices, Inc. <hello@foundationdevices.com>
+;;; Copyright © 2023 Paul A. Patience <paul@apatience.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -82,6 +83,7 @@
   #:use-module (gnu packages crypto)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages datastructures)
+  #:use-module (gnu packages disk)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gcc)
@@ -94,6 +96,7 @@
   #:use-module (gnu packages llvm)
   #:use-module (gnu packages logging)
   #:use-module (gnu packages maths)
+  #:use-module (gnu packages mpi)
   #:use-module (gnu packages onc-rpc)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages python)
@@ -606,6 +609,47 @@ container which uses the order in which keys were inserted to the container
 as ordering relation.")
     (license license:expat)))
 
+(define-public frozen
+  ;; The test suite fails to compile with the latest 1.1.1 release; use a
+  ;; newer commit (see:
+  ;; https://github.com/serge-sans-paille/frozen/issues/163).
+  (let ((commit "dd1f58c5f6c97fbf0832cc4e84676663839b913e")
+        (revision "0"))
+    (package
+      (name "frozen")
+      (version (git-version "1.1.1" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/serge-sans-paille/frozen")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "06i307a7v6alxfy24d47b1sjkz5f4mrqwl2vb4j8zx7wlgnrf08b"))))
+      (build-system cmake-build-system)
+      (home-page "https://github.com/serge-sans-paille/frozen")
+      (synopsis "C++ constexpr alternative header-only library")
+      (description "@code{frozen} is a header-only library that provides zero
+cost initialization for immutable containers, fixed-size containers, and
+various algorithms.  It provides features such as:
+@itemize
+@item
+immutable (also known as frozen), @code{constexpr}-compatible versions of
+{std::set}, {std::unordered_set}, {std::map} and {std::unordered_map}
+@item
+fixed-capacity, @code{constinit}-compatible versions of @code{std::map} and
+@code{std::unordered_map} with immutable, compile-time selected keys mapped to
+mutable values.
+@item
+zero cost initialization version of @code{std::search} for frozen needles
+using Boyer-Moore or Knuth-Morris-Pratt algorithms.
+@end itemize
+The @code{unordered_*} containers are guaranteed perfect (no hash
+collision) and the extra storage is linear with respect to the number of
+keys.")
+      (license license:asl2.0))))
+
 (define-public json-dto
   (package
     (name "json-dto")
@@ -1039,6 +1083,82 @@ Model and CSP-like channels.  The goal of SObjectizer is to simplify
 development of concurrent and multithreaded applications in C++.")
     (license license:bsd-3)))
 
+(define-public taskflow
+  (package
+    (name "taskflow")
+    (version "3.6.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/taskflow/taskflow")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1cv74l181137lchc1rxygcg401cnq216ymq5qz2njsw99j342br3"))))
+    (build-system cmake-build-system)
+    (home-page "https://taskflow.github.io/")
+    (synopsis
+     "General-purpose parallel and heterogeneous task programming system")
+    (description
+     "Taskflow is a C++ library for writing parallel and heterogeneous task
+programs.")
+    (license license:expat)))
+
+(define-public kokkos
+  (package
+    (name "kokkos")
+    (version "4.1.00")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/kokkos/kokkos")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "15kjpa54ssrrbid9h2nr94nh85qna5c4vq2152i4iy7gaagigy3c"))
+       (modules '((guix build utils)))
+       (snippet
+        ;; Remove bundled googletest.
+        #~(delete-file-recursively "tpls/gtest"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list #:configure-flags
+           ;; deal.II uses only the serial backend, so do not enable the
+           ;; others yet.
+           #~(list "-DBUILD_SHARED_LIBS=ON"
+                   "-DKokkos_ENABLE_SERIAL=ON"
+                   "-DKokkos_ENABLE_TESTS=ON"
+                   "-DKokkos_ENABLE_EXAMPLES=ON"
+                   "-DKokkos_ENABLE_HWLOC=ON"
+                   "-DKokkos_ENABLE_MEMKIND=ON")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'install-license-files 'remove-cruft
+                 (lambda _
+                   (delete-file
+                    (string-append #$output "/share/doc/"
+                                   #$name "-" #$version
+                                   "/LICENSE_FILE_HEADER")))))))
+    (native-inputs
+     (list googletest python))
+    (inputs
+     (list `(,hwloc "lib") memkind))
+    (home-page "https://github.com/kokkos/kokkos")
+    (synopsis "C++ abstractions for parallel execution and data management")
+    (description
+     "Kokkos Core implements a programming model in C++ for writing performance
+portable applications targeting all major HPC platforms.  For that purpose it
+provides abstractions for both parallel execution of code and data management.
+Kokkos is designed to target complex node architectures with N-level memory
+hierarchies and multiple types of execution resources.")
+
+    ;; Code exhibits integer size mismatches when compiled on 32-bit systems.
+    (supported-systems %64bit-supported-systems)
+
+    (license license:asl2.0))) ; With LLVM exception
+
 (define-public tweeny
   (package
     (name "tweeny")
@@ -1143,7 +1263,7 @@ Google's C++ code base.")
          ((#:configure-flags flags)
           #~(cons* "-DCMAKE_CXX_STANDARD=11" #$flags)))))))
 
-(define-public abseil-cpp
+(define-public abseil-cpp-20220623.1
   (let ((base abseil-cpp-20200923.3))
     (package
       (inherit base)
@@ -1164,22 +1284,59 @@ Google's C++ code base.")
           `(cons* "-DABSL_BUILD_TESTING=ON"
                   (delete "-DABSL_RUN_TESTS=ON" ,flags))))))))
 
-(define (abseil-cpp-for-c++-standard version)
+(define-public abseil-cpp
+  (let ((base abseil-cpp-20220623.1))
+    (package
+      (inherit base)
+      (name "abseil-cpp")
+      (version "20230802.1")
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/abseil/abseil-cpp")
+                      (commit version)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1ydkkbanrpkp5i814arzsk973kyzhhjhagnp392rq6rrv16apldq"))))
+      (arguments
+       (substitute-keyword-arguments (package-arguments base)
+         ((#:phases phases)
+          #~(modify-phases #$phases
+              (add-before 'check 'set-env-vars
+                (lambda* (#:key inputs #:allow-other-keys)
+                 ;; absl_time_test requires this environment variable.
+                 (setenv "TZDIR" (string-append #$(package-source base)
+                                                "/absl/time/internal/cctz/testdata/zoneinfo")))))))))))
+
+(define (abseil-cpp-for-c++-standard base version)
+  (hidden-package
+   (package/inherit base
+     (arguments
+      (substitute-keyword-arguments (package-arguments base)
+        ((#:configure-flags flags)
+         #~(cons* #$(string-append "-DCMAKE_CXX_STANDARD="
+                                   (number->string version))
+                  #$flags)))))))
+
+(define (make-static-abseil-cpp version)
   (let ((base abseil-cpp))
     (hidden-package
      (package/inherit base
        (arguments
         (substitute-keyword-arguments (package-arguments base)
           ((#:configure-flags flags)
-           #~(cons* #$(string-append "-DCMAKE_CXX_STANDARD="
-                                     (number->string version))
-                    #$flags))))))))
+           #~(cons* "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+                    (delete "-DBUILD_SHARED_LIBS=ON" #$flags)))))))))
 
 (define-public abseil-cpp-cxxstd17
-  (abseil-cpp-for-c++-standard 17))             ;XXX: the default with GCC 11?
+  (abseil-cpp-for-c++-standard abseil-cpp 17))  ;XXX: the default with GCC 11?
 
 (define-public abseil-cpp-cxxstd11
-  (abseil-cpp-for-c++-standard 11))
+  (abseil-cpp-for-c++-standard abseil-cpp-20220623.1 11)) ;last version on C++11
+
+(define-public static-abseil-cpp
+  (make-static-abseil-cpp abseil-cpp))
 
 (define-public pegtl
   (package
@@ -1264,7 +1421,7 @@ standard GNU style syntax for options.")
 (define-public folly
   (package
     (name "folly")
-    (version "2022.10.31.00")
+    (version "2023.11.06.00")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1273,7 +1430,7 @@ standard GNU style syntax for options.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "06r9xnj8ilghc0vv6r17k5apl3w19iwd76nr02svnv96c74bz2aa"))))
+                "0z0jhkma2qacc2kc27qsiwqwqkv07i9mwpc4vwcbawyzdajq6hd0"))))
     (build-system cmake-build-system)
     (arguments
      '(;; Tests must be explicitly enabled
@@ -2668,6 +2825,43 @@ Main features:
 @item No dependencies.
 @end itemize")
     (license license:expat)))
+
+(define-public mapbox-variant
+  (package
+    (name "mapbox-variant")
+    (version "1.2.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/mapbox/variant")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32 "03cmxm34ralh8y07bs80gz3v4pql51206dn5h7lcnm7vishkk241"))
+              (modules '((guix build utils)))
+              (snippet #~(begin
+                           (delete-file "test/include/catch.hpp")
+                           (substitute* (find-files "test" "\\.[ch]pp")
+                             (("\"catch.hpp\"") "<catch/catch.hpp>"))))))
+    (build-system gnu-build-system)
+    (arguments
+     (list #:test-target "test"
+           #:phases
+           #~(modify-phases %standard-phases
+               (delete 'bootstrap)
+               (delete 'configure)
+               (delete 'build)
+               (replace 'install
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (copy-recursively "include"
+                                     (string-append (assoc-ref outputs "out")
+                                                    "/include")))))))
+    (native-inputs (list catch2-1))
+    (home-page "https://github.com/mapbox/variant")
+    (synopsis "Implementation of std::variant for C++11/14")
+    (description "This package provides a header-only implementation of
+std::variant (formerly boost::variant) for C++11/14.")
+    (license license:bsd-3)))
 
 (define-public mpark-variant
   (package

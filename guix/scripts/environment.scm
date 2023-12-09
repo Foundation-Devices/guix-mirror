@@ -311,6 +311,9 @@ use '--preserve' instead~%"))
 (define (options/resolve-packages store opts)
   "Return OPTS with package specification strings replaced by manifest entries
 for the corresponding packages."
+  (define system
+    (assoc-ref opts 'system))
+
   (define (manifest-entry=? e1 e2)
     (and (eq? (manifest-entry-item e1) (manifest-entry-item e2))
          (string=? (manifest-entry-output e1)
@@ -327,11 +330,11 @@ for the corresponding packages."
       ((? package? package)
        (if (eq? mode 'ad-hoc-package)
            (list (package->manifest-entry* package))
-           (manifest-entries (package->development-manifest package))))
+           (manifest-entries (package->development-manifest package system))))
       (((? package? package) (? string? output))
        (if (eq? mode 'ad-hoc-package)
            (list (package->manifest-entry* package output))
-           (manifest-entries (package->development-manifest package))))
+           (manifest-entries (package->development-manifest package system))))
       ((lst ...)
        (append-map (cut packages->outputs <> mode) lst))))
 
@@ -345,7 +348,8 @@ for the corresponding packages."
                   (('package 'package (? string? spec))
                    (manifest-entries
                     (package->development-manifest
-                     (transform (specification->package+output spec)))))
+                     (transform (specification->package+output spec))
+                     system)))
                   (('expression mode str)
                    ;; Add all the outputs of the package STR evaluates to.
                    (packages->outputs (read/eval str) mode))
@@ -1100,17 +1104,18 @@ command-line option processing with 'parse-command-line'."
       ;; Evaluate EXP... with STORE bound to a connection, unless
       ;; STORE-NEEDED? is false, in which case STORE is bound to #f.
       (let ((proc (lambda (store) exp ...)))
-        (if store-needed?
-            (with-store s
-              (set-build-options-from-command-line s opts)
-              (with-build-handler (build-notifier #:use-substitutes?
-                                                  (assoc-ref opts 'substitutes?)
-                                                  #:verbosity
-                                                  (assoc-ref opts 'verbosity)
-                                                  #:dry-run?
-                                                  (assoc-ref opts 'dry-run?))
-                (proc s)))
-            (proc #f))))
+        (parameterize ((%graft? (assoc-ref opts 'graft?)))
+          (if store-needed?
+              (with-store s
+                (set-build-options-from-command-line s opts)
+                (with-build-handler (build-notifier #:use-substitutes?
+                                                    (assoc-ref opts 'substitutes?)
+                                                    #:verbosity
+                                                    (assoc-ref opts 'verbosity)
+                                                    #:dry-run?
+                                                    (assoc-ref opts 'dry-run?))
+                  (proc s)))
+              (proc #f)))))
 
     (when container? (assert-container-features))
 
@@ -1122,11 +1127,11 @@ command-line option processing with 'parse-command-line'."
       (when no-cwd?
         (leave (G_ "--no-cwd cannot be used without '--container'~%")))
       (when emulate-fhs?
-        (leave (G_ "'--emulate-fhs' cannot be used without '--container~%'")))
+        (leave (G_ "'--emulate-fhs' cannot be used without '--container'~%")))
       (when nesting?
-        (leave (G_ "'--nesting' cannot be used without '--container~%'")))
+        (leave (G_ "'--nesting' cannot be used without '--container'~%")))
       (when (pair? symlinks)
-        (leave (G_ "'--symlink' cannot be used without '--container~%'"))))
+        (leave (G_ "'--symlink' cannot be used without '--container'~%"))))
 
     (with-store/maybe store
       (with-status-verbosity (assoc-ref opts 'verbosity)
@@ -1146,14 +1151,14 @@ command-line option processing with 'parse-command-line'."
           (warning (G_ "no packages specified; creating an empty environment~%")))
 
         ;; Use the bootstrap Guile when requested.
-        (parameterize ((%graft? (assoc-ref opts 'graft?))
-                       (%guile-for-build
+        (parameterize ((%guile-for-build
                         (and store-needed?
                              (package-derivation
                               store
                               (if bootstrap?
                                   %bootstrap-guile
-                                  (default-guile))))))
+                                  (default-guile))
+                              system))))
           (run-with-store store
             ;; Containers need a Bourne shell at /bin/sh.
             (mlet* %store-monad ((bash       (environment-bash container?

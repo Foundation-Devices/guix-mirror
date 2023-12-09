@@ -1,6 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2020, 2021 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2023 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2023 Clément Lassieur <clement@lassieur.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -25,7 +26,9 @@
   #:use-module (guix build-system gnu)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (gnu build chromium-extension)
+  #:use-module (gnu build icecat-extension)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages password-utils)
   #:use-module (gnu packages python))
 
 (define play-to-kodi
@@ -54,8 +57,8 @@ supported content to the Kodi media center.")
   ;; Arbitrary commit of branch master,
   ;; Update when updating uBlockOrigin.
   (let* ((name "ublock-main-assets")
-         (commit "c8783488f377723165e3661062bd124ae6d57165")
-         (revision "0")
+         (commit "d93605b8584df8cd47bcc91b3d932feecd9e3a2a")
+         (revision "1")
          (version (git-version "0" revision commit)))
     (origin
       (method git-fetch)
@@ -64,14 +67,14 @@ supported content to the Kodi media center.")
             (commit commit)))
       (file-name (git-file-name name version))
       (sha256
-       (base32 "1b6a1m6s060r49vg563f32rsy057af6i4jcyprym4sdci3z90nls")))))
+       (base32 "1bbwxmb5rb1afh6i5a7m1ysaw0022wi5g091vpahi4h805p1s7a2")))))
 
 (define ublock-prod-assets
   ;; Arbitrary commit of branch gh-pages,
   ;; Update when updating uBlockOrigin.
   (let* ((name "ublock-prod-assets")
-         (commit "fbcfe9229ab6b865ef349c01a4eac73943be8418")
-         (revision "0")
+         (commit "1d3df32ef6672763f44b27a95fd5cb3b5770d5e2")
+         (revision "1")
          (version (git-version "0" revision commit)))
     (origin
       (method git-fetch)
@@ -80,12 +83,12 @@ supported content to the Kodi media center.")
             (commit commit)))
       (file-name (git-file-name name version))
       (sha256
-       (base32 "0s5rvaz8lc9lk44yfc8463vah8yppy1ybmag0dpd4m1hyj6165h0")))))
+       (base32 "1cbx7w1nzdcjq0z4z7j9nr8922i27nslprrw5dy03xcdqwc3x4l6")))))
 
 (define ublock-origin
   (package
     (name "ublock-origin")
-    (version "1.51.0")
+    (version "1.53.2")
     (home-page "https://github.com/gorhill/uBlock")
     (source (origin
               (method git-fetch)
@@ -95,9 +98,10 @@ supported content to the Kodi media center.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1i8rnij3sbwg6vj6znprrsca0n5xjzhmhppaa8v6jyxg6wrrfch1"))))
+                "0mz1k5ghyc25v51md02qx7chrbg4cxagvqi18bcbs4agq8ix6sp7"))))
     (build-system gnu-build-system)
     (outputs '("xpi" "firefox" "chromium"))
+    (properties '((addon-id . "uBlock0@raymondhill.net")))
     (arguments
      (list
       #:tests? #f                      ;no tests
@@ -125,9 +129,11 @@ supported content to the Kodi media center.")
               (invoke "./tools/make-chromium.sh")))
           (add-after 'build-chromium 'install
             (lambda* (#:key outputs #:allow-other-keys)
-              (let ((firefox (assoc-ref outputs "firefox"))
-                    (xpi (assoc-ref outputs "xpi"))
-                    (chromium (assoc-ref outputs "chromium")))
+              (let* ((addon-id #$(assq-ref properties 'addon-id))
+                     (firefox (in-vicinity
+                               (assoc-ref outputs "firefox") addon-id))
+                     (xpi (assoc-ref outputs "xpi"))
+                     (chromium (assoc-ref outputs "chromium")))
                 (install-file "dist/build/uBlock0.firefox.xpi"
                               (string-append xpi "/lib/mozilla/extensions"))
                 (copy-recursively "dist/build/uBlock0.firefox" firefox)
@@ -142,3 +148,76 @@ ungoogled-chromium.")
 
 (define-public ublock-origin/chromium
   (make-chromium-extension ublock-origin "chromium"))
+
+(define-public ublock-origin/icecat
+  (make-icecat-extension ublock-origin "firefox"))
+
+(define-public passff-host
+  (package
+    (name "passff-host")
+    (version "1.2.3")
+    (home-page "https://github.com/passff/passff-host")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page) (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1p18l1jh20x4v8dj64z9qjlp96fxsl5h069iynxfpbkzj6hd74yl"))))
+    (build-system copy-build-system)
+    (arguments
+     (let ((native-manifests "lib/icecat/native-messaging-hosts"))
+       (list
+        #:install-plan
+        `'(("src" ,native-manifests #:include ("passff.json" "passff.py")))
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'substitute
+              (lambda _
+                (substitute* "src/passff.json"
+                  (("PLACEHOLDER")
+                   (format #f "~a/~a/passff.py" #$output #$native-manifests)))
+                (substitute* "src/passff.py"
+                  (("_VERSIONHOLDER_") #$version)
+                  (("^COMMAND = .*")
+                   (format #f "COMMAND = \"~a/bin/pass\"~%"
+                           #$(this-package-input "password-store"))))
+                (patch-shebang "src/passff.py")))))))
+    (inputs (list password-store python))
+    (synopsis "Host app for the WebExtension PassFF")
+    (description "This piece of software wraps around the zx2c4 pass shell
+command.  It has to be installed for the PassFF browser extension to work
+properly.")
+    (license license:gpl2+)))
+
+(define passff
+  (package
+    (name "passff")
+    (version "1.15")
+    (home-page "https://github.com/passff/passff")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page) (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1gymqyqppr8k9fqv5js7f6pk6hcc47qpf51x5cy6aahsk2v1qssj"))))
+    (propagated-inputs (list passff-host))
+    (build-system copy-build-system)
+    (properties '((addon-id . "passff@invicem.pro")))
+    (arguments
+     `(#:install-plan '(("src" ,(assq-ref properties 'addon-id)))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'substitute-placeholder
+           (lambda _
+             (substitute* "src/manifest.json"
+               (("_VERSIONHOLDER_") ,version)))))))
+    (synopsis "zx2c4 pass management extension for Mozilla Firefox")
+    (description "This extension will allow you to access your zx2c4 pass
+repository directly from your web browser.  You can choose to automatically
+fill and submit login forms if a matching password entry is found.")
+    (license license:gpl2+)))
+
+(define-public passff/icecat
+  (make-icecat-extension passff))

@@ -5,7 +5,7 @@
 ;;; Copyright © 2015 Sou Bunnbu <iyzsong@gmail.com>
 ;;; Copyright © 2016, 2017, 2018, 2019, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Alex Griffin <a@ajgrf.com>
-;;; Copyright © 2017 Clément Lassieur <clement@lassieur.org>
+;;; Copyright © 2017, 2023 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2017, 2018 Nikita <nikita@n0.is>
 ;;; Copyright © 2017, 2018, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018, 2020 Ricardo Wurmus <rekado@elephly.net>
@@ -392,7 +392,12 @@ from collections.abc import MutableSequence"))))
                       "-src.tgz"))
                 (sha256
                  (base32
-                  "0iccpdvc0kvpww5a31k9gjkqigyz016i7v80r9zamd34w4fl6mx4")))))))
+                  "0iccpdvc0kvpww5a31k9gjkqigyz016i7v80r9zamd34w4fl6mx4"))
+                (patches
+                 (cons
+                  (search-patch
+                   "icu4c-fix-TestHebrewCalendarInTemporalLeapYear.patch")
+                  (origin-patches (package-source icu4c)))))))))
 
 ;;;
 ;;; Localization helper procedures.
@@ -541,9 +546,9 @@ variable defined below.  It requires guile-json to be installed."
 ;; XXXX: Workaround 'snippet' limitations.
 (define computed-origin-method (@@ (guix packages) computed-origin-method))
 
-(define %icecat-base-version "115.3.1")
+(define %icecat-base-version "115.5.0")
 (define %icecat-version (string-append %icecat-base-version "-guix0-preview1"))
-(define %icecat-build-id "20230928000000") ;must be of the form YYYYMMDDhhmmss
+(define %icecat-build-id "20231121000000") ;must be of the form YYYYMMDDhhmmss
 
 ;; 'icecat-source' is a "computed" origin that generates an IceCat tarball
 ;; from the corresponding upstream Firefox ESR tarball, using the 'makeicecat'
@@ -563,12 +568,12 @@ variable defined below.  It requires guile-json to be installed."
                   "firefox-" upstream-firefox-version ".source.tar.xz"))
             (sha256
              (base32
-              "0lqymabkhxpdhmgz81if8za1hdakh8nlm4cmsir4y1fa95p2bnkx"))))
+              "0a578r4kri7jdw8pkkzp7f1mm9idlk7sjxjghcb08k5p14172gyv"))))
 
          ;; The upstream-icecat-base-version may be older than the
          ;; %icecat-base-version.
-         (upstream-icecat-base-version "115.3.1")
-         (gnuzilla-commit "1b0f0ba84716023657dd7dff72cb408e35380a60")
+         (upstream-icecat-base-version "115.5.0")
+         (gnuzilla-commit "bd66797f3bb057c9d051d4276d63843b4d7ee854")
          (gnuzilla-source
           (origin
             (method git-fetch)
@@ -580,7 +585,7 @@ variable defined below.  It requires guile-json to be installed."
                                       (string-take gnuzilla-commit 8)))
             (sha256
              (base32
-              "0kvdyg2kzjabldqa10any5ad8r06pcybamvfnkn7nwcvd86g8s0v"))))
+              "0v3ckm8yv566f2y9a2bfzakbsk529f1ykr7dj69kb9k93dgny3ja"))))
 
          ;; 'search-patch' returns either a valid file name or #f, so wrap it
          ;; in 'assume-valid-file-name' to avoid 'local-file' warnings.
@@ -881,16 +886,13 @@ variable defined below.  It requires guile-json to be installed."
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'unpack 'apply-guix-specific-patches
-            (lambda* (#:key inputs native-inputs #:allow-other-keys)
-              (let ((patch (search-input-file inputs "bin/patch")))
-                (for-each (match-lambda
-                            ((label . file)
-                             (when (and (string-prefix? "icecat-" label)
-                                        (string-suffix? ".patch" label))
-                               (format #t "applying '~a'...~%" file)
-                               (invoke patch "--force" "--no-backup-if-mismatch"
-                                       "-p1" "--input" file))))
-                          (or native-inputs inputs)))))
+            (lambda _
+              (for-each
+               (lambda (file) (invoke "patch" "--force" "-p1" "-i" file))
+               '(#$(local-file
+                    (search-patch "icecat-compare-paths.patch"))
+                 #$(local-file
+                    (search-patch "icecat-use-system-wide-dir.patch"))))))
           (add-after 'apply-guix-specific-patches 'remove-bundled-libraries
             (lambda _
               ;; Remove bundled libraries that we don't use, since they may
@@ -1056,10 +1058,12 @@ variable defined below.  It requires guile-json to be installed."
             (lambda* (#:key (make-flags '()) (parallel-build? #t)
                       #:allow-other-keys)
               (apply invoke "./mach" "build"
-                     ;; mach will use parallel build if possible by default
-                     `(,@(if parallel-build?
-                             '()
-                             '("-j1"))
+                     ;; mach will use a wide parallel build if possible by
+                     ;; default, so reign it in if requested.
+                     `(,(string-append
+                         "-j" (number->string (if parallel-build?
+                                                  (parallel-job-count)
+                                                  1)))
                        ,@make-flags))))
           (add-after 'build 'neutralise-store-references
             (lambda _
@@ -1134,6 +1138,11 @@ variable defined below.  It requires guile-json to be installed."
                  '("default16.png" "default22.png" "default24.png"
                    "default32.png" "default48.png" "content/icon64.png"
                    "mozicon128.png" "default256.png"))))))))
+    (native-search-paths
+     (list (search-path-specification
+            (variable "ICECAT_SYSTEM_DIR")
+            (separator #f)              ;single entry
+            (files '("lib/icecat")))))
     (home-page "https://www.gnu.org/software/gnuzilla/")
     (synopsis "Entirely free browser derived from Mozilla Firefox")
     (description

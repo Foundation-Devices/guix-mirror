@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2019, 2021, 2022 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2019, 2021, 2022, 2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2019, 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
@@ -58,6 +58,24 @@
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix utils))
+
+(define-public python-assertpy
+  (package
+    (name "python-assertpy")
+    (version "1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "assertpy" version))
+       (sha256
+        (base32 "0cs8xya465wvb9dw0kdl7cvkxwrslhbma66y44r1mmsajcll7imc"))))
+    (build-system pyproject-build-system)
+    (home-page "https://github.com/assertpy/assertpy")
+    (synopsis "Simple assertion library for unit testing")
+    (description
+     "This package provides a simple assertion library for unit testing in
+Python with a fluent API.")
+    (license license:bsd-3)))
 
 (define-public python-tappy
   (package
@@ -510,13 +528,13 @@ Astropy project, but is optimized for use with astropy-related projects.")
 (define-public python-pytest-astropy
   (package
     (name "python-pytest-astropy")
-    (version "0.10.0")
+    (version "0.11.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-astropy" version))
        (sha256
-        (base32 "04g2rh261s3s6ym8mwi4iv2a6anbgwvwzcvkyilfck6yxrncdqw5"))))
+        (base32 "1d9rcxnc57rjp96xag1gq725pwl11b3k5hdaz7c3w5lixncsmbjf"))))
     (build-system python-build-system)
     (arguments (list #:tests? #f)) ; there are no tests
     (native-inputs
@@ -568,13 +586,13 @@ are too large to conveniently hard-code them in the tests.")
 (define-public python-pytest-doctestplus
   (package
     (name "python-pytest-doctestplus")
-    (version "0.12.1")
+    (version "1.0.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-doctestplus" version))
        (sha256
-        (base32 "10ciqylgziihxwxryxvxgmkqgws51pqcarn0gbh1d4cxx55rx5vs"))))
+        (base32 "17ylfnrcvvp6sd13bfj40jl40paqmjsbywysszb3xqgdr86l8l7n"))))
     (build-system pyproject-build-system)
     (arguments
      (list #:test-flags
@@ -735,13 +753,13 @@ were inadvertently left open at the end of a unit test.")
 (define-public python-pytest-remotedata
   (package
     (name "python-pytest-remotedata")
-    (version "0.4.0")
+    (version "0.4.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-remotedata" version))
        (sha256
-        (base32 "1j5106j331cfdyfcwzrbs3yby84mq1b0kddfysq12z2dwdcca8dy"))))
+        (base32 "0ndvnj9zghfj17haphrygiri9iy38wb8lwq1xdkfvlfd73v8ph05"))))
     (build-system pyproject-build-system)
     (arguments
      (list

@@ -64,6 +64,7 @@
 ;;; Copyright © 2023 David Thompson <dthompson2@worcester.edu>
 ;;; Copyright © 2023 Christopher Howard <christopher@librehacker.com>
 ;;; Copyright © 2023 Felix Lechner <felix.lechner@lease-up.com>
+;;; Copyright © 2023 Evgeny Pisemsky <evgeny@pisemsky.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -185,6 +186,7 @@
   #:use-module (gnu packages qt)
   #:use-module (gnu packages re2c)
   #:use-module (gnu packages readline)
+  #:use-module (gnu packages sdl)
   #:use-module (gnu packages search)
   #:use-module (gnu packages serialization)
   #:use-module (gnu packages skribilo)
@@ -278,14 +280,14 @@
 (define-public httpd
   (package
     (name "httpd")
-    (version "2.4.57")
+    (version "2.4.58")
     (source (origin
              (method url-fetch)
              (uri (string-append "mirror://apache/httpd/httpd-"
                                  version ".tar.bz2"))
              (sha256
               (base32
-               "0ajdz5f2w9nbmqydip2mv9m4xlnc4swmw7mqzgnrbq4mxr5bik6v"))))
+               "1id45r2ccgkbjm9i998997ch32lvicpyynyx8x6aa4420wmdf5ps"))))
     (build-system gnu-build-system)
     (native-inputs (list `(,pcre "bin")))       ;for 'pcre-config'
     (inputs (list apr apr-util openssl perl)) ; needed to run bin/apxs
@@ -424,10 +426,32 @@ Interface} specification.")
     (license license:asl2.0)
     (home-page "https://modwsgi.readthedocs.io/")))
 
+(define-public ablorb
+  (package
+    (name "ablorb")
+    (version "0.1.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.gnome.org/lilyp/ablorb")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1i705p2gw5aryj0myfj3rmsrmj3ilqdn5w7xd5dwjkyi80rc20kj"))))
+    (build-system meson-build-system)
+    (inputs (list glib gconf gnome-vfs libxml2))
+    (native-inputs (list pkg-config))
+    (home-page "https://gitlab.gnome.org/lilyp/ablorb")
+    (synopsis "Replace asset links with data URIs")
+    (description "Ablorb takes an XML file and resolves relative links,
+replacing them with data URIs.")
+    (license license:gpl3+)))
+
 (define-public monolith
   (package
     (name "monolith")
-    (version "2.6.1")
+    (version "2.7.0")
     (source
      (origin
        (method git-fetch)
@@ -436,23 +460,24 @@ Interface} specification.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1pj4wnsw5a4ys79sqw68ib6zimaqlkplb89x6yncg949a6hj8516"))))
+        (base32 "0ccwjsp8gdgp0wafc3zvlfmx3f58axc1k1ac80qha3g60xccqn56"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
        (("rust-atty" ,rust-atty-0.2)
         ("rust-base64" ,rust-base64-0.13)
         ("rust-chrono" ,rust-chrono-0.4)
-        ("rust-clap" ,rust-clap-2)
-        ("rust-cssparser" ,rust-cssparser-0.28)
+        ("rust-clap" ,rust-clap-3)
+        ("rust-cssparser" ,rust-cssparser-0.29)
         ("rust-encoding-rs" ,rust-encoding-rs-0.8)
         ("rust-html5ever" ,rust-html5ever-0.24)
+        ("rust-percent-encoding" ,rust-percent-encoding-2)
         ("rust-regex" ,rust-regex-1)
         ("rust-reqwest" ,rust-reqwest-0.11)
-        ("rust-sha2" ,rust-sha2-0.9)
+        ("rust-sha2" ,rust-sha2-0.10)
         ("rust-url" ,rust-url-2))
        #:cargo-development-inputs
-       (("rust-assert-cmd" ,rust-assert-cmd-1))))
+       (("rust-assert-cmd" ,rust-assert-cmd-2))))
     (native-inputs
      (list pkg-config))
     (inputs
@@ -982,7 +1007,7 @@ similar to live activity monitoring provided with NGINX plus.")
 (define-public lighttpd
   (package
     (name "lighttpd")
-    (version "1.4.71")
+    (version "1.4.73")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://download.lighttpd.net/lighttpd/"
@@ -990,7 +1015,7 @@ similar to live activity monitoring provided with NGINX plus.")
                                   "lighttpd-" version ".tar.xz"))
               (sha256
                (base32
-                "1b5g4l9q84sjfwx9x1d7bqp9n5j0wkaj8cyzak1zv5h3l9fr3dmq"))))
+                "1a2cx3di07wf8qii7dpk4yr5wvaz8c9na1x7523smc0lng81d241"))))
     (build-system gnu-build-system)
     (arguments
      (list #:configure-flags
@@ -4933,8 +4958,8 @@ Cloud.")
     (license license:expat)))
 
 (define-public guix-data-service
-  (let ((commit "1c7539418743e0dfe3a9cad22c414fd732daef8f")
-        (revision "42"))
+  (let ((commit "e13febc81706fbfb7f073bc4e9ce73fbc80d5180")
+        (revision "44"))
     (package
       (name "guix-data-service")
       (version (string-append "0.0.1-" revision "." (string-take commit 7)))
@@ -4946,7 +4971,7 @@ Cloud.")
                 (file-name (git-file-name name version))
                 (sha256
                  (base32
-                  "1gp4mhjssxky0jjjz916rfgz4w2f327wfd5ixb6lb00ydlfh5mws"))))
+                  "0pk86b44zg2yn73sxlcd9pqbz8xwprwzaib2npnq80y3yzc6qc22"))))
       (build-system gnu-build-system)
       (arguments
        (list
@@ -5687,6 +5712,39 @@ project.")
     (description
      "Libnsbmp is a decoding library for BMP and ICO image file formats,
 written in C.  It is developed as part of the NetSurf project.")
+    (license license:expat)))
+
+(define-public libnsfb
+  (package
+    (name "libnsfb")
+    (version "0.2.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://download.netsurf-browser.org/libs/releases/"
+                           name "-" version "-src.tar.gz"))
+       (sha256
+        (base32 "16m3kv8x8mlic4z73h2s3z8lqmyp0z8i30x95lzr1pslxfinqi5y"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     (list netsurf-buildsystem pkg-config))
+    (inputs
+     ;; SDL is needed to accept any (keyboard, mouse) input.  Don't propagate it
+     ;; to satisfy libnsfb.pc: netsurf is the only user and not worth the pain.
+     (list sdl))
+    (arguments netsurf-buildsystem-arguments)
+    (home-page "https://www.netsurf-browser.org/projects/libnsfb/")
+    (synopsis "Framebuffer display abstraction library")
+    (description
+     "LibNSFB is a framebuffer abstraction library, written in C.  It is
+developed as part of the NetSurf project and is intended to be suitable for use
+in other projects too.
+
+The overall idea of the library is to provide a generic abstraction to a linear
+section of memory which corresponds to a visible array of pixel elements on a
+display device.  Different colour depths are supported and the library provides
+routines for tasks such as drawing onto the framebuffer and rectangle copy
+operations.")
     (license license:expat)))
 
 (define-public libnsgif
@@ -6637,7 +6695,10 @@ command-line arguments or read from stdin.")
                          (("^import re\n" line)
                           (string-append line "re._pattern_type = re.Pattern\n"))))
                      (find-files "." "\\.py$"))
-           #t))))
+           ;; Mapping got moved to collections.abc
+           (substitute* "internetarchive/utils.py"
+             (("from collections import Mapping")
+              "from collections.abc import Mapping"))))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -7885,6 +7946,35 @@ features include:
 @end enumerate\n")
     (license license:expat)))
 
+(define-public monsterid
+  (let ((commit "5597f177b473343ff5cad9a6e0e5b255312c6096")
+        (revision "0"))
+    (package
+      (name "monsterid")
+      (version (git-version "0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/splitbrain/monsterID")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0ixyrrcbw96plcdna2rx1pqwisqy9hnr57kvamgj13lzlv2whdb3"))))
+      (build-system copy-build-system)
+      (arguments
+       '(#:install-plan '(("monsterid.php" "share/web/monsterid/")
+                          ("parts/" "share/web/monsterid/parts/"
+                           #:include-regexp ("\\.png$")))))
+      (home-page "https://www.splitbrain.org/projects/monsterid")
+      (synopsis "The original MonsterID implementation")
+      (description
+       "MonsterID is a method to generate a unique monster image based upon a
+certain identifier (IP address, email address, whatever).  It can be
+used to automatically provide personal avatar images in blog comments
+or other community services.")
+      (license license:expat))))
+
 (define-public cat-avatar-generator
   (let ((commit "9360ea33f79d1dad3e43494b09878b5e3f6b41fa")
         (revision "1"))
@@ -7933,7 +8023,7 @@ derivation by David Revoy from the original MonsterID by Andreas Gohr.")
 (define-public nghttp2
   (package
     (name "nghttp2")
-    (version "1.49.0")
+    (version "1.58.0")
     (source
      (origin
        (method url-fetch)
@@ -7942,7 +8032,7 @@ derivation by David Revoy from the original MonsterID by Andreas Gohr.")
                            "nghttp2-" version ".tar.xz"))
        (sha256
         (base32
-         "0vm692c7q2wc4xxz8c41nr8jps2fkwf51xp8fb233cghpf9d9kxh"))))
+         "1q4ps8acr7nyia7mf2z11m0yh3fn1imhyv855j3xjbx91l2a6s2a"))))
     (build-system gnu-build-system)
     (outputs (list "out"
                    "lib"))              ; only libnghttp2

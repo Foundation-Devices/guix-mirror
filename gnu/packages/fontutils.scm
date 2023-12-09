@@ -19,6 +19,7 @@
 ;;; Copyright © 2023 John Kehayias <john.kehayias@protonmail.com>
 ;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 pinoaffe <pinoaffe@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -66,6 +67,7 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages qt)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages webkit)
   #:use-module (gnu packages xdisorg)
@@ -369,6 +371,37 @@ but also provides many useful font conversion and analysis facilities.
            python-tqdm
            python-ufonormalizer
            python-ufoprocessor))))
+
+(define-public python-beziers
+  (package
+    (name "python-beziers")
+    (version "0.5.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/simoncozens/beziers.py")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1dyr45m15sclbgaz1mrcnw8kny50h09gd45dlpfkgv9qpfxphkg3"))))
+    (build-system python-build-system)
+    (arguments
+     (list #:phases #~(modify-phases %standard-phases
+                        (replace 'check
+                          (lambda* (#:key tests? #:allow-other-keys)
+                            (when tests?
+                              (invoke "pytest" "-vv")))))))
+    (native-inputs (list python-pytest python-dotmap python-matplotlib))
+    (propagated-inputs (list python-pyclipper))
+    (home-page "https://simoncozens.github.io/beziers.py/index.html")
+    (synopsis "Python bezier manipulation library")
+    (description
+     "Beziers provides a variety of classes for constructing,
+manipulating and drawing Bezier curves and paths.  Principally designed for
+font design software, it allows you to join, split, offset, and perform many
+other operations on paths.")
+    (license license:expat)))
 
 (define-public python-cffsubr
   (package
@@ -961,6 +994,35 @@ value (e.g. @samp{x=\"95.0\"} becomes @samp{x=\"95\"})
 @end itemize")
     (license license:bsd-3)))
 
+(define-public fontobene-qt5
+  (package
+    (name "fontobene-qt5")
+    (version "0.2.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/fontobene/fontobene-qt5")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0gy3sfraf23k7dm4ha8nqpd6madzk0zmxkcb204micyn5b5l8ljg"))))
+    (inputs (list qtbase-5))
+    (build-system cmake-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "./tests/fontobene-qt5-tests")))))))
+    (home-page "https://github.com/fontobene/fontobene-qt5")
+    (synopsis "Parser for FontoBene stroke fonts")
+    (description "FontoBene-Qt5 is a header-only library to parse FontoBene
+stroke fonts with C++11/Qt5.")
+    ;; Dual-licensed, either license applies.
+    (license (list license:asl2.0 license:expat))))
+
 (define-public ttfautohint
   (package
     (name "ttfautohint")
@@ -1437,6 +1499,37 @@ not \"jaggy\" like a bitmap, but smooth.  It can then be rendered at any
 resolution.")
     (license license:gpl2+)
     (home-page "https://potrace.sourceforge.net/")))
+
+(define-public psftools
+  (package
+    (name "psftools")
+    (version "1.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://www.seasip.info/Unix/PSF/"
+                           "psftools-" version ".tar.gz"))
+       (sha256
+        (base32 "1lv6kvrcbspyh7a0hlji84wbmw6xh87r3iaafq3khp88kgh1irri"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:configure-flags #~(list "--disable-static")))
+    (home-page "https://www.seasip.info/Unix/PSF/")
+    (synopsis
+     "Convert PSF fixed-width bitmap (console) fonts from/to other formats")
+    (description
+     "@acronym{PSF, PC Screen Font} is the simple monospaced bitmap font format
+used by the Linux kernel for console fonts.  The PSF Tools convert between PSF
+and many other font formats, similar to what the NetPBM package does for images.
+
+It includes converters for a good number of common bitmap font formats such as
+@file{.BDF}, @file{.FNT}, and @file{.FON} files, Berkeley vfonts, classic
+Amstrad/Sinclair/Hercules/BBC Micro soft fonts, and raw (DOS-style) fonts.
+
+It also supports less traditional formats such as PBM/XBM images, plain text
+(for rudimentary editing), and C header files.")
+    (license license:gpl2+)))
 
 (define-public libotf
   (package

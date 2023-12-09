@@ -37,7 +37,7 @@
               %standard-build-options)
         (option '(#\h "help") #f #f
                 (lambda args
-                  (show-help)
+                  (leave-on-EPIPE (show-help))
                   (exit 0)))
         (option '(#\V "version") #f #f
                 (lambda args
@@ -64,7 +64,11 @@ Start $VISUAL or $EDITOR to edit the definitions of PACKAGE...\n"))
 
 (define (search-path* path file)
   "Like 'search-path' but exit if FILE is not found."
-  (let ((absolute-file-name (search-path path file)))
+  (let ((absolute-file-name (or (search-path path file)
+                                ;; It could be that FILE is a relative name
+                                ;; i.e., not relative to an element of PATH.
+                                (and (file-exists? file)
+                                     file))))
     (unless absolute-file-name
       ;; Shouldn't happen unless somebody fiddled with the 'location' field.
       (leave (G_ "file '~a' not found in search path ~s~%")

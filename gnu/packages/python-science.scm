@@ -14,7 +14,7 @@
 ;;; Copyright © 2021 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2021 Paul Garlick <pgarlick@tourbillion-technology.com>
 ;;; Copyright © 2021 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2021 Felix Gruber <felgru@posteo.net>
+;;; Copyright © 2021, 2023 Felix Gruber <felgru@posteo.net>
 ;;; Copyright © 2022 Malte Frank Gerdes <malte.f.gerdes@gmail.com>
 ;;; Copyright © 2022 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2022 Paul A. Patience <paul@apatience.com>
@@ -22,6 +22,7 @@
 ;;; Copyright © 2022 Eric Bavier <bavier@posteo.net>
 ;;; Copyright © 2022 Antero Mejr <antero@mailbox.org>
 ;;; Copyright © 2022 jgart <jgart@dismail.de>
+;;; Copyright © 2023 Troy Figiel <troy@troyfigiel.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -349,16 +350,48 @@ implements several methods for sequential model-based optimization.
 @code{skopt} aims to be accessible and easy to use in many contexts.")
     (license license:bsd-3)))
 
+(define-public python-tdda
+  (package
+    (name "python-tdda")
+    (version "2.0.9")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "tdda" version))
+       (sha256
+        (base32 "1xs91s8b7cshjcqw88qsrjh10xly799k5rf2ycawqfz2mw8sy3br"))))
+    (build-system pyproject-build-system)
+    (arguments
+     '(#:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'relax-requirements
+                    (lambda _
+                      (substitute* "setup.py"
+                        (("pandas>=1.5.2")
+                         "pandas"))))
+                  (replace 'check
+                    (lambda* (#:key tests? #:allow-other-keys)
+                      (when tests?
+                        (invoke "tdda" "test")))))))
+    (native-inputs (list python-numpy python-pandas))
+    (home-page "https://www.stochasticsolutions.com")
+    (synopsis "Test-driven data analysis library for Python")
+    (description
+     "The TDDA Python module provides command-line and Python API support
+for the overall process of data analysis, through tools that peform
+reference testing, constraint discovery for data, automatic inference
+of regular expressions from text data and automatic test generation.")
+    (license license:expat))) ; MIT License
+
 (define-public python-trimesh
   (package
     (name "python-trimesh")
-    (version "3.22.1")
+    (version "3.23.5")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "trimesh" version))
        (sha256
-        (base32 "1ck4dkhz1x6sznd83c1hlvsv2m6d22fr82na0947j5jf47a4c1gl"))))
+        (base32 "08967axlnmfv98n05dhrkynyrmcc814hl8184gzzmcy4rjg6dzdx"))))
     (build-system python-build-system)
     (propagated-inputs
      (list python-numpy))
@@ -386,6 +419,31 @@ a full featured and well tested Trimesh object which allows for easy
 manipulation and analysis, in the style of the Polygon object in the Shapely
 library.")
     (license license:expat)))
+
+(define-public python-meshzoo
+  (package
+    (name "python-meshzoo")
+    (version "0.9.4")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/diego-hayashi/meshzoo")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "107byfppbq16fqyp2hw7ydcvvahspzq0hzvlvzqg2zxi1aigbr68"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs
+      (list python-numpy))
+    (native-inputs (list python-flit-core python-matplotlib python-pytest))
+    (home-page "https://github.com/diego-hayashi/meshzoo")
+    (synopsis "Mesh generator for simple geometries")
+    (description
+      "@code{meshzoo} is a mesh generator for finite element or finite
+volume computations for simple domains like regular polygons, disks,
+spheres, cubes, etc.")
+    (license license:gpl3+)))
 
 (define-public python-tspex
   (package
@@ -810,7 +868,7 @@ functions and around einops with an API and features adapted to xarray.")
 (define-public python-pytensor
   (package
     (name "python-pytensor")
-    (version "2.14.2")
+    (version "2.18.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -819,7 +877,7 @@ functions and around einops with an API and features adapted to xarray.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1428l1v7yrnls8875xjx1svn48cmz0q83sv7sg0xdqghkfnyi7xx"))))
+                "0qa0y13xfm6w7ry7gp0lv84c8blyg34a9ns7ynwqyhf9majq08s5"))))
     (build-system pyproject-build-system)
     (arguments
      (list
@@ -1321,7 +1379,8 @@ Mathematics (GLM) library to Python.")
                 "test_tls_temporary_credentials_functional"
                 "test_variable_in_task"
                 "test_worker_preload_text"
-                "test_worker_uses_same_host_as_nanny")
+                "test_worker_uses_same_host_as_nanny"
+                "test_nanny_timeout") ; access to 127.0.0.1
                " and not ")
 
               ;; These fail because it doesn't find dask[distributed]
@@ -1344,7 +1403,8 @@ Mathematics (GLM) library to Python.")
 
               ;; These tests are rather flaky
               " and not test_quiet_quit_when_cluster_leaves"
-              " and not multiple_clients_restart"))
+              " and not multiple_clients_restart"
+              " and not test_steal_twice"))
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'unpack 'versioneer
@@ -1626,7 +1686,7 @@ and aims to provide a similar API and functionality in Python.")
 (define-public python-pyvista
   (package
     (name "python-pyvista")
-    (version "0.39.1")
+    (version "0.42.3")
     (source
      ;; The PyPI tarball does not contain the tests.
      ;; (However, we don't yet actually run the tests.)
@@ -1637,7 +1697,7 @@ and aims to provide a similar API and functionality in Python.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "00nij00z5r35f6dx7mwndsrpmiw43adjk8x35mk308c369ylbv9p"))))
+        (base32 "1qxq0y0hc72hb60w3qq48fma8l6ffz7bdm75ymn1020bvfqrm1s4"))))
     (build-system python-build-system)
     (propagated-inputs
      (list python-imageio
@@ -1656,7 +1716,7 @@ and aims to provide a similar API and functionality in Python.")
          (delete 'check)
          ;; Disable the sanity check, which fails with the following error:
          ;;
-         ;;   ...checking requirements: ERROR: pyvista==0.39.1 DistributionNotFound(Requirement.parse('vtk'), {'pyvista'})
+         ;;   ...checking requirements: ERROR: pyvista==0.42.3 DistributionNotFound(Requirement.parse('vtk'), {'pyvista'})
          (delete 'sanity-check))))
     (home-page "https://docs.pyvista.org/")
     (synopsis "3D plotting and mesh analysis through VTK")
@@ -1812,7 +1872,11 @@ for parameterized model creation and handling.  Its features include:
               (uri (pypi-uri "GPy" version))
               (sha256
                (base32
-                "1yx65ajrmqp02ykclhlb0n8s3bx5r0xj075swwwigiqaippr7dx2"))))
+                "1yx65ajrmqp02ykclhlb0n8s3bx5r0xj075swwwigiqaippr7dx2"))
+             (snippet
+              #~(begin (use-modules (guix build utils))
+                       (substitute* "GPy/models/state_space_main.py"
+                         (("collections\\.Iterable") "collections.abc.Iterable"))))))
     (build-system python-build-system)
     (arguments
      `(#:phases (modify-phases %standard-phases
@@ -1830,6 +1894,31 @@ for parameterized model creation and handling.  Its features include:
 Python, from the Sheffield machine learning group.  GPy implements a range of
 machine learning algorithms based on GPs.")
     (license license:bsd-3)))
+
+(define-public python-pyfma
+  (package
+    (name "python-pyfma")
+    (version "0.1.6")
+    (source (origin
+              (method git-fetch)   ;for tests
+              (uri (git-reference
+                    (url "https://github.com/nschloe/pyfma")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "12i68jj9n1qj9phjnj6f0kmfhlsd3fqjlk9p6d4gs008azw5m8yn"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-numpy))
+    (native-inputs (list pybind11 python-pytest))
+    (home-page "https://github.com/nschloe/pyfma")
+    (synopsis "Fused multiply-add for Python")
+    (description "@code{pyfma} provides an implementation of fused
+multiply-add which computes @code{(x*y) + z} with a single rounding.
+This is useful for dot products, matrix multiplications, polynomial
+evaluations (e.g., with Horner's rule), Newton's method for evaluating
+functions, convolutions, artificial neural networks etc.")
+    (license license:expat)))
 
 (define-public python-pydicom
   (package
@@ -2026,6 +2115,33 @@ documentation for more information.")
     (description "Vaex is a high performance Python library for lazy
 Out-of-Core DataFrames (similar to Pandas), to visualize and explore big
 tabular datasets.  This package provides the core modules of Vaex.")
+    (license license:expat)))
+
+(define-public python-salib
+  (package
+    (name "python-salib")
+    (version "1.4.7")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/SALib/SALib")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "18xfyzircsx2q2lmfc9lxb6xvkxicnc83qzghd7df1jsprr5ymch"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-matplotlib
+                             python-multiprocess
+                             python-numpy
+                             python-pandas
+                             python-scipy))
+    (native-inputs (list python-hatchling python-pytest python-pytest-cov))
+    (home-page "https://salib.readthedocs.io/en/latest/")
+    (synopsis "Tools for global sensitivity analysis")
+    (description "SALib provides tools for global sensitivity analysis.  It
+contains Sobol', Morris, FAST, DGSM, PAWN, HDMR, Moment Independent and
+fractional factorial methods.")
     (license license:expat)))
 
 (define-public python-pylems

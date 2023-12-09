@@ -199,7 +199,7 @@ a server that supports the SSH-2 protocol.")
 (define-public openssh
   (package
    (name "openssh")
-   (version "9.4p1")
+   (version "9.5p1")
    (source
     (origin
       (method url-fetch)
@@ -207,7 +207,7 @@ a server that supports the SSH-2 protocol.")
                           "openssh-" version ".tar.gz"))
       (patches (search-patches "openssh-trust-guix-store-directory.patch"))
       (sha256
-       (base32 "11bahrik5qi337m954g5479f63cxnxdch076ng7668fvi28gs21n"))))
+       (base32 "0sq8hqk6f0x6djgvqawjbwwxpwd8r1nzjahqfl7m9yx7kfvyf9ph"))))
    (build-system gnu-build-system)
    (arguments
     (list
@@ -474,33 +474,31 @@ with optional @acronym{TLS, Transport-Level Security} to protect credentials.")
                 "1pax8sqlvcc7ammsxd9r53yx4m2hg1827wfz6f4rrwjx9q9lnbl7"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-FHS-file-names
-           (lambda _
-             (substitute* "scripts/mosh.pl"
-               (("/bin/sh")
-                (which "sh")))
-             #t))
-         (add-after 'install 'wrap
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Make sure 'mosh' can find 'mosh-client' and
-             ;; 'mosh-server'.
-             (let* ((out (assoc-ref outputs "out"))
-                    (bin (string-append out "/bin")))
-               (wrap-program (string-append bin "/mosh")
-                             `("PATH" ":" prefix (,bin)))))))))
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-FHS-file-names
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "scripts/mosh.pl"
+                (("/bin/sh" shell)
+                 (search-input-file inputs shell)))))
+          (add-after 'install 'wrap
+            (lambda _
+              ;; Make sure 'mosh' can find 'mosh-client' and 'mosh-server'.
+              (let ((bin (string-append #$output "/bin")))
+                (wrap-program (string-append bin "/mosh")
+                  `("PATH" ":" prefix (,bin)))))))))
     (native-inputs
      (list pkg-config))
     (inputs
-     `(("bash" ,bash-minimal) ; for wrap-program
-       ("openssl" ,openssl)
-       ("perl" ,perl)
-       ("perl-io-tty" ,perl-io-tty)
-       ("zlib" ,zlib)
-       ("ncurses" ,ncurses)
-       ("protobuf" ,protobuf)
-       ("boost-headers" ,boost)))
+     (list bash-minimal                           ;for 'wrap-program'
+           boost
+           ncurses
+           openssl
+           perl
+           perl-io-tty
+           protobuf
+           zlib))
     (home-page "https://mosh.org/")
     (synopsis "Remote shell tolerant to intermittent connectivity")
     (description
