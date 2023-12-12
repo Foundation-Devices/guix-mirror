@@ -20,7 +20,8 @@
   #:use-module (guix platform)
   #:use-module (guix records)
   #:export (armv7-linux
-            aarch64-linux))
+            aarch64-linux
+            arm-none-eabi))
 
 (define armv7-linux
   (platform
@@ -37,3 +38,10 @@
    (linux-architecture "arm64")
    (rust-target "aarch64-unknown-linux-gnu")
    (glibc-dynamic-linker "/lib/ld-linux-aarch64.so.1")))
+
+(define arm-none-eabi
+  (platform
+   (target "arm-none-eabi")
+   (system #f)
+   (glibc-dynamic-linker #f)
+   (multilib? #t)))

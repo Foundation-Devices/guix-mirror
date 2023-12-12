@@ -16725,6 +16725,7 @@ The available targets are:
 
    - aarch64-linux-gnu
    - arm-linux-gnueabihf
+   - arm-none-eabi
    - avr
    - i586-pc-gnu
    - i686-linux-gnu
@@ -47053,6 +47054,11 @@ C standard library.
 @defvar xtensa-ath9k-elf
 Platform targeting Xtensa CPU used in the Qualcomm Atheros AR7010 and AR9271
 USB 802.11n @acronym{NICs, Network Interface Controllers}.
+@end defvar
+
+@defvar arm-none-eabi
+Platform targeting ARM CPUs without an operating system, with run-time
+support from the Newlib and Newlib nano C standard libraries.
 @end defvar
 
 @node System Images
