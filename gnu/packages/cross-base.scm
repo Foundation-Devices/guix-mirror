@@ -153,6 +153,24 @@
                  (else binutils))
            target)))
 
+(define (cross-gcc-mutlilib-list target xgcc)
+  "Return the list of multilibs for XGCC and TARGET for use with the
+--with-multilib-list=... parameter or false if not applicable"
+  (if (string=? "arm-none-eabi" target)
+      (cond
+        ;; After 6.0 the "GCC ARM embedded" project started using the
+        ;; rmprofile as the multilib list.
+        ((version>=? (package-version xgcc) "6.0")
+         '("rmprofile"))
+        ((version>=? (package-version xgcc) "5.0")
+         '("armv6-m" "armv7-m" "armv7e-m" "armv7-r"
+           "armv8-m.base" "armv8-m.main"))
+        ((version>=? (package-version xgcc) "4.9")
+         '("armv6-m" "armv7-m" "armv7e-m" "cortex-m7"
+           "armv7-r"))
+        (else #f))
+      #f))
+
 (define (cross-gcc-arguments target xgcc libc)
   "Return build system arguments for a cross-gcc for TARGET, using XGCC as the
 base compiler and using LIBC (which may be either a libc package or #f.)"
@@ -167,7 +185,8 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
                   ,@(package-arguments xgcc)))
            (platform (false-if-platform-not-found
                        (lookup-platform-by-target target)))
-           (multilib? (and=> platform platform-multilib?)))
+           (multilib? (and=> platform platform-multilib?))
+           (multilib-list (cross-gcc-mutlilib-list target xgcc)))
       (substitute-keyword-arguments args
         ((#:configure-flags flags)
          #~(append (list #$(string-append "--target=" target)
@@ -224,11 +243,24 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
                                 #~("--enable-multilib")
                                 #~())
 
+                         #$@(if multilib-list
+                                #~((string-append
+                                     "--with-multilib-list="
+                                     #$(string-join multilib-list ",")))
+                                #~())
 
-                         #$@(if (and libc (target-avr? target))
+                         #$@(if (and libc
+                                     (string=? target "arm-none-eabi"))
+                                #~("--with-newlib")
+                                #~())
+
+                         #$@(if (and libc
+                                     (or (target-avr? target)
+                                         (string=? target "arm-none-eabi")))
                                 #~(;; By default GCC will attemp to compile
                                    ;; some libraries for other languages (objc,
-                                   ;; fortran) but compilation fails for AVR.
+                                   ;; fortran) but compilation fails for some
+                                   ;; bare metal targets.
                                    "--enable-languages=c,c++"
                                    (string-append "--with-native-system-header-dir="
                                                   #$libc "/" #$target "/include"))
@@ -239,7 +271,8 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
                        (or (and #$libc
                                 (string-prefix? "--enable-languages" flag))
                            (and #$libc
-                                #$(target-avr? target)
+                                #$(or (target-avr? target)
+                                      (string=? "arm-none-eabi" target))
                                 (string-prefix? "--with-native-system-header-dir"
                                                 flag))
                            (and #$multilib?
@@ -248,7 +281,8 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
         ((#:make-flags flags)
          (if libc
              #~(let ((libc (assoc-ref %build-inputs "libc"))
-                     (lib-prefix (if #$(target-avr? target)
+                     (lib-prefix (if #$(or (target-avr? target)
+                                           (string=? target "arm-none-eabi"))
                                      (string-append "/" #$target)
                                      "")))
                 ;; FLAGS_FOR_TARGET are needed for the target libraries to receive
@@ -399,7 +433,8 @@ target that libc."
                    ("libc" ,libc))
                  `(,@inputs
                    ("mingw-source" ,(package-source mingw-w64)))))
-            ((and libc (target-avr? target))
+            ((and libc (or (target-avr? target)
+                           (string=? target "arm-none-eabi")))
              `(,@inputs
                ("libc" ,libc)))
             (libc

@@ -168,7 +168,7 @@ C_*INCLUDE_PATH."
               (cons "LIBRARY_PATH" %gcc-include-paths))
     #t))
 
-(define* (set-cross-path/avr #:key inputs #:allow-other-keys)
+(define* (set-cross-path/bare-metal #:key inputs #:allow-other-keys)
   (match (assoc-ref inputs "libc")
     ((? string? libc)
      (define (cross? x)
@@ -214,7 +214,8 @@ a target triplet."
       (cond
         ((string-suffix? "-mingw32" target)
          (cut set-cross-path/mingw #:target target <...>))
-        ((string-prefix? "avr" target) set-cross-path/avr)
+        ((string-prefix? "avr" target) set-cross-path/bare-metal)
+        ((string=? "arm-none-eabi" target) set-cross-path/bare-metal)
         (#t set-cross-path)))
     (add-after 'install 'make-cross-binutils-visible
       (cut make-cross-binutils-visible #:target target <...>))
