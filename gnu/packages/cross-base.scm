@@ -34,6 +34,7 @@
   #:use-module (gnu packages linux)
   #:use-module (gnu packages hurd)
   #:use-module (gnu packages mingw)
+  #:use-module (gnu packages newlib)
   #:use-module (guix memoization)
   #:use-module (guix platform)
   #:use-module (guix packages)
@@ -749,6 +750,10 @@ returned."
    ((? target-avr?)
     (make-avr-libc #:xbinutils xbinutils
                    #:xgcc xgcc))
+   ("arm-none-eabi"
+    (make-newlib-union target
+                       #:xbinutils xbinutils
+                       #:xgcc xgcc))
    (else #f)))
 
 (define* (cross-libstdc++/implementation target
