@@ -222,6 +222,7 @@ MODULES =					\
   guix/build/emacs-build-system.scm		\
   guix/build/meson-build-system.scm		\
   guix/build/minify-build-system.scm		\
+  guix/build/multilib.scm		\
   guix/build/font-build-system.scm		\
   guix/build/go-build-system.scm		\
   guix/build/android-repo.scm			\
