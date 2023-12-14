@@ -33,6 +33,9 @@
 ;;; compilation methods. For example, by using the `#:target' argument on
 ;;; packages or `--target' on the command line.
 
+(define-public gcc-cross-arm-none-eabi-toolchain
+  (cross-gcc-toolchain "arm-none-eabi"))
+
 (define-public gcc-cross-avr-toolchain
   (cross-gcc-toolchain "avr"))
 
