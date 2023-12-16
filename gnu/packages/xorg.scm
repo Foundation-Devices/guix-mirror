@@ -5246,7 +5246,7 @@ EGLStream families of extensions.")
 (define-public xorg-server-xwayland
   (package
     (name "xorg-server-xwayland")
-    (version "21.1.3")
+    (version "23.2.3")
     (source
      (origin
        (method url-fetch)
@@ -5254,7 +5254,7 @@ EGLStream families of extensions.")
                            "/xserver/xwayland-" version ".tar.xz"))
        (sha256
         (base32
-         "18pqvg76grbsyxa3mm3j06i1l8cwb28nbn2gcnqpsk7x75zpbhpb"))))
+         "00p30yyikh7h9xsqgir66xb06pspgjlibv1mi0n42irc4fkrm7gb"))))
     (inputs (list font-dejavu
                   dbus
                   egl-wayland
@@ -5264,6 +5264,7 @@ EGLStream families of extensions.")
                   libepoxy
                   libgcrypt
                   libtirpc
+                  libxcvt
                   libxfont2
                   libxkbfile
                   pixman
@@ -5279,6 +5280,7 @@ EGLStream families of extensions.")
                                  wayland
                                  wayland-protocols)
                            '())))
+    (properties '((upstream-name . "xwayland")))
     (build-system meson-build-system)
     (arguments
      `(#:configure-flags
