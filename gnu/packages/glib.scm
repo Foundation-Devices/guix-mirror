@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013, 2014, 2015, 2016, 2019, 2020, 2021, 2023 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2013, 2015 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2013 Nikita Karetnikov <nikita@karetnikov.org>
 ;;; Copyright © 2014, 2015, 2016, 2017, 2018, 2021 Mark H Weaver <mhw@netris.org>
@@ -275,6 +275,10 @@ information, refer to the @samp{dbus-daemon(1)} man page.")))
                 (substitute* '("contenttype.c" "gdbus-address-get-session.c"
                                "gdbus-peer.c" "appinfo.c" "desktop-app-info.c")
                   (("[ \t]*g_test_add_func.*;") "")))
+              (substitute* "glib/tests/error.c"
+                ;; This test segfaults with glibc 2.38.
+                (("g_test_add_func.*new-valist/invalid.*" all)
+                 (string-append "//" all "\n")))
 
               #$@(if (target-x86-32?)
                      ;; Comment out parts of timer.c that fail on i686 due to
