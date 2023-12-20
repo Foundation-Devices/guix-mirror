@@ -199,8 +199,7 @@ living in the same process.")
 (define-public gnutls
   (package
     (name "gnutls")
-    (version "3.7.7")
-    (replacement gnutls-3.8.1)
+    (version "3.8.1")
     (source (origin
               (method url-fetch)
               ;; Note: Releases are no longer on ftp.gnu.org since the
@@ -208,11 +207,10 @@ living in the same process.")
               (uri (string-append "mirror://gnupg/gnutls/v"
                                   (version-major+minor version)
                                   "/gnutls-" version ".tar.xz"))
-              (patches (search-patches "gnutls-skip-trust-store-test.patch"
-                                       "gnutls-cross.patch"))
+              (patches (search-patches "gnutls-skip-trust-store-test.patch"))
               (sha256
                (base32
-                "01i1gl15k6qwvxmxx0by1mn9nlmcmym18wdpm7dn9awfsp8474dy"))))
+                "1742jiigwsfhx7nj5rz7dwqr8d46npsph6b68j7siar0mqarx2xs"))))
     (build-system gnu-build-system)
     (arguments
      (list #:tests? (not (or (%current-target-system)
@@ -253,6 +251,16 @@ living in the same process.")
                    (substitute* "tests/fastopen.sh"
                      (("^unset RETCODE")
                       "exit 77\n"))))   ;skip
+               #$@(if (target-hurd?)
+                      #~((add-after 'unpack 'set-path-max
+                           (lambda _
+                             ;; Fix reference to undefined 'PATH_MAX'.  This
+                             ;; is fixed in GnuTLS commit
+                             ;; 3b6ec1e01de4e96d36276dfe34ee9e183f285264.
+                             (substitute* "lib/pathbuf.h"
+                               (("^#define GNUTLS_PATH_MAX PATH_MAX")
+                                "#define GNUTLS_PATH_MAX 8192\n")))))
+                      #~())
                #$@(if (target-ppc32?)
                       ;; https://gitlab.com/gnutls/gnutls/-/issues/1354
                       ;; Extend the test timeout from the default of 20 * 1000
@@ -291,7 +299,7 @@ living in the same process.")
                (if (string-prefix? "mips64el" system)
                    '()
                    (list p11-kit)))))
-    (home-page "https://www.gnu.org/software/gnutls/")
+    (home-page "https://gnutls.org")
     (synopsis "Transport layer security library")
     (description
      "GnuTLS is a secure communications library implementing the SSL, TLS
@@ -299,39 +307,10 @@ and DTLS protocols.  It is provided in the form of a C library to support the
 protocols, as well as to parse and write X.509, PKCS #12, OpenPGP and other
 required structures.")
     (license license:lgpl2.1+)
-    (properties '((ftp-server . "ftp.gnutls.org")
-                  (ftp-directory . "/gcrypt/gnutls")))))
+    (properties
+     '((release-monitoring-url . "https://gnutls.org/download.html")))))
 
 (define-deprecated/public-alias gnutls-latest gnutls)
-
-;; Replacement for gnutls@3.7.7 to address GNUTLS-SA-2020-07-14 /
-;; CVE-2023-0361
-(define-public gnutls-3.8.1
-  (package
-    (inherit gnutls)
-    (version "3.8.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnupg/gnutls/v"
-                                  (version-major+minor version)
-                                  "/gnutls-" version ".tar.xz"))
-              (patches (search-patches "gnutls-skip-trust-store-test.patch"))
-              (sha256
-               (base32
-                "1742jiigwsfhx7nj5rz7dwqr8d46npsph6b68j7siar0mqarx2xs"))))
-    (arguments
-     (if (target-hurd?)
-         ;; Fix reference to undefined 'PATH_MAX'.  This is fixed in GnuTLS
-         ;; commit 3b6ec1e01de4e96d36276dfe34ee9e183f285264.
-         (substitute-keyword-arguments (package-arguments gnutls)
-           ((#:phases phases #~%standard-phases)
-            #~(modify-phases #$phases
-                (add-after 'unpack 'set-path-max
-                  (lambda _
-                    (substitute* "lib/pathbuf.h"
-                      (("^#define GNUTLS_PATH_MAX PATH_MAX")
-                       "#define GNUTLS_PATH_MAX 8192\n")))))))
-         (package-arguments gnutls)))))
 
 (define-public gnutls/dane
   ;; GnuTLS with build libgnutls-dane, implementing DNS-based
