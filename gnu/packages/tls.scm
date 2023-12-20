@@ -327,7 +327,7 @@ required structures.")
     ;; This package supersedes the Guile bindings that came with GnuTLS until
     ;; version 3.7.8 included.
     (name "guile-gnutls")
-    (version "3.7.12")
+    (version "4.0.0")
     (home-page "https://gitlab.com/gnutls/guile/")
     (source (origin
               ;; url-fetch is used here to avoid a circular dependency with
@@ -335,12 +335,11 @@ required structures.")
               (method url-fetch)
               (uri (string-append
                     "https://gitlab.com/gnutls/guile/uploads/"
-                    "3fe12c208bdc6155c5116cf5eac7a2ad"
+                    "9060bc55069cedb40ab46cea49b439c0"
                     "/guile-gnutls-" version ".tar.gz"))
               (sha256
                (base32
-                "0dp3zsbnwgb4q4p8n6i5vnlwq52v5hp8f5c44ngyag89fcaz2fjx"))
-              (patches (search-patches "gnutls-cross.patch"))))
+                "0fdjmy9vfjwk2v616nan1zz6iy9i086vrh5mdcsfqxi00ckbjk2v"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -353,7 +352,11 @@ required structures.")
               (string-append "--with-guile-site-ccache-dir="
                              "$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache")
               (string-append "--with-guile-extension-dir="
-                             "$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/extensions"))))
+                             "$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/extensions"))
+
+      ;; The 'gnutls' package currently lacks support for SRP, making this
+      ;; test fail.
+      #:make-flags #~'("XFAIL_TESTS=tests/srp-base64.scm")))
     (native-inputs
      (list libtool
            pkg-config
