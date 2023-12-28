@@ -2064,6 +2064,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/superlu-dist-awpm-grid.patch		\
   %D%/packages/patches/superlu-dist-scotchmetis.patch		\
   %D%/packages/patches/supertux-unbundle-squirrel.patch		\
+  %D%/packages/patches/sway-add-libinput-config-accel.patch	\
   %D%/packages/patches/swig-support-gcc-12.patch		\
   %D%/packages/patches/swish-e-search.patch			\
   %D%/packages/patches/swish-e-format-security.patch		\

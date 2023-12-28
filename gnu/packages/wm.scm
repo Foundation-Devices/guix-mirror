@@ -1740,7 +1740,8 @@ modules for building a Wayland compositor.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1y7brfrsjnm9gksijgnr6zxqiqvn06mdiwsk5j87ggmxazxd66av"))))
+        (base32 "1y7brfrsjnm9gksijgnr6zxqiqvn06mdiwsk5j87ggmxazxd66av"))
+       (patches (search-patches "sway-add-libinput-config-accel.patch"))))
     (build-system meson-build-system)
     (arguments
      `(;; elogind is propagated by wlroots -> libseat
