@@ -4840,7 +4840,10 @@ indicators etc).")
                (base32
                 "0s42l6dkajciqc99zp6dc9l8yv9g8w7d8mgv97l7h7drgd60hand"))
               (patches
-               (search-patches "glib-networking-gnutls-binding.patch"))))
+               ;; Fixed in 2.76.0
+               ;; see https://gitlab.gnome.org/GNOME/glib-networking/-/issues/201
+               (search-patches "glib-networking-disable-connection-tls1.2-test.patch"
+                               "glib-networking-gnutls-binding.patch"))))
     (build-system meson-build-system)
     (native-inputs
      (list pkg-config gettext-minimal))
