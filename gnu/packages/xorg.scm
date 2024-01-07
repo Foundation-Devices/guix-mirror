@@ -1498,7 +1498,11 @@ treat it as part of their software base when porting.")
             "1zi0r6mqa1g0hhsp02cdsjcxmsbipiv0v65c1h4pl84fydcjikbm"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:configure-flags '("--disable-static")))
+     `(#:configure-flags '("--disable-static"
+                           ;; This fixes cross compiling.
+                           ,@(if (%current-target-system)
+                               '("--enable-malloc0returnsnull=yes")
+                               '()))))
     (propagated-inputs
       (list libx11 libxext xorgproto))
     (native-inputs
@@ -5013,7 +5017,7 @@ by the Xorg server.")
 (define-public xorg-server
   (package
     (name "xorg-server")
-    (version "21.1.9")
+    (version "21.1.10")
     (source
      (origin
        (method url-fetch)
@@ -5021,7 +5025,7 @@ by the Xorg server.")
                            "/xserver/xorg-server-" version ".tar.xz"))
        (sha256
         (base32
-         "0fjk9ggcrn96blq0bm80739yj23s3gjjjsc0nxk4jk0v07i7nsgz"))
+         "1l0iaq83vbl9jr34sa7v7630c5bnp64drlw8yg6c6yn5xyib7c6f"))
        (patches
         (list
          ;; See:
@@ -5673,11 +5677,29 @@ The XCB util-keysyms module provides the following library:
                "0nza1csdvvxbmk8vgv8vpmq7q8h05xrw3cfx9lwxd1hjzd47xsf6"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:configure-flags '("--disable-static")))
+     `(#:configure-flags '("--disable-static")
+       ,@(if (and (%current-target-system)
+                  (target-riscv64?))
+             `(#:phases
+               (modify-phases %standard-phases
+                 (add-after 'unpack 'update-config-scripts
+                   (lambda* (#:key inputs native-inputs #:allow-other-keys)
+                     ;; Replace outdated config.guess and config.sub.
+                     (for-each (lambda (file)
+                                 (install-file
+                                  (search-input-file
+                                   (or native-inputs inputs)
+                                   (string-append "/bin/" file)) "."))
+                               '("config.guess" "config.sub"))))))
+             '())))
     (propagated-inputs
      (list libxcb))
     (native-inputs
-     (list pkg-config))
+     (append (if (and (%current-target-system)
+                      (target-riscv64?))
+                 (list config)
+                 '())
+             (list pkg-config)))
     (home-page "https://cgit.freedesktop.org/xcb/util-renderutil/")
     (synopsis "Convenience functions for the Render extension")
     (description

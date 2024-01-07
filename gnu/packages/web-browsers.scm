@@ -83,7 +83,6 @@
   #:use-module (gnu packages man)
   #:use-module (gnu packages markup)
   #:use-module (gnu packages mp3)
-  #:use-module (gnu packages nano)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages perl)
@@ -96,6 +95,7 @@
   #:use-module (gnu packages sdl)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages tcl)
+  #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages webkit)
   #:use-module (gnu packages xorg))
@@ -586,7 +586,7 @@ driven and does not detract you from your daily work.")
 (define-public nyxt
   (package
     (name "nyxt")
-    (version "3.9.2")
+    (version "3.10.0")
     (source
      (origin
        (method git-fetch)
@@ -595,11 +595,8 @@ driven and does not detract you from your daily work.")
              (commit version)))
        (sha256
         (base32
-         "1v85jn46d9vacjig6n9z797fch88fw6vzwbfdzlqdkm86vvm8dwn"))
-       (file-name (git-file-name "nyxt" version))
-       (modules '((guix build utils)))
-       (snippet
-        '(delete-file-recursively "libraries/nasdf"))))
+         "1rz2082kk3fdvszqmi3fgndrq205vbxl3i0x4qyli0jy3lpvjin8"))
+       (file-name (git-file-name name version))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags (list "nyxt" "NYXT_SUBMODULES=false"
@@ -674,7 +671,6 @@ driven and does not detract you from your daily work.")
                   sbcl-montezuma
                   sbcl-moptilities
                   sbcl-named-readtables
-                  sbcl-nasdf
                   sbcl-nclasses
                   sbcl-ndebug
                   sbcl-nfiles
@@ -707,7 +703,7 @@ driven and does not detract you from your daily work.")
                   gsettings-desktop-schemas
                   cl-gobject-introspection
                   gtk+                  ; For the main loop
-                  webkitgtk             ; Required when we use its typelib
+                  webkitgtk-for-gtk3    ; Required when we use its typelib
                   gobject-introspection
                   pkg-config))
     (synopsis "Extensible web-browser in Common Lisp")

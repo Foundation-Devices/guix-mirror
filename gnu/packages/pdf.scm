@@ -24,6 +24,7 @@
 ;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;; Copyright © 2022 Paul A. Patience <paul@apatience.com>
 ;;; Copyright © 2022 Petr Hodina <phodina@protonmail.com>
+;;; Copyright © 2023 Felix Gruber <felgru@posteo.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -107,6 +108,7 @@
   #:use-module (gnu packages time)
   #:use-module (gnu packages tcl)
   #:use-module (gnu packages tls)
+  #:use-module (gnu packages video)
   #:use-module (gnu packages web)
   #:use-module (gnu packages webkit)
   #:use-module (gnu packages xdisorg)
@@ -976,6 +978,34 @@ configurable toolbars and shortcuts, continuous and multi‐page layouts,
 SyncTeX support, and rudimentary support for annotations and forms.")
     (license license:gpl2+)))
 
+(define-public unpaper
+  (package
+    (name "unpaper")
+    (version "7.0.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (string-append "https://www.flameeyes.com/files/unpaper-"
+                            version ".tar.xz"))
+        (sha256
+         (base32 "103awjdl2qrzi0qc32hi8zvwf04r5ih5jaw8rg8ij9y24szznx95"))))
+    (native-inputs
+     (list pkg-config python-sphinx))
+    (inputs
+     (list discount ffmpeg))
+    (build-system meson-build-system)
+    (home-page "https://www.flameeyes.com/projects/unpaper")
+    (synopsis "post-processing tool for scanned pages")
+    (description "@command{unpaper} is a post-processing tool for
+scanned sheets of paper, especially for book pages that have been
+scanned from previously created photocopies.
+
+Its main purpose is to make scanned book pages better readable on screen
+after conversion to PDF.  Additionally, unpaper might be useful to
+enhance the quality of scanned pages before performing
+@acronym{OCR, optical character recognition}.")
+    (license license:gpl2)))
+
 (define-public xournal
   (package
     (name "xournal")
@@ -1388,7 +1418,7 @@ manage or manipulate PDFs.")
 (define-public pdfarranger
   (package
     (name "pdfarranger")
-    (version "1.9.2")
+    (version "1.10.1")
     (source
      (origin
        (method git-fetch)
@@ -1397,7 +1427,7 @@ manage or manipulate PDFs.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1zj1fdaqih9d878yxy96ivgqyg4j31slvh2gqsyz2l2vj3s8z54x"))))
+        (base32 "0bi3yyns05yamml5jcnqvdaf7i19jg636wb1fj2mwlial9ww7zwp"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -1409,7 +1439,10 @@ manage or manipulate PDFs.")
               (let ((program (string-append #$output "/bin/pdfarranger")))
                 (wrap-program program
                   `("GI_TYPELIB_PATH" ":" prefix
-                    (,(getenv "GI_TYPELIB_PATH"))))))))))
+                    (,(getenv "GI_TYPELIB_PATH")))))))
+          (add-before 'sanity-check 'set-home
+            (lambda _
+              (setenv "HOME" "/tmp"))))))
     (native-inputs
      (list intltool python-distutils-extra))
     (inputs

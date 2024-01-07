@@ -109,6 +109,7 @@
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages golang)
   #:use-module (gnu packages golang-check)
+  #:use-module (gnu packages golang-web)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gsasl)
   #:use-module (gnu packages gtk)
@@ -3934,7 +3935,7 @@ tools and applications:
            libsecret
            openldap
            sqlite
-           webkitgtk))
+           webkitgtk-for-gtk3))
     (native-inputs
      (list compface
            `(,glib "bin") intltool pkg-config yelp-tools))

@@ -16,7 +16,7 @@
 ;;; Copyright © 2017 Theodoros Foradis <theodoros@foradis.org>
 ;;; Copyright © 2017 Nikita <nikita@n0.is>
 ;;; Copyright © 2017, 2018, 2021 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2018, 2021, 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2018, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2018, 2019, 2020, 2021, 2022, 2023 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2018 Pierre-Antoine Rouby <pierre-antoine.rouby@inria.fr>
 ;;; Copyright © 2018 Eric Bavier <bavier@member.fsf.org>
@@ -1106,7 +1106,7 @@ for calling methods on remote servers by exchanging JSON objects.")
 (define-public guile-ares-rs
   (package
     (name "guile-ares-rs")
-    (version "0.9.0")
+    (version "0.9.1")
     (source
      (origin
        (method git-fetch)
@@ -1116,7 +1116,7 @@ for calling methods on remote servers by exchanging JSON objects.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0jl4k54ydi1qxdvif4di0ri5jznlfc2gg1qhs94bhk4y22k0gp8c"))))
+         "173jg8z0cwq5r67lzxsmyir5f6cxd9i5gzb3qryq71cqq4h1c77n"))))
     (build-system guile-build-system)
     (arguments
      (list
@@ -2264,7 +2264,7 @@ users and in some situations.")
 (define-public guile-udev
   (package
     (name "guile-udev")
-    (version "0.2.4")
+    (version "0.3.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2273,8 +2273,23 @@ users and in some situations.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1q1snj8gz2bvqw2v2jvwlzn5xfh7f7wlp922isnzismrp4adc918"))))
+                "0zvn7ph6sbz5q8jnbkrxxlbxlyf0j8q34hr4a2yxklvg29ya7sd3"))))
     (build-system gnu-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-extension-path
+            (lambda _
+              ;; Provide the absolute path of the guile-libudev extension to
+              ;; ensure the dlopen call always succeeds.
+              (substitute* (find-files "." "\\.scm")
+                (("load-extension \"libguile-udev\"")
+                 (format #f "load-extension \"~a/lib/libguile-udev.so\""
+                         #$output)))))
+          (delete 'check)               ;moved after install
+          (add-after 'install 'check
+            (assoc-ref %standard-phases 'check)))))
     (native-inputs (list autoconf
                          automake
                          gettext-minimal
@@ -3427,7 +3442,7 @@ list of components.  This module takes care of that for you.")
                   (guix build utils)
                   (ice-9 popen)
                   (ice-9 rdelim))
-       #:disallowed-references ,(list gtk+ webkitgtk)
+       #:disallowed-references ,(list gtk+ webkitgtk-for-gtk3)
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'remove-dotted-circle-from-combining-character
@@ -3473,7 +3488,7 @@ list of components.  This module takes care of that for you.")
     (propagated-inputs (list gobject-introspection))
     (inputs (list guile-3.0 glib
                   ;; For tests, only relevant when compiling natively
-                  gtk+ webkitgtk))
+                  gtk+ webkitgtk-for-gtk3))
     (home-page "https://github.com/spk121/guile-gi")
     (synopsis "GObject bindings for Guile")
     (description
@@ -3543,6 +3558,80 @@ structures.  This package re-uses the SRFI sample implementation.")
      (list license:lgpl3+
            ;; contains ISC code from the SRFI sample implementation
            license:isc))))
+
+(define-public guile-srfi-133
+  (package
+    (name "guile-srfi-133")
+    (version "0.0.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/scheme-requests-for-implementation/srfi-133")
+             (commit "db81a114cd3e23375f024baec15482614ec90453")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0a7srl72291yah0aj6rwddhj041v2spximhknjj7hczlparsrm7f"))))
+    (build-system guile-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'move-create-and-delete-files
+            (lambda _
+              (rename-file "vectors" "srfi")
+              (rename-file "srfi/vectors-test.scm" "srfi/srfi-test.scm")
+              (rename-file "srfi/vectors-impl.scm" "srfi/srfi-impl.scm")
+              (with-output-to-file "srfi/srfi-133.scm"
+                (lambda ()
+                  (display "(define-module (srfi srfi-133)
+  #:replace (;; Constructors
+             vector-copy
+
+             ;; Mutators
+             vector-fill! vector-copy!
+
+             ;; Conversion
+             vector->list list->vector)
+  #:export (;; Constructors
+            vector-unfold vector-unfold-right vector-reverse-copy
+            vector-append vector-concatenate vector-append-subvectors
+
+            ;; Predicates
+            vector-empty? vector=
+
+            ;; Iteration
+            vector-fold vector-fold-right vector-map vector-map!
+            vector-for-each vector-count vector-cumulate
+
+            ;; Searching
+            vector-index vector-index-right vector-skip vector-skip-right
+            vector-binary-search vector-any vector-every vector-partition
+
+            ;; Mutators
+            vector-swap! vector-reverse!
+            vector-reverse-copy! vector-unfold! vector-unfold-right!
+
+            ;; Conversion
+            reverse-vector->list reverse-list->vector
+            vector->string string->vector))
+
+(include \"srfi-impl.scm\")")))
+              (for-each (lambda (filename)
+                          (delete-file filename))
+                        '("tests/run.scm"
+                          "srfi/vectors.sld"
+                          "srfi/vectors.scm")))))))
+    (native-inputs
+     (list guile-3.0))
+    (home-page "https://github.com/scheme-requests-for-implementation/srfi-133")
+    (synopsis "R7RS-compatible vector library for Guile")
+    (description
+     "This package provides a Guile implementation of
+@uref{https://srfi.schemers.org/srfi-133/srfi-133.html, SRFI-133}, a
+comprehensive library of vector operations.")
+    (license license:expat)))
 
 (define-public guile-srfi-145
   (package
@@ -3744,6 +3833,56 @@ object or a Left object.  Maybe represents the concept of optional values;
 Either represents the concept of values which are either correct (Right)
 or errors (Left).")
       (license license:expat))))
+
+(define-public guile-srfi-232
+  (package
+    (name "guile-srfi-232")
+    (version "0.0.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/scheme-requests-for-implementation/srfi-232")
+             (commit "c3f580d220778cd71492aba4fdd0c7040968e705")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0lp4zcqjjj6hwfh3ix71wak1nffgg4npzsg7cdxfn9hf6iwf9xby"))))
+    (build-system guile-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'move-and-delete-things
+            (lambda _
+              (let* ((srfi-directory (string-append #$output "/srfi")))
+                (mkdir-p "srfi")
+                (with-output-to-file "srfi/srfi-232.scm"
+                  (lambda ()
+                    (display "(define-library (srfi srfi-232)
+ (export curried define-curried)
+ (import (only (guile) import)
+         (scheme base))
+ (include \"../srfi-232.scm\"))")))
+                (for-each (lambda (filename)
+                            (delete-file filename))
+                          '("test-body.scm"
+                            "test-chibi.scm"
+                            "test-srfi-64.scm"))))))))
+    (native-inputs
+     (list guile-3.0))
+    (home-page "https://github.com/scheme-requests-for-implementation/srfi-232")
+    (synopsis "Flexible curried procedures")
+    (description
+     " This package provides an implementation of
+@uref{https://srfi.schemers.org/srfi-232/srfi-232.html, SRFI-232}, which
+describes @code{curried}, a variant of @code{lambda} that creates true curried
+procedures which also behave just like ordinary Scheme procedures.  They can
+be applied to their arguments one by one, all at once, or anywhere in between,
+without any novel syntax.  @code{curried} also supports nullary and variadic
+procedures, and procedures created with it have predictable behavior when
+applied to surplus arguments.")
+    (license license:expat)))
 
 (define-public emacsy
   (package
@@ -4014,7 +4153,7 @@ processing filters.")
        ("glib-networking" ,glib-networking)
        ("gtk+" ,gtk+)
        ("gtk+:bin" ,gtk+ "bin")
-       ("webkitgtk" ,webkitgtk)
+       ("webkitgtk" ,webkitgtk-for-gtk3)
        ("gtksourceview" ,gtksourceview-4)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
        ("vte" ,vte)
@@ -5433,49 +5572,41 @@ high-level API for network management that uses rtnetlink.")
              (commit (string-append "v" version))))
        (file-name (string-append name "-" version))
        (sha256
-        (base32
-         "0srkmchd4kmfa7q65r6fdzwklhgdlck1ll0s7smzs8ddjdgz2lwm"))))
+        (base32 "0srkmchd4kmfa7q65r6fdzwklhgdlck1ll0s7smzs8ddjdgz2lwm"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:make-flags '("GUILE_AUTO_COMPILE=0")     ;to prevent guild warnings
+     `(#:make-flags '("GUILE_AUTO_COMPILE=0") ;to prevent guild warnings
        #:modules (((guix build guile-build-system)
                    #:select (target-guile-effective-version))
                   ,@%default-gnu-modules)
        #:imported-modules ((guix build guile-build-system)
                            ,@%default-gnu-imported-modules)
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'install 'wrap-program
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((out       (assoc-ref outputs "out"))
-                    (bin       (string-append out "/bin"))
-                    (guile-lib (assoc-ref inputs "guile-lib"))
-                    (json      (assoc-ref inputs "guile-json"))
-                    (tls       (assoc-ref inputs "guile-gnutls"))
-                    (version   (target-guile-effective-version))
-                    (scm       (string-append "/share/guile/site/"
-                                              version))
-                    (go        (string-append  "/lib/guile/"
-                                               version "/site-ccache")))
-               (wrap-program (string-append bin "/gitlab-cli")
-                 `("GUILE_LOAD_PATH" prefix
-                   (,(string-append out scm)
-                    ,(string-append guile-lib scm)
-                    ,(string-append json scm)
-                    ,(string-append tls scm)))
-                 `("GUILE_LOAD_COMPILED_PATH" prefix
-                   (,(string-append out go)
-                    ,(string-append guile-lib go)
-                    ,(string-append json go)
-                    ,(string-append tls go))))))))))
-    (native-inputs
-     (list autoconf automake pkg-config texinfo))
-    (inputs
-     `(("bash" ,bash-minimal)
-       ("guile" ,guile-2.2)
-       ("guile-json" ,guile2.2-json)
-       ("guile-lib" ,guile2.2-lib)
-       ("guile-gnutls" ,guile2.2-gnutls)))
+       #:phases (modify-phases %standard-phases
+                  (add-after 'install 'wrap-program
+                    (lambda* (#:key inputs outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out"))
+                             (bin (string-append out "/bin"))
+                             (guile-lib (assoc-ref inputs "guile2.2-lib"))
+                             (json (assoc-ref inputs "guile2.2-json"))
+                             (tls (assoc-ref inputs "guile2.2-gnutls"))
+                             (version (target-guile-effective-version))
+                             (scm (string-append "/share/guile/site/" version))
+                             (go (string-append "/lib/guile/" version
+                                                "/site-ccache")))
+                        (wrap-program (string-append bin "/gitlab-cli")
+                          `("GUILE_LOAD_PATH" prefix
+                            (,(string-append out scm) ,(string-append
+                                                        guile-lib scm)
+                             ,(string-append json scm)
+                             ,(string-append tls scm)))
+                          `("GUILE_LOAD_COMPILED_PATH" prefix
+                            (,(string-append out go) ,(string-append guile-lib
+                                                       go)
+                             ,(string-append json go)
+                             ,(string-append tls go))))))))))
+    (native-inputs (list autoconf automake pkg-config texinfo))
+    (inputs (list bash-minimal guile-2.2 guile2.2-json guile2.2-lib
+                  guile2.2-gnutls))
     (home-page "https://github.com/artyom-poptsov/guile-gitlab")
     (synopsis "Guile interface to GitLab")
     (description
@@ -5487,7 +5618,7 @@ GitLab instance.")
 (define-public guile-smc
   (package
     (name "guile-smc")
-    (version "0.6.2")
+    (version "0.6.3")
     (source
      (origin
        (method git-fetch)
@@ -5497,7 +5628,7 @@ GitLab instance.")
        (file-name (string-append name "-" version))
        (sha256
         (base32
-         "11083lj048ab5zsdgwpkshxi8v5nfdr7kvmmslszbi7lq2pwfqig"))))
+         "1gjwz1l2ls4xkkgg4d2vw3a1klc4var03ab4k6lq1jifdvc8n51f"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags '("GUILE_AUTO_COMPILE=0")     ;to prevent guild warnings

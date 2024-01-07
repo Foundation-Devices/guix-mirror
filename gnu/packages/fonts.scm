@@ -2494,7 +2494,7 @@ a different style of marking.")
 (define-public font-jetbrains-mono
   (package
     (name "font-jetbrains-mono")
-    (version "2.242")
+    (version "2.304")
     (source
      (origin
        (method url-fetch)
@@ -2502,7 +2502,7 @@ a different style of marking.")
         (string-append "https://github.com/JetBrains/JetBrainsMono/releases/"
                        "download/v" version "/JetBrainsMono-" version ".zip"))
        (sha256
-        (base32 "17qs985v38x3rcg3v4av3qynwr4gvixrj50vjzy7zkkny575ncaf"))))
+        (base32 "1gvv5w0vfzndzp8k7g15j5i3yvnpr5z3imrwjs5flq19xp37cqvg"))))
     (build-system font-build-system)
     (arguments
      `(#:phases
@@ -2524,7 +2524,7 @@ a different style of marking.")
      "JetBrains Mono is a font family dedicated to developers.  JetBrains
 Mono’s typeface forms are simple and free from unnecessary details.  Rendered
 in small sizes, the text looks crisper.")
-    (license license:asl2.0)))
+    (license license:silofl1.1)))
 
 (define-public font-juliamono
   (package
@@ -3159,7 +3159,7 @@ and readability.  This package bundles those icons into a font.")
 (define-public font-lxgw-wenkai
   (package
     (name "font-lxgw-wenkai")
-    (version "1.311")
+    (version "1.315")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -3167,7 +3167,7 @@ and readability.  This package bundles those icons into a font.")
                     version "/lxgw-wenkai-v" version ".tar.gz"))
               (sha256
                (base32
-                "0f5fnqcwp8kicrbkncn5j1w06cil771jfdcjf2w48vl62m4gmf27"))))
+                "0isb7rbg8yb6hv8xk1ngngkgzpyb3papkl19jczwrwm373m8bn3f"))))
     (build-system font-build-system)
     (home-page "https://lxgw.github.io/2021/01/28/Klee-Simpchin/")
     (synopsis "Simplified Chinese Imitation Song typeface")

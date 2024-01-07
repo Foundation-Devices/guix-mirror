@@ -67,7 +67,6 @@
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages dbm)
-  #:use-module (gnu packages ed)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages gettext)
@@ -95,6 +94,7 @@
   #:use-module (gnu packages tcl)
   #:use-module (gnu packages tex)
   #:use-module (gnu packages texinfo)
+  #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages version-control)
   #:use-module (gnu packages xorg)
@@ -999,7 +999,7 @@ the HTML documentation of TXR.")
 (define-public txr
   (package
     (name "txr")
-    (version "292")
+    (version "293")
     (source
      (origin
        (method git-fetch)
@@ -1008,7 +1008,7 @@ the HTML documentation of TXR.")
              (commit (string-append "txr-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0lly446pinfrr5d4rgsas8c7kqal2g03bbsbmn0yvhvazb39c15g"))))
+        (base32 "1b3vhlnw4ymznnlh9d71qhkcdc1p69a53hilckc3rql9y4jsik57"))))
     (build-system gnu-build-system)
     (arguments
      (list #:configure-flags
@@ -1024,15 +1024,6 @@ the HTML documentation of TXR.")
                       (string-append "INSTALL" match #$output
                                      "/share/doc/" #$name "-" #$version)))))
                (delete 'install-license-files)
-               (add-after 'unpack 'inhibit-doc-syms-generation
-                 (lambda _
-                   (substitute* "genman.txr"
-                     ;; Exit from genman.txr before it tries to write to
-                     ;; stdlib/doc-syms.tl, which is anyway kept up to date
-                     ;; with each release (and is already compiled to
-                     ;; stdlib/doc-syms.tlo when genman.txr is run).
-                     (("^@\\(output \"stdlib/doc-syms\\.tl\"\\).*" line)
-                      (string-append "@(do (exit))\n" line)))))
                (add-after 'unpack 'fix-paths
                  (lambda* (#:key inputs #:allow-other-keys)
                    (substitute* "stream.c"

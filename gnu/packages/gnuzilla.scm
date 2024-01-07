@@ -546,9 +546,9 @@ variable defined below.  It requires guile-json to be installed."
 ;; XXXX: Workaround 'snippet' limitations.
 (define computed-origin-method (@@ (guix packages) computed-origin-method))
 
-(define %icecat-base-version "115.5.0")
+(define %icecat-base-version "115.6.0")
 (define %icecat-version (string-append %icecat-base-version "-guix0-preview1"))
-(define %icecat-build-id "20231121000000") ;must be of the form YYYYMMDDhhmmss
+(define %icecat-build-id "20231219000000") ;must be of the form YYYYMMDDhhmmss
 
 ;; 'icecat-source' is a "computed" origin that generates an IceCat tarball
 ;; from the corresponding upstream Firefox ESR tarball, using the 'makeicecat'
@@ -568,12 +568,12 @@ variable defined below.  It requires guile-json to be installed."
                   "firefox-" upstream-firefox-version ".source.tar.xz"))
             (sha256
              (base32
-              "0a578r4kri7jdw8pkkzp7f1mm9idlk7sjxjghcb08k5p14172gyv"))))
+              "0rmw486yhkb1is1j2fy51djl5p5qggf2fhp2hgzfdj4s2bjydmv6"))))
 
          ;; The upstream-icecat-base-version may be older than the
          ;; %icecat-base-version.
-         (upstream-icecat-base-version "115.5.0")
-         (gnuzilla-commit "bd66797f3bb057c9d051d4276d63843b4d7ee854")
+         (upstream-icecat-base-version "115.6.0")
+         (gnuzilla-commit "6a76a10682b6e63f562e4b9f26f3ef12f88bd839")
          (gnuzilla-source
           (origin
             (method git-fetch)
@@ -585,7 +585,7 @@ variable defined below.  It requires guile-json to be installed."
                                       (string-take gnuzilla-commit 8)))
             (sha256
              (base32
-              "0v3ckm8yv566f2y9a2bfzakbsk529f1ykr7dj69kb9k93dgny3ja"))))
+              "15bvlz7c4d8mk10zc317rai91hd96wnchikcfdfxzl35zdnd315r"))))
 
          ;; 'search-patch' returns either a valid file name or #f, so wrap it
          ;; in 'assume-valid-file-name' to avoid 'local-file' warnings.
@@ -1035,6 +1035,9 @@ variable defined below.  It requires guile-json to be installed."
                 (setenv "MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE" "system")
                 (setenv "MOZ_BUILD_DATE" #$%icecat-build-id) ; avoid timestamp
 
+                ;; WM_CLASS (default is "$MOZ_APP_NAME-$MOZ_UPDATE_CHANNEL").
+                (setenv "MOZ_APP_REMOTINGNAME" "Icecat")
+
                 ;; XXX TODO: Fix this to work on systems other than x86_64-linux.
                 (setenv "GUIX_PYTHONPATH"
                         (string-append (getcwd)
@@ -1092,18 +1095,22 @@ variable defined below.  It requires guile-json to be installed."
               (let* ((lib (string-append #$output "/lib"))
                      (gtk #$(this-package-input "gtk+"))
                      (gtk-share (string-append gtk "/share"))
-                     (ld-libs '#$(map (lambda (label)
-                                        (file-append (this-package-input label) "/lib"))
-                                      '("libpng-apng"
-                                        "libxscrnsaver"
-                                        "mesa"
-                                        "pciutils"
-                                        "mit-krb5"
-                                        "eudev"
-                                        "pulseaudio"
-                                        ;; For the integration of native notifications
-                                        ;; (same reason as icedove)
-                                        "libnotify"))))
+                     (ld-libs '#$(cons
+                                  (file-append
+                                   (this-package-input "libcanberra")
+                                   "/lib/gtk-3.0/modules")
+                                  (map (lambda (label)
+                                         (file-append (this-package-input label) "/lib"))
+                                       '("libpng-apng"
+                                         "libxscrnsaver"
+                                         "mesa"
+                                         "pciutils"
+                                         "mit-krb5"
+                                         "eudev"
+                                         "pulseaudio"
+                                         ;; For the integration of native notifications
+                                         ;; (same reason as icedove)
+                                         "libnotify")))))
                 (wrap-program (car (find-files lib "^icecat$"))
                   `("XDG_DATA_DIRS" prefix (,gtk-share))
                   ;; The following line is commented out because the icecat
@@ -1123,7 +1130,7 @@ variable defined below.  It requires guile-json to be installed."
                   (("NewWindow")        "new-window")
                   (("NewPrivateWindow") "new-private-window")
                   (("StartupNotify=true")
-                   "StartupNotify=true\nStartupWMClass=Navigator"))
+                   "StartupNotify=true\nStartupWMClass=Icecat"))
                 (install-file desktop-file applications))))
           (add-after 'install-desktop-entry 'install-icons
             (lambda _
@@ -1775,7 +1782,7 @@ ca495991b7852b855"))
                     (format #t
                             "[Desktop Entry]~@
                             Name=Icedove~@
-                            Exec=~a/bin/icedove~@
+                            Exec=~a/bin/icedove %u~@
                             Icon=icedove~@
                             GenericName=Mail/News Client~@
                             Categories=Network;Email;~@

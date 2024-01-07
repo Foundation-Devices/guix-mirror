@@ -67,6 +67,7 @@
 ;;; Copyright © 2023 Dominik Delgado Steuter <dds@disroot.org>
 ;;; Copyright © 2023 Saku Laesvuori <saku@laesvuori.fi>
 ;;; Copyright © 2023 Jaeme Sifat <jaeme@runbox.com>
+;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1046,14 +1047,14 @@ H.264 (MPEG-4 AVC) video streams.")
 (define-public mkvtoolnix
   (package
     (name "mkvtoolnix")
-    (version "52.0.0")
+    (version "80.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://mkvtoolnix.download/sources/"
                            "mkvtoolnix-" version ".tar.xz"))
        (sha256
-        (base32 "15y7ahlifsclnkl70wn5w34dil8nwcwcjnw3k2ydqc6dz4vb0j5s"))
+        (base32 "1x9k9pmw7mzm2amvm251a45dlj9p9iqfank5p4w2fizxkapws25v"))
        (modules '((guix build utils)))
        (snippet '(begin
                    ;; Delete bundled libraries.
@@ -1069,6 +1070,7 @@ H.264 (MPEG-4 AVC) video streams.")
     (outputs '("out" "gui")) ; "mkvtoolnix-gui" brings the closure size from ~300 MB to 1.5+ GB.
     (inputs
      (list boost
+           gmp
            bzip2
            cmark
            libebml
@@ -1082,86 +1084,96 @@ H.264 (MPEG-4 AVC) video streams.")
            lzo
            pcre2
            pugixml
-           qtbase-5
-           qtmultimedia-5
+           qtbase
+           qtmultimedia
+           qtsvg
            utfcpp
            zlib))
     (native-inputs
-     `(("docbook-xsl" ,docbook-xsl)
-       ("gettext" ,gettext-minimal)
-       ("googletest" ,googletest)
-       ("libxslt" ,libxslt)
-       ("nlohmann-json" ,nlohmann-json)
-       ("perl" ,perl)
-       ("pkg-config" ,pkg-config)
-       ("po4a" ,po4a)
-       ("qttools-5" ,qttools-5)
-       ("ruby" ,ruby-2.7)))
+     (list docbook-xsl
+           gettext-minimal
+           googletest
+           libxslt
+           nlohmann-json
+           perl
+           pkg-config
+           po4a
+           qttools
+           ruby-3.2))
     (arguments
-     `(#:configure-flags
-       (list (string-append "--with-boost="
-                            (assoc-ref %build-inputs "boost"))
-             (string-append "--with-docbook-xsl-root="
-                            (assoc-ref %build-inputs "docbook-xsl")
-                            "/xml/xsl/docbook-xsl-"
-                            ,(package-version docbook-xsl))
-             "--enable-update-check=no"
-             "--enable-precompiled-headers=no")
-        #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'fix-utfcpp-include
-           (lambda _
-             (substitute* "src/common/strings/utf8.cpp"
-               (("<utf8.h>")
-                "<utf8cpp/utf8.h>"))))
-         (add-after 'unpack 'patch-relative-file-names
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((out (assoc-ref outputs "out")))
-             (substitute* "src/mkvtoolnix-gui/util/settings.cpp"
-               (("mkvmerge" match)
-                (string-append out "/bin/" match)))
-             #t)))
-         (add-before 'configure 'add-googletest
-           (lambda* (#:key inputs #:allow-other-keys)
-             (symlink (search-input-directory inputs "/include/gtest")
-                      "lib/gtest")))
-         (replace 'build
-           (lambda _
-             (let ((-j (list "-j" (number->string (parallel-job-count)))))
-               (apply invoke "rake" -j))))
-         (replace 'check
-           (lambda _
-             (invoke "rake" "tests/unit")))
-         (replace 'install
-           (lambda _
-             (invoke "rake" "install")))
-         (add-after 'install 'post-install
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Move the Qt interface to "gui".
-             (let* ((out (assoc-ref outputs "out"))
-                    (gui (assoc-ref outputs "gui"))
-                    (strip-store-dir (lambda (path)
-                                       (substring path (string-prefix-length out path)))))
-               (for-each
-                (lambda (file)
-                  (mkdir-p (string-append gui (dirname file)))
-                  (rename-file (string-append out file)
-                               (string-append gui file)))
-                (append '("/bin/mkvtoolnix-gui"
-                          "/share/applications/org.bunkus.mkvtoolnix-gui.desktop"
-                          "/share/metainfo/org.bunkus.mkvtoolnix-gui.appdata.xml"
-                          "/share/mime/packages/org.bunkus.mkvtoolnix-gui.xml")
-                        (map strip-store-dir (find-files out "\\.ogg$"))
-                        (map strip-store-dir (find-files out "mkvtoolnix-gui\\.png$"))
-                        (map strip-store-dir (find-files out "mkvtoolnix-gui\\.1"))))
-               (for-each
-                (lambda (file)
-                  (delete-file-recursively (string-append out file)))
-                '("/share/applications"
-                  "/share/metainfo"
-                  "/share/mime"
-                  "/share/mkvtoolnix")))
-             #t)))))
+     (list
+      #:configure-flags
+      #~(list (string-append "--with-boost="
+                             #$(this-package-input "boost"))
+              (string-append "--with-docbook-xsl-root="
+                             #$(this-package-native-input "docbook-xsl")
+                             "/xml/xsl/docbook-xsl-"
+                             #$(package-version
+                                (this-package-native-input "docbook-xsl")))
+              "--enable-update-check=no"
+              "--enable-precompiled-headers=no")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'fix-utfcpp-include
+            (lambda _
+              (substitute* "src/common/strings/utf8.cpp"
+                (("<utf8.h>")
+                 "<utf8cpp/utf8.h>"))))
+          (add-after 'unpack 'patch-relative-file-names
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let ((out (assoc-ref outputs "out")))
+                (substitute* "src/mkvtoolnix-gui/util/settings.cpp"
+                  (("mkvmerge" match)
+                   (string-append out "/bin/" match))) #t)))
+          (add-before 'configure 'add-googletest
+            (lambda* (#:key inputs #:allow-other-keys)
+              (symlink (search-input-directory inputs
+                                               "/include/gtest")
+                       "lib/gtest")))
+          (replace 'build
+            (lambda _
+              (let ((-j (list "-j"
+                              (number->string (parallel-job-count)))))
+                (apply invoke "rake" -j))))
+          (replace 'check
+            (lambda _
+              (invoke "rake" "tests/unit")))
+          (replace 'install
+            (lambda _
+              (invoke "rake" "install")))
+          (add-after 'install 'post-install
+            (lambda* (#:key outputs #:allow-other-keys)
+              ;; Move the Qt interface to "gui".
+              (let* ((out (assoc-ref outputs "out"))
+                     (gui (assoc-ref outputs "gui"))
+                     (strip-store-dir (lambda (path)
+                                        (substring path
+                                                   (string-prefix-length
+                                                    out path)))))
+                (for-each (lambda (file)
+                            (mkdir-p (string-append gui
+                                                    (dirname
+                                                     file)))
+                            (rename-file (string-append out file)
+                                         (string-append gui file)))
+                          (append '("/bin/mkvtoolnix-gui"
+                                    "/share/applications/org.bunkus.mkvtoolnix-gui.desktop"
+                                    "/share/metainfo/org.bunkus.mkvtoolnix-gui.appdata.xml"
+                                    "/share/mime/packages/org.bunkus.mkvtoolnix-gui.xml")
+                                  (map strip-store-dir
+                                       (find-files out "\\.ogg$"))
+                                  (map strip-store-dir
+                                       (find-files out
+                                                   "mkvtoolnix-gui\\.png$"))
+                                  (map strip-store-dir
+                                       (find-files out
+                                                   "mkvtoolnix-gui\\.1"))))
+                (for-each (lambda (file)
+                            (delete-file-recursively
+                             (string-append out file)))
+                          '("/share/applications"
+                            "/share/metainfo" "/share/mime"
+                            "/share/mkvtoolnix"))))))))
     (home-page "https://mkvtoolnix.download")
     (synopsis "Tools to create, alter and inspect Matroska files")
     (description
@@ -1505,14 +1517,14 @@ SMPTE 314M.")
 (define-public libmatroska
   (package
     (name "libmatroska")
-    (version "1.6.3")
+    (version "1.7.1")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://dl.matroska.org/downloads/"
                            "libmatroska/libmatroska-" version ".tar.xz"))
        (sha256
-        (base32 "06h81sxyz2riic0gpzik6ffcnq32wrqphi8c6k55glcdymiimyfs"))))
+        (base32 "1cqq61qgv6x3xjzjrw71dya7lbsbrsmi9raqm2k4hgfrp0rk0ajp"))))
     (build-system cmake-build-system)
     (inputs
      (list libebml))
@@ -1534,7 +1546,7 @@ libebml is a C++ library to read and write EBML files.")
 (define-public libplacebo
   (package
     (name "libplacebo")
-    (version "4.208.0")
+    (version "6.338.1")
     (source
      (origin
        (method git-fetch)
@@ -1543,16 +1555,16 @@ libebml is a C++ library to read and write EBML files.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "161dp5781s74ca3gglaxlmchx7glyshf0wg43w98pl22n1jcm5qk"))))
+        (base32 "1miqk3gfwah01xkf4a6grwq29im0lfh94gp92y7js855gx3v169m"))))
     (build-system meson-build-system)
     (arguments
-     `(#:configure-flags
-       `("-Dopengl=enabled"
-         ,(string-append "-Dvulkan-registry="
-                         (assoc-ref %build-inputs "vulkan-headers")
-                         "/share/vulkan/registry/vk.xml"))))
+     (list #:configure-flags
+           #~(list "-Dopengl=enabled"
+                   (string-append "-Dvulkan-registry="
+                                  #$(this-package-input "vulkan-headers")
+                                  "/share/vulkan/registry/vk.xml"))))
     (native-inputs
-     (list python python-mako pkg-config))
+     (list glad python python-mako pkg-config))
     (inputs
      (list lcms
            libepoxy
@@ -1657,14 +1669,14 @@ operate properly.")
 (define-public ffmpeg
   (package
     (name "ffmpeg")
-    (version "6.0")
+    (version "6.1.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://ffmpeg.org/releases/ffmpeg-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "10kh2f4y4isfqj4xpcqqnzk611jh89ywcjyjnq9c2jcv5p18ggjp"))))
+                "0s7r2qv8gh2a3w568n9xxgcz0q8j5ww1jdsci1hm9f4l1yqg9146"))))
     (outputs '("out" "debug"))
     (build-system gnu-build-system)
     (inputs
@@ -2337,7 +2349,7 @@ SVCD, DVD, 3ivx, DivX 3/4/5, WMV and H.264 movies.")
 (define-public mpv
   (package
     (name "mpv")
-    (version "0.36.0")
+    (version "0.37.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2345,8 +2357,8 @@ SVCD, DVD, 3ivx, DivX 3/4/5, WMV and H.264 movies.")
                     (commit (string-append "v" version))))
               (file-name (git-file-name name version))
               (sha256
-               (base32 "1ri06h7pv6hrxmxxc618n9hymlgr0gfx38bqq5dcszdgnlashsgk"))))
-    (build-system waf-build-system)
+               (base32 "1xcyfpd543lbmg587wi0mahrz8vhyrlr4432054vp6wsi3s36c4b"))))
+    (build-system meson-build-system)
     (arguments
      (list
       #:phases
@@ -2363,21 +2375,15 @@ SVCD, DVD, 3ivx, DivX 3/4/5, WMV and H.264 movies.")
               ;; and passed as linker flags, but the order in which they are added
               ;; varies.  See <https://github.com/mpv-player/mpv/issues/7855>.
               ;; Set PYTHONHASHSEED as a workaround for deterministic results.
-              (setenv "PYTHONHASHSEED" "1")))
-          (add-before 'configure 'set-up-waf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (copy-file (search-input-file inputs "bin/waf") "waf")
-              (setenv "CC" #$(cc-for-target)))))
+              (setenv "PYTHONHASHSEED" "1"))))
       #:configure-flags
-      #~(list "--enable-libmpv-shared"
-              "--enable-cdda"
-              "--enable-dvdnav"
-              "--disable-build-date")
-      ;; No check function defined.
-      #:tests? #f))
+      #~(list "-Dlibmpv=true"
+              "-Dcdda=enabled"
+              "-Ddvdnav=enabled"
+              "-Dbuild-date=false")))
     (native-inputs
      (list perl ; for zsh completion file
-           pkg-config python-docutils))
+           pkg-config python-docutils python-wrapper))
     ;; Missing features: libguess, V4L2.
     (inputs
      (list alsa-lib
@@ -2394,6 +2400,7 @@ SVCD, DVD, 3ivx, DivX 3/4/5, WMV and H.264 movies.")
            libdvdread
            libdvdnav
            libjpeg-turbo
+           libplacebo
            libva
            libvdpau
            libx11
@@ -2404,13 +2411,11 @@ SVCD, DVD, 3ivx, DivX 3/4/5, WMV and H.264 movies.")
            libxrandr
            libxscrnsaver
            libxv
-           ;; XXX: lua > 5.2 is not currently supported; see
-           ;; waftools/checks/custom.py
+           ;; XXX: lua > 5.2 is not currently supported; see meson.build
            lua-5.2
            mesa
            mpg123
            pulseaudio
-           python-waf
            rsound
            shaderc
            vulkan-headers
@@ -2418,6 +2423,7 @@ SVCD, DVD, 3ivx, DivX 3/4/5, WMV and H.264 movies.")
            wayland
            wayland-protocols
            yt-dlp
+           zimg
            zlib))
     (home-page "https://mpv.io/")
     (synopsis "Audio and video player")
@@ -3759,6 +3765,35 @@ This may help improve your viewers watching experience, and allows you to use
 your host privately.")
     (license license:gpl2+)))
 
+(define-public obs-pipewire-audio-capture
+  (package
+    (name "obs-pipewire-audio-capture")
+    (version "1.1.2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/dimtpap/obs-pipewire-audio-capture")
+                    (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0qjl8xlaf54zgz34f1dfybdg2inc2ir42659kh15ncihpgbx0wzl"))))
+    (build-system cmake-build-system)
+    (arguments
+     (list
+      #:tests? #f ; no test target
+      #:configure-flags
+      #~(list (string-append "-DLIBOBS_INCLUDE_DIR="
+                             #$(this-package-input "obs") "/lib")
+              "-Wno-dev")))
+    (native-inputs (list libconfig pkg-config))
+    (inputs (list obs pipewire))
+    (home-page "https://obsproject.com/forum/resources/pipewire-audio-capture.1458/")
+    (synopsis "Audio device and application capture for OBS Studio using PipeWire")
+    (description "This plugin adds 3 sources for capturing audio outputs,
+inputs and applications using PipeWire.")
+    (license license:gpl2+)))
+
 (define-public obs-websocket
   ;; Functionality was merged into OBS.
   (deprecated-package "obs-websocket" obs))
@@ -4384,7 +4419,7 @@ practically any type of media.")
 (define-public libmediainfo
   (package
     (name "libmediainfo")
-    (version "23.03")
+    (version "23.11")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://mediaarea.net/download/source/"
@@ -4392,7 +4427,7 @@ practically any type of media.")
                                   name "_" version ".tar.xz"))
               (sha256
                (base32
-                "1660lsilm02324c65sxxi41fn225hg78yxqyxff5dyf6fvyzyypm"))))
+                "0gc5brnwagdgaknkpyhkbpwc52q19vf5i3sayifhsg4yqzy58zhr"))))
     ;; TODO add a Big Buck Bunny webm for tests.
     (native-inputs
      (list autoconf automake libtool pkg-config))
@@ -4447,7 +4482,7 @@ MPEG-2, MPEG-4, DVD (VOB)...
 (define-public mediainfo
   (package
     (name "mediainfo")
-    (version "23.03")
+    (version "23.11")
     (source (origin
               (method url-fetch)
               ;; Warning: This source has proved unreliable 1 time at least.
@@ -4458,7 +4493,7 @@ MPEG-2, MPEG-4, DVD (VOB)...
                                   name "_" version ".tar.xz"))
               (sha256
                (base32
-                "1654pal4x753pcha8h939a70q5z3jzaddgb39cinlrv5fljs8qgh"))))
+                "1hy9m2l94ymhpcrhlqqjpgl24lz33qm239pcdlic3z5zs6qb2740"))))
     (native-inputs
      (list autoconf automake libtool pkg-config))
     (inputs
@@ -5585,12 +5620,9 @@ result in several formats:
            (lambda* (#:key outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out")))
                (invoke "cargo" "cinstall" "--release"
-                       (string-append "--prefix=" out)))))
-         (add-after 'install 'delete-static-library
-           (lambda* (#:key outputs #:allow-other-keys)
-             ;; Delete 93 MiB (!) static library.
-             (delete-file (string-append (assoc-ref outputs "out")
-                                         "/lib/librav1e.a")))))))
+                       ;; Only build the dynamic library.
+                       "--library-type" "cdylib"
+                       (string-append "--prefix=" out))))))))
     (native-inputs
      (list nasm pkg-config rust-cargo-c))
     (inputs

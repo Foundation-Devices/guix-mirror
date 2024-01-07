@@ -2725,7 +2725,7 @@ various hardware.")
 (define-public inspectrum
   (package
     (name "inspectrum")
-    (version "0.2.3")
+    (version "0.3.1")
     (source
      (origin
        (method git-fetch)
@@ -2734,7 +2734,7 @@ various hardware.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1x6nyn429pk0f7lqzskrgsbq09mq5787xd4piic95add6n1cc355"))))
+        (base32 "11v5idwvfi9w60qg4fgqgvm7ahmb0ys4j094qv4c93r92kd9d3f9"))))
     (build-system qt-build-system)
     (native-inputs
      (list pkg-config))

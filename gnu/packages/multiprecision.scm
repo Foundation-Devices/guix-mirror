@@ -6,7 +6,7 @@
 ;;; Copyright © 2016, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;; Copyright © 2018, 2019 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Eric Bavier <bavier@member.fsf.org>
-;;; Copyright © 2018, 2019, 2021, 2023 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2018, 2019, 2021, 2023, 2024 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2021 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2022, 2024 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2023 Janneke Nieuwenhuizen <janneke@gnu.org>
@@ -67,12 +67,14 @@
          ;; Build a "fat binary", with routines for several sub-architectures.
          "--enable-fat"
          "--enable-cxx"
-         #$@(if (target-mingw?)
-                ;; Static and shared cannot be built in one go: they produce
-                ;; different headers.  We need shared.
-                '("--disable-static"
-                  "--enable-shared")
-                '()))))
+         #$@(cond ((target-mingw?)
+                   ;; Static and shared cannot be built in one go: they
+                   ;; produce different headers.  We need shared.
+                   '("--disable-static"
+                     "--enable-shared"))
+                  ((target-x32?)
+                   `("ABI=x32"))
+                  (else '())))))
     (synopsis "Multiple-precision arithmetic library")
     (description
      "The @acronym{GMP, the GNU Multiple Precision Arithmetic} library performs

@@ -5935,7 +5935,6 @@ flexibility and power of the Python language.")
                       (string-append "-Wl," "-rpath=" python "/lib")
                       "-fno-semantic-interposition"
                       "build/temp/tree/tree.o"
-                      "-Wl,--whole-archive"
                       "-L" (string-append python "/lib")
                       (string-append abseil-cpp "/lib/libabsl_int128.a")
                       (string-append abseil-cpp "/lib/libabsl_raw_hash_set.a")
@@ -5943,7 +5942,6 @@ flexibility and power of the Python language.")
                       (string-append abseil-cpp "/lib/libabsl_strings.a")
                       (string-append abseil-cpp "/lib/libabsl_strings_internal.a")
                       (string-append abseil-cpp "/lib/libabsl_throw_delegate.a")
-                      "-Wl,--no-whole-archive"
                       "-o" "build/lib/tree/_tree.so")))))))
     (home-page "https://github.com/deepmind/tree")
     (synopsis "Work with nested data structures in Python")
@@ -9238,6 +9236,105 @@ converting, and viewing many of the proprietary file formats used to store
 experimental data and metadata at the Laboratory for Fluorescence Dynamics.")
     (license license:bsd-3)))
 
+(define-public python-av
+  (package
+    (name "python-av")
+    (version "10.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "av" version))
+       (sha256
+        (base32 "01byqsjclkg65mhr6b4i2r2n4y7af9kdd2c35lxny27121b3vzca"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      #~(list
+         ;; Tests require outbound access to download data samples from
+         ;; http://fate.ffmpeg.org/fate-suite:
+         ;;
+         ;; E urllib.error.URLError: <urlopen error [Errno -3]
+         ;; Temporary failure in name resolution>
+         ;;
+         "--ignore=tests/test_doctests.py"
+         "--ignore=tests/test_timeout.py"
+         "-k"
+         (string-append
+          "not test_data"
+          " and not test_container_probing"
+          " and not test_stream_probing"
+          " and not test_transcode"
+          " and not test_codec_tag"
+          " and not test_parse"
+          " and not test_decode_audio_sample_count"
+          " and not test_decoded_motion_vectors"
+          " and not test_decoded_motion_vectors_no_flag"
+          " and not test_decoded_time_base"
+          " and not test_decoded_video_frame_count"
+          " and not test_encoding_aac"
+          " and not test_encoding_dnxhd"
+          " and not test_encoding_dvvideo"
+          " and not test_encoding_h264"
+          " and not test_encoding_mjpeg"
+          " and not test_encoding_mp2"
+          " and not test_encoding_mpeg1video"
+          " and not test_encoding_mpeg4"
+          " and not test_encoding_pcm_s24le"
+          " and not test_encoding_png"
+          " and not test_encoding_tiff"
+          " and not test_encoding_xvid"
+          " and not test_reading_from_buffer"
+          " and not test_reading_from_buffer_no_seek"
+          " and not test_reading_from_file"
+          " and not test_reading_from_pipe_readonly"
+          " and not test_reading_from_write_readonly"
+          " and not test_writing_to_custom_io_dash"
+          " and not test_writing_to_custom_io_image2"
+          " and not test_decode_half"
+          " and not test_seek_end"
+          " and not test_seek_float"
+          " and not test_seek_int64"
+          " and not test_seek_middle"
+          " and not test_seek_start"
+          " and not test_stream_seek"
+          " and not test_selection"
+          " and not test_stream_tuples"
+          " and not test_movtext"
+          " and not test_vobsub"
+          " and not test_roundtrip"
+          " and not test_stream_probing"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'check 'build-extensions
+            (lambda _
+              (invoke "python" "setup.py" "build_ext" "--inplace"))))))
+    (native-inputs
+     (list pkg-config
+           python-cython
+           python-editorconfig
+           python-numpy
+           python-pillow
+           python-pytest))
+    (inputs
+     ;; XXX: Build is failing with FFmpeg 6.0, unresolved upstream.
+     ;; See https://github.com/PyAV-Org/PyAV/issues/1106
+     (list ffmpeg-5))
+    (home-page "https://github.com/PyAV-Org/PyAV")
+    (synopsis "Pythonic bindings for FFmpeg's libraries")
+    (description
+     "PyAV is a Python library that allows for direct and precise manipulation
+of media through containers, streams, packets, codecs, and frames.  It provides
+access to the powerful FFmpeg libraries while managing the complex details as
+much as possible.
+PyAV also facilitates data transformation and integration with
+other packages such as Numpy and Pillow.  However, working with media is a
+challenging task and PyAV cannot abstract it away or make all the best decisions
+for you.  If you can accomplish your tasks with the ffmpeg command, PyAV may not
+be necessary.  Nonetheless, PyAV is an essential tool when working with media
+that requires its specific capabilities.")
+    (license license:bsd-3)))
+
 (define-public python-ffmpeg-python
   ;; The latest release (0.2.0) is old and its test suite crashs on Python 3.10.
   (let ((commit "df129c7ba30aaa9ffffb81a48f53aa7253b0b4e6") (revision "0"))
@@ -11020,6 +11117,34 @@ MEDLINE XML repository.")
     (description "The @code{pure_eval} Python library can safely evaluate
 abstract syntax tree (AST) nodes without side effects.")
     (license license:expat)))
+
+(define-public python-ast-decompiler
+  (package
+    (name "python-ast-decompiler")
+    (version "0.7.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "ast_decompiler" version))
+       (sha256
+        (base32 "0dw3fck4ajilphqw4hdpa8pmqxg3jfk2xkmjnk3kx5pqwl3sbhzg"))
+       ;; We need to manually create an __init__.py file under the tests/
+       ;; directory, since it is not included in the distributed
+       ;; version. (See:
+       ;; https://github.com/JelleZijlstra/ast_decompiler/issues/52).
+       (modules '((guix build utils)))
+       (snippet '(call-with-output-file "tests/__init__.py"
+                   (const #t)))))
+    (build-system pyproject-build-system)
+    (native-inputs (list python-flit-core python-pytest))
+    (home-page "https://github.com/JelleZijlstra/ast_decompiler")
+    (synopsis
+     "Decompile an @acronym{AST, Abstract Syntax Tree} to Python code")
+    (description
+     "This library provides functionality to decompile @acronym{AST, Abstract
+Syntax Tree} objects, as generated by the standard library @code{ast} module,
+to Python code.")
+    (license license:asl2.0)))
 
 (define-public python-asttokens
   (package
@@ -13081,13 +13206,13 @@ TODO notes checker plugin for flake8.")
 (define-public python-flake8-isort
   (package
     (name "python-flake8-isort")
-    (version "4.1.1")
+    (version "6.1.0")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "flake8-isort" version))
         (sha256
-          (base32 "05r7z0j9rqgy0a9261bhisairrz6w8hy5hy5kf2mhvhfnx53056q"))))
+          (base32 "0gk4q504v42hdzpkndczc0kkwnr85jn1h5pvb561jh65p91r6qyl"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -13096,8 +13221,8 @@ TODO notes checker plugin for flake8.")
           (replace 'check
             (lambda* (#:key tests? #:allow-other-keys)
               (when tests?
-                (invoke "pytest" "-vv")))))))
-    (propagated-inputs (list python-flake8 python-isort python-testfixtures))
+                (invoke "pytest" "-vv" "run_tests.py")))))))
+    (propagated-inputs (list python-flake8 python-isort))
     (native-inputs (list python-pytest))
     (home-page "https://github.com/gforcada/flake8-isort")
     (synopsis "Flake8 plugin integrating isort")
@@ -13743,19 +13868,8 @@ reading and writing MessagePack data.")
     (home-page "https://pypi.org/project/msgpack/")
     (license license:asl2.0)))
 
-(define-public python-msgpack-1.0.2
-  (package
-    (inherit python-msgpack)
-    (version "1.0.2")
-    (source (origin
-              (method url-fetch)
-              (uri (pypi-uri "msgpack" version))
-              (sha256
-               (base32
-                "1109s2yynrahwi64ikax68hx0mbclz8p35afmpphw5dwynb49q7s"))))))
-
 ;; This msgpack library's name changed from "python-msgpack" to "msgpack" with
-;; release 0.5. Some packages like borg still call it by the old name for now.
+;; release 0.5. Some packages like poetry still call it by the old name for now.
 ;; <https://bugs.gnu.org/30662>
 (define-public python-msgpack-transitional
   (package
@@ -17494,28 +17608,47 @@ designed to work across multiple versions of Python.")
 (define-public python-cookiecutter
   (package
     (name "python-cookiecutter")
-    (version "1.7.3")
+    (version "2.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "cookiecutter" version))
        (sha256
-        (base32 "0mx49whhwcxmvcak27zr7p7ndzkn3w7psfd7fzh3n91fi1r4v6kb"))))
+        (base32 "1v1iafk8j2f5cciw9mf4263v91070c6z049cpnw42gwffhs907p6"))))
     (build-system python-build-system)
-    (native-inputs
-     (list python-freezegun python-pytest python-pytest-catchlog
-           python-pytest-cov python-pytest-mock))
-    (propagated-inputs
-     (list python-binaryornot
-           python-click
-           python-future
-           python-jinja2
-           python-jinja2-time
-           python-poyo
-           python-requests
-           python-slugify
-           python-text-unidecode
-           python-whichcraft))
+    (arguments
+     (list
+      #:phases #~(modify-phases %standard-phases
+                   (add-before 'check 'pre-check
+                     (lambda _
+                       ;; test_get_user_config.py requires a writable home
+                       ;; directory.
+                       (setenv "HOME"
+                               (getcwd))
+                       ;; test_hooks.py dynamically creates shell scripts
+                       ;; with a /bin/bash shebang. We have to patch these.
+                       (substitute* "tests/test_hooks.py"
+                         (("/bin/bash")
+                          (string-append #$(this-package-native-input
+                                            "bash-minimal") "/bin/bash")))))
+                   (replace 'check
+                     (lambda* (#:key tests? #:allow-other-keys)
+                       (when tests?
+                         (invoke "pytest")))))))
+    (native-inputs (list bash-minimal
+                         git
+                         python-freezegun
+                         python-pytest
+                         python-pytest-cov
+                         python-pytest-mock))
+    (propagated-inputs (list python-arrow
+                             python-binaryornot
+                             python-click
+                             python-jinja2
+                             python-pyyaml
+                             python-requests
+                             python-rich
+                             python-slugify))
     (home-page "https://github.com/cookiecutter/cookiecutter")
     (synopsis
      "Command-line utility that creates projects from project templates")
@@ -20251,6 +20384,31 @@ etc.")
     (description "This package extends Pyserial with asynchronous I/O
      support.")
     (license license:bsd-3)))
+
+(define-public python-pymemcache
+  (package
+    (name "python-pymemcache")
+    (version "4.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pymemcache" version))
+       (sha256
+        (base32 "157z9blr8pjg9x84jph5hm0z2l6yaq6n421jcf1hzqn1pg8rpgr7"))))
+    (build-system pyproject-build-system)
+    (arguments
+     ;; We don't have the zstd module.
+     (list
+      #:test-flags
+      '(list "--ignore=pymemcache/test/test_compression.py")))
+    (native-inputs
+     (list python-faker python-pytest python-pytest-cov))
+    (home-page "https://github.com/pinterest/pymemcache")
+    (synopsis "Comprehensive, fast, pure Python memcached client")
+    (description
+     "This package provides a comprehensive, fast, pure Python memcached
+client.")
+    (license license:asl2.0)))
 
 (define-public python-pymodbus
   (package
@@ -30117,6 +30275,45 @@ heterogeneous and multi-platform clusters (including clusters running other
 applications with variable CPU loads).")
     (license license:bsd-3)))
 
+(define-public python-djitellopy
+  (package
+    (name "python-djitellopy")
+    (version "2.5.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "djitellopy" version))
+       (sha256
+        (base32 "1kc0syb4hpn7fay0rxpazmczag6jw3pncrrc6v762jj0afiwkrps"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:tests? #f                       ;no test suite
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; OpenCV does not ship metadata files for its Python library, which
+          ;; makes it invisible to the sanity_check script (see:
+          ;; https://github.com/opencv/opencv/issues/24810).
+          (delete 'sanity-check))))
+    (propagated-inputs
+     (list opencv                       ;for opencv-python
+           python-av
+           python-numpy
+           python-pillow))
+    (home-page "https://github.com/damiafuentes/DJITelloPy")
+    (synopsis
+     "DJI Tello drone video streaming, swarms and state packets library")
+    (description
+     "DJI Tello drone Python interface using the official Tello SDK and Tello
+EDU SDK.  This library has the following features:
+@itemize
+@item Implementation of all tello commands
+@item Retrieve a video stream easily
+@item Receive and parse state packets
+@item Control a swarm of drones.
+@end itemize")
+    (license license:expat)))
+
 (define-public python-djvulibre
   (package
     (name "python-djvulibre")
@@ -34046,6 +34243,46 @@ package.  It can be used by type-checking tools like mypy, PyCharm, pytype
 etc. to check code that uses @code{orjson}.")
     (license license:asl2.0)))
 
+(define-public python-rpds-py
+  (package
+    (name "python-rpds-py")
+    (version "0.10.6")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "rpds_py" version))
+              (sha256
+               (base32
+                "0l5slkvhq2vf64mapimmj6ginsv01mc4niyj90vvz3assq4agrac"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:imported-modules `(,@%cargo-build-system-modules
+                           ,@%pyproject-build-system-modules)
+      #:modules '((guix build cargo-build-system)
+                  ((guix build pyproject-build-system) #:prefix py:)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'prepare-python-module 'build-python-module
+            (assoc-ref py:%standard-phases 'build))
+          (add-after 'build-python-module 'install-python-module
+            (assoc-ref py:%standard-phases 'install)))
+      #:cargo-inputs
+      `(("rust-archery" ,rust-archery-1)
+        ("rust-pyo3" ,rust-pyo3-0.19)
+        ("rust-rpds" ,rust-rpds-1))
+      #:install-source? #false))
+    (inputs
+     (list maturin))
+    (native-inputs
+     (list python-wrapper))
+    (home-page "https://github.com/crate-py/rpds")
+    (synopsis "Bindings to Rust rpds for persistent data structures")
+    (description "This package provides Python bindings to the Rust rpds crate
+for persistent data structures.  It was written initially to support replacing
+@code{python-pyrsistent}.")
+    (license license:expat)))
+
 (define-public python-nanoid
   ;; There are no tests on PyPi.
   (let ((commit "061f9a598f310b0e2e91b9ed6ce725a22770da64")
@@ -34364,6 +34601,29 @@ interfaces.")
 of Icelandic Morphology and offers various lookups and queries of the data.
 The database contains over 6.5 million entries, over 3.1 million unique word
 forms, and about 300,000 distinct lemmas.")
+    (license license:expat)))
+
+(define-public python-icegrams
+  (package
+    (name "python-icegrams")
+    (version "1.1.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "icegrams" version))
+       (sha256
+        (base32 "1ajcjngvr4rlgb0q6p6vjz2sncwhvq3msjy6qaiz5g37vgvw2ij8"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-cffi))
+    (home-page "https://github.com/mideind/Icegrams")
+    (synopsis "Trigram statistics for Icelandic")
+    (description
+     "Icegrams is a Python package that encapsulates a large trigram
+library for Icelandic.  You can use Icegrams to obtain probabilities (relative
+frequencies) of over a million different unigrams (single words or tokens), or of
+bigrams (pairs of two words or tokens), or of trigrams.  Icegrams is useful for
+instance in spelling correction, predictive typing, to help disabled people
+write text fast, and for various text generation, statistics, and modeling tasks.")
     (license license:expat)))
 
 (define-public python-zeroc-ice-3.6

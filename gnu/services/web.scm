@@ -1229,34 +1229,32 @@ a webserver.")
          (frequency 'weekly))))
 
 (define (hpcguix-web-shepherd-service config)
-  (let ((specs       (hpcguix-web-configuration-specs config))
-        (hpcguix-web (hpcguix-web-package config)))
-    (with-imported-modules (source-module-closure
-                            '((gnu build shepherd)))
-      (shepherd-service
-       (documentation "hpcguix-web daemon")
-       (provision     '(hpcguix-web))
-       (requirement   '(networking))
-       (start #~(make-forkexec-constructor
-                 (list #$(file-append hpcguix-web "/bin/hpcguix-web")
-                       (string-append "--listen="
-                                      #$(hpcguix-web-configuration-address
-                                         config))
-                       "-p"
-                       #$(number->string
-                          (hpcguix-web-configuration-port config))
-                       #$@(if specs
-                              #~((string-append "--config="
-                                                #$(scheme-file
-                                                   "hpcguix-web.scm" specs)))
-                              #~()))
-                 #:user "hpcguix-web"
-                 #:group "hpcguix-web"
-                 #:environment-variables
-                 (list "XDG_CACHE_HOME=/var/cache/guix/web"
-                       "SSL_CERT_DIR=/etc/ssl/certs")
-                 #:log-file #$%hpcguix-web-log-file))
-       (stop #~(make-kill-destructor))))))
+  (let* ((specs       (hpcguix-web-configuration-specs config))
+         (config-file (and specs (scheme-file "hpcguix-web.scm" specs)))
+         (hpcguix-web (hpcguix-web-package config)))
+    (shepherd-service
+     (documentation "hpcguix-web daemon")
+     (provision     '(hpcguix-web))
+     (requirement   '(networking))
+     (start #~(make-forkexec-constructor
+               (list #$(file-append hpcguix-web "/bin/hpcguix-web")
+                     (string-append "--listen="
+                                    #$(hpcguix-web-configuration-address
+                                       config))
+                     "-p"
+                     #$(number->string
+                        (hpcguix-web-configuration-port config))
+                     #$@(if specs
+                            #~((string-append "--config=" #$config-file))
+                            #~()))
+               #:user "hpcguix-web"
+               #:group "hpcguix-web"
+               #:environment-variables
+               (list "XDG_CACHE_HOME=/var/cache/guix/web"
+                     "SSL_CERT_DIR=/etc/ssl/certs")
+               #:log-file #$%hpcguix-web-log-file))
+     (stop #~(make-kill-destructor))
+     (actions (list (shepherd-configuration-action config-file))))))
 
 (define hpcguix-web-service-type
   (service-type

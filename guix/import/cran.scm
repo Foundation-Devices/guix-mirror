@@ -55,6 +55,10 @@
   #:use-module (guix sets)
   #:export (%input-style
 
+            %bioconductor-version
+            download
+            fetch-description
+
             cran->guix-package
             bioconductor->guix-package
             cran-recursive-import
@@ -80,6 +84,21 @@
 
 (define %input-style
   (make-parameter 'variable)) ; or 'specification
+
+(define (format-inputs inputs)
+  "Generate a sorted list of package inputs from a list of upstream inputs."
+  (map (lambda (input)
+         (case (%input-style)
+           ((specification)
+            `(specification->package ,(upstream-input-name input)))
+           (else
+            ((compose string->symbol
+                       upstream-input-downstream-name)
+             input))))
+       (sort inputs
+             (lambda (a b)
+               (string-ci<? (upstream-input-name a)
+                            (upstream-input-name b))))))
 
 (define (string->licenses license-string license-prefix)
   (let ((licenses
@@ -173,9 +192,7 @@ package definition."
     (()
      '())
     ((package-inputs ...)
-     `((,input-type (list ,@(map (compose string->symbol
-                                          upstream-input-downstream-name)
-                                 package-inputs)))))))
+     `((,input-type (list ,@(format-inputs package-inputs)))))))
 
 (define %cran-url "https://cran.r-project.org/web/packages/")
 (define %cran-canonical-url "https://cran.r-project.org/package=")
@@ -392,6 +409,7 @@ empty list when the FIELD cannot be found."
         "gnu"
         "posix.1-2001"
         "linux"
+        "libR"
         "none"
         "unix"
         "windows"
