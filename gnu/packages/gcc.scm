@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2012-2023 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2012-2024 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014, 2015, 2018 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2014, 2015, 2016, 2017, 2019, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2023 Andreas Enge <andreas@enge.fr>
@@ -648,6 +648,7 @@ Go.  It also includes runtime support libraries for these languages.")
                 "0qg6kqc5l72hpnj4vr6l0p69qav0rh4anlkk3y55540zy3klc6dq"))
               (patches (search-patches "gcc-strmov-store-file-names.patch"
                                        "gcc-7-libsanitizer-mode-size.patch"
+                                       "gcc-7-libsanitizer-fsconfig-command.patch"
                                        "gcc-5.0-libvtv-runpath.patch"))))
     (description
      "GCC is the GNU Compiler Collection.  It provides compiler front-ends
