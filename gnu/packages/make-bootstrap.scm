@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2012-2021, 2023 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2012-2021, 2023, 2024 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018, 2019 Mark H Weaver <mhw@netris.org>
@@ -374,32 +374,34 @@ for `sh' in $PATH, and without nscd, and with static NSS modules."
 
 (define %binutils-static
   ;; Statically-linked Binutils.
-  (package (inherit binutils)
+  (package
+    (inherit binutils)
     (name "binutils-static")
     (arguments
-     `(#:configure-flags (cons "--disable-gold"
-                               ,(match (memq #:configure-flags
-                                             (package-arguments binutils))
-                                  ((#:configure-flags flags _ ...)
-                                   flags)))
-       #:make-flags ,(match (memq #:make-flags (package-arguments binutils))
-                       ((#:make-flags flags _ ...)
-                        flags)
-                       (_ ''()))
-       #:strip-flags '("--strip-all")
-       #:phases (modify-phases %standard-phases
-                  (add-before 'configure 'all-static
-                    (lambda _
-                      ;; The `-all-static' libtool flag can only be passed
-                      ;; after `configure', since configure tests don't use
-                      ;; libtool, and only for executables built with libtool.
-                      (substitute* '("binutils/Makefile.in"
-                                     "gas/Makefile.in"
-                                     "ld/Makefile.in")
-                        (("^LDFLAGS =(.*)$" line)
-                         (string-append line
-                                        "\nAM_LDFLAGS = -static -all-static\n")))
-                      #t)))))))
+     (list #:configure-flags
+           #~(cons "--disable-gold"
+                   #$(match (memq #:configure-flags (package-arguments binutils))
+                       ((#:configure-flags flags _ ...)
+                        flags)))
+           #:make-flags
+           (match (memq #:make-flags (package-arguments binutils))
+             ((#:make-flags flags _ ...)
+              flags)
+             (_ #~'()))
+           #:strip-flags #~'("--strip-all")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-before 'configure 'all-static
+                 (lambda _
+                   ;; The `-all-static' libtool flag can only be passed after
+                   ;; `configure', since configure tests don't use libtool,
+                   ;; and only for executables built with libtool.
+                   (substitute* '("binutils/Makefile.in"
+                                  "gas/Makefile.in" "ld/Makefile.in")
+                     (("^LDFLAGS =(.*)$" line)
+                      (string-append
+                       line
+                       "\nAM_LDFLAGS = -static -all-static\n"))))))))))
 
 (define %binutils-static-stripped
   ;; The subset of Binutils that we need.
