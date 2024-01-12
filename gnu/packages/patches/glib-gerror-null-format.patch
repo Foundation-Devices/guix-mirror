@@ -1,0 +1,137 @@
+From c4203f740ced1f1fc576caf1550441b57107fd00 Mon Sep 17 00:00:00 2001
+From: Philip Withnall <pwithnall@endlessos.org>
+Date: Mon, 20 Feb 2023 16:41:23 +0000
+Subject: [PATCH] gerror: Emit a critical warning if the message format is NULL
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The code has warned about this since commit 6d9f874330 in 2011.
+
+glibc 2.37 has just started asserting if a `NULL` format is passed to
+`sprintf()`, which caused the existing GLib workaround to start
+asserting too.
+
+Bite the bullet and upgrade the warning for `format != NULL` to a
+critical warning. Projects have had 12 years to fix their code.
+
+The original bug reports
+(https://bugzilla.gnome.org/show_bug.cgi?id=660371,
+https://bugzilla.gnome.org/show_bug.cgi?id=560482) are actually both
+about a domain which is `0`, rather than a format which is `NULL`, which
+gives some confidence that this change will actually impact very little
+third party code.
+
+Since it doesn’t currently need changing, I have not touched the warning
+about `domain != 0`.
+
+Signed-off-by: Philip Withnall <pwithnall@endlessos.org>
+
+Fixes: #2913
+---
+ glib/gerror.c      |  8 +++++---
+ glib/tests/error.c | 38 +++++++++++++++++++++++---------------
+ 2 files changed, 28 insertions(+), 18 deletions(-)
+
+diff --git a/glib/gerror.c b/glib/gerror.c
+index 61817fa7bc..7ac85fc664 100644
+--- a/glib/gerror.c
++++ b/glib/gerror.c
+@@ -755,13 +755,14 @@ g_error_new_valist (GQuark       domain,
+                     const gchar *format,
+                     va_list      args)
+ {
++  g_return_val_if_fail (format != NULL, NULL);
++
+   /* Historically, GError allowed this (although it was never meant to work),
+    * and it has significant use in the wild, which g_return_val_if_fail
+    * would break. It should maybe g_return_val_if_fail in GLib 4.
+    * (GNOME#660371, GNOME#560482)
+    */
+   g_warn_if_fail (domain != 0);
+-  g_warn_if_fail (format != NULL);
+ 
+   return g_error_new_steal (domain, code, g_strdup_vprintf (format, args), NULL);
+ }
+@@ -887,9 +888,10 @@ g_error_copy (const GError *error)
+   ErrorDomainInfo info;
+ 
+   g_return_val_if_fail (error != NULL, NULL);
+-  /* See g_error_new_valist for why these don't return */
++  g_return_val_if_fail (error->message != NULL, NULL);
++
++  /* See g_error_new_valist for why this doesn’t return */
+   g_warn_if_fail (error->domain != 0);
+-  g_warn_if_fail (error->message != NULL);
+ 
+   copy = g_error_new_steal (error->domain,
+                             error->code,
+diff --git a/glib/tests/error.c b/glib/tests/error.c
+index fa3a25969d..8dd40aa566 100644
+--- a/glib/tests/error.c
++++ b/glib/tests/error.c
+@@ -129,17 +129,6 @@ test_new_valist_invalid_va (gpointer dummy,
+    * a %NULL format will crash on FreeBSD as its implementation of vasprintf()
+    * is less forgiving than Linux’s. That’s fine: it’s a programmer error in
+    * either case. */
+-  const struct
+-    {
+-      GQuark domain;
+-      const gchar *format;
+-    }
+-  tests[] =
+-    {
+-      { G_MARKUP_ERROR, NULL },
+-      { 0, "Message" },
+-    };
+-  gsize i;
+ 
+   g_test_summary ("Test that g_error_new_valist() rejects invalid input");
+ 
+@@ -149,12 +138,31 @@ test_new_valist_invalid_va (gpointer dummy,
+       return;
+     }
+ 
+-  for (i = 0; i < G_N_ELEMENTS (tests); i++)
+     {
+-      GError *error = NULL, *error_copy = NULL;
++      GError *error = NULL;
+       va_list ap;
+ 
+-      g_test_message ("Test %" G_GSIZE_FORMAT, i);
++      va_start (ap, dummy);
++
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wformat-nonliteral"
++#pragma GCC diagnostic ignored "-Wformat-extra-args"
++
++      g_test_expect_message (G_LOG_DOMAIN,
++                             G_LOG_LEVEL_CRITICAL,
++                             "*g_error_new_valist: assertion 'format != NULL' failed*");
++      error = g_error_new_valist (G_MARKUP_ERROR, G_MARKUP_ERROR_EMPTY, NULL, ap);
++      g_test_assert_expected_messages ();
++      g_assert_null (error);
++
++#pragma GCC diagnostic pop
++
++      va_end (ap);
++    }
++
++    {
++      GError *error = NULL, *error_copy = NULL;
++      va_list ap;
+ 
+       va_start (ap, dummy);
+ 
+@@ -164,7 +172,7 @@ test_new_valist_invalid_va (gpointer dummy,
+       g_test_expect_message (G_LOG_DOMAIN,
+                              G_LOG_LEVEL_WARNING,
+                              "*g_error_new_valist: runtime check failed*");
+-      error = g_error_new_valist (tests[i].domain, G_MARKUP_ERROR_EMPTY, tests[i].format, ap);
++      error = g_error_new_valist (0, G_MARKUP_ERROR_EMPTY, "Message", ap);
+       g_test_assert_expected_messages ();
+       g_assert_nonnull (error);
+ 
+-- 
+GitLab
+

@@ -501,7 +501,11 @@ functions for strings and common data structures.")
         '(substitute* "glib/tests/spawn-test.c"
            (("/bin/sh") "sh")))
        (sha256
-        (base32 "1bgfch7zj1pq4rkqcibfky1470ijljyrx5pn5s5v9mk72s22n6nz"))))
+        (base32 "1bgfch7zj1pq4rkqcibfky1470ijljyrx5pn5s5v9mk72s22n6nz"))
+       (patches (append
+                 ;; Remove with upgrade to >=2.75.4
+                 (search-patches "glib-gerror-null-format.patch")
+                 (origin-patches (package-source glib))))))
     (arguments
      (substitute-keyword-arguments (package-arguments glib)
        ((#:test-options test-options ''())

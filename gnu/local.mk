@@ -1315,6 +1315,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/gitg-fix-positional-argument.patch	\
   %D%/packages/patches/gklib-suitesparse.patch			\
   %D%/packages/patches/glib-appinfo-watch.patch			\
+  %D%/packages/patches/glib-gerror-null-format.patch	\
   %D%/packages/patches/glib-networking-disable-connection-tls1.2-test.patch	\
   %D%/packages/patches/glib-networking-gnutls-binding.patch	\
   %D%/packages/patches/glib-skip-failing-test.patch		\
