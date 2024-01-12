@@ -50,6 +50,7 @@
   #:use-module (ice-9 regex)
   #:export (cross-binutils
             cross-libc
+            cross-libstdc++
             cross-gcc
             cross-mig
             cross-kernel-headers
@@ -749,6 +750,54 @@ returned."
     (make-avr-libc #:xbinutils xbinutils
                    #:xgcc xgcc))
    (else #f)))
+
+(define* (cross-libstdc++/implementation target
+                                         #:key
+                                         (base-gcc %xgcc)
+                                         (xbinutils (cross-binutils target))
+                                         (xgcc (cross-gcc target
+                                                          #:xgcc base-gcc
+                                                          #:xbinutils xbinutils))
+                                         (libc (cross-libc target
+                                                           #:xbinutils xbinutils
+                                                           #:xgcc xgcc)))
+  "Return a cross-compiled libstdc++ package based on BASE-GCC."
+  ;; The MAKE-LIBSTDC++ procedure adds some NATIVE-INPUTS depending on the
+  ;; %CURRENT-TARGET-SYSTEM, respect those.
+  (parameterize ((%current-target-system target))
+    (let* ((base-libstdc++ (make-libstdc++ xgcc))
+           (platform (false-if-platform-not-found
+                       (lookup-platform-by-target target)))
+           (multilib? (and=> platform platform-multilib?)))
+      (package
+        (inherit base-libstdc++)
+        (name (string-append "cross-" (package-name base-libstdc++) "-"
+                             target))
+        (arguments
+         (substitute-keyword-arguments (package-arguments base-libstdc++)
+           ((#:target _ #f) target)
+           ((#:implicit-cross-inputs? _ #f) #f)
+           ((#:strip-binaries? _ #t) #f)
+           ((#:configure-flags _)
+            #~(list "--disable-libstdcxx-pch"
+                    (string-append "--libdir=" #$output "/" #$target "/lib")
+                    (string-append "--with-gxx-include-dir=" #$output "/"
+                                   #$target "/include/c++")
+                    #$@(if multilib?
+                           #~("--enable-multilib")
+                           #~())
+                    #$@(if (string=? target "arm-none-eabi")
+                           #~("--with-newlib")
+                           #~())))))
+        (native-inputs
+         `(("cross-binutils" ,xbinutils)
+           ("cross-gcc" ,xgcc)
+           ,@(package-native-inputs base-libstdc++)))
+        (inputs
+         `(("cross-libc" ,libc)))))))
+
+(define cross-libstdc++
+  (memoize cross-libstdc++/implementation))
 
 (define* (cross-gcc-toolchain/implementation target
                                              #:key
