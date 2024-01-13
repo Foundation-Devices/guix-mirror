@@ -9281,7 +9281,9 @@ retrieve text and metadata from PDFs as well as merge entire files together.")
               (snippet '(begin
                           (delete-file-recursively "src/thirdparty")))
               (patches
-               (search-patches "python-pillow-CVE-2022-45199.patch"))))
+               (search-patches "python-pillow-CVE-2022-45199.patch"
+                               ;; Included in 10.1.0.
+                               "python-pillow-use-zlib-1.3.patch"))))
     (build-system python-build-system)
     (native-inputs (list python-pytest))
     (inputs (list freetype
