@@ -1078,7 +1078,8 @@ interactive environment for the functional language Haskell.")
                  "https://www.haskell.org/ghc/dist/"
                  version "/" name "-" version "-testsuite.tar.xz"))
            (patches (search-patches "ghc-testsuite-dlopen-pie.patch"
-                                    "ghc-testsuite-grep-compat.patch"))
+                                    "ghc-testsuite-grep-compat.patch"
+                                    "ghc-testsuite-recomp015-execstack.patch"))
            (sha256
             (base32
              "0pw9r91g2np3i806g2f4f8z4jfdd7mx226cmdizk4swa7av1qf91"))
@@ -1160,7 +1161,8 @@ interactive environment for the functional language Haskell.")
                  "https://www.haskell.org/ghc/dist/"
                  version "/ghc-" version "-testsuite.tar.xz"))
            (patches (search-patches "ghc-testsuite-dlopen-pie.patch"
-                                    "ghc-testsuite-grep-compat.patch"))
+                                    "ghc-testsuite-grep-compat.patch"
+                                    "ghc-testsuite-recomp015-execstack.patch"))
            (sha256
             (base32
              "0c55pj2820q26rikhpf636sn4mjgqsxjrl94vsywrh79dxp3k14z"))
@@ -1219,7 +1221,8 @@ interactive environment for the functional language Haskell.")
                  "https://www.haskell.org/ghc/dist/"
                  version "/ghc-" version "-testsuite.tar.xz"))
            (patches (search-patches "ghc-testsuite-dlopen-pie.patch"
-                                    "ghc-testsuite-grep-compat.patch"))
+                                    "ghc-testsuite-grep-compat.patch"
+                                    "ghc-testsuite-recomp015-execstack.patch"))
            (sha256
             (base32
              "1zl25gg6bpx5601k8h3cqnns1xfc0nqgwnh8jvn2s65ra3f2g1nz"))
@@ -1302,7 +1305,8 @@ interactive environment for the functional language Haskell.")
                                   "/ghc-" version "-src.tar.xz"))
               (sha256
                (base32
-                "15wii8can2r3dcl6jjmd50h2jvn7rlmn05zb74d2scj6cfwl43hl"))))
+                "15wii8can2r3dcl6jjmd50h2jvn7rlmn05zb74d2scj6cfwl43hl"))
+              (patches (search-patches "ghc-9-StgCRunAsm-only-when-needed.patch"))))
     (native-inputs
      `(;; GHC 9.0.2 must be built with GHC >= 8.8
        ("ghc-bootstrap" ,ghc-8.10)
@@ -1315,7 +1319,8 @@ interactive environment for the functional language Haskell.")
            (sha256
             (base32
              "1m5fzhr4gjn9ni8gxx7ag3fkbw1rspjzgv39mnfb0nkm5mw70v3s"))
-           (patches (search-patches "ghc-9.2-grep-warnings.patch"))
+           (patches (search-patches "ghc-9.2-grep-warnings.patch"
+                                    "ghc-testsuite-recomp015-execstack.patch"))
            (modules '((guix build utils)))
            (snippet
             ;; collections.Iterable was moved to collections.abc in Python 3.10.
@@ -1347,7 +1352,8 @@ interactive environment for the functional language Haskell.")
                                     "/ghc-" version "-src.tar.xz"))
                 (sha256
                  (base32
-                  "07028i0hm74svvq9b3jpkczaj6lsdgn3hgr4wa7diqiq3dypj1h6"))))
+                  "07028i0hm74svvq9b3jpkczaj6lsdgn3hgr4wa7diqiq3dypj1h6"))
+                (patches (search-patches "ghc-9-StgCRunAsm-only-when-needed.patch"))))
       (arguments
        (substitute-keyword-arguments (package-arguments base)
          ((#:phases phases '%standard-phases)
@@ -1378,7 +1384,8 @@ interactive environment for the functional language Haskell.")
              (sha256
               (base32
                "19ha0hidrijawy53vm2r0sgml5zkl8126mqy7p0pyacmw3k7913l"))
-             (patches (search-patches "ghc-9.2-grep-warnings.patch"))))
+             (patches (search-patches "ghc-9.2-grep-warnings.patch"
+                                      "ghc-testsuite-recomp015-execstack.patch"))))
          ,@(filter (match-lambda
                      (("ghc-bootstrap" . _) #f)
                      (("ghc-testsuite" . _) #f)
@@ -1468,7 +1475,8 @@ interactive environment for the functional language Haskell.")
                                     "/ghc-" version "-src.tar.xz"))
                 (sha256
                  (base32
-                  "1qk7rlqf02s3b6m6sqqngmjq1mxnrz88h159lz6k25gddmdg5kp8"))))
+                  "1qk7rlqf02s3b6m6sqqngmjq1mxnrz88h159lz6k25gddmdg5kp8"))
+                (patches (search-patches "ghc-9-StgCRunAsm-only-when-needed.patch"))))
       (arguments
        (substitute-keyword-arguments (package-arguments base)
          ((#:phases phases '%standard-phases)
@@ -1486,7 +1494,8 @@ interactive environment for the functional language Haskell.")
                     version "/ghc-" version "-testsuite.tar.xz"))
              (sha256
               (base32
-               "04p2lawxxg3nyv6frzhyjyh3arhqqyh5ka3alxa2pxhcd2hdcja3"))))
+               "04p2lawxxg3nyv6frzhyjyh3arhqqyh5ka3alxa2pxhcd2hdcja3"))
+             (patches (search-patches "ghc-testsuite-recomp015-execstack.patch"))))
          ("ghc-alex" ,ghc-alex-bootstrap-for-9.4)
          ("ghc-happy" ,ghc-happy-bootstrap-for-9.4)
          ,@(filter (match-lambda
