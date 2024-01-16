@@ -4588,6 +4588,9 @@ mapper.  Kernel components are part of Linux-libre.")
     ;; Command-line tools are GPLv2.
     (license (list license:gpl2 license:lgpl2.1))))
 
+(define-public (libdevmapper-propagated-inputs)
+  (list eudev))
+
 (define-public lvm2-static
   (package
     (inherit lvm2)
