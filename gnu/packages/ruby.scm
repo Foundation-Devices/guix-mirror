@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2014, 2015 Pjotr Prins <pjotr.guix@thebird.nl>
-;;; Copyright © 2014-2017, 2021-2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2014-2017, 2021-2022, 2024 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014, 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2014, 2015 David Thompson <davet@gnu.org>
 ;;; Copyright © 2015, 2019 Ricardo Wurmus <rekado@elephly.net>
@@ -174,8 +174,7 @@ a focus on simplicity and productivity.")
 (define-public ruby-2.7
   (package
     (inherit ruby-2.6)
-    (version "2.7.6")
-    (replacement ruby-2.7-fixed) ; security fixes
+    (version "2.7.8")
     (source
      (origin
        (inherit (package-source ruby-2.6))
@@ -184,7 +183,7 @@ a focus on simplicity and productivity.")
                            "/ruby-" version ".tar.gz"))
        (sha256
         (base32
-         "042xrdk7hsv4072bayz3f8ffqh61i8zlhvck10nfshllq063n877"))))
+         "182vni66djmiqagwzfsd0za7x9k3zag43b88c590aalgphybdnn2"))))
     (arguments
      `(#:test-target "test"
        #:configure-flags
@@ -224,20 +223,6 @@ a focus on simplicity and productivity.")
                  (list this-package)
                  '())
              (list autoconf)))))
-
-(define ruby-2.7-fixed
-  (package
-    (inherit ruby-2.7)
-    (version "2.7.8")
-    (source
-     (origin
-       (inherit (package-source ruby-2.7))
-       (uri (string-append "https://cache.ruby-lang.org/pub/ruby/"
-                           (version-major+minor version)
-                           "/ruby-" version ".tar.gz"))
-       (sha256
-        (base32
-         "182vni66djmiqagwzfsd0za7x9k3zag43b88c590aalgphybdnn2"))))))
 
 (define-public ruby-3.0
   (package
