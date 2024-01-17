@@ -24,7 +24,7 @@
 ;;; Copyright © 2017, 2019 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2017, 2019 Kei Kebreau <kkebreau@posteo.net>
 ;;; Copyright © 2017 Nikita <nikita@n0.is>
-;;; Copyright © 2015, 2017, 2018, 2020, 2021, 2023 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2017, 2018, 2020, 2021, 2023, 2024 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016-2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2017, 2018, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2018 Fis Trivial <ybbs.daans@hotmail.com>
@@ -47,6 +47,7 @@
 ;;; Copyright © 2023 Bruno Victal <mirai@makinata.eu>
 ;;; Copyright © 2023 Reza Housseini <reza@housseini.me>
 ;;; Copyright © 2023 Hilton Chain <hako@ultrarare.space>
+;;; Copyright © 2023 Troy Figiel <troy@troyfigiel.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -107,6 +108,7 @@
   #:use-module (guix build-system python)
   #:use-module (guix build-system trivial)
   #:use-module (guix deprecation)
+  #:use-module (ice-9 match)
   #:use-module (srfi srfi-1))
 
 (define-public pict
@@ -602,10 +604,10 @@ It allows the specification of behaviour scenarios using a given-when-then
 pattern.")
       (license license:apsl2))))
 
-(define-public catch2-3.3
+(define-public catch2-3
   (package
     (name "catch2")
-    (version "3.4.0")
+    (version "3.5.1")
     (home-page "https://github.com/catchorg/Catch2")
     (source (origin
               (method git-fetch)
@@ -615,12 +617,19 @@ pattern.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1gdfsva6mnd66px85fmm3s65h8qzqnmgbmws2i3nygfav1y8d88f"))))
+                "0p7rk01n4qfnnm1bgakllyqi83n1kbpz11gh65z1vspfz58hs9iv"))))
     (build-system cmake-build-system)
     (arguments
      (list
       #:configure-flags
-      #~(list "-DCATCH_DEVELOPMENT_BUILD=ON"
+      #~(list #$@(match (%current-system)
+                   ((or "x86_64-linux" "i686-linux")
+                    ;; Tests fail on i686-linux without SSE2 for floats, see
+                    ;; upstream report
+                    ;; <https://github.com/catchorg/Catch2/issues/2796>.
+                    '("-DCMAKE_CXX_FLAGS=-msse2 -mfpmath=sse"))
+                   (_ '()))
+              "-DCATCH_DEVELOPMENT_BUILD=ON"
               "-DCATCH_ENABLE_WERROR=OFF"
               "-DBUILD_SHARED_LIBS=ON")))
     (inputs (list python-wrapper))
@@ -1416,6 +1425,30 @@ distributed testing in both @code{load} and @code{each} modes.  It also
 supports coverage of subprocesses.")
   (license license:expat)))
 
+(define-public python-pytest-dotenv
+  (package
+    (name "python-pytest-dotenv")
+    (version "0.5.2")
+    (source
+     (origin
+       ;; No tests in the PyPI tarball.
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/quiqua/pytest-dotenv")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0bdxwaak5clhsd63b9q65nf2amqqv5hfn7dskfakyldxsqnnh0y6"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-dotenv))
+    (native-inputs (list python-pytest))
+    (home-page "https://github.com/quiqua/pytest-dotenv")
+    (synopsis "Automatically detect and load a .env file before running tests")
+    (description
+     "This Pytest plugin automatically detects and loads environment variables
+from a .env file before running tests.")
+    (license license:expat)))
+
 (define-public python-pytest-httpserver
   (package
     (name "python-pytest-httpserver")
@@ -1445,6 +1478,27 @@ supports coverage of subprocesses.")
     (synopsis "HTTP server for pytest")
     (description "Pytest plugin library to test http clients without
 contacting the real http server.")
+    (license license:expat)))
+
+(define-public python-pytest-nunit
+  (package
+    (name "python-pytest-nunit")
+    (version "1.0.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-nunit" version))
+       (sha256
+        (base32 "1gw3a33myq9yncjixs3kkcrr1xkjzvvf3xk6x955p3i79wlwkswx"))))
+    (build-system pyproject-build-system)
+    (arguments (list #:tests? #false)) ;no tests included
+    (propagated-inputs (list python-attrs python-pytest))
+    (native-inputs (list python-pytest python-pytest-cov python-xmlschema))
+    (home-page "https://github.com/pytest-dev/pytest-nunit")
+    (synopsis "Pytest plugin for generating NUnit3 test result XML output")
+    (description
+     "This package provides a pytest plugin for generating NUnit3 test result
+XML output")
     (license license:expat)))
 
 (define-public python-pytest-param-files

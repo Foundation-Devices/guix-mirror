@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2013, 2015 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2013 Aljosha Papsch <misc@rpapsch.de>
-;;; Copyright © 2014-2023 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2014-2024 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014, 2015, 2016 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015-2023 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2018 Raoul Jean Pierre Bonnal <ilpuccio.febo@gmail.com>
@@ -46,7 +46,7 @@
 ;;; Copyright © 2020, 2022 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020, 2021 Ryan Prior <rprior@protonmail.com>
 ;;; Copyright © 2020 Alexandru-Sergiu Marton <brown121407@posteo.ro>
-;;; Copyright © 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2021, 2024 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2021 Stefan Reichör <stefan@xsteve.at>
 ;;; Copyright © 2021 la snesne <lasnesne@lagunposprasihopre.org>
 ;;; Copyright © 2021 Matthew James Kraai <kraai@ftbfs.org>
@@ -6619,6 +6619,28 @@ Depending on your architecture, it only requires about 40 bytes of data per
 message stream (in a web server that is per connection).")
       (license license:expat))))
 
+(define-public llhttp
+  (package
+    (name "llhttp")
+    (version "9.1.3")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/nodejs/llhttp")
+                    (commit (string-append "release/v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1nkv64c5fs8x6n5f9f6g28w5hvg776p55cwa0f82ni548nx279s1"))))
+    (build-system cmake-build-system)
+    (arguments (list #:tests? #f))      ;FIXME: tests depend on node-mocha
+    (home-page "https://github.com/nodejs/llhttp")
+    (synopsis "Port of http_parser to llparse")
+    (description "@code{llparse} is a port of @code{http_parser} to
+@code{llparse} which aims making it more maintainable, verifiable and
+efficient where possible.")
+    (license license:expat)))
+
 (define-public python-httpretty
   (package
     (name "python-httpretty")
@@ -8138,7 +8160,7 @@ compressed JSON header blocks.
 (define-public hpcguix-web
   (package
     (name "hpcguix-web")
-    (version "0.4.0")
+    (version "0.4.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -8147,7 +8169,7 @@ compressed JSON header blocks.
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "19l9gvp2ngn7lc3jynrc16f3il2bgkhq1m8zfaqwxk9vwxiivwrn"))))
+                "13a4cwqdhpr7gc1z4cxs36qa50mzcdwwlj9qqzv818sx9d7r6vsw"))))
     (build-system gnu-build-system)
     (arguments
      `(#:modules ((guix build gnu-build-system)
@@ -8169,13 +8191,14 @@ compressed JSON header blocks.
                     (guile    (assoc-ref inputs "guile"))
                     (gcrypt   (assoc-ref inputs "guile-gcrypt"))
                     (git      (assoc-ref inputs "guile-git"))
+                    (gnutls   (assoc-ref inputs "guile-gnutls"))
                     (bs       (assoc-ref inputs "guile-bytestructures"))
                     (json     (assoc-ref inputs "guile-json"))
                     (zlib     (assoc-ref inputs "guile-zlib"))
                     (syntax   (assoc-ref inputs "guile-syntax-highlight"))
                     (guile-cm (assoc-ref inputs
                                          "guile-commonmark"))
-                    (deps (list guile gcrypt git bs zlib guile-cm
+                    (deps (list guile gcrypt git gnutls bs zlib guile-cm
                                 syntax guix json))
                     (effective
                      (read-line
@@ -8208,6 +8231,7 @@ compressed JSON header blocks.
            guile-commonmark
            guile-json-4
            guile-syntax-highlight
+           guile-gnutls    ;used to connect to https://disarchive.guix.gnu.org
            bash-minimal))
     (home-page "https://github.com/UMCUGenetics/hpcguix-web")
     (synopsis "Web interface for cluster deployments of Guix")

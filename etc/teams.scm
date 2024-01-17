@@ -698,6 +698,18 @@ GLib/GIO, GTK, GStreamer and Webkit."
                        "clement@lassieur.org")
   mozilla)
 
+(define-member (person "Sharlatan Hellseher"
+                       "sharlatanus@gmail.com")
+  go lisp python science)
+
+(define-member (person "Vivien Kraus"
+                       "vivien@planete-kraus.eu")
+  gnome)
+
+(define-member (person "Wilko Meyer"
+                       "w@wmeyer.eu")
+  kernel)
+
 
 (define (find-team name)
   (or (hash-ref %teams (string->symbol name))

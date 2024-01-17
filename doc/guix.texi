@@ -56,7 +56,7 @@ Copyright @copyright{} 2017 Andy Wingo@*
 Copyright @copyright{} 2017, 2018, 2019, 2020, 2023 Arun Isaac@*
 Copyright @copyright{} 2017 nee@*
 Copyright @copyright{} 2018 Rutger Helling@*
-Copyright @copyright{} 2018, 2021 Oleg Pykhalov@*
+Copyright @copyright{} 2018, 2021, 2023 Oleg Pykhalov@*
 Copyright @copyright{} 2018 Mike Gerwitz@*
 Copyright @copyright{} 2018 Pierre-Antoine Rouby@*
 Copyright @copyright{} 2018, 2019 Gábor Boskovits@*
@@ -122,6 +122,8 @@ Copyright @copyright{} 2023 Felix Lechner@*
 Copyright @copyright{} 2023 Foundation Devices, Inc.@*
 Copyright @copyright{} 2023 Thomas Ieong@*
 Copyright @copyright{} 2023 Saku Laesvuori@*
+Copyright @copyright{} 2023 Graham James Addis@*
+Copyright @copyright{} 2023 Tomas Volf@*
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -2935,7 +2937,7 @@ Boot the USB installation image in an VM:
 qemu-system-x86_64 -m 1024 -smp 1 -enable-kvm \
   -nic user,model=virtio-net-pci -boot menu=on,order=d \
   -drive file=guix-system.img \
-  -drive media=cdrom,file=guix-system-install-@value{VERSION}.@var{system}.iso
+  -drive media=cdrom,readonly=on,file=guix-system-install-@value{VERSION}.@var{system}.iso
 @end example
 
 @code{-enable-kvm} is optional, but significantly improves performance,
@@ -4353,7 +4355,7 @@ There are several such multiple-output packages in the GNU distribution.
 Other conventional output names include @code{lib} for libraries and
 possibly header files, @code{bin} for stand-alone programs, and
 @code{debug} for debugging information (@pxref{Installing Debugging
-Files}).  The outputs of a packages are listed in the third column of
+Files}).  The outputs of a package are listed in the third column of
 the output of @command{guix package --list-available} (@pxref{Invoking
 guix package}).
 
@@ -5001,7 +5003,8 @@ environment} command to spawn an environment in a container running
 @command{guile} (@command{guix environment} has since been subsumed by
 @command{guix shell}; @pxref{Invoking guix shell}).  It's like driving a
 DeLorean@footnote{If you don't know what a DeLorean is, consider
-traveling back to the 1980's.}!  The first @command{guix time-machine}
+traveling back to the 1980's. (@uref{https://www.imdb.com/title/tt0088763/,
+Back to the Future (1985)})}!  The first @command{guix time-machine}
 invocation can be expensive: it may have to download or even build a
 large number of packages; the result is cached though and subsequent
 commands targeting the same commit are almost instantaneous.
@@ -7160,7 +7163,7 @@ What if the recipient of your pack does not have root privileges on
 their machine, and thus cannot unpack it in the root file system?  In
 that case, you will want to use the @option{--relocatable} option (see
 below).  This option produces @dfn{relocatable binaries}, meaning they
-they can be placed anywhere in the file system hierarchy: in the example
+can be placed anywhere in the file system hierarchy: in the example
 above, users can unpack your tarball in their home directory and
 directly run @file{./opt/gnu/bin/guile}.
 
@@ -7406,7 +7409,7 @@ execution engines listed above by setting the
 @env{GUIX_EXECUTION_ENGINE} environment variable accordingly.
 @end quotation
 
-@cindex entry point, for Docker images
+@cindex entry point, for Docker and Singularity images
 @item --entry-point=@var{command}
 Use @var{command} as the @dfn{entry point} of the resulting pack, if the pack
 format supports it---currently @code{docker} and @code{squashfs} (Singularity)
@@ -7428,6 +7431,41 @@ arguments will spawn @code{bin/guile}:
 docker load -i pack.tar.gz
 docker run @var{image-id}
 @end example
+
+@cindex entry point arguments, for docker images
+@item --entry-point-argument=@var{command}
+@itemx -A @var{command}
+Use @var{command} as an argument to @dfn{entry point} of the resulting pack.
+This option is only valid in conjunction with @code{--entry-point} and can
+appear multiple times on the command line.
+
+@example
+guix pack -f docker --entry-point=bin/guile --entry-point-argument="--help" guile
+@end example
+
+@cindex maximum layers argument, for docker images
+@item --max-layers=@code{n}
+Specifies the maximum number of Docker image layers allowed when
+building an image.
+
+@example
+guix pack -f docker --max-layers=100 guile
+@end example
+
+This option allows you to limit the number of layers in a Docker image.
+Docker images are comprised of multiple layers, and each layer adds to
+the overall size and complexity of the image.  By setting a maximum
+number of layers, you can control the following effects:
+
+@itemize
+@item Disk Usage:
+Increasing the number of layers can help optimize the disk space
+required to store multiple images built with a similar package graph.
+
+@item Pulling:
+When transferring images between different nodes or systems, having more
+layers can reduce the time required to pull the image.
+@end itemize
 
 @item --expression=@var{expr}
 @itemx -e @var{expr}
@@ -10163,8 +10201,8 @@ It also generates font metrics (i.e., @file{.tfm} files) out of Metafont
 files whenever possible.  Likewise, it can also create TeX formats
 (i.e., @file{.fmt} files) listed in the @code{#:create-formats}
 argument, and generate a symbolic link from @file{bin/} directory to any
-script located in located in @file{texmf-dist/scripts/}, provided its
-file name is listed in @code{#:link-scripts} argument.
+script located in @file{texmf-dist/scripts/}, provided its file name is
+listed in @code{#:link-scripts} argument.
 
 The build system adds @code{texlive-bin} from @code{(gnu packages tex)}
 to the native inputs.  It can be overridden with the
@@ -13892,8 +13930,8 @@ happen because the daemon runs builds in containers where, unlike in our
 environment above, network access is missing, @file{/bin/sh} does not
 exist, etc. (@pxref{Build Environment Setup}).
 
-In such cases, you may need to run inspect the build process from within
-a container similar to the one the build daemon creates:
+In such cases, you may need to inspect the build process from within a
+container similar to the one the build daemon creates:
 
 @example
 $ guix build -K foo
@@ -14271,8 +14309,7 @@ should be checked closely.  If Perl is available in the store, then the
 @code{corelist} utility will be used to filter core modules out of the
 list of dependencies.
 
-The command command below imports metadata for the Acme::Boolean Perl
-module:
+The command below imports metadata for the Acme::Boolean Perl module:
 
 @example
 guix import cpan Acme::Boolean
@@ -14562,6 +14599,13 @@ Additional options include:
 Traverse the dependency graph of the given upstream package recursively
 and generate package expressions for all those packages that are not yet
 in Guix.
+@item --recursive-dev-dependencies
+If @option{--recursive-dev-dependencies} is specified, also the recursively
+imported packages contain their development dependencies, which are recursively
+imported as well.
+@item --allow-yanked
+If no non-yanked version of a crate is available, use the latest yanked
+version instead instead of aborting.
 @end table
 
 @item elm
@@ -15658,7 +15702,7 @@ Coreutils}).
 
 When the given packages are @emph{not} in the store, @command{guix size}
 reports information based on the available substitutes
-(@pxref{Substitutes}).  This makes it possible it to profile disk usage of
+(@pxref{Substitutes}).  This makes it possible to profile the disk usage of
 store items that are not even on disk, only available remotely.
 
 You can also specify several package names:
@@ -16762,7 +16806,7 @@ ChildCommand: guix offload x86_64-linux 7200 1 28800
 @end example
 
 In this example we see that @command{guix-daemon} has three clients:
-@command{guix environment}, @command{guix publish}, and the Cuirass continuous
+@command{guix shell}, @command{guix publish}, and the Cuirass continuous
 integration tool; their process identifier (PID) is given by the
 @code{ClientPID} field.  The @code{SessionPID} field gives the PID of the
 @command{guix-daemon} sub-process of this particular session.
@@ -17580,7 +17624,7 @@ mounted.}.
 
 @findex file-system-label
 File system labels are created using the @code{file-system-label}
-procedure, UUIDs are created using @code{uuid}, and @file{/dev} node are
+procedure, UUIDs are created using @code{uuid}, and @file{/dev} nodes are
 plain strings.  Here's an example of a file system referred to by its
 label, as shown by the @command{e2label} command:
 
@@ -17961,6 +18005,30 @@ This defines LUKS block device encryption using the @command{cryptsetup}
 command from the package with the same name.  It relies on the
 @code{dm-crypt} Linux kernel module.
 @end defvar
+
+@deffn {Procedure} luks-device-mapping-with-options [#:key-file]
+Return a @code{luks-device-mapping} object, which defines LUKS block
+device encryption using the @command{cryptsetup} command from the
+package with the same name.  It relies on the @code{dm-crypt} Linux
+kernel module.
+
+If @code{key-file} is provided, unlocking is first attempted using that
+key file.  This has an advantage of not requiring a password entry, so
+it can be used (for example) to unlock RAID arrays automatically on
+boot.  If key file unlock fails, password unlock is attempted as well.
+Key file is not stored in the store and needs to be available at the
+given location at the time of the unlock attempt.
+
+@lisp
+;; Following definition would be equivalent to running:
+;;   cryptsetup open --key-file /crypto.key /dev/sdb1 data
+(mapped-device
+ (source "/dev/sdb1)
+ (target "data)
+ (type (luks-device-mapping-with-options
+        #:key-file "/crypto.key")))
+@end lisp
+@end deffn
 
 @defvar raid-device-mapping
 This defines a RAID device, which is assembled using the @code{mdadm}
@@ -19901,7 +19969,7 @@ in users, including:
 Special variation of @code{pam-mount} to mount @code{XDG_RUNTIME_DIR}
 @end itemize
 
-Here is example of switching from @code{mingetty-service-type} to
+Here is an example of switching from @code{mingetty-service-type} to
 @code{greetd-service-type}, and how different terminals could be:
 
 @lisp
@@ -20866,8 +20934,7 @@ package, which allows NetworkManager to manage VPNs @i{via} OpenVPN.
 This is the service type to run @url{https://01.org/connman,Connman},
 a network connection manager.
 
-Its value must be an
-@code{connman-configuration} record as in this example:
+Its value must be a @code{connman-configuration} record as in this example:
 
 @lisp
 (service connman-service-type
@@ -21095,7 +21162,7 @@ The WiFi channel to use.
 @item @code{driver} (default: @code{"nl80211"})
 The driver interface type.  @code{"nl80211"} is used with all Linux
 mac80211 drivers.  Use @code{"none"} if building hostapd as a standalone
-RADIUS server that does # not control any wireless/wired driver.
+RADIUS server that does not control any wireless/wired driver.
 
 @item @code{extra-settings} (default: @code{""})
 Extra settings to append as-is to the hostapd configuration file.  See
@@ -22357,7 +22424,7 @@ private keys in it}.  See the output of @code{yggdrasil -genconf} for a
 quick overview of valid keys and their default values.
 
 @item @code{autoconf?} (default: @code{#f})
-Whether to use automatic mode.  Enabling it makes Yggdrasil use adynamic IP
+Whether to use automatic mode.  Enabling it makes Yggdrasil use a dynamic IP
 and peer with IPv6 neighbors.
 
 @item @code{log-level} (default: @code{'info})
@@ -24871,7 +24938,7 @@ List of possible UUIDs:
 @code{671b10b5-42c0-4696-9227-eb28d1b049d6}: BlueZ Experimental Simultaneous Central and Peripheral,
 
 @item
-@code{"15c0a148-c273-11ea-b3de-0242ac130004}: BlueZ Experimental LL privacy,
+@code{15c0a148-c273-11ea-b3de-0242ac130004}: BlueZ Experimental LL privacy,
 
 @item
 @code{330859bc-7506-492d-9370-9a6f0614037f}: BlueZ Experimental Bluetooth Quality Report,
@@ -25533,7 +25600,7 @@ Data type representing the configuration for the
 @code{postgresql-service-type}.
 
 @table @asis
-@item @code{postgresql}
+@item @code{postgresql} (default: @code{postgresql-10})
 PostgreSQL package to use for the service.
 
 @item @code{port} (default: @code{5432})
@@ -31016,7 +31083,7 @@ the configuration.
                   (httpd-virtualhost
                     "*:80"
                     (list (string-join '("ServerName www.example.com"
-                                          "DocumentRoot /srv/http/www.example.com")
+                                         "DocumentRoot /srv/http/www.example.com")
                                        "\n")))))
 @end lisp
 @end defvar
@@ -35094,6 +35161,7 @@ Owner of the @command{mympd} process.
 
 The default @code{%mympd-user} is a system user with the name ``mympd'',
 who is a part of the group @var{group} (see below).
+
 @item @code{group} (default: @code{%mympd-group}) (type: user-group)
 Owner group of the @command{mympd} process.
 
@@ -40203,7 +40271,7 @@ Backend to use to detect changes in the @code{log-path}.  The default is
 @file{/etc/fail2ban/jail.conf} file of the @code{fail2ban} package.
 
 @item @code{max-retry} (type: maybe-integer)
-The number of failures before a host get banned (e.g.  @code{(max-retry
+The number of failures before a host gets banned (e.g.  @code{(max-retry
 5)}).
 
 @item @code{max-matches} (type: maybe-integer)
@@ -41015,6 +41083,55 @@ This option in enabled by default.  In some cases involving the
 @code{u-boot} bootloader, where the device tree has already been loaded
 in RAM, it can be handy to disable the option by setting it to
 @code{#f}.
+
+@item @code{extra-initrd} (default: @code{#f})
+File name of an additional initrd to load during the boot.  It may or
+may not point to a file in the store, but the main use case is for
+out-of-store files containing secrets.
+
+In order to be able to provide decryption keys for the LUKS device, they
+need to be available in the initial ram disk.  However they cannot be
+stored inside the usual initrd, since it is stored in the store and
+being a world-readable (as files in the store are) is not a desired
+property for a initrd containing decryption keys.  You can therefore use
+this field to instruct GRUB to also load a manually created initrd not
+stored in the store.
+
+For any use case not involving secrets, you should use regular initrd
+(@pxref{operating-system Reference, @code{initrd}}) instead.
+
+Suitable image can be created for example like this:
+
+@example
+echo /key-file.bin | cpio -oH newc >/key-file.cpio
+chmod 0000 /key-file.cpio
+@end example
+
+After it is created, you can use it in this manner:
+
+@lisp
+;; Operating system with encrypted boot partition
+(operating-system
+  ...
+  (bootloader (bootloader-configuration
+               (bootloader grub-efi-bootloader)
+               (targets '("/boot/efi"))
+               ;; Load the initrd with a key file
+               (extra-initrd "/key-file.cpio")))
+  (mapped-devices
+   (list (mapped-device
+          (source (uuid "12345678-1234-1234-1234-123456789abc"))
+          (target "my-root")
+          (type (luks-device-mapping-with-options
+                 ;; And use it to unlock the root device
+                 #:key-file "/key-file.bin"))))))
+@end lisp
+
+Be careful when using this option, since pointing to a file that is not
+readable by the grub while booting will cause the boot to fail and
+require a manual edit of the initrd line in the grub menu.
+
+Currently only supported by GRUB.
 @end table
 
 @end deftp
@@ -41115,7 +41232,7 @@ Of course, these options can be combined:
 '("console=com0" "noide")
 @end lisp
 
-+@item @code{multiboot-modules} (default: @code{'()})
+@item @code{multiboot-modules} (default: @code{'()})
 The list of commands for loading Multiboot modules.  For example:
 
 @lisp
@@ -43481,7 +43598,7 @@ utilizing the configuration mechanism described in the previous chapter
 (@pxref{Defining Services}), but for user's dotfiles and packages.  It
 works both on Guix System and foreign distros and allows users to
 declare all the packages and services that should be installed and
-configured for the user.  Once a user has written a file containing
+configured for the user.  Once a user has written a file containing a
 @code{home-environment} record, such a configuration can be
 @dfn{instantiated} by an unprivileged user with the @command{guix home}
 command (@pxref{Invoking guix home}).
@@ -43804,8 +43921,8 @@ be used here, too.  Make sure that modules containing the specified
 packages are imported with @code{use-modules}.  To find a package or
 information about its module use @command{guix search} (@pxref{Invoking
 guix package}).  Alternatively, @code{specification->package} can be
-used to get the package record from string without importing related
-module.
+used to get the package record from a string without importing its
+related module.
 @end defvar
 
 There are few more essential services, but users are not expected to
@@ -44534,19 +44651,19 @@ running on this machine, then it @emph{may} take this file into account:
 this is what @command{sshd} does by default, but be aware that it can
 also be configured to ignore it.
 
-@item @code{add-keys-to-agent} (default: @code{``no''})
+@item @code{add-keys-to-agent} (default: @code{no})
 This string specifies whether keys should be automatically added to a
-running ssh-agent.  If this option is set to @code{``yes''} and a key is
+running ssh-agent.  If this option is set to @code{yes} and a key is
 loaded from a file, the key and its passphrase are added to the agent
 with the default lifetime, as if by @code{ssh-add}.  If this option is
-set to @code{``ask''}, @code{ssh} will require confirmation.  If this
-option is set to @code{``confirm''}, each use of the key must be
-confirmed.  If this option is set to @code{``no''}, no keys are added to
+set to @code{ask}, @code{ssh} will require confirmation.  If this
+option is set to @code{confirm}, each use of the key must be
+confirmed.  If this option is set to @code{no}, no keys are added to
 the agent.  Alternately, this option may be specified as a time interval
 to specify the key's lifetime in @code{ssh-agent}, after which it will
-automatically be removed.  The argument must be @code{``no''},
-@code{``yes''}, @code{``confirm''} (optionally followed by a time
-interval), @code{``ask''} or a time interval.
+automatically be removed.  The argument must be @code{no},
+@code{yes}, @code{confirm} (optionally followed by a time
+interval), @code{ask} or a time interval.
 @end table
 @end deftp
 
@@ -45256,25 +45373,25 @@ PulseAudio clients to use PipeWire transparently.
 
 @node Mail Home Services
 @subsection Mail Home Services
- 
+
 The @code{(gnu home services mail)} module provides services that help
 you set up the tools to work with emails in your home environment.
- 
+
 @cindex msmtp
 @uref{https://marlam.de/msmtp, MSMTP} is a @acronym{SMTP, Simple Mail
 Transfer Protocol} client.  It sends mail to a predefined SMTP server
 that takes care of proper delivery.
- 
+
 The service reference is given below.
- 
+
 @defvar home-msmtp-service-type
 This is the service type for @command{msmtp}.  Its value must be a
 @code{home-msmtp-configuration}, as shown below.  It provides the
 @file{~/.config/msmtp/config} file.
- 
+
 As an example, here is how you would configure @code{msmtp} for a single
 account:
- 
+
 @lisp
 (service home-msmtp-service-type
          (home-msmtp-configuration
@@ -45292,101 +45409,101 @@ account:
 @end defvar
 
 @c %start of fragment
- 
+
 @deftp {Data Type} home-msmtp-configuration
 Available @code{home-msmtp-configuration} fields are:
- 
+
 @table @asis
 @item @code{defaults} (type: msmtp-configuration)
 The configuration that will be set as default for all accounts.
- 
+
 @item @code{accounts} (default: @code{'()}) (type: list-of-msmtp-accounts)
 A list of @code{msmtp-account} records which contain information about
 all your accounts.
- 
+
 @item @code{default-account} (type: maybe-string)
 Set the default account.
- 
+
 @item @code{extra-content} (default: @code{""}) (type: string)
 Extra content appended as-is to the configuration file.  Run
 @command{man msmtp} for more information about the configuration file
 format.
- 
+
 @end table
- 
+
 @end deftp
- 
-@c %end of fragment
- 
-@c %start of fragment
- 
-@deftp {Data Type} msmtp-account
-Available @code{msmtp-account} fields are:
- 
-@table @asis
-@item @code{name} (type: string)
-The unique name of the account.
- 
-@item @code{configuration} (type: msmtp-configuration)
-The configuration for this given account.
- 
-@end table
- 
-@end deftp
- 
+
 @c %end of fragment
 
 @c %start of fragment
- 
+
+@deftp {Data Type} msmtp-account
+Available @code{msmtp-account} fields are:
+
+@table @asis
+@item @code{name} (type: string)
+The unique name of the account.
+
+@item @code{configuration} (type: msmtp-configuration)
+The configuration for this given account.
+
+@end table
+
+@end deftp
+
+@c %end of fragment
+
+@c %start of fragment
+
 @deftp {Data Type} msmtp-configuration
 Available @code{msmtp-configuration} fields are:
- 
+
 @table @asis
 @item @code{auth?} (type: maybe-boolean)
 Enable or disable authentication.
- 
+
 @item @code{tls?} (type: maybe-boolean)
 Enable or disable TLS (also known as SSL) for secured connections.
- 
+
 @item @code{tls-starttls?} (type: maybe-boolean)
 Choose the TLS variant: start TLS from within the session (‘on’,
 default), or tunnel the session through TLS (‘off’).
- 
+
 @item @code{tls-trust-file} (type: maybe-string)
 Activate server certificate verification using a list of trusted
 Certification Authorities (CAs).
- 
+
 @item @code{log-file} (type: maybe-string)
 Enable logging to the specified file.  An empty argument disables
 logging.  The file name ‘-’ directs the log information to standard
 output.
- 
+
 @item @code{host} (type: maybe-string)
 The SMTP server to send the mail to.
- 
+
 @item @code{port} (type: maybe-integer)
 The port that the SMTP server listens on.  The default is 25 ("smtp"),
 unless TLS without STARTTLS is used, in which case it is 465 ("smtps").
- 
+
 @item @code{user} (type: maybe-string)
 Set the user name for authentication.
- 
+
 @item @code{from} (type: maybe-string)
 Set the envelope-from address.
- 
+
 @item @code{password-eval} (type: maybe-string)
 Set the password for authentication to the output (stdout) of the
 command cmd.
- 
+
 @item @code{extra-content} (default: @code{""}) (type: string)
 Extra content appended as-is to the configuration block.  Run
 @command{man msmtp} for more information about the configuration file
 format.
- 
+
 @end table
- 
+
 @end deftp
- 
+
 @c %end of fragment
 
 @node Messaging Home Services
@@ -46622,7 +46739,7 @@ missing.
 @node Separate Debug Info
 @section Separate Debug Info
 
-The problem with debugging information is that is takes up a fair amount
+The problem with debugging information is that it takes up a fair amount
 of disk space.  For example, debugging information for the GNU C Library
 weighs in at more than 60 MiB@.  Thus, as a user, keeping all the
 debugging info of all the installed programs is usually not an option.
@@ -47105,7 +47222,7 @@ traditional bootstrap of the rest of the Guix System.
 @c ./pre-inst-env guix graph -e '(@@ (gnu packages commencement) gcc-core-mesboot0)' | sed -re 's,((bootstrap-seeds|guile-bootstrap).*shape =) box,\1 ellipse,' > doc/images/gcc-core-mesboot0-graph.dot
 @image{images/gcc-core-mesboot0-graph,6in,,Dependency graph of gcc-core-mesboot0}
 
-Work is ongoing to to bring these bootstraps to the @code{arm-linux} and
+Work is ongoing to bring these bootstraps to the @code{arm-linux} and
 @code{aarch64-linux} architectures and to the Hurd.
 
 If you are interested, join us on @samp{#bootstrappable} on the Libera.Chat
@@ -47276,7 +47393,7 @@ bootstrap GCC with a sequence of assemblers, interpreters, and compilers
 of increasing complexity, which could be built from source starting from
 a simple and auditable assembler.
 
-Our first major achievement is the replacement of of GCC, the GNU C Library
+Our first major achievement is the replacement of GCC, the GNU C Library
 and Binutils by MesCC-Tools (a simple hex linker and macro assembler) and Mes
 (@pxref{Top, GNU Mes Reference Manual,, mes, GNU Mes}, a Scheme interpreter
 and C compiler in Scheme).  Neither MesCC-Tools nor Mes can be fully

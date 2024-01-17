@@ -61,6 +61,7 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system trivial)
   #:use-module (guix download)
+  #:use-module (guix memoization)
   #:use-module (guix git-download)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
@@ -69,6 +70,7 @@
   #:use-module (guix gexp)
   #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)
+  #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26))
 
 ;; This is the hash for the empty file, and the reason it's relevant is not
@@ -161,7 +163,7 @@
 
 ;;; Rust 1.54 is special in that it is built with mrustc, which shortens the
 ;;; bootstrap path.
-(define rust-bootstrap
+(define-public rust-bootstrap
   (package
     (name "rust")
     (version "1.54.0")
@@ -186,7 +188,8 @@
        (patches (search-patches "rustc-1.54.0-src.patch"))
        (patch-flags '("-p0"))))         ;default is -p1
     (outputs '("out" "cargo"))
-    (properties '((timeout . 72000)           ;20 hours
+    (properties '((hidden? . #t)
+                  (timeout . 72000)           ;20 hours
                   (max-silent-time . 18000))) ;5 hours (for armel)
     (build-system gnu-build-system)
     (inputs
@@ -380,7 +383,7 @@ safety and thread safety guarantees.")
     ;; Dual licensed.
     (license (list license:asl2.0 license:expat))))
 
-(define rust-1.55
+(define-public rust-1.55
   (package
     (name "rust")
     (version "1.55.0")
@@ -408,7 +411,8 @@ safety and thread safety guarantees.")
              (("    target_arch = \"s390x\"," all)
               (string-append all "\n    target_arch = \"riscv64\",")))))))
     (outputs '("out" "cargo"))
-    (properties '((timeout . 72000)           ;20 hours
+    (properties '((hidden? . #t)
+                  (timeout . 72000)           ;20 hours
                   (max-silent-time . 18000))) ;5 hours (for armel)
     (build-system gnu-build-system)
     (arguments
@@ -566,7 +570,7 @@ safety and thread safety guarantees.")
     ;; Dual licensed.
     (license (list license:asl2.0 license:expat))))
 
-(define rust-1.56
+(define-public rust-1.56
   (let ((base-rust (rust-bootstrapped-package
                     rust-1.55 "1.56.1"
                     "04cmqx7nn63hzz7z27b2b0dj2qx18rck9ifvip43s6dampx8v2f3")))
@@ -586,13 +590,13 @@ safety and thread safety guarantees.")
                     (string-append name "\"" ,%cargo-reference-hash "\"")))
                  (generate-all-checksums "vendor"))))))))))
 
-(define rust-1.57
+(define-public rust-1.57
   (rust-bootstrapped-package
    ;; Verified that it *doesn't* build with 1.55. e.g.:
    ;; * feature `edition2021` is required
    rust-1.56 "1.57.0" "06jw8ka2p3kls8p0gd4p0chhhb1ia1mlvj96zn78n7qvp71zjiim"))
 
-(define rust-1.58
+(define-public rust-1.58
   (rust-bootstrapped-package
    ;; Verified that it *doesn't* build with 1.56. e.g.:
    ;; * error: attributes starting with `rustc` are reserved for use by the
@@ -602,7 +606,7 @@ safety and thread safety guarantees.")
    ;;   `const_eval_select_ct`
    rust-1.57 "1.58.1" "1iq7kj16qfpkx8gvw50d8rf7glbm6s0pj2y1qkrz7mi56vfsyfd8"))
 
-(define rust-1.59
+(define-public rust-1.59
   (let ((base-rust
           (rust-bootstrapped-package
             ;; Verified that it *doesn't* build with 1.57. e.g.:
@@ -631,13 +635,13 @@ safety and thread safety guarantees.")
                        (("\\.insn i 0x0F, 0, x0, x0, 0x010") ".word 0x0100000F")))))))
            (package-arguments base-rust))))))
 
-(define rust-1.60
+(define-public rust-1.60
   (rust-bootstrapped-package
    ;; Verified that it *doesn't* build with 1.58. e.g.:
    ;; * error: unknown codegen option: `symbol-mangling-version`
    rust-1.59 "1.60.0" "1drqr0a26x1rb2w3kj0i6abhgbs3jx5qqkrcwbwdlx7n3inq5ji0"))
 
-(define rust-1.61
+(define-public rust-1.61
   (let ((base-rust
           (rust-bootstrapped-package
            rust-1.60 "1.61.0" "1vfs05hkf9ilk19b2vahqn8l6k17pl9nc1ky9kgspaascx8l62xd")))
@@ -659,15 +663,15 @@ safety and thread safety guarantees.")
               (for-each delete-file
                         (find-files "vendor" ".*\\.(a|dll|exe|lib)$")))))))))
 
-(define rust-1.62
+(define-public rust-1.62
   (rust-bootstrapped-package
    rust-1.61 "1.62.1" "0gqkg34ic77dcvsz69qbdng6g3zfhl6hnhx7ha1mjkyrzipvxb3j"))
 
-(define rust-1.63
+(define-public rust-1.63
   (rust-bootstrapped-package
    rust-1.62 "1.63.0" "1l4rrbzhxv88pnfq94nbyb9m6lfnjwixma3mwjkmvvs2aqlq158z"))
 
-(define rust-1.64
+(define-public rust-1.64
   (let ((base-rust
          (rust-bootstrapped-package
           rust-1.63 "1.64.0" "018j720b2n12slp4xk64jc6shkncd46d621qdyzh2a8s3r49zkdk")))
@@ -691,7 +695,7 @@ safety and thread safety guarantees.")
                     (string-append name "\"" ,%cargo-reference-hash "\"")))
                  (generate-all-checksums "vendor"))))))))))
 
-(define rust-1.65
+(define-public rust-1.65
   (let ((base-rust
          (rust-bootstrapped-package
           rust-1.64 "1.65.0" "0f005kc0vl7qyy298f443i78ibz71hmmh820726bzskpyrkvna2q")))
@@ -703,11 +707,11 @@ safety and thread safety guarantees.")
          (patches '())
          (patch-flags '("-p1")))))))
 
-(define rust-1.66
+(define-public rust-1.66
   (rust-bootstrapped-package
    rust-1.65 "1.66.1" "1fjr94gsicsxd2ypz4zm8aad1zdbiccr7qjfbmq8f8f7jhx96g2v"))
 
-(define rust-1.67
+(define-public rust-1.67
   (let ((base-rust
           (rust-bootstrapped-package
            rust-1.66 "1.67.1" "0vpzv6rm3w1wbni17ryvcw83k5klhghklylfdza3nnp8blz3sj26")))
@@ -716,11 +720,11 @@ safety and thread safety guarantees.")
       (inputs (modify-inputs (package-inputs base-rust)
                              (replace "llvm" llvm-15))))))
 
-(define rust-1.68
+(define-public rust-1.68
   (rust-bootstrapped-package
    rust-1.67 "1.68.2" "15ifyd5jj8rd979dkakp887hgmhndr68pqaqvd2hqkfdywirqcwk"))
 
-(define rust-1.69
+(define-public rust-1.69
   (let ((base-rust
           (rust-bootstrapped-package
             rust-1.68 "1.69.0"
@@ -739,7 +743,7 @@ safety and thread safety guarantees.")
               (for-each delete-file
                         (find-files "vendor" "\\.(a|dll|exe|lib)$")))))))))
 
-(define rust-1.70
+(define-public rust-1.70
   (let ((base-rust
          (rust-bootstrapped-package
           rust-1.69 "1.70.0"
@@ -756,7 +760,7 @@ safety and thread safety guarantees.")
         ;; for a precompiled library.
         (patches (search-patches "rust-1.70-fix-rustix-build.patch")))))))
 
-(define rust-1.71
+(define-public rust-1.71
   (let ((base-rust
           (rust-bootstrapped-package
            rust-1.70 "1.71.1" "0bj79syjap1kgpg9pc0r4jxc0zkxwm6phjf3digsfafms580vabg")))
@@ -775,7 +779,7 @@ safety and thread safety guarantees.")
                     (string-append name "\"" ,%cargo-reference-hash "\"")))
                  (generate-all-checksums "vendor"))))))))))
 
-(define rust-1.72
+(define-public rust-1.72
   (let ((base-rust
           (rust-bootstrapped-package
            rust-1.71 "1.72.1" "15gqd1jzhnc16a7gjmav4x1v83jjbzyjh1gvcdfvpkajd9gq8j3z")))
@@ -800,7 +804,7 @@ safety and thread safety guarantees.")
                  (string-append "rustix = { version = \"=0.37.11\","
                                 " features = [\"use-libc\"] }"))))))))))
 
-(define rust-1.73
+(define-public rust-1.73
   (let ((base-rust (rust-bootstrapped-package rust-1.72 "1.73.0"
                     "0fmvn7vg3qg9xprgfwv10g3ygy8i4j4bkcxcr1xdy89d3xnjxmln")))
     (package
@@ -840,6 +844,7 @@ safety and thread safety guarantees.")
   (let ((base-rust rust-1.73))
     (package
       (inherit base-rust)
+      (properties (alist-delete 'hidden? (package-properties base-rust)))
       (outputs (cons* "rust-src" "tools" (package-outputs base-rust)))
       (arguments
        (substitute-keyword-arguments (package-arguments base-rust)
@@ -1060,7 +1065,10 @@ exec -a \"$0\" \"~a\" \"$@\""
                             (package-native-inputs base-rust))))))
 
 (define*-public (make-rust-sysroot target)
-  (let ((base-rust rust))
+  (make-rust-sysroot/implementation target rust))
+
+(define make-rust-sysroot/implementation
+  (mlambda (target base-rust)
     (package
       (inherit base-rust)
       (name (string-append "rust-sysroot-for-" target))

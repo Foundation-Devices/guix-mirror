@@ -21,6 +21,7 @@
 ;;; Copyright © 2023 zamfofex <zamfofex@twdb.moe>
 ;;; Copyright © 2023 Navid Afkhami <navid.afkhami@mdc-berlin.de>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2023 Troy Figiel <troy@troyfigiel.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -812,6 +813,94 @@ SentencePiece allows us to make a purely end-to-end system that does not
 depend on language-specific pre- or post-processing.")
     (license license:asl2.0)))
 
+(define-public python-hopcroftkarp
+  ;; This commit fixes a broken import, but has not been released to PyPI.
+  (let ((commit "2846e1dd3265d95d2bddb0cf4190b830cbb4efe6")
+        (revision "1"))
+    (package
+      (name "python-hopcroftkarp")
+      (version (git-version "1.2.5" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/sofiatolaosebikan/hopcroftkarp")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "018ilrp41fcclmb5lsml3aijwbmhbq3m7wy65hr1fryj0avic8fr"))))
+      (build-system pyproject-build-system)
+      (home-page "https://github.com/sofiatolaosebikan/hopcroftkarp")
+      (synopsis "Implementation of the Hopcroft-Karp algorithm")
+      (description
+       "This package implements the Hopcroft-Karp algorithm, producing a maximum
+cardinality matching from a bipartite graph.")
+      (license license:gpl3))))
+
+(define-public python-persim
+  (package
+    (name "python-persim")
+    (version "0.3.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "persim" version))
+       (sha256
+        (base32 "0q8wfakx8q4h3ryvw8cba0v6z7xn9139qkrzs3mi1ggyzacnx9d7"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-deprecated
+                             python-hopcroftkarp
+                             python-joblib
+                             python-matplotlib
+                             python-numpy
+                             python-scikit-learn
+                             python-scipy))
+    (native-inputs (list python-pytest python-pytest-cov))
+    (home-page "https://persim.scikit-tda.org")
+    (synopsis "Tools for analyzing persistence diagrams in Python")
+    (description
+     "This package includes a variety of tools used to analyze persistence diagrams.
+It currently houses implementations of
+@itemize
+@item Persistence images
+@item Persistence landscapes
+@item Bottleneck distance
+@item Modified Gromov–Hausdorff distance
+@item Sliced Wasserstein kernel
+@item Heat kernel
+@item Diagram plotting
+@end itemize
+")
+    (license license:expat))) ; MIT License
+
+(define-public python-ripser
+  (package
+    (name "python-ripser")
+    (version "0.6.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "ripser" version))
+       (sha256
+        (base32 "1575nwsn6b29z7w1mjk23ri83bxq2b4ld979hpgm174642a3x6vs"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-numpy python-persim python-scikit-learn
+                             python-scipy))
+    (native-inputs (list python-cython python-pytest))
+    (home-page "https://ripser.scikit-tda.org")
+    (synopsis "Persistent homology library for Python")
+    (description
+     "This package implements a variety of persistent homology algorithms.  It
+provides an interface for
+@itemize
+@item computing persistence cohomology of sparse and dense data sets
+@item visualizing persistence diagrams
+@item computing lowerstar filtrations on images
+@item computing representative cochains
+@end itemize
+")
+    (license license:expat))) ; MIT License
+
 (define-public python-sacrebleu
   (package
     (name "python-sacrebleu")
@@ -1524,7 +1613,7 @@ computing environments.")
 (define-public python-scikit-learn
   (package
     (name "python-scikit-learn")
-    (version "1.2.2")
+    (version "1.3.2")
     (source
      (origin
        (method git-fetch)
@@ -1534,20 +1623,25 @@ computing environments.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0x7gfzvcdadf8jnvpz8m373bi37bc6sndfbjh9lzmn3p39pwm2hl"))))
-    (build-system python-build-system)
+         "1hr024vcilbjwlwn32ppadri0ypnzjmkfxhkkw8gih0qjvcvjbs7"))))
+    (build-system pyproject-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
+     (list
+      #:test-flags
+      '(list "-m" "not network"
+             ;; This test tries to access the internet.
+             "-k" "not test_load_boston_alternative")
+      #:phases
+      '(modify-phases %standard-phases
          (add-before 'build 'configure
            (lambda _
              (setenv "SKLEARN_BUILD_PARALLEL"
                      (number->string (parallel-job-count)))))
          (add-after 'build 'build-ext
            (lambda _ (invoke "python" "setup.py" "build_ext" "--inplace"
-                             "-j" (number->string (parallel-job-count)))))
+                        "-j" (number->string (parallel-job-count)))))
          (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
+           (lambda* (#:key tests? test-flags #:allow-other-keys)
              (when tests?
                ;; Restrict OpenBLAS threads to prevent segfaults while testing!
                (setenv "OPENBLAS_NUM_THREADS" "1")
@@ -1558,14 +1652,11 @@ computing environments.")
                ;; Step out of the source directory to avoid interference;
                ;; we want to run the installed code with extensions etc.
                (with-directory-excursion "/tmp"
-                 (invoke "pytest" "-vv" "--pyargs" "sklearn"
-                         "-m" "not network"
-                         "-n" (number->string (parallel-job-count))
-                         ;; This test tries to access the internet.
-                         "-k" "not test_load_boston_alternative"))))))))
+                 (apply invoke "pytest" "--pyargs" "sklearn"
+                        test-flags))))))))
     (inputs (list openblas))
     (native-inputs
-     (list python-cython
+     (list python-cython-0.29.35
            python-pandas
            python-pytest
            python-pytest-xdist))
@@ -1687,73 +1778,6 @@ number of threads used in the threadpool-backed of common native libraries used
 for scientific computing and data science (e.g. BLAS and OpenMP).")
     (license license:bsd-3)))
 
-(define-public python-tslearn
-  (package
-    (name "python-tslearn")
-    (version "0.6.2")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/tslearn-team/tslearn")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "0l9l21jy78mhajdfwyx8rskw08597vg55ff22bjkv6xrjjr9g4ac"))))
-    (build-system pyproject-build-system)
-    (arguments
-     (list
-      #:test-flags
-      '(list "-k"
-             (string-append
-              ;; This one fails because of a difference in accuracy.
-              "not test_all_estimators[LearningShapelets-LearningShapelets]"
-              ;; XXX: It's embarrassing to disable these two, but the truth is
-              ;; that there's only so much we can do to force this package to
-              ;; work with Tensorflow 1.9.  It's still worth having this
-              ;; package, because it can be used without the Tensorflow
-              ;; backend.
-              ;; TypeError: cannot pickle '_thread.RLock' object
-              " and not test_shapelets"
-              ;; TypeError: Expected binary or unicode string, got 2
-              " and not test_serialize_shapelets"))
-      #:phases
-      '(modify-phases %standard-phases
-         (add-after 'unpack 'compatibility
-           (lambda _
-             (substitute* "tslearn/tests/sklearn_patches.py"
-               (("_pairwise_estimator_convert_X")
-                "_enforce_estimator_tags_X")
-               (("pairwise_estimator_convert_X\\(([^,]+), ([^,\\)]+)" _ a b)
-                (string-append "pairwise_estimator_convert_X(" b ", " a)))
-             (substitute* "tslearn/tests/test_shapelets.py"
-               (("tf.optimizers.Adam")
-                "tf.keras.optimizers.Adam"))
-             (substitute* "tslearn/shapelets/shapelets.py"
-               (("tf.keras.utils.set_random_seed")
-                "tf.set_random_seed")
-               (("def __call__\\(self, shape, dtype=None\\):")
-                "def __call__(self, shape, dtype=None, partition_info=None):")
-               (("tf.math.is_finite")
-                "tf.is_finite")))))))
-    (propagated-inputs (list python-cesium
-                             python-h5py
-                             python-joblib
-                             python-numba
-                             python-numpy
-                             python-pandas
-                             python-scipy
-                             python-scikit-learn
-                             tensorflow
-                             python-wheel))
-    (native-inputs (list python-pytest))
-    (home-page "https://github.com/tslearn-team/tslearn")
-    (synopsis "Machine learning toolkit for time series data")
-    (description "This is a Python library for time series data mining.
-It provides tools for time series classification, clustering
-and forecasting.")
-    (license license:bsd-2)))
-
 (define-public python-imbalanced-learn
   (package
     (name "python-imbalanced-learn")
@@ -1800,27 +1824,18 @@ It is compatible with @code{scikit-learn}.")
 (define-public python-pynndescent
   (package
     (name "python-pynndescent")
-    (version "0.5.10")
+    (version "0.5.11")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pynndescent" version))
        (sha256
-        (base32 "1bc8aa6jfw28y6sb0nvfdrfgh66a42bqb4znvpimzx9yq21wcpax"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key inputs outputs tests? #:allow-other-keys)
-             (when tests?
-               (invoke "python" "-m" "pytest" "--pyargs" "pynndescent"
-                       ;; wminkowski no longer exists in scipy 1.8.0 (see:
-                       ;; https://github.com/lmcinnes/pynndescent/issues/177)
-                       "-k" "not test_weighted_minkowski")))))))
+        (base32 "0l5dpdsk5vg7rpay81bncp04119hnl5z7zxjv63jrnm9spcwwi3g"))))
+    (build-system pyproject-build-system)
     (native-inputs (list python-pytest))
     (propagated-inputs
-     (list python-joblib
+     (list python-importlib-metadata
+           python-joblib
            python-llvmlite
            python-numba
            python-scikit-learn
@@ -1913,16 +1928,14 @@ standard feature selection algorithms.")
     (build-system pyproject-build-system)
     (arguments
      (list
-      #:phases
-      '(modify-phases %standard-phases
-         (add-after 'unpack 'disable-bad-tests
-           (lambda _
-             ;; XXX This requires pytest lazy_fixture
-             (delete-file "tests/test_multilabel_classification.py")
-             ;; Requires tensorflow
-             (delete-file "tests/test_frameworks.py")
+      #:test-flags
+      ;; This test fails because the newer version of scikit learn returns one
+      ;; more classification result than expected.  This should be harmless.
+      '(list "-k" "not test_aux_inputs"
+             ;; Requires Tensorflow
+             "--ignore=tests/test_frameworks.py"
              ;; Tries to download datasets from the internet at runtime.
-             (delete-file "tests/test_dataset.py"))))))
+             "--ignore=tests/test_dataset.py")))
     (propagated-inputs
      (list python-numpy
            python-pandas
@@ -1931,6 +1944,7 @@ standard feature selection algorithms.")
            python-tqdm))
     (native-inputs
      (list python-pytest
+           python-pytest-lazy-fixture
            python-pytorch
            python-torchvision))
     (home-page "https://cleanlab.ai")
@@ -3772,46 +3786,26 @@ methodxs at scale on CPU or GPU.")
 (define-public python-umap-learn
   (package
     (name "python-umap-learn")
-    (version "0.5.3")
+    (version "0.5.5")
     (source
      (origin
        (method git-fetch)               ;no tests in pypi release
        (uri (git-reference
              (url "https://github.com/lmcinnes/umap")
-             (commit version)))
+             (commit (string-append "release-" version))))
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1315jkb0h1b579y9m59632f0nnpksilm01nxx46in0rq8zna8vsb"))))
-    (build-system python-build-system)
+         "0ijyiaqycynwj1383cxp519c765gjbg1f6fjwbvqj1gims710w3d"))))
+    (build-system pyproject-build-system)
     (arguments
      (list
       #:phases
       #~(modify-phases %standard-phases
-          (add-after 'unpack 'numpy-compatibility
-            (lambda _
-              (substitute* "umap/tests/test_umap_metrics.py"
-                ;; See commit a714b59bd9e2ca2e63312bc3491b2b037a42f2f2
-                (("sparse_binary_data.todense\\(\\),")
-                 "np.asarray(sparse_binary_data.todense()),")
-                ;; See commit c7d05683325589ad432a55e109cacb9d631cfaa9
-                (("sparse_spatial_data.todense\\(\\),")
-                 "np.asarray(sparse_spatial_data.todense()),"))
-              ;; See commit 949abd082524fce8c45dfb147bcd8e8ef49eade3
-              (substitute* "umap/tests/test_umap_ops.py"
-                (("np.random,") "None,"))))
           ;; Numba needs a writable dir to cache functions.
           (add-before 'check 'set-numba-cache-dir
             (lambda _
-              (setenv "NUMBA_CACHE_DIR" "/tmp")))
-          (replace 'check
-            (lambda* (#:key tests? #:allow-other-keys)
-              (when tests?
-                (setenv "HOME" "/tmp")
-                (invoke "pytest" "-vv" "umap"
-                        ;; This test can fail because trust may only be
-                        ;; 0.9679405204460967 >= 0.97
-                        "-k" "not test_densmap_trustworthiness_on_iris_supervised")))))))
+              (setenv "NUMBA_CACHE_DIR" "/tmp"))))))
     (native-inputs (list python-pytest))
     (propagated-inputs
      (list python-numba
@@ -4205,7 +4199,7 @@ Actions for the Lightning suite of libraries.")
 (define-public python-captum
   (package
     (name "python-captum")
-    (version "0.6.0")
+    (version "0.7.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -4214,7 +4208,7 @@ Actions for the Lightning suite of libraries.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1h4n91ivhjxm6wj0vgqpfss2dmq4sjcp0appd08cd5naisabjyb5"))))
+                "0bgfwnlsi50hbmknn7qljiy93fi6ggwz3k7yk9kj7s37mhzaylym"))))
     (build-system pyproject-build-system)
     (arguments
      (list
@@ -4224,7 +4218,8 @@ Actions for the Lightning suite of libraries.")
              ;; accuracy problems.
              "not test_softmax_classification_batch_multi_target\
  and not test_softmax_classification_batch_zero_baseline")))
-    (propagated-inputs (list python-matplotlib python-numpy python-pytorch))
+    (propagated-inputs
+     (list python-matplotlib python-numpy python-pytorch python-tqdm))
     (native-inputs (list jupyter
                          python-annoy
                          python-black
