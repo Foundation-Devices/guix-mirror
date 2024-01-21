@@ -199,7 +199,7 @@ living in the same process.")
 (define-public gnutls
   (package
     (name "gnutls")
-    (version "3.8.2")
+    (version "3.8.3")
     (source (origin
               (method url-fetch)
               ;; Note: Releases are no longer on ftp.gnu.org since the
@@ -210,7 +210,7 @@ living in the same process.")
               (patches (search-patches "gnutls-skip-trust-store-test.patch"))
               (sha256
                (base32
-                "0xzgmp1ck5ifvdki4jg29r278w2p1m3a0qz38g99v6zsdw0yarg7"))))
+                "0ghpyhhfa3nsraph6dws50jb3dc8g2cfl7dizdnyrm179fawakzp"))))
     (build-system gnu-build-system)
     (arguments
      (list #:tests? (not (or (%current-target-system)
