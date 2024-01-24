@@ -147,6 +147,7 @@
                           (#t #t))))))))
       ((system-hurd?)
        (list
+        #:configure-flags #~(list "--enable-install-gpg-error-config")
         #:phases
         #~(modify-phases %standard-phases
             (add-after 'unpack 'skip-tests
@@ -156,7 +157,8 @@
                   (("(^| )main *\\(.*" all)
                    (string-append all "{\n  exit (77);//"))))))))
       (else
-       '())))
+       (list
+        #:configure-flags #~(list "--enable-install-gpg-error-config")))))
     (native-inputs (list gettext-minimal))
     (home-page "https://gnupg.org")
     (synopsis "Library of error values for GnuPG components")
