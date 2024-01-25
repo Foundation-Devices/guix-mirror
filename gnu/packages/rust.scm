@@ -989,13 +989,14 @@ safety and thread safety guarantees.")
                                      out "/lib\");\n"))))))
              (add-after 'unpack 'unpack-profiler-rt
                ;; Copy compiler-rt sources to where libprofiler_builtins looks
-               ;; for its vendored copy.  Keep the clang-runtime version in
-               ;; sync with the LLVM version used to build Rust.
+               ;; for its vendored copy.
                (lambda* (#:key inputs #:allow-other-keys)
                  (mkdir-p "src/llvm-project/compiler-rt")
-                 (invoke "tar" "-xf" #$(package-source clang-runtime-15)
-                   "-C" "src/llvm-project/compiler-rt" "--strip-components=1")))
-             (add-after 'enable-codegen-tests 'enable-profiling
+                 (copy-recursively
+                   (string-append (assoc-ref inputs "clang-source")
+                                  "/compiler-rt")
+                   "src/llvm-project/compiler-rt")))
+             (add-after 'configure 'enable-profiling
                (lambda _
                  (substitute* "config.toml"
                    (("^profiler =.*$") "")
@@ -1072,10 +1073,13 @@ exec -a \"$0\" \"~a\" \"$@\""
                                               "/lib/rustlib/src/rust/library")
                                (string-append bin "/.rust-analyzer-real"))))
                    (chmod (string-append bin "/rust-analyzer") #o755))))))))
-      ;; Add test inputs.
-      (native-inputs (cons* `("gdb" ,gdb/pinned)
-                            `("procps" ,procps)
-                            (package-native-inputs base-rust))))))
+      (native-inputs (cons*
+                       ;; Keep in sync with the llvm used to build rust.
+                       `("clang-source" ,(package-source clang-runtime-15))
+                       ;; Add test inputs.
+                       `("gdb" ,gdb/pinned)
+                       `("procps" ,procps)
+                       (package-native-inputs base-rust))))))
 
 (define*-public (make-rust-sysroot target)
   (make-rust-sysroot/implementation target rust))
