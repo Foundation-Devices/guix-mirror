@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2014-2021, 2023 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2014-2021, 2023-2024 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017 Mathieu Lirzin <mthl@gnu.org>
 ;;; Copyright © 2017 Christopher Baines <mail@cbaines.net>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
@@ -121,12 +121,6 @@ respective documentation."
   (define gnutls
     (module-ref (resolve-interface '(gnu packages tls)) 'guile-gnutls))
 
-  (define glibc-locales
-    ;; Note: pick the '-final' variant to avoid circular dependency on
-    ;; i586-gnu, where 'glibc-utf8-locales' indirectly depends on Git.
-    (module-ref (resolve-interface '(gnu packages commencement))
-                'glibc-utf8-locales-final))
-
   (define modules
     (delete '(guix config)
             (source-module-closure '((guix build git)
@@ -151,9 +145,7 @@ respective documentation."
             ;; Let Guile interpret file names as UTF-8, otherwise
             ;; 'delete-file-recursively' might fail to delete all of
             ;; '.git'--see <https://issues.guix.gnu.org/54893>.
-            (setenv "GUIX_LOCPATH"
-                    #+(file-append glibc-locales "/lib/locale"))
-            (setlocale LC_ALL "en_US.utf8")
+            (setlocale LC_ALL "C.UTF-8")
 
             ;; The 'git submodule' commands expects Coreutils, sed, grep,
             ;; etc. to be in $PATH.  This also ensures that git extensions are
