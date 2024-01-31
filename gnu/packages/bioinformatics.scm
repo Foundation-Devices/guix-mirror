@@ -8,7 +8,7 @@
 ;;; Copyright © 2016, 2020, 2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2016, 2018 Raoul Bonnal <ilpuccio.febo@gmail.com>
 ;;; Copyright © 2017, 2018 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2017, 2021, 2022 Arun Isaac <arunisaac@systemreboot.net>
+;;; Copyright © 2017, 2021, 2022, 2024 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2018 Joshua Sierles, Nextjournal <joshua@nextjournal.com>
 ;;; Copyright © 2018 Gábor Boskovits <boskovits@gmail.com>
 ;;; Copyright © 2018-2023 Mădălin Ionel Patrașcu <madalinionel.patrascu@mdc-berlin.de>
@@ -1101,6 +1101,43 @@ high-throughput sequence analysis.  The package is primarily useful to
 developers of other R packages who wish to make use of HTSlib.")
       (license license:lgpl2.0+))))
 
+(define-public r-scenic
+  (let ((commit "cedf8490a634da550cea2c831544e5f7f14467d2")
+        (revision "1"))
+    (package
+      (name "r-scenic")
+      (version (git-version "1.3.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/aertslab/SCENIC")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "17ai0q260hdqbvm1km1s5dw93pgz4f546ycfii57jyy9m9jka7r0"))))
+      (properties `((upstream-name . "SCENIC")))
+      (build-system r-build-system)
+      (propagated-inputs (list r-aucell
+                               r-data-table
+                               r-dynamictreecut
+                               r-genie3
+                               r-ggrepel
+                               r-mixtools
+                               r-nmf
+                               r-rcistarget
+                               r-rtsne))
+      (native-inputs (list r-knitr))
+      (home-page "https://github.com/aertslab/SCENIC")
+      (synopsis
+       "SCENIC (Single Cell rEgulatory Network Inference and Clustering)")
+      (description "SCENIC (Single-cell regulatory network inference and
+clustering) is an R package to infer Gene Regulatory Networks and cell types
+from single-cell RNA-seq data.")
+      ;; As of commit cedf8490a634da550cea2c831544e5f7f14467d2 the license is
+      ;; GPLv3.
+      (license license:gpl3))))
+
 (define-public r-singlet
   (let ((commit "765a6c45081807a1522f0e8983e2417822a36f36")
         (revision "1"))
@@ -1470,6 +1507,39 @@ cpp.find_library('hdf5_cpp', dirs : '~a'), "
     (description
      "Blasr is a genomic sequence aligner for processing PacBio long reads.")
     (license license:bsd-3)))
+
+(define-public randfold
+  (package
+    (name "randfold")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "http://bioinformatics.psb.ugent.be/"
+                           "supplementary_data/erbon/nov2003/downloads/"
+                           "randfold-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0gqixl4ncaibrxmn25d6lm2hrw4ml2fj13nrc9q1kilsxdfi91mj"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f                       ;no tests provided
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (replace 'install
+            (lambda _
+              (install-file "randfold"
+                            (string-append #$output "/bin")))))))
+    (inputs (list eddylab-squid))
+    (home-page
+     "http://bioinformatics.psb.ugent.be/supplementary_data/erbon/nov2003/")
+    (synopsis "Minimum free energy of folding randomization test software")
+    (description "randfold computes the probability that, for a given
+sequence, the @dfn{Minimum Free Energy} (MFE) of the secondary structure is
+different from MFE computed with random sequences.")
+    (license license:gpl2)))
 
 (define-public ribotaper
   (package
@@ -2114,6 +2184,45 @@ matplotlib Axes objects, making them easy to style and incorporate into
 multi-panel figures.")
     (license license:expat)))
 
+(define-public python-magic-impute
+  (package
+    (name "python-magic-impute")
+    (version "1.2.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/KrishnaswamyLab/MAGIC")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "1yjs16vg87lcg9g16bnblg1v9sk73j6dm229lkcz0bfjlzxjhv8w"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:tests? #false ;there are none
+      #:phases
+      '(modify-phases %standard-phases
+         (add-after 'unpack 'chdir
+           (lambda _ (chdir "python"))))))
+    (propagated-inputs
+     (list python-future
+           python-graphtools
+           python-matplotlib
+           python-numpy
+           python-pandas
+           python-scikit-learn
+           python-scipy
+           python-tasklogger))
+    (home-page "https://github.com/KrishnaswamyLab/MAGIC")
+    (synopsis "Markov affinity-based graph imputation of cells")
+    (description "MAGIC is an interactive tool to impute missing values in
+single-cell sequencing data and to restore the structure of the data.  It also
+provides data pre-processing functionality such as dimensionality reduction
+and gene expression visualization.")
+    (license license:gpl2+)))
+
 (define-public python-parabam
   (package
     (name "python-parabam")
@@ -2431,6 +2540,7 @@ counts.")
         (base32
          "1s5373g5jjbshh3q39zy7dlxr7nda6ksxq9d1gw46h82c4fsmfbn"))))
     (build-system pyproject-build-system)
+    (arguments (list #:tests? #false)) ;there are none
     (propagated-inputs
      (list python-future
            python-h5py
@@ -4653,6 +4763,64 @@ meso, or continuum scale.")
 files.")
     (license license:expat)))
 
+(define-public lsgkm
+  (package
+    (name "lsgkm")
+    (version "0.1.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/Dongwon-Lee/lsgkm.git")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0b3m94kndvimdfjaf1q2yhmsn7lm5s9v81c5xgfjcp6ig7mh3sa5"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:make-flags '(list "-C" "src")
+      #:tests? #false                   ;there are no executable tests
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (for-each (lambda (file)
+                            (install-file file bin))
+                          '("src/gkmtrain"
+                            "src/gkmpredict"))))))))
+    (home-page "https://github.com/Dongwon-Lee/lsgkm")
+    (synopsis "Predict regulatory DNA elements in large-scale data")
+    (description "gkm-SVM, a sequence-based method for predicting regulatory
+DNA elements, is a useful tool for studying gene regulatory mechanisms.
+LS-GKM is an effort to improve the method.  It offers much better scalability
+and provides further advanced gapped k-mer based kernel functions.  As a
+result, LS-GKM achieves considerably higher accuracy than the original
+gkm-SVM.")
+    (license license:gpl3+)))
+
+(define-public python-fcsparser
+  (package
+    (name "python-fcsparser")
+    (version "0.2.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "fcsparser" version))
+       (sha256
+        (base32 "1skk1k8phq9sj4ar0cnq8px89y3kcyh5zrbl6anz9wcdcyzkc16z"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-numpy python-pandas))
+    (native-inputs (list python-poetry-core python-pytest))
+    (home-page "https://github.com/eyurtsev/fcsparser")
+    (synopsis "Package for reading raw fcs files")
+    (description
+     "This package provides a Python package for reading raw fcs files")
+    (license license:expat)))
+
 (define-public python-pybigwig
   (package
     (name "python-pybigwig")
@@ -4687,17 +4855,89 @@ files.")
 accessing bigWig files.")
     (license license:expat)))
 
+(define-public python-pyfasta
+  ;; The release on pypi does not contain the test data files.
+  (let ((commit "c2f0611c5311f1b1466f2d56560447898b4a8b03")
+        (revision "1"))
+    (package
+      (name "python-pyfasta")
+      (version (git-version "0.5.2" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/brentp/pyfasta")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "0a189id3fbv88gssyk6adbmz2ll1mqpmyw8vxmx3fi955gvaq9j7"))))
+      (build-system pyproject-build-system)
+      (arguments
+       (list
+        #:phases
+        '(modify-phases %standard-phases
+           (add-after 'unpack 'python3.10-compat
+             (lambda _
+               (substitute* "pyfasta/__init__.py"
+                 (("from fasta import")
+                  "from pyfasta.fasta import")
+                 (("from records import")
+                  "from pyfasta.records import")
+                 (("from split_fasta import")
+                  "from pyfasta.split_fasta import")
+                 (("in f.iteritems")
+                  "in f.items"))
+               (substitute* "pyfasta/fasta.py"
+                 (("from collections import Mapping")
+                  "from collections.abc import Mapping")
+                 (("from records import")
+                  "from pyfasta.records import"))
+               (substitute* "pyfasta/records.py"
+                 (("cPickle") "pickle")
+                 (("\\(int, long\\)")
+                  "(int, int)")
+                 ;; XXX: it's not clear if this is really correct.
+                 (("buffer\\(self\\)")
+                  "memoryview(bytes(str(self), encoding='utf-8'))")
+                 (("sys.maxint") "sys.maxsize"))
+               (substitute* "pyfasta/split_fasta.py"
+                 (("from cStringIO import")
+                  "from io import")
+                 (("in lens.iteritems") "in lens.items"))
+               (substitute* "tests/test_all.py"
+                 (("f.keys\\(\\)\\) == \\['a-extra'")
+                  "list(f.keys())) == ['a-extra'")
+                 (("f.iterkeys\\(\\)") "iter(f.keys())")
+                 (("tests/data/" m)
+                  (string-append (getcwd) "/" m))))))))
+      (propagated-inputs (list python-numpy))
+      (native-inputs (list python-nose))
+      (home-page "https://github.com/brentp/pyfasta/")
+      (synopsis "Pythonic access to fasta sequence files")
+      (description
+       "This library provides fast, memory-efficient, pythonic (and
+command-line) access to fasta sequence files.  It stores a flattened version
+of a fasta sequence file without spaces or headers and uses either a
+@code{mmap} in numpy binary format or @code{fseek}/@code{fread} so the
+sequence data is never read into memory.  It saves a pickle (@code{.gdx}) of
+the start and stop (for @code{fseek}/@code{mmap}) locations of each header in
+the fasta file for internal use.
+
+Note that this package has been deprecated in favor of @code{pyfaidx}.")
+      (license license:expat))))
+
 (define-public python-schema-salad
   (package
     (name "python-schema-salad")
     (version "8.2.20211116214159")
     (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "schema-salad" version))
-        (sha256
-         (base32
-          "005dh2y45x92zl8sf2sqjmfvcqr4hrz8dfckgkckv87003v7lwqc"))))
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "schema-salad" version))
+       (sha256
+        (base32
+         "005dh2y45x92zl8sf2sqjmfvcqr4hrz8dfckgkckv87003v7lwqc"))))
     (build-system pyproject-build-system)
     (arguments
      `(#:phases
@@ -5434,6 +5674,35 @@ quantitative phenotypes.")
     ;; license is the GPL.
     (license license:gpl3+)))
 
+(define-public eddylab-squid
+  (package
+    (name "eddylab-squid")
+    (version "1.9g")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "http://eddylab.org/software/squid/squid-"
+                           version ".tar.gz"))
+       (sha256
+        (base32
+         "19ywv1h581a84yyjnp64gwww99vhgbxi8v4rl37xp92ag7l44brh"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'set-perl-search-path
+           (lambda _
+             ;; Work around "dotless @INC" build failure.
+             (setenv "PERL5LIB"
+                     (string-append (getcwd) "/Testsuite:"
+                                    (getenv "PERL5LIB"))))))))
+    (inputs (list perl))
+    (home-page "http://eddylab.org/software.html")
+    (synopsis "C function library for sequence analysis")
+    (description "SQUID is Sean Eddy's personal library of C functions
+and utility programs for sequence analysis.")
+    (license license:gpl2)))
+
 (define-public edirect
   (package
     (name "edirect")
@@ -6072,6 +6341,43 @@ is sometimes more productive to preprocess the files before mapping the
 sequences to the genome---manipulating the sequences to produce better mapping
 results.  The FASTX-Toolkit tools perform some of these preprocessing tasks.")
     (license license:agpl3+)))
+
+(define-public flash
+  (package
+    (name "flash")
+    (version "1.2.11")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://sourceforge/flashpage/FLASH-"
+                           version ".tar.gz"))
+       (sha256
+        (base32
+         "1b1ns9ghbcxy92xwa2a53ikqacvnyhvca0zfv0s7986xzvvscp38"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:make-flags #~(list (string-append "CC=" #$(cc-for-target)))
+      #:tests? #f                       ;no tests
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; No configure script
+          (delete 'configure)
+          ;; No install target
+          (replace 'install
+            (lambda _
+              (install-file "flash"
+                            (string-append #$output "/bin")))))))
+    (inputs (list zlib))
+    (home-page "http://ccb.jhu.edu/software/FLASH/")
+    (synopsis "Merge paired-end nucleotide reads from NGS experiments")
+    (description "FLASH (Fast Length Adjustment of SHort reads) is a tool to
+merge paired-end reads from next-generation sequencing experiments.  FLASH is
+designed to merge pairs of reads when the original DNA fragments are shorter
+than twice the length of reads.  The resulting longer reads can significantly
+improve genome assemblies.  They can also improve transcriptome assembly when
+FLASH is used to merge RNA-seq data.")
+    (license license:gpl3+)))
 
 (define-public flexbar
   (package
@@ -7365,6 +7671,49 @@ to measure the reproducibility of findings identified from replicate
 experiments and provide highly stable thresholds based on reproducibility.")
     (license license:gpl2+)))
 
+(define-public isolator
+  (let ((commit "24bafc0a102dce213bfc2b5b9744136ceadaba03")
+        (revision "1"))
+    (package
+      (name "isolator")
+      (version (git-version "0.0.2" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/dcjones/isolator.git")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "12mbcfqhiggcjvzizf2ff7b05z31i47njcyzcivpw5j74pfbr3dv"))))
+      (build-system cmake-build-system)
+      (arguments
+       (list
+        #:tests? #f                     ;no check target
+        #:phases
+        '(modify-phases %standard-phases
+           (add-after 'unpack 'fix-std
+             (lambda _
+               (substitute* '("src/summarize.cpp"
+                              "src/shredder.cpp")
+                 (("isnan") "std::isnan")
+                 (("isinf") "std::isinf")))))))
+      (inputs
+       (list boost hdf5 zlib))
+      (home-page "https://github.com/dcjones/isolator")
+      (synopsis "Tools for the analysis of RNA-Seq experiments")
+      (description "Isolator analyzes RNA-Seq experiments.  Isolator has a
+particular focus on producing stable, consistent estimates.  It implements a
+full hierarchical Bayesian model of an entire RNA-Seq experiment.  It saves
+all the samples generated by the sampler, which can be processed to compute
+posterior probabilities for arbitrarily complex questions, far beyond the
+confines of pairwise tests.  It aggressively corrects for technical effects,
+such as random priming bias, GC-bias, 3' bias, and fragmentation effects.
+Compared to other MCMC approaches, it is exceedingly efficient, though
+generally slower than modern maximum likelihood approaches.")
+      (license license:expat))))
+
 (define-public jellyfish
   (package
     (name "jellyfish")
@@ -7836,6 +8185,45 @@ probabilistic distances of genome abundance and tetranucleotide frequency.")
     (license (license:non-copyleft "file://license.txt"
                                    "See license.txt in the distribution."))))
 
+(define-public metal
+  (package
+    (name "metal")
+    (version "2011-03-25")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "http://csg.sph.umich.edu/abecasis/Metal/"
+                           "download/generic-metal-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1bk00hc0xagmq0mabmbb8bykl75qd4kfyirba869h4x6hmn4a0f3"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:make-flags
+      #~(list (string-append "INSTALLDIR=" #$output "/bin") "all")
+      #:phases
+      '(modify-phases %standard-phases
+         (replace 'configure
+           (lambda _
+             (substitute* "Makefile"
+               (("^CFLAGS=") "CFLAGS=-std=c++11 ")))))))
+    (inputs (list zlib `(,zlib "static")))
+    (home-page "http://csg.sph.umich.edu/abecasis/Metal/")
+    (synopsis "Facilitate meta-analysis of large datasets")
+    (description "METAL is a tool for meta-analysis genomewide association
+scans.  METAL can combine either test statistics and standard errors or
+p-values across studies (taking sample size and direction of effect into
+account).  METAL analysis is a convenient alternative to a direct analysis of
+merged data from multiple studies.  It is especially appropriate when data
+from the individual studies cannot be analyzed together because of differences
+in ethnicity, phenotype distribution, gender or constraints in sharing of
+individual level data imposed.  Meta-analysis results in little or no loss of
+efficiency compared to analysis of a combined dataset including data from all
+individual studies.")
+    (license license:bsd-3)))
+
 (define-public minced
   (package
     (name "minced")
@@ -7927,6 +8315,41 @@ assembled metagenomic sequence.")
 program for nucleotide and protein sequences.")
     ;; License information found in 'muscle -h' and usage.cpp.
     (license license:public-domain)))
+
+(define-public music
+  (let ((commit "b1caecdb164b1ab80acccb9463abe2526a56f69f")
+        (revision "1"))
+    (package
+      (name "music")
+      (version (git-version "0.0.0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/gersteinlab/MUSIC.git")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "0arj300h8cpbya7y98g066xsxcg2a65h3y0qs250rlj072f1b4ia"))))
+      (build-system gnu-build-system)
+      (arguments
+       (list
+        #:tests? #f                     ; no "check" target
+        #:phases
+        #~(modify-phases %standard-phases
+            (delete 'configure)
+            ;; There is no "install" target.
+            (replace 'install
+              (lambda _
+                (let ((bin (string-append #$output "/bin")))
+                  (install-file "bin/MUSIC" bin)))))))
+      (home-page "https://github.com/gersteinlab/MUSIC/")
+      (synopsis "Multiscale enrichment calling for ChIP-Seq datasets")
+      (description
+       "MUSIC is an algorithm for identification of enriched regions at
+multiple scales in the read depth signals from ChIP-Seq experiments.")
+      ;; See https://github.com/gersteinlab/MUSIC/issues/6
+      (license license:gpl2+))))
 
 (define-public newick-utils
   ;; There are no recent releases so we package from git.
@@ -21321,7 +21744,7 @@ single-cell data named @url{https://github.com/PMBio/cardelino, cardelino}.")
 (define-public ccwl
   (package
     (name "ccwl")
-    (version "0.2.0")
+    (version "0.3.0")
     (source
      (origin
        (method url-fetch)
@@ -21329,7 +21752,7 @@ single-cell data named @url{https://github.com/PMBio/cardelino, cardelino}.")
                            version ".tar.lz"))
        (sha256
         (base32
-         "1ar8rfz3zrksgygrv67zv77y8gfvvz54zcs546jn6j28y20basla"))))
+         "0za710mcn9di1njli3dk3660n3836ip8b4msb8f958498va95y7j"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags '("GUILE_AUTO_COMPILE=0") ; to prevent guild warnings
@@ -21340,6 +21763,12 @@ single-cell data named @url{https://github.com/PMBio/cardelino, cardelino}.")
                            ,@%default-gnu-imported-modules)
        #:phases
        (modify-phases %standard-phases
+         (add-after 'patch-source-shebangs 'patch-more-source-shebangs
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "scripts/ccwl"
+               (("^exec guile")
+                (string-append "exec "
+                               (search-input-file inputs "/bin/guile"))))))
          (add-after 'install 'wrap
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let ((out (assoc-ref outputs "out"))
@@ -21403,15 +21832,18 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
 (define-public wfmash
   (package
     (name "wfmash")
-    (version "0.10.5")
+    (version "0.12.5")
     (source
      (origin
-       (method url-fetch)
-       (uri (string-append "https://github.com/ekg/wfmash/releases/download/v"
-                           version "/wfmash-v" version ".tar.gz"))
+       ;; There are no release tarballs after version 0.10.5.
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/waveygang/wfmash")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
        (sha256
         (base32
-         "1jsvnnh14h3ir4l13qhmglhd25kzwvni9apgvr1lbikqwgrpkiq4"))
+         "1qh2chnwp7nqgp88afc4xzdkd21vh6cfqq73siqw7vc0qinqadm6"))
        (snippet
         #~(begin
             (use-modules (guix build utils))
@@ -21437,8 +21869,7 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
                  (let ((samtools (search-input-file inputs "/bin/samtools")))
                    ;; This is the easiest way to access the data
                    ;; needed for the test suite.
-                   (symlink (string-append "../wfmash-v" #$version "/data")
-                            "data")
+                   (symlink "../source/data" "data")
                    (and
                      ;; This test takes 60 minutes on riscv64-linux.
                      #$@(if (not (target-riscv64?))
@@ -21530,8 +21961,7 @@ based on the pairwise alignment of hidden Markov models (HMMs).")
                          (lambda _
                            (invoke "bin/wfmash"
                                    "data/reads.255bps.fa.gz"
-                                   "data/reads.255bps.fa.gz"
-                                   "-X" "-w" "16")))
+                                   "-w" "16" "-s" "100" "-L")))
                        (invoke "head" "reads.255bps.paf"))))))))))
     (inputs
      (list atomic-queue
@@ -21548,7 +21978,7 @@ distances and the wavefront alignment algorithm.  It is a fork of MashMap that
 implements base-level alignment via the wflign tiled wavefront global
 alignment algorithm.  It completes MashMap with a high-performance alignment
 module capable of computing base-level alignments for very large sequences.")
-    (home-page "https://github.com/ekg/wfmash")
+    (home-page "https://github.com/waveygang/wfmash")
     (license license:expat)))
 
 (define-public gdcm

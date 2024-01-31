@@ -63,7 +63,7 @@
 ;;; Copyright © 2019, 2020 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2019, 2020, 2021, 2022, 2023 Pierre Langlois <pierre.langlois@gmx.com>
 ;;; Copyright © 2019 Jacob MacDonald <jaccarmac@gmail.com>
-;;; Copyright © 2019-2021, 2023 Giacomo Leidi <goodoldpaul@autistici.org>
+;;; Copyright © 2019-2021, 2023, 2024 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2019 Wiktor Żelazny <wzelazny@vurv.cz>
 ;;; Copyright © 2019, 2020, 2021, 2022 Tanguy Le Carrour <tanguy@bioneland.org>
 ;;; Copyright © 2019, 2021-2023 Mădălin Ionel Patrașcu <madalinionel.patrascu@mdc-berlin.de>
@@ -80,7 +80,7 @@
 ;;; Copyright © 2020 Josh Holland <josh@inv.alid.pw>
 ;;; Copyright © 2020 Yuval Kogman <nothingmuch@woobling.org>
 ;;; Copyright © 2020, 2022 Michael Rohleder <mike@rohleder.de>
-;;; Copyright © 2020, 2021, 2022, 2023 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2021, 2022, 2023, 2024 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Guy Fleury Iteriteka <gfleury@disroot.org>
 ;;; Copyright © 2020 Hendursaga <hendursaga@yahoo.com>
 ;;; Copyright © 2020 Malte Frank Gerdes <malte.f.gerdes@gmail.com>
@@ -94,7 +94,7 @@
 ;;; Copyright © 2020, 2021 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2020 EuAndreh <eu@euandre.org>
 ;;; Copyright © 2021, 2022 Morgan Smith <Morgan.J.Smith@outlook.com>
-;;; Copyright © 2021-2023 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2021-2024 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;; Copyright © 2021 Ellis Kenyő <me@elken.dev>
 ;;; Copyright © 2021 LibreMiami <packaging-guix@libremiami.org>
 ;;; Copyright © 2021 Xinglu Chen <public@yoctocell.xyz>
@@ -119,7 +119,7 @@
 ;;; Copyright © 2022 Evgeny Pisemsky <evgeny@pisemsky.com>
 ;;; Copyright © 2022 drozdov <drozdov@portalenergy.tech>
 ;;; Copyright © 2022 Peter Polidoro <peter@polidoro.io>
-;;; Copyright © 2022 Wamm K. D. <jaft.r@outlook.com>
+;;; Copyright © 2022, 2023 Wamm K. D. <jaft.r@outlook.com>
 ;;; Copyright © 2022 Jai Vetrivelan <jaivetrivelan@gmail.com>
 ;;; Copyright © 2022 Artyom V. Poptsov <poptsov.artyom@gmail.com>
 ;;; Copyright © 2022 Paul A. Patience <paul@apatience.com>
@@ -399,6 +399,35 @@ Jupytext are:
 @end itemize
 ")
     (license license:expat)))
+
+(define-public python-concurrent-log-handler
+  (package
+    (name "python-concurrent-log-handler")
+    (version "0.9.25")
+    ;; No tests in the PyPI tarball.
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/Preston-Landers/concurrent-log-handler")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0jp4zkm0idfdsrq3jzb52iqfkh6xzm7sacz1sa34ffnkyqdk3xzh"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-portalocker))
+    (native-inputs (list python-hatchling python-pytest))
+    (home-page "https://github.com/Preston-Landers/concurrent-log-handler")
+    (synopsis
+     "Additional log handler for Python's standard @code{logging} package")
+    (description
+     "This package provides an additional log handler for Python's standard
+@code{logging} package (PEP 282).  This handler will write log events to a log
+file which is rotated when the log file reaches a certain size.  Multiple
+processes can safely write to the same log file concurrently and rotated logs
+can be gzipped if desired.  An optional threaded queue logging handler is
+provided to perform logging in the background.")
+    (license license:asl2.0)))
 
 (define-public python-logzero
   (package
@@ -1858,6 +1887,32 @@ with Python's logging module that outputs records using terminal colors.")
 progress bar and a percentage indicator object that let you track the progress
 of a loop structure or other iterative computation.")
     (license license:bsd-3)))
+
+(define-public python-gh-md-to-html
+  (package
+    (name "python-gh-md-to-html")
+    (version "1.21.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "gh_md_to_html" version))
+       (sha256
+        (base32 "1cnaqnckpcrpc4b8ba18s5ds05w1yfiszcp7ql7pmx0jnrj25qax"))))
+    (build-system pyproject-build-system)
+    (arguments (list #:tests? #false))  ;there are none
+    (propagated-inputs
+     (list python-beautifulsoup4
+           python-emoji
+           python-pillow
+           python-requests
+           python-shellescape
+           python-webcolors))
+    (home-page "https://github.com/phseiff/github-flavored-markdown-to-html/")
+    (synopsis "Github-flavored Markdown")
+    (description
+     "This package provides a feature-rich Github-flavored Markdown to HTML
+Python library and command line interface.")
+    (license license:expat)))
 
 (define-public python-glymur
   (package
@@ -4045,6 +4100,46 @@ lossless but can be tweaked for more aggressive cleaning.")
      "Mechanize implements stateful programmatic web browsing in Python,
 after Andy Lester’s Perl module WWW::Mechanize.")
     (license license:bsd-3)))
+
+(define-public python-mediapy
+  (package
+    (name "python-mediapy")
+    (version "1.2.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/google/mediapy")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "14hmwib0dmy9h1w7allwsp0cgrfdv8f2sm9qlvy65yxai68v6vnl"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      '(modify-phases %standard-phases
+         (add-after 'unpack 'fix-references
+           (lambda _
+             (substitute* "mediapy_test.py"
+               (("'/bin/bash")
+                (string-append "'" (which "bash")))))))))
+    (inputs (list ffmpeg-5))
+    (propagated-inputs (list python-absl-py
+                             python-ipython
+                             python-matplotlib
+                             python-numpy
+                             python-pillow))
+    (native-inputs
+     (list python-flit-core
+           python-pylint
+           python-pytest
+           python-pytest-xdist))
+    (home-page "https://github.com/google/mediapy")
+    (synopsis "Read/write/show images and videos in an IPython notebook")
+    (description "This Python library makes it easy to display images and
+videos in a notebook.")
+    (license license:asl2.0)))
 
 (define-public python-simpleaudio
   (package
@@ -8742,6 +8837,29 @@ clean plots with a minimalistic style.")
 complex-valued functions.")
     (license license:gpl3+)))
 
+(define-public python-cppheaderparser
+  (package
+    (name "python-cppheaderparser")
+    (version "2.7.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "CppHeaderParser" version))
+       (sha256
+        (base32 "0hncwd9y5ayk8wa6bqhp551mcamcvh84h89ba3labc4mdm0k0arq"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:tests? #f))     ; no tests
+    (propagated-inputs (list python-ply))
+    (home-page "http://senexcanis.com/open-source/cppheaderparser/")
+    (synopsis
+     "Parse C++ header files and generate a data structure representing the class")
+    (description
+     "CppHeaderParser is a pure python module that will parse C++ header files
+and generate a data structure representing the class﻿.")
+    (license license:bsd-3)))
+
 (define-public python-cppy
   (package
     (name "python-cppy")
@@ -9230,6 +9348,39 @@ merging together, cropping, and transforming the pages of PDF files.  It can
 also add custom data, viewing options, and passwords to PDF files.  It can
 retrieve text and metadata from PDFs as well as merge entire files together.")
     (license license:bsd-3)))
+
+(define-public python-pdf2image
+  (package
+    (name "python-pdf2image")
+    (version "1.17.0")
+    ;; No tests in the PyPI tarball.
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/Belval/pdf2image")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0xd8q939zqa8flfcdhbgyadiwqb8sgnd42cbr6n1l2jl9fnix45v"))))
+    (build-system pyproject-build-system)
+    (arguments
+     ;; The following excluded tests assume hardcoded binary paths to
+     ;; /usr/bin/pdftoppm and /usr/bin/pdftocairo.
+     '(#:test-flags '("--exclude=^test_use_poppler_path$"
+                      "--exclude=^test_use_poppler_path_with_trailing_slash$")))
+    (propagated-inputs (list python-pillow))
+    (inputs (list poppler))
+    (native-inputs (list python-nose which))
+    (home-page "https://github.com/Belval/pdf2image")
+    (synopsis
+     "Python wrapper around @command{pdftoppm} and @command{pdftocairo}")
+    (description
+     "This package provides a Python API wrapping the @command{pdftoppm} and
+@command{pdftocairo} command line tools.  It can convert @file{PDF} files to a
+Python list with elements of type @code{PIL.Image} (from the
+@code{python-pillow} library).")
+    (license license:expat)))
 
 (define-public python-pikepdf
   (package
@@ -10092,6 +10243,43 @@ your favourite programs.")
      "pywinrm is a Python client for the Windows Remote Management (WinRM)
 service.  It allows you to invoke commands on target Windows machines from
 any machine that can run Python.")
+    (license license:expat)))
+
+(define-public python-manimpango
+  (package
+    (name "python-manimpango")
+    (version "0.5.0")
+    (source
+     (origin
+       (method git-fetch) ; no tests data in PyPi package
+       (uri (git-reference
+             (url "https://github.com/ManimCommunity/ManimPango")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "00mrvswk8yly0m13jq0f432pr19sy3j6w37lrv78ah1j6jz9n50h"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'check 'build-extensions
+            (lambda _
+              (invoke "python" "setup.py" "build_ext" "--inplace"))))))
+    (native-inputs
+      (list pkg-config
+            python-cython
+            python-pytest
+            python-pytest-cov))
+    (inputs
+     (list pango))
+    (home-page "https://manimpango.manim.community/")
+    (synopsis "Bindings for Pango for using with Manim")
+    (description
+     "Python bindings for ManimPango which is a C binding for Pango,
+using Cython.
+
+ManimPango is internally used in Manim to render (non-LaTeX) text.")
     (license license:expat)))
 
 (define-public python-xcffib
@@ -14856,6 +15044,27 @@ tasks, sockets, files, locks, and queues.")
 designed to efficiently cope with extremely large amounts of data.")
     (license license:bsd-3)))
 
+(define-public python-tasklogger
+  (package
+    (name "python-tasklogger")
+    (version "1.2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "tasklogger" version))
+       (sha256
+        (base32 "1901mibcp6aiyjy8afnybrxnb0dkbdxlbvjqbr3gginlw7dr18xh"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-deprecated))
+    (native-inputs (list python-coverage python-coveralls python-nose2
+                         python-numpy))
+    (home-page "https://github.com/scottgigante/tasklogger")
+    (synopsis "Extension to the core Python logging library")
+    (description "This package provides an extension to the core Python
+logging library for logging the beginning and completion of tasks and
+subtasks.")
+    (license license:gpl2)))
+
 (define-public python-sniffio
   (package
     (name "python-sniffio")
@@ -17646,13 +17855,13 @@ document.")
 (define-public python-symengine
   (package
     (name "python-symengine")
-    (version "0.10.0")
+    (version "0.11.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "symengine" version))
        (sha256
-        (base32 "0i97lb6h8jk0k98805mkw6id5r537469zbh2d95320azq9nfj824"))))
+        (base32 "0n54rdpmz3bmxrbjqflmlrgc27rvik1jkv6x3cjvgsq4p0lhvlqd"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -17666,7 +17875,7 @@ document.")
                     (invoke "nosetests" "-v" "symengine.tests"))
                   (format #t "test suite not run~%")))))))
     (native-inputs
-     (list cmake python-cython python-nose))
+     (list cmake python-cython-3 python-nose))
     (inputs
      (list symengine))
     (home-page "https://github.com/symengine/symengine.py")
@@ -25258,6 +25467,24 @@ based on the CPython 2.7 and 3.7 parsers.")
      "@code{typeguard} provides run-time type checking for functions defined
 with PEP 484 argument (and return) type annotations.")
     (license license:expat)))
+
+(define-public python-typeguard-4
+  (package
+    (inherit python-typeguard)
+    (name "python-typeguard")
+    ;; This is the latest version we can use, because python-typeguard >=
+    ;; 4.0.1 requires python-typing-extensions >= 4.7.0.
+    (version "4.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "typeguard" version))
+       (sha256
+        (base32 "11yrc7pv2fajmicwiyc92sb5gphlw3zbxww8f2prrsh6rgdv6kqr"))))
+    (build-system pyproject-build-system)
+    (arguments
+     '())
+    (propagated-inputs (list python-typing-extensions))))
 
 (define-public bpython
   (package
@@ -32961,30 +33188,40 @@ Python @code{set} interface.")
 (define-public dynaconf
   (package
     (name "dynaconf")
-    (version "3.1.7")
+    (version "3.2.4")
     (source
      (origin
        (method git-fetch)
        (uri
         (git-reference
-         (url "https://github.com/rochacbruno/dynaconf")
+         (url "https://github.com/dynaconf/dynaconf")
          (commit version)))
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0pjyjsdzairpn5vq8nzddhxwxmr18grn272nj31wcy2ipwdl3c3h"))
+         "0fj2ffvzfvjf4d7f672h5x5fzq26f8hax9j3dfsix158fwm0212w"))
        (patches (search-patches "dynaconf-unvendor-deps.patch"))
        (modules '((guix build utils)))
        (snippet '(begin
                    ;; Remove vendored dependencies
                    (let ((unvendor '("click" "dotenv" "ruamel" "toml")))
                      (with-directory-excursion "dynaconf/vendor"
-                       (for-each delete-file-recursively unvendor))
-                     (with-directory-excursion "dynaconf/vendor_src"
-                       (for-each delete-file-recursively unvendor)))))))
-    (build-system python-build-system)
+                       (for-each delete-file-recursively unvendor)))
+                   ;; Lower coverage quality gate for unit tests
+                   (substitute* ".coveragerc"
+                     (("fail_under = 95") "fail_under = 50"))))))
+    (build-system pyproject-build-system)
     (arguments
-     `(#:phases
+     `(#:test-flags
+       '("-k"
+         ,(let ((click-tests '("test_negative_get"
+                               "test_inspect_invalid_format")))
+            ;; Disable integration tests
+            (string-append "not integration and not "
+                           ;; These tests fail because we use Click 8.* instead of
+                           ;; Click 7
+                           (string-join click-tests " and not "))))
+       #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-for-click-8
            (lambda _
@@ -32992,14 +33229,19 @@ Python @code{set} interface.")
                (("click.get_os_args\\()") ;deprecated from Click 8.1+
                 "sys.argv[1:]"))))
          (replace 'check
-           (lambda* (#:key tests? outputs #:allow-other-keys)
+           (lambda* (#:key tests? test-flags #:allow-other-keys)
              (when tests?
                ;; These tests depend on hvac and a live Vault process.
                (delete-file "tests/test_vault.py")
-               (invoke "make" "test_only")))))))
+               (apply invoke
+                      `("py.test" ,@test-flags "-v"
+                        "--cov-config" ".coveragerc"
+                        "--cov=dynaconf"
+                        "-l" "--tb=short"
+                        "--maxfail=1" "tests/"))))))))
     (propagated-inputs
      (list python-click python-configobj python-dotenv-0.13.0
-           python-ruamel.yaml python-toml))
+           python-ruamel.yaml python-toml python-tomli))
     (native-inputs
      (list python-django python-flask python-pytest python-pytest-cov
            python-pytest-mock))

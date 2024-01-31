@@ -65,6 +65,7 @@
 ;;; Copyright © 2023 Christopher Howard <christopher@librehacker.com>
 ;;; Copyright © 2023 Felix Lechner <felix.lechner@lease-up.com>
 ;;; Copyright © 2023 Evgeny Pisemsky <evgeny@pisemsky.com>
+;;; Copyright © 2024 Tomas Volf <~@wolfsden.cz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1482,7 +1483,7 @@ efficiently.  It gives the application developer no more than 4 methods.")
                   "ImportTaxonomy"
                   "ImportText"
                   "ImportXML"))
-               (for-each 
+               (for-each
                 (lambda (directory)
                   (copy-recursively directory
                                     (string-append perl "/../" directory)))
@@ -8166,6 +8167,41 @@ compressed JSON header blocks.
                    (("print \\(ver >= '3\\.8'\\)")
                     "print (tuple(map(int, ver.split('.'))) >= (3,8))")))))))))))
 
+(define-public nghttp3
+  (package
+    (name "nghttp3")
+    (version "1.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/ngtcp2/nghttp3/"
+                           "releases/download/v" version "/"
+                           "nghttp3-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1fzvadnwb03jlm180313gg5m4fg09qdcc67fwcfrv9zs22anaa55"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     (list pkg-config
+           ;; Required by tests.
+           cunit))
+    (arguments
+     (list
+      #:configure-flags
+      #~(list "--enable-lib-only")))
+    (home-page "https://nghttp2.org/nghttp3/")
+    (synopsis "HTTP/3 protocol library")
+    (description
+     "nghttp3 is an implementation of RFC 9114 HTTP/3 mapping over QUIC and
+RFC 9204 QPACK in C.  It does not depend on any particular QUIC transport
+implementation.
+
+It implements extensions specified in RFC 9218 and RFC 9220.  It supports
+SETTINGS_H3_DATAGRAM from RFC 9297.
+
+It does not support server push.")
+    (license license:expat)))
+
 (define-public hpcguix-web
   (package
     (name "hpcguix-web")
@@ -8610,7 +8646,7 @@ solution for any project's interface needs:
 (define-public gmid
   (package
     (name "gmid")
-    (version "1.8.6")
+    (version "2.0")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -8618,7 +8654,7 @@ solution for any project's interface needs:
                     version "/gmid-" version ".tar.gz"))
               (sha256
                (base32
-                "1j0bgnixffz2lv5xgp5c88hl146c1vyk1988gyd70mhgyl9700jy"))))
+                "17cg07md6zac0j6ivawysy41jbk3a1ql3q794q1y0k01x8z23q5n"))))
     (build-system gnu-build-system)
     (arguments
      (list #:test-target "regress"

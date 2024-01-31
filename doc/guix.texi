@@ -22,7 +22,7 @@
 @set SUBSTITUTE-URLS https://@value{SUBSTITUTE-SERVER-1} https://@value{SUBSTITUTE-SERVER-2}
 
 @copying
-Copyright @copyright{} 2012-2023 Ludovic Courtès@*
+Copyright @copyright{} 2012-2024 Ludovic Courtès@*
 Copyright @copyright{} 2013, 2014, 2016 Andreas Enge@*
 Copyright @copyright{} 2013 Nikita Karetnikov@*
 Copyright @copyright{} 2014, 2015, 2016 Alex Kost@*
@@ -43,7 +43,7 @@ Copyright @copyright{} 2016, 2017, 2018, 2019, 2020, 2021 Christopher Baines@*
 Copyright @copyright{} 2017, 2018, 2019 Clément Lassieur@*
 Copyright @copyright{} 2017, 2018, 2020, 2021, 2022 Mathieu Othacehe@*
 Copyright @copyright{} 2017 Federico Beffa@*
-Copyright @copyright{} 2017, 2018 Carlo Zancanaro@*
+Copyright @copyright{} 2017, 2018, 2024 Carlo Zancanaro@*
 Copyright @copyright{} 2017 Thomas Danckaert@*
 Copyright @copyright{} 2017 humanitiesNerd@*
 Copyright @copyright{} 2017, 2021 Christine Lemmer-Webber@*
@@ -14040,6 +14040,9 @@ the certificates of X.509 authorities from the directory pointed to by
 the @env{SSL_CERT_DIR} environment variable (@pxref{X.509
 Certificates}), unless @option{--no-check-certificate} is used.
 
+Alternatively, @command{guix download} can also retrieve a Git
+repository, possibly a specific commit, tag, or branch.
+
 The following options are available:
 
 @table @code
@@ -14064,6 +14067,26 @@ URL, which makes you vulnerable to ``man-in-the-middle'' attacks.
 @itemx -o @var{file}
 Save the downloaded file to @var{file} instead of adding it to the
 store.
+
+@item --git
+@itemx -g
+Checkout the Git repository at the latest commit on the default branch.
+
+@item --commit=@var{commit-or-tag}
+Checkout the Git repository at @var{commit-or-tag}.
+
+@var{commit-or-tag} can be either a tag or a commit defined in the Git
+repository.
+
+@item --branch=@var{branch}
+Checkout the Git repository at @var{branch}.
+
+The repository will be checked out at the latest commit of @var{branch},
+which must be a valid branch of the Git repository.
+
+@item --recursive
+@itemx -r
+Recursively clone the Git repository.
 @end table
 
 @node Invoking guix hash
@@ -16740,6 +16763,20 @@ guix package}).
 This option can be repeated several times, in which case the manifests
 are concatenated.
 
+@item --expression=@var{expr}
+@itemx -e @var{expr}
+Consider the package @var{expr} evaluates to.
+
+A typical use case for this option is specifying a package that is
+hidden and thus cannot be referred to in the usual way, as in this
+example:
+
+@example
+guix weather -e '(@@@@ (gnu packages rust) rust-bootstrap)'
+@end example
+
+This option can be repeated.
+
 @item --coverage[=@var{count}]
 @itemx -c [@var{count}]
 Report on substitute coverage for packages: list packages with at least
@@ -16922,6 +16959,7 @@ The available targets are:
    - i686-linux-gnu
    - i686-w64-mingw32
    - mips64el-linux-gnu
+   - or1k-elf
    - powerpc-linux-gnu
    - powerpc64le-linux-gnu
    - riscv64-linux-gnu
@@ -20967,7 +21005,212 @@ networks.
 @item @code{disable-vpn?} (default: @code{#f})
 When true, disable connman's vpn plugin.
 
+@item @code{general-configuration} (default: @code{(connman-general-configuration)})
+Configuration serialized to @file{main.conf} and passed as @option{--config}
+to @command{connmand}.
+
 @end table
+@end deftp
+
+@c %start of fragment
+
+@deftp {Data Type} connman-general-configuration
+Available @code{connman-general-configuration} fields are:
+
+@table @asis
+@item @code{input-request-timeout} (type: maybe-number)
+Set input request timeout.  Default is 120 seconds.  The request for
+inputs like passphrase will timeout after certain amount of time.  Use
+this setting to increase the value in case of different user interface
+designs.
+
+@item @code{browser-launch-timeout} (type: maybe-number)
+Set browser launch timeout.  Default is 300 seconds.  The request for
+launching a browser for portal pages will timeout after certain amount
+of time.  Use this setting to increase the value in case of different
+user interface designs.
+
+@item @code{background-scanning?} (type: maybe-boolean)
+Enable background scanning.  Default is true.  If wifi is disconnected,
+the background scanning will follow a simple back off mechanism from 3s
+up to 5 minutes.  Then, it will stay in 5 minutes unless user
+specifically asks for scanning through a D-Bus call.  If so, the
+mechanism will start again from 3s.  This feature activates also the
+background scanning while being connected, which is required for roaming
+on wifi.  When @code{background-scanning?} is false, ConnMan will not
+perform any scan regardless of wifi is connected or not, unless it is
+requested by the user through a D-Bus call.
+
+@item @code{use-gateways-as-timeservers?} (type: maybe-boolean)
+Assume that service gateways also function as timeservers.  Default is
+false.
+
+@item @code{fallback-timeservers} (type: maybe-list)
+List of Fallback timeservers.  These timeservers are used for NTP sync
+when there are no timeservers set by the user or by the service, and
+when @code{use-gateways-as-timeservers?} is @code{#f}.  These can
+contain a mixed combination of fully qualified domain names, IPv4 and
+IPv6 addresses.
+
+@item @code{fallback-nameservers} (type: maybe-list)
+List of fallback nameservers appended to the list of nameservers given
+by the service.  The nameserver entries must be in numeric format, host
+names are ignored.
+
+@item @code{default-auto-connect-technologies} (type: maybe-list)
+List of technologies that are marked autoconnectable by default.  The
+default value for this entry when empty is @code{"ethernet"},
+@code{"wifi"}, @code{"cellular"}.  Services that are automatically
+connected must have been set up and saved to storage beforehand.
+
+@item @code{default-favourite-technologies} (type: maybe-list)
+List of technologies that are marked favorite by default.  The default
+value for this entry when empty is @code{"ethernet"}.  Connects to
+services from this technology even if not setup and saved to storage.
+
+@item @code{always-connected-technologies} (type: maybe-list)
+List of technologies which are always connected regardless of
+preferred-technologies setting (@code{auto-connect?} @code{#t}).  The
+default value is empty and this feature is disabled unless explicitly
+enabled.
+
+@item @code{preferred-technologies} (type: maybe-list)
+List of preferred technologies from the most preferred one to the least
+preferred one.  Services of the listed technology type will be tried one
+by one in the order given, until one of them gets connected or they are
+all tried.  A service of a preferred technology type in state 'ready'
+will get the default route when compared to another preferred type
+further down the list with state 'ready' or with a non-preferred type; a
+service of a preferred technology type in state 'online' will get the
+default route when compared to either a non-preferred type or a
+preferred type further down in the list.
+
+@item @code{network-interface-blacklist} (type: maybe-list)
+List of blacklisted network interfaces.  Found interfaces will be
+compared to the list and will not be handled by ConnMan, if their first
+characters match any of the list entries.  Default value is
+@code{"vmnet"}, @code{"vboxnet"}, @code{"virbr"}, @code{"ifb"}.
+
+@item @code{allow-hostname-updates?} (type: maybe-boolean)
+Allow ConnMan to change the system hostname.  This can happen for
+example if we receive DHCP hostname option.  Default value is @code{#t}.
+
+@item @code{allow-domainname-updates?} (type: maybe-boolean)
+Allow connman to change the system domainname.  This can happen for
+example if we receive DHCP domainname option.  Default value is
+@code{#t}.
+
+@item @code{single-connected-technology?} (type: maybe-boolean)
+Keep only a single connected technology at any time.  When a new service
+is connected by the user or a better one is found according to
+preferred-technologies, the new service is kept connected and all the
+other previously connected services are disconnected.  With this setting
+it does not matter whether the previously connected services are in
+'online' or 'ready' states, the newly connected service is the only one
+that will be kept connected.  A service connected by the user will be
+used until going out of network coverage.  With this setting enabled
+applications will notice more network breaks than normal.  Note this
+options can't be used with VPNs.  Default value is @code{#f}.
+
+@item @code{tethering-technologies} (type: maybe-list)
+List of technologies that are allowed to enable tethering.  The default
+value is @code{"wifi"}, @code{"bluetooth"}, @code{"gadget"}.  Only those
+technologies listed here are used for tethering.  If one wants to tether
+ethernet, then add @code{"ethernet"} in the list.  Note that if ethernet
+tethering is enabled, then a DHCP server is started on all ethernet
+interfaces.  Tethered ethernet should never be connected to corporate or
+home network as it will disrupt normal operation of these networks.  Due
+to this ethernet is not tethered by default.  Do not activate ethernet
+tethering unless you really know what you are doing.
+
+@item @code{persistent-tethering-mode?} (type: maybe-boolean)
+Restore earlier tethering status when returning from offline mode,
+re-enabling a technology, and after restarts and reboots.  Default value
+is @code{#f}.
+
+@item @code{enable-6to4?} (type: maybe-boolean)
+Automatically enable anycast 6to4 if possible.  This is not recommended,
+as the use of 6to4 will generally lead to a severe degradation of
+connection quality.  See RFC6343.  Default value is @code{#f} (as
+recommended by RFC6343 section 4.1).
+
+@item @code{vendor-class-id} (type: maybe-string)
+Set DHCP option 60 (Vendor Class ID) to the given string.  This option
+can be used by DHCP servers to identify specific clients without having
+to rely on MAC address ranges, etc.
+
+@item @code{enable-online-check?} (type: maybe-boolean)
+Enable or disable use of HTTP GET as an online status check.  When a
+service is in a READY state, and is selected as default, ConnMan will
+issue an HTTP GET request to verify that end-to-end connectivity is
+successful.  Only then the service will be transitioned to ONLINE state.
+If this setting is false, the default service will remain in READY
+state.  Default value is @code{#t}.
+
+@item @code{online-check-ipv4-url} (type: maybe-string)
+IPv4 URL used during the online status check.  Please refer to the
+README for more detailed information.  Default value is
+@uref{http://ipv4.connman.net/online/status.html}.
+
+@item @code{online-check-ipv6-url} (type: maybe-string)
+IPv6 URL used during the online status check.  Please refer to the
+README for more detailed information.  Default value is
+@uref{http://ipv6.connman.net/online/status.html}.
+
+@item @code{online-check-initial-interval} (type: maybe-number)
+Range of intervals between two online check requests.  Please refer to
+the README for more detailed information.  Default value is @samp{1}.
+
+@item @code{online-check-max-interval} (type: maybe-number)
+Range of intervals between two online check requests.  Please refer to
+the README for more detailed information.  Default value is @samp{1}.
+
+@item @code{enable-online-to-ready-transition?} (type: maybe-boolean)
+WARNING: This is an experimental feature.  In addition to
+@code{enable-online-check} setting, enable or disable use of HTTP GET to
+detect the loss of end-to-end connectivity.  If this setting is
+@code{#f}, when the default service transitions to ONLINE state, the
+HTTP GET request is no more called until next cycle, initiated by a
+transition of the default service to DISCONNECT state.  If this setting
+is @code{#t}, the HTTP GET request keeps being called to guarantee that
+end-to-end connectivity is still successful.  If not, the default
+service will transition to READY state, enabling another service to
+become the default one, in replacement.  Default value is @code{#f}.
+
+@item @code{auto-connect-roaming-services?} (type: maybe-boolean)
+Automatically connect roaming services.  This is not recommended unless
+you know you won't have any billing problem.  Default value is
+@code{#f}.
+
+@item @code{address-conflict-detection?} (type: maybe-boolean)
+Enable or disable the implementation of IPv4 address conflict detection
+according to RFC5227.  ConnMan will send probe ARP packets to see if an
+IPv4 address is already in use before assigning the address to an
+interface.  If an address conflict occurs for a statically configured
+address, an IPv4LL address will be chosen instead (according to
+RFC3927).  If an address conflict occurs for an address offered via
+DHCP, ConnMan sends a DHCP DECLINE once and for the second conflict
+resorts to finding an IPv4LL address.  Default value is @code{#f}.
+
+@item @code{localtime} (type: maybe-string)
+Path to localtime file.  Defaults to @file{/etc/localtime}.
+
+@item @code{regulatory-domain-follows-timezone?} (type: maybe-boolean)
+Enable regulatory domain to be changed along timezone changes.  With
+this option set to true each time the timezone changes the first present
+ISO3166 country code is read from
+@file{/usr/share/zoneinfo/zone1970.tab} and set as regulatory domain
+value.  Default value is @code{#f}.
+
+@item @code{resolv-conf} (type: maybe-string)
+Path to resolv.conf file.  If the file does not exist, but intermediate
+directories exist, it will be created.  If this option is not set, it
+tries to write into @file{/var/run/connman/resolv.conf} if it fails
+(@file{/var/run/connman} does not exist or is not writeable).  If you do
+not want to update resolv.conf, you can set @file{/dev/null}.
+
+@end table
+
 @end deftp
 
 @cindex WPA Supplicant
@@ -25574,6 +25817,9 @@ The @code{(gnu services databases)} module provides the following services.
 
 @subsubheading PostgreSQL
 
+@defvar postgresql-service-type
+The service type for the PostgreSQL database server.  Its value should
+be a valid @code{postgresql-configuration} object, documented below.
 The following example describes a PostgreSQL service with the default
 configuration.
 
@@ -25600,6 +25846,7 @@ sudo -u postgres -s /bin/sh
 createuser --interactive
 createdb $MY_USER_LOGIN      # Replace appropriately.
 @end example
+@end defvar
 
 @deftp {Data Type} postgresql-configuration
 Data type representing the configuration for the
@@ -27907,7 +28154,7 @@ Prosodyctl will also help you to import certificates from the
 them.  See @url{https://prosody.im/doc/letsencrypt}.
 
 @example
-prosodyctl --root cert import /etc/letsencrypt/live
+prosodyctl --root cert import /etc/certs
 @end example
 
 The available configuration parameters follow.  Each parameter
@@ -28373,10 +28620,11 @@ services:
 
 @subsubheading Jami
 
-@cindex jami, service
-
-This section describes how to configure a Jami server that can be used
-to host video (or audio) conferences, among other uses.  The following
+@defvar jami-service-type
+The service type for running Jami as a service.  It takes a
+@code{jami-configuration} object as a value, documented below.  This
+section describes how to configure a Jami server that can be used to
+host video (or audio) conferences, among other uses.  The following
 example demonstrates how to specify Jami account archives (backups) to
 be provisioned automatically:
 
@@ -28504,6 +28752,7 @@ Account_username: f3345f2775ddfe07a4b0d95daea111d15fbc1199
 The remaining actions should be self-explanatory.
 
 The complete set of available configuration options is detailed below.
+@end defvar
 
 @c TODO: Ideally, the following fragments would be auto-generated at
 @c build time, so that they needn't be manually duplicated.
@@ -28600,6 +28849,12 @@ account fingerprint for a registered username.
 This section describes how to set up and run a
 @uref{https://mumble.info, Mumble} server (formerly known as Murmur).
 
+@defvar mumble-server-service-type
+
+This is the service to run a Mumble server.  It takes a
+@code{mumble-server-configuration} object as its value, defined below.
+@end defvar
+
 @deftp {Data Type} mumble-server-configuration
 The service type for the Mumble server.  An example configuration can
 look like this:
@@ -28610,8 +28865,8 @@ look like this:
           (welcome-text
             "Welcome to this Mumble server running on Guix!")
           (cert-required? #t) ;disallow text password logins
-          (ssl-cert "/etc/letsencrypt/live/mumble.example.com/fullchain.pem")
-          (ssl-key "/etc/letsencrypt/live/mumble.example.com/privkey.pem")))
+          (ssl-cert "/etc/certs/mumble.example.com/fullchain.pem")
+          (ssl-key "/etc/certs/mumble.example.com/privkey.pem")))
 @end lisp
 
 After reconfiguring your system, you can manually set the mumble-server
@@ -28729,12 +28984,12 @@ Should logged ips be obfuscated to protect the privacy of users.
 File name of the SSL/TLS certificate used for encrypted connections.
 
 @lisp
-(ssl-cert "/etc/letsencrypt/live/example.com/fullchain.pem")
+(ssl-cert "/etc/certs/example.com/fullchain.pem")
 @end lisp
 @item @code{ssl-key} (default: @code{#f})
 Filepath to the ssl private key used for encrypted connections.
 @lisp
-(ssl-key "/etc/letsencrypt/live/example.com/privkey.pem")
+(ssl-key "/etc/certs/example.com/privkey.pem")
 @end lisp
 
 @item @code{ssl-dh-params} (default: @code{#f})
@@ -32326,21 +32581,13 @@ A service type for the @code{certbot} Let's Encrypt client.  Its value
 must be a @code{certbot-configuration} record as in this example:
 
 @lisp
-(define %certbot-deploy-hook
-  (program-file "certbot-deploy-hook.scm"
-    (with-imported-modules '((gnu services herd))
-      #~(begin
-          (use-modules (gnu services herd))
-          (with-shepherd-action 'nginx ('reload) result result)))))
-
 (service certbot-service-type
          (certbot-configuration
           (email "foo@@example.net")
           (certificates
            (list
             (certificate-configuration
-             (domains '("example.net" "www.example.net"))
-             (deploy-hook %certbot-deploy-hook))
+             (domains '("example.net" "www.example.net")))
             (certificate-configuration
              (domains '("bar.example.net")))))))
 @end lisp
@@ -32454,12 +32701,18 @@ certificates and keys; the shell variable @code{$RENEWED_DOMAINS} will
 contain a space-delimited list of renewed certificate domains (for
 example, @samp{"example.com www.example.com"}.
 
+@item @code{start-self-signed?} (default: @code{#t})
+Whether to generate an initial self-signed certificate during system
+activation.  This option is particularly useful to allow @code{nginx} to
+start before @code{certbot} has run, because @code{certbot} relies on
+@code{nginx} running to perform HTTP challenges.
+
 @end table
 @end deftp
 
 For each @code{certificate-configuration}, the certificate is saved to
-@code{/etc/letsencrypt/live/@var{name}/fullchain.pem} and the key is
-saved to @code{/etc/letsencrypt/live/@var{name}/privkey.pem}.
+@code{/etc/certs/@var{name}/fullchain.pem} and the key is
+saved to @code{/etc/certs/@var{name}/privkey.pem}.
 @node DNS Services
 @subsection DNS Services
 @cindex DNS (domain name system)
@@ -37145,9 +37398,9 @@ serve the default @file{/srv/git} over HTTPS might be:
              (listen '("443 ssl"))
              (server-name "git.my-host.org")
              (ssl-certificate
-              "/etc/letsencrypt/live/git.my-host.org/fullchain.pem")
+              "/etc/certs/git.my-host.org/fullchain.pem")
              (ssl-certificate-key
-              "/etc/letsencrypt/live/git.my-host.org/privkey.pem")
+              "/etc/certs/git.my-host.org/privkey.pem")
              (locations
               (list
                (git-http-nginx-location-configuration
@@ -38272,9 +38525,9 @@ footers.
            (nginx-server-block
              (nginx-server-configuration
                (ssl-certificate
-                 "/etc/letsencrypt/live/myweb.site/fullchain.pem")
+                 "/etc/certs/myweb.site/fullchain.pem")
                (ssl-certificate-key
-                 "/etc/letsencrypt/live/myweb.site/privkey.pem")
+                 "/etc/certs/myweb.site/privkey.pem")
                (listen '("443 ssl http2" "[::]:443 ssl http2"))
                (locations
                  (list
@@ -42907,6 +43160,15 @@ shepherd, The GNU Shepherd Manual}, for more info.
 Whether to restart the service when it stops, for instance when the
 underlying process dies.
 
+@item @code{respawn-limit} (default: @code{#f})
+Set a limit on how many times and how frequently a service may be
+restarted by Shepherd before it is disabled.  @xref{Defining
+Services,,, shepherd, The GNU Shepherd Manual}, for details.
+
+@item @code{respawn-delay} (default: @code{#f})
+When true, this is the delay in seconds before restarting a failed
+service.
+
 @item @code{start}
 @itemx @code{stop} (default: @code{#~(const #f)})
 The @code{start} and @code{stop} fields refer to the Shepherd's
@@ -43139,7 +43401,7 @@ A clause has the following form:
 the generated record.
 
 @var{type-decl} is either @code{@var{type}} for fields that require a
-value to be set or @code{(@var{type} @var{default})} otherwise.
+value to be set or @code{(@var{type} @var{default-value})} otherwise.
 
 @var{type} is the type of the value corresponding to @var{field-name};
 since Guile is untyped, a predicate
@@ -43979,6 +44241,116 @@ part of essential home services (enabled by default), but it's possible
 to use alternative services to implement more advanced use cases like
 read-only home.  Feel free to experiment and share your results.
 @end defvar
+
+@cindex dot files in Guix Home
+It is often the case that Guix Home users already have a setup for versioning
+their user configuration files (also known as @emph{dot files}) in a single
+directory, and some way of automatically deploy changes to their user home.
+
+@cindex Stow-like dot file management
+The @code{home-dotfiles-service-type} from @code{(gnu home services dotfiles)}
+is designed to ease the way into using Guix Home for this kind of users,
+allowing them to point the service to their dotfiles directory, which must
+follow the layout suggested by
+@uref{https://www.gnu.org/software/stow/, GNU Stow},
+and have their dotfiles automatically deployed to their user home, without
+migrating them to Guix native configurations.
+
+The dotfiles directory layout is expected to be structured as follows. Please
+keep in mind that it is advisable to keep your dotfiles directories under
+version control, for example in the same repository where you'd track your
+Guix Home configuration.
+
+@example
+~$ tree -a ./dotfiles/
+dotfiles/
+├── git
+│   └── .gitconfig
+├── gpg
+│   └── .gnupg
+│       ├── gpg-agent.conf
+│       └── gpg.conf
+├── guile
+│   └── .guile
+├── guix
+│   └── .config
+│       └── guix
+│           └── channels.scm
+├── nix
+│   ├── .config
+│   │   └── nixpkgs
+│   │       └── config.nix
+│   └── .nix-channels
+├── tmux
+│   └── .tmux.conf
+└── vim
+    └── .vimrc
+
+13 directories, 10 files
+@end example
+
+For an informal specification please refer to the Stow manual
+(@pxref{Top,,, stow, Introduction}). A suitable configuration would then
+be:
+
+@lisp
+(home-environment
+  ;; @dots{}
+  (services
+    (service home-dotfiles-service-type
+             (home-dotfiles-configuration
+               (directories (list "./dotfiles"))))))
+@end lisp
+
+The expected home directory state would then be:
+
+@example
+.
+├── .config
+│   ├── guix
+│   │   └── channels.scm
+│   └── nixpkgs
+│       └── config.nix
+├── .gitconfig
+├── .gnupg
+│   ├── gpg-agent.conf
+│   └── gpg.conf
+├── .guile
+├── .nix-channels
+├── .tmux.conf
+└── .vimrc
+@end example
+
+@defvar home-dotfiles-service-type
+Return a service which is very similiar to @code{home-files-service-type}
+(and actually extends it), but designed to ease the way into using Guix
+Home for users that already track their dotfiles under some kind of version
+control.  This service allows users to point Guix Home to their dotfiles
+directory and have their files automatically deployed to their home directory
+just like Stow would, without migrating all of their dotfiles to Guix native
+configurations.
+@end defvar
+
+@deftp {Data Type} home-dotfiles-configuration
+Available @code{home-dotfiles-configuration} fields are:
+
+@table @asis
+@item @code{source-directory} (default: @code{(current-source-directory)})
+The path where dotfile directories are resolved. By default dotfile directories
+are resolved relative the source location where
+@code{home-dotfiles-configuration} appears.
+
+@item @code{directories} (type: list-of-strings)
+The list of dotfiles directories where @code{home-dotfiles-service-type} will
+look for application dotfiles.
+
+@item @code{exclude} (default: @code{'(".*~" ".*\\.swp" "\\.git" "\\.gitignore")})
+The list of file patterns @code{home-dotfiles-service-type} will exclude while
+visiting each one of the @code{directories}.
+
+@end table
+
+@end deftp
 
 @defvar home-xdg-configuration-files-service-type
 The service is very similar to @code{home-files-service-type} (and
@@ -46184,6 +46556,11 @@ Platform targeting x86 CPU running GNU/Hurd (also referred to as
 @defvar avr
 Platform targeting AVR CPUs without an operating system, with run-time support
 from AVR Libc.
+@end defvar
+
+@defvar or1k-elf
+Platform targeting OpenRISC 1000 CPU without an operating system and without a
+C standard library.
 @end defvar
 
 @node System Images

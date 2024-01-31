@@ -61,6 +61,7 @@
 ;;; Copyright © 2023 Yovan Naumovski <yovan@gorski.stream>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2023 Artyom V. Poptsov <poptsov.artyom@gmail.com>
+;;; Copyright © 2024 Tomas Volf <~@wolfsden.cz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -2630,6 +2631,45 @@ library remains flexible, portable, and easily embeddable.")
     (home-page "http://enet.bespin.org")
     (license license:expat)))
 
+(define-public enet-moonlight
+  (let ((commit "4cde9cc3dcc5c30775a80da1de87f39f98672a31")
+        (revision "1"))
+    (package
+      (inherit enet)
+      (name "enet")
+      (version (git-version "1.3.17" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/cgutman/enet")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "07sr32jy989ja23fwg8bvrq2slgm7bhfw6v3xq7yczbw86c1dndv"))))
+      (build-system cmake-build-system)
+      (arguments
+       (list #:tests? #f ;no test suite
+             #:phases #~(modify-phases %standard-phases
+                          (add-after 'unpack 'build-share-lib
+                            (lambda* _
+                              ;;  -DBUILD_SHARED_LIBS=ON not working
+                              (substitute* "CMakeLists.txt"
+                                (("STATIC")
+                                 "SHARED"))))
+                          (replace 'install
+                            (lambda* (#:key outputs source #:allow-other-keys)
+                              (let* ((include (string-append #$output
+                                                             "/include"))
+                                     (lib (string-append #$output "/lib")))
+                                (mkdir-p include)
+                                (mkdir-p lib)
+                                (copy-recursively (string-append source
+                                                                 "/include")
+                                                  include)
+                                (install-file "libenet.so" lib)))))))
+      (native-inputs (list pkg-config)))))
+
 (define-public sslh
   (package
     (name "sslh")
@@ -4518,7 +4558,7 @@ network.")
 (define-public ngtcp2
   (package
     (name "ngtcp2")
-    (version "1.0.1")
+    (version "1.1.0")
     (source
      (origin
        (method url-fetch)
@@ -4526,9 +4566,15 @@ network.")
                            "releases/download/v" version "/"
                            "ngtcp2-" version ".tar.xz"))
        (sha256
-        (base32 "0l84hnj9n4bfxjizgmqsqbz71jx7m00a7l1z43fg5ls3apx9ij11"))))
+        (base32 "1pppl6s25hz91w6321g1q7dqvfy4vccz9mmc5r8sfdvdc95fngl0"))))
     (build-system gnu-build-system)
-    (native-inputs (list cunit))
+    (arguments
+     (list
+      #:configure-flags
+      ;; openssl package does not support QUIC interface, so just gnutls
+      #~(list "--with-gnutls")))
+    (native-inputs (list cunit pkg-config))
+    (inputs (list gnutls))
     (home-page "https://nghttp2.org/ngtcp2/")
     (synopsis "QUIC protocol implementation")
     (description
@@ -4539,7 +4585,7 @@ QUIC protocol.")
 (define-public yggdrasil
   (package
     (name "yggdrasil")
-    (version "0.5.4")
+    (version "0.5.5")
     (source
      (origin
        (method git-fetch)
@@ -4550,7 +4596,7 @@ QUIC protocol.")
          (recursive? #t)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1vfzzj9vxsc41dkaasz4fg3mz8iab86xyy925mp51zqmvx79ggx2"))
+        (base32 "0yzgs4b0q945ygrqlc5hnmh78awl5p35azx83fz61bzfg20d52b4"))
       (patches (search-patches "yggdrasil-extra-config.patch"))))
     (build-system go-build-system)
     (arguments

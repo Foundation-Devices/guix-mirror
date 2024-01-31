@@ -47,6 +47,7 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages golang)
   #:use-module (gnu packages golang-check)
+  #:use-module (gnu packages golang-crypto)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages web))
 
@@ -575,6 +576,35 @@ logging system.")
      "@code{go-github-com-go-chi-chi-v5} is an HTTP router that lets the user
 decompose request handling into many smaller layers.")
     (license license:expat)))
+
+(define-public go-github-com-go-jose-go-jose-v3
+  (package
+    (name "go-github-com-go-jose-go-jose-v3")
+    (version "3.0.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/go-jose/go-jose")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1fnw0p49wc9gmd2xcji2x9jf97dgg9igagd5m6bmq3nw9jjfqdc5"))))
+    (build-system go-build-system)
+    (arguments
+     '( #:import-path "github.com/go-jose/go-jose/v3"))
+    (propagated-inputs
+     (list go-golang-org-x-crypto))
+    (native-inputs
+     (list go-github-com-google-go-cmp-cmp
+           go-github-com-stretchr-testify))
+    (home-page "https://github.com/go-jose/go-jose")
+    (synopsis "Implementation of JOSE standards (JWE, JWS, JWT) in Go")
+    (description
+     "This package provides a Golang implementation of the Javascript Object
+Signing and Encryption set of standards.  This includes support for JSON Web
+Encryption, JSON Web Signature, and JSON Web Token standards.")
+    (license license:asl2.0)))
 
 (define-public go-github-com-go-telegram-bot-api-telegram-bot-api
   (package
@@ -1117,6 +1147,31 @@ which produce colorized output using github.com/fatih/color.")
     (home-page "https://github.com/opentracing/opentracing-go")
     (synopsis "OpenTracing API for Go")
     (description "OpenTracing-Go is a Go implementation of the OpenTracing API.")
+    (license license:asl2.0)))
+
+(define-public go-github-com-pquerna-cachecontrol
+  (package
+    (name "go-github-com-pquerna-cachecontrol")
+    (version "0.2.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/pquerna/cachecontrol")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0d5zgv2w0sinh9m41pw3n015zzyabk7awgwwga7nmhjz452c9r5n"))))
+    (build-system go-build-system)
+    (arguments
+     (list #:import-path "github.com/pquerna/cachecontrol"))
+    (native-inputs
+     (list go-github-com-stretchr-testify))
+    (home-page "https://github.com/pquerna/cachecontrol")
+    (synopsis "Golang HTTP Cache-Control Parser and Interpretation")
+    (description
+     "This package implements RFC 7234 Hypertext Transfer Protocol (HTTP/1.1):
+Caching.")
     (license license:asl2.0)))
 
 (define-public go-github-com-puerkitobio-goquery

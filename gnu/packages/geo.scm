@@ -14,10 +14,11 @@
 ;;; Copyright © 2020, 2022 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020 Christopher Baines <mail@cbaines.net>
 ;;; Copyright © 2020, 2021, 2022, 2023 Felix Gruber <felgru@posteo.net>
-;;; Copyright © 2021, 2023 Sharlatan Hellseher <sharlatanus@gmail.com>
-;;; Copyright © 2021, 2023 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2021, 2023, 2024 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2021, 2023, 2024 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2021 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2021, 2022 Nikolay Korotkiy <sikmir@disroot.org>
+;;; Copyright © 2022 Patrick Noll <patrick@patricknoll.com>
 ;;; Copyright © 2022 Roman Scherer <roman.scherer@burningswell.com>
 ;;; Copyright © 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Denis 'GNUtoo' Carikli <GNUtoo@cyberdimension.org>
@@ -61,6 +62,7 @@
   #:use-module (gnu packages audio)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages backup)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
@@ -974,56 +976,106 @@ enables you to easily do operations in Python that would otherwise
 require a spatial database such as PostGIS.")
     (license license:bsd-3)))
 
+(define-public python-ogr2osm
+  (package
+    (name "python-ogr2osm")
+    (version "1.2.0")
+    (source
+     (origin
+       (method git-fetch) ; no tests data in PyPi package
+       (uri
+        (git-reference
+         (url "https://github.com/roelderickx/ogr2osm/")
+         (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0hwqnx3cdqxmniydpj1v31kglq1xjsx41d8p10c9j4hg8kb43j80"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      ;; There are tests in git checkout but non of the examples taken from
+      ;; GitHub Actions worked for me. Disabling them to be checked later
+      ;; <https://github.com/roelderickx/ogr2osm/blob/main/.github/workflows/test.yml>.
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                ;; TODO: Fix provided tests.
+                ;; (invoke "cram" "test/basic_usage.t")
+                ;; (invoke "cram" "test/osm_output.t")
+                ;; (invoke "cram" "test/pbf_output.t")
+
+                ;; Run simple tests to ensure that the command is working.
+                (invoke "ogr2osm" "--help")
+                (invoke
+                 "ogr2osm" "-f" "test/shapefiles/basic_geometries.kml")))))))
+    (inputs
+     (list gdal))
+    (native-inputs
+     (list coreutils
+           diffutils
+           libxml2
+           python-cram
+           which))
+    (propagated-inputs
+     (list python-lxml
+           python-protobuf))
+    (home-page "https://github.com/roelderickx/ogr2osm")
+    (synopsis "Convert ogr-readable files like shapefiles into OSM or PDF formats")
+    (description
+     "@code{ogr2osm} is a tool for converting ogr-readable files into
+@acronym{OSM, OpenStreetMap} format.  It supports reading from OGR files like
+shapefiles or PostgresSQL database and converts data into @code{osm} or
+@code{osm.pbf} formats.  A translation file can be used to manipulate the data
+during conversion.")
+    (license license:expat)))
+
 (define-public python-osmnx
   (package
     (name "python-osmnx")
-    (version "1.1.2")
+    (version "1.8.1")
     (source
      (origin
-       ; Fetch from github as the pypi package is missing the tests dir.
+       ;; Fetch from github as the pypi package is missing the tests dir.
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/gboeing/osmnx")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1n8qjn184p5a2s3j6x6iyc1i7p3l3xnbqqxm6ajwgwv6j5fw1d5a"))))
+        (base32 "0n238n07pp5jw9cg8nqw9qhpkw8plzb5imz1gxbliw2l1idqyjcl"))))
     (build-system pyproject-build-system)
     (arguments
      (list
-      #:test-flags
-      '(list "-k"
-             (string-append
-               ;; The following tests require network access.
-               "not test_geocode_to_gdf"
-               " and not test_stats"
-               " and not test_osm_xml"
-               " and not test_elevation"
-               " and not test_routing"
-               " and not test_plots"
-               " and not test_find_nearest"
-               " and not test_api_endpoints"
-               " and not test_graph_save_load"
-               " and not test_graph_from_functions"
-               " and not test_geometries"))))
-    (propagated-inputs
-      (list python-folium
-            python-geopandas
-            python-matplotlib
-            python-networkx
-            python-numpy
-            python-pandas
-            python-pyproj
-            python-requests
-            python-rtree
-            python-shapely))
-    (native-inputs
-      (list python-numpy python-pytest))
+      #:test-flags '(list "-k"
+                          (string-append
+                           ;; The following tests require network access.
+                           "not test_stats"
+                           " and not test_geocoder"
+                           " and not test_osm_xml"
+                           " and not test_elevation"
+                           " and not test_routing"
+                           " and not test_plots"
+                           " and not test_find_nearest"
+                           " and not test_api_endpoints"
+                           " and not test_graph_save_load"
+                           " and not test_graph_from_functions"
+                           " and not test_features"))))
+    (propagated-inputs (list python-folium
+                             python-geopandas
+                             python-matplotlib
+                             python-networkx
+                             python-numpy
+                             python-pandas
+                             python-requests
+                             python-shapely))
+    (native-inputs (list python-hatchling python-pytest))
     (home-page "https://github.com/gboeing/osmnx")
     (synopsis
-      "Retrieve, model, analyze, and visualize OpenStreetMap street networks")
+     "Retrieve, model, analyze, and visualize OpenStreetMap street networks")
     (description
-      "OSMnx is a Python library that lets you download geospatial data
+     "OSMnx is a Python library that lets you download geospatial data
 from OpenStreetMap and model, project, visualize, and analyze real-world
 street networks and any other geospatial geometries.  You can download
 and model walkable, drivable, or bikeable urban networks with a single
@@ -1272,15 +1324,7 @@ utilities for data translation and processing.")
        (file-name (git-file-name name version))
        (sha256
         (base32 "0jsraqzq82pw19wvx84x7w5cs8agr44a9b5y0jjw540wim4xa73r"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               ;; This is the only test file.
-               (invoke "python" "-m" "pytest" "test_shapefile.py")))))))
+    (build-system pyproject-build-system)
     (native-inputs
      (list python-pytest python-pytest-runner))
     (home-page "https://github.com/GeospatialPython/pyshp")
@@ -1495,13 +1539,13 @@ to create databases that are optimized for rendering/tile/map-services.")
 (define-public python-metpy
   (package
     (name "python-metpy")
-    (version "1.6.0")
+    (version "1.6.1")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "MetPy" version))
               (sha256
                (base32
-                "125nb1bmkqpdf19fq0mbbgzdjczn46lr9yqi7zgn6k62dzjm1gm7"))))
+                "1pzzanar797wkn6ljs47vni1fwli570d5qsiw1kpw0j1xymcmfsm"))))
     (build-system pyproject-build-system)
     (arguments
      ;; Too many of the tests in the files below require online data.
@@ -2508,19 +2552,19 @@ track your position right from your laptop.")
         "-DLICENSING_PROVIDER:BOOL=OFF"
         "-DMapper_MANUAL_QTHELP:BOOL=OFF")))
     (inputs
-     `(("clipper" ,clipper)
-       ("cups" ,cups)
-       ("curl" ,curl)
-       ("gdal" ,gdal)
-       ("proj" ,proj)
-       ("qtbase" ,qtbase-5)
-       ("qtimageformats" ,qtimageformats-5)
-       ("qtlocation" ,qtlocation)
-       ("qtsensors" ,qtsensors)
-       ("zlib" ,zlib)))
+     (list clipper
+           cups
+           curl
+           gdal
+           proj
+           qtbase-5
+           qtimageformats-5
+           qtlocation
+           qtsensors
+           zlib))
     (native-inputs
-     `(("doxygen" ,doxygen)
-       ("qttools-5" ,qttools-5)))
+     (list doxygen
+           qttools-5))
     (home-page "https://www.openorienteering.org/apps/mapper/")
     (synopsis "OpenOrienteering Mapper (OOM)")
     (description
@@ -3090,15 +3134,8 @@ using third-party geocoders and other data sources.")
               (sha256
                (base32
                 "0inxyj5n4jzgg5xiadqx9sk83gdx5ff989l9s04smdzbd3b8c0c8"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (native-inputs (list python-pytest python-numpy))
-    (arguments
-      (list #:phases
-            #~(modify-phases %standard-phases
-                (replace 'check
-                  (lambda* (#:key tests? inputs #:allow-other-keys)
-                    (when tests?
-                      (invoke "pytest")))))))
     (home-page "https://github.com/mapado/haversine")
     (synopsis "Calculate the distance between 2 points on Earth")
     (description "This package provides functions to calculate the
