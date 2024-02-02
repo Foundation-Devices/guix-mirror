@@ -984,6 +984,7 @@ re-executing them as necessary.")
     (inputs
      (list coreutils
            shadow                     ;for login (used in telnetd and rlogind)
+           libxcrypt
            ncurses
            readline))                   ;for 'ftp'
     (native-inputs
