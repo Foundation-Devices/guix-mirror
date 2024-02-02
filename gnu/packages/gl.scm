@@ -325,6 +325,7 @@ also known as DXTn or DXTC) for Mesa.")
            libxrandr
            libxvmc
            llvm-for-mesa
+           vulkan-loader
            wayland
            wayland-protocols
            `(,zstd "lib")))
@@ -477,7 +478,7 @@ svga,swrast,virgl,zink")))
                  (_
                   '((display "No tests to disable on this architecture.\n"))))))
          (add-before 'configure 'fix-dlopen-libnames
-           (lambda _
+           (lambda* (#:key inputs #:allow-other-keys)
              (let ((out #$output))
                ;; Remain agnostic to .so.X.Y.Z versions while doing
                ;; the substitutions so we're future-safe.
@@ -493,7 +494,12 @@ svga,swrast,virgl,zink")))
                  ;; it's never installed since Mesa removed its
                  ;; egl_gallium support.
                  (("\"gbm_dri\\.so")
-                  (string-append "\"" out "/lib/dri/gbm_dri.so"))))))
+                  (string-append "\"" out "/lib/dri/gbm_dri.so")))
+               (substitute* "src/gallium/drivers/zink/zink_screen.c"
+                 (("util_dl_open\\(VK_LIBNAME\\)")
+                  (format #f "util_dl_open(\"~a\")"
+                          (search-input-file inputs
+                                             "lib/libvulkan.so.1")))))))
          (add-after 'install 'split-outputs
            (lambda _
              (let ((out #$output)
