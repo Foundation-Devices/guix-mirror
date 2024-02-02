@@ -121,6 +121,7 @@
   #:use-module (gnu packages cpp)
   #:use-module (gnu packages crates-gtk)
   #:use-module (gnu packages crates-io)
+  #:use-module (gnu packages crypto)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages databases)
@@ -292,7 +293,7 @@
                "1id45r2ccgkbjm9i998997ch32lvicpyynyx8x6aa4420wmdf5ps"))))
     (build-system gnu-build-system)
     (native-inputs (list `(,pcre "bin")))       ;for 'pcre-config'
-    (inputs (list apr apr-util openssl perl)) ; needed to run bin/apxs
+    (inputs (list apr apr-util libxcrypt openssl perl)) ; needed to run bin/apxs
     (arguments
      (list
       #:test-target "test"
