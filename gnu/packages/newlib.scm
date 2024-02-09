@@ -27,7 +27,8 @@
   #:use-module (guix memoization)
   #:use-module (guix packages)
   #:use-module (guix utils)
-  #:export (make-newlib))
+  #:export (make-newlib
+            make-newlib-union))
 
 (define* (make-newlib/implementation target
                                      #:key
@@ -153,3 +154,86 @@ easily useable on embedded systems.")
 
 (define make-newlib
   (memoize make-newlib/implementation))
+
+(define* (make-newlib-union/implementation
+           target
+           #:key
+           (xbinutils (cross-binutils target))
+           (xgcc (cross-gcc target
+                            #:xbinutils xbinutils))
+           (newlib (make-newlib target
+                                #:xgcc xgcc
+                                #:xbinutils xbinutils))
+           (newlib-nano (make-newlib target
+                                     #:xgcc xgcc
+                                     #:xbinutils xbinutils
+                                     #:nano? #t))
+           (libstdc++-nano (cross-libstdc++ target
+                                            #:xbinutils xbinutils
+                                            #:xgcc xgcc
+                                            #:libc newlib-nano)))
+  "Returns a package that is a mix of NEWLIB, NEWLIB-NANO, LIBSTDC++-NANO
+packages for TARGET built using XBINUTILS and XGCC.
+
+LIBSTDC++-NANO is a version of libstdc++ compiled targeting the NEWLIB-NANO C
+standard library, this is necessary due to legacy reasons as commonly
+arm-none-eabi provides both Newlib and Newlib-nano on the same toolchain."
+  (package
+    (inherit newlib)
+    (name (string-append "cross-newlib-union-" target))
+    (build-system trivial-build-system)
+    (arguments
+     (list
+       #:modules '((guix build multilib)
+                   (guix build union)
+                   (guix build utils))
+       #:builder
+       #~(begin
+           (use-modules (guix build multilib)
+                        (guix build union)
+                        (guix build utils))
+
+           (define (nano-union package multi-lib-dir lib)
+             (let ((src (string-append package "/" #$target "/lib/"
+                                       multi-lib-dir "/" lib ".a"))
+                   (dst (string-append #$output "/" #$target "/lib/"
+                                       multi-lib-dir "/" lib "_nano.a")))
+               (format #t "`~a' ~~> `~a'~%" src dst)
+               (symlink src dst)))
+
+           (setenv "PATH"
+                   (string-append #$(this-package-native-input "cross-gcc")
+                                  "/bin"))
+
+           ;; Only add symbolic links to NEWLIB as is, create the
+           ;; directories to add NEWLIB-NANO files.
+           (union-build #$output (list #$(this-package-input "newlib"))
+                        #:create-all-directories? #t)
+
+           ;; Add NEWLIB-NANO on top of NEWLIB.
+           ;;
+           ;; Newlib already provides nano.specs with the information to
+           ;; link to libc_nano.a for each multilib target, but doesn't
+           ;; actually provide the libc_nano.a (and others) which need
+           ;; to be built separately and installed where nano.specs can
+           ;; find them.
+           (let ((multi-lib (parse-multi-lib #$(cc-for-target target))))
+             (for-each (lambda (multi-lib-dir)
+                         (let ((newlib-nano #$(this-package-input "newlib-nano"))
+                               (libstdc++-nano #$(this-package-input "libstdc++-nano")))
+                           (nano-union newlib-nano multi-lib-dir "libc")
+                           (nano-union newlib-nano multi-lib-dir "libg")
+                           (nano-union newlib-nano multi-lib-dir "librdimon")
+                           (nano-union libstdc++-nano multi-lib-dir "libstdc++")
+                           (nano-union libstdc++-nano multi-lib-dir "libsupc++")))
+                       (multi-lib->directories multi-lib))))))
+    (native-inputs
+     `(("cross-gcc" ,xgcc)))
+    (inputs
+     `(("cross-gcc" ,xgcc)
+       ("libstdc++-nano" ,libstdc++-nano)
+       ("newlib" ,newlib)
+       ("newlib-nano" ,newlib-nano)))))
+
+(define make-newlib-union
+  (memoize make-newlib-union/implementation))
