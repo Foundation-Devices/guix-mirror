@@ -478,6 +478,7 @@ GNU_SYSTEM_MODULES =				\
   %D%/packages/netpbm.scm			\
   %D%/packages/nettle.scm			\
   %D%/packages/networking.scm			\
+  %D%/packages/newlib.scm                       \
   %D%/packages/nfs.scm                          \
   %D%/packages/nickle.scm                       \
   %D%/packages/nicotine.scm                     \
