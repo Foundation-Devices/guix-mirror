@@ -787,7 +787,7 @@ with XBINUTILS, XGCC and LIBC (if exists for TARGET)."
      (format #f "Complete GCC tool chain for C/C++ development (~a)" target))
     (description "This package provides a complete GCC cross toolchain for
 C/C++ development to be installed in user profiles.  This includes GCC, as
-well as libc (headers and binariesl), and Binutils.  GCC is the GNU Compiler
+well as libc (headers and binaries), and Binutils.  GCC is the GNU Compiler
 Collection.")
     (license (delete-duplicates `(,(package-license xgcc)
                                   ,(package-license xbinutils)
