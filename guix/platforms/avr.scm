@@ -25,4 +25,5 @@
   (platform
    (target "avr")
    (system #f)
-   (glibc-dynamic-linker #f)))
+   (glibc-dynamic-linker #f)
+   (multilib? #t)))
