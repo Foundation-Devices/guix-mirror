@@ -161,8 +161,11 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
     ;; libgcc.a showing up as having an unknown architecture.  See
     ;; <http://lists.fedoraproject.org/pipermail/arm/2010-August/000663.html>
     ;; for instance.
-    (let ((args `(#:strip-binaries? #f
-                  ,@(package-arguments xgcc))))
+    (let* ((args `(#:strip-binaries? #f
+                  ,@(package-arguments xgcc)))
+           (platform (false-if-platform-not-found
+                       (lookup-platform-by-target target)))
+           (multilib? (and=> platform platform-multilib?)))
       (substitute-keyword-arguments args
         ((#:configure-flags flags)
          #~(append (list #$(string-append "--target=" target)
@@ -215,7 +218,7 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
                                 #~())
 
 
-                         #$@(if (target-avr? target)
+                         #$@(if multilib?
                                 #~("--enable-multilib")
                                 #~())
 
@@ -237,7 +240,7 @@ base compiler and using LIBC (which may be either a libc package or #f.)"
                                 #$(target-avr? target)
                                 (string-prefix? "--with-native-system-header-dir"
                                                 flag))
-                           (and #$(target-avr? target)
+                           (and #$multilib?
                                 (string=? flag "--disable-multilib"))))
                      #$flags)))
         ((#:make-flags flags)
