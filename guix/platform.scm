@@ -31,6 +31,7 @@
             platform-linux-architecture
             platform-rust-target
             platform-glibc-dynamic-linker
+            platform-multilib?
 
             &platform-not-found-error
             platform-not-found-error?
@@ -67,6 +68,9 @@
 ;; The 'linux-architecture' is only relevant if the kernel is Linux.  In that
 ;; case, it corresponds to the ARCH variable used when building Linux.
 ;;
+;; The 'multilib?' field field is only relevant for targets that are expected
+;; to enable multilib support in GCC.
+;;
 ;; The 'glibc-dynamic-linker' field is the name of Glibc's dynamic linker for
 ;; the corresponding system.
 (define-record-type* <platform> platform make-platform
@@ -76,6 +80,8 @@
   (linux-architecture   platform-linux-architecture
                         (default #false))
   (rust-target          platform-rust-target
+                        (default #false))
+  (multilib?            platform-multilib?
                         (default #false))
   (glibc-dynamic-linker platform-glibc-dynamic-linker))
 
