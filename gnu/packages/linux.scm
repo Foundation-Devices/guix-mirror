@@ -2939,7 +2939,8 @@ MIDI functionality to the Linux-based operating system.")
                                  name "-" version ".tar.bz2"))
              (sha256
               (base32
-               "09m4dnn4kplawprd2bl15nwa0b4r1brab3x44ga7f1fyk7aw5zwq"))))
+               "09m4dnn4kplawprd2bl15nwa0b4r1brab3x44ga7f1fyk7aw5zwq"))
+             (patches (search-patches "alsa-utils-strlcat-strlcpy.patch"))))
     (build-system gnu-build-system)
     (arguments
      (list
