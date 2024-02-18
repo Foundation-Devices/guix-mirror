@@ -35,6 +35,7 @@
   #:use-module (gnu packages)
   #:use-module (gnu packages base)
   #:use-module (gnu packages crates-io)
+  #:use-module (gnu packages crypto)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cups)
   #:use-module (gnu packages fonts)
@@ -355,7 +356,7 @@ numbers of user-defined menu items efficiently.")
              (string-append "PREFIX=" %output))
        #:phases (modify-phases %standard-phases (delete 'configure))))
     (inputs
-     (list libx11 libxext libxinerama libxrandr))
+     (list libx11 libxcrypt libxext libxinerama libxrandr))
     (home-page "https://tools.suckless.org/slock/")
     (synopsis "Simple X session lock")
     (description
