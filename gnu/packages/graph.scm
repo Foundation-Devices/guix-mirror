@@ -511,7 +511,9 @@ graphs in Python.")
     (inputs (list igraph))
     (native-inputs
      (list python-ddt
+           python-setuptools
            python-setuptools-scm
+           python-wheel
            pkg-config))
     (home-page "https://github.com/vtraag/louvain-igraph")
     (synopsis "Implementation of the Louvain algorithm")

@@ -79,6 +79,8 @@
            pbzip2
            pigz
            plzip
+           python-setuptools
+           python-wheel
            rpm))
     (home-page "https://wummel.github.io/patool/")
     (synopsis "Portable archive file manager")

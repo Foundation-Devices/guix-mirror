@@ -648,7 +648,7 @@ mining in astronomy.")
             (lambda _
               (invoke "python" "setup.py" "build_ext" "--inplace"))))))
     (native-inputs
-     (list python-pytest))
+     (list python-pytest python-setuptools python-wheel))
     (inputs
      (list curl cfitsio zlib))
     (propagated-inputs
@@ -3203,7 +3203,8 @@ Science Institute} image array manipulation functions.")
               ;; Cython extensions have to be built before running the tests.
               (invoke "python" "setup.py" "build_ext" "--inplace"))))))
     (propagated-inputs (list python-numpy))
-    (native-inputs (list python-pytest python-setuptools-scm))
+    (native-inputs (list python-pytest python-setuptools
+                         python-setuptools-scm python-wheel))
     (home-page "https://stsciimagestats.readthedocs.io/en/latest/")
     (synopsis "Compute sigma-clipped statistics on data arrays")
     (description
@@ -3984,6 +3985,7 @@ Moon position, etc.")
                 (invoke "python" "-m" "unittest" "discover" "-s" "test")))))))
     (inputs
      (list python-numpy))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/brandon-rhodes/python-jplephem")
     (synopsis "Python version of NASA DE4xx ephemerides")
     (description
@@ -4092,7 +4094,8 @@ exposures and high-level data products (mosaics, extracted spectra, etc.).")
             (lambda _
               (invoke "python" "setup.py" "build_ext" "--inplace"))))))
     (native-inputs
-     (list python-pytest-doctestplus python-pytest python-setuptools-scm))
+     (list python-pytest-doctestplus python-pytest python-setuptools
+           python-setuptools-scm python-wheel))
     (inputs
      (list erfa))
     (propagated-inputs
