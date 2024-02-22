@@ -1090,6 +1090,8 @@ for the @code{OpenStreetMap} Overpass API.")
            diffutils
            libxml2
            python-cram
+           python-setuptools
+           python-wheel
            which))
     (propagated-inputs
      (list python-lxml
@@ -1445,7 +1447,7 @@ utilities for data translation and processing.")
       ;; This test requires internet access.
       '(list "--deselect" "test_shapefile.py::test_reader_url")))
     (native-inputs
-     (list python-pytest python-pytest-runner))
+     (list python-pytest python-pytest-runner python-setuptools python-wheel))
     (home-page "https://github.com/GeospatialPython/pyshp")
     (synopsis "Read/write support for ESRI Shapefile format")
     (description
@@ -1543,7 +1545,9 @@ surface (i.e., gridding) with a hint of machine learning.")
            python-pytest
            python-pytest-cov
            python-pytest-mpl
-           python-pytest-xdist))
+           python-pytest-xdist
+           python-setuptools
+           python-wheel))
     (home-page "https://scitools.org.uk/cartopy/docs/latest/")
     (synopsis "Cartographic library for visualisation")
     (description
@@ -3352,6 +3356,7 @@ path loss.")
     ;; The tests are speed tests or development tests to compare results with
     ;; a different library.
     (arguments (list #:tests? #false))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/rabuchaim/geoip2fast")
     (synopsis
      "Fast GeoIP2 country/city/asn lookup library")
@@ -3408,7 +3413,7 @@ using third-party geocoders and other data sources.")
                (base32
                 "0inxyj5n4jzgg5xiadqx9sk83gdx5ff989l9s04smdzbd3b8c0c8"))))
     (build-system pyproject-build-system)
-    (native-inputs (list python-pytest python-numpy))
+    (native-inputs (list python-pytest python-numpy python-setuptools python-wheel))
     (home-page "https://github.com/mapado/haversine")
     (synopsis "Calculate the distance between 2 points on Earth")
     (description "This package provides functions to calculate the

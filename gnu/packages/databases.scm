@@ -636,6 +636,7 @@ the API, and provides features such as:
            python-strenum
            python-tomlkit
            python-typing-extensions))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/RobertCraigie/prisma-client-py")
     (synopsis "Fully type-safe database client")
     (description
@@ -5600,7 +5601,8 @@ mechanism of @code{dogpile}.")
            python-pytest-timeout
            python-pytest-xdist
            python-setuptools
-           python-trustme))
+           python-trustme
+           python-wheel))
     (home-page "https://datasette.io/")
     (synopsis "Multi-tool for exploring and publishing data")
     (description "Datasette is a tool for exploring and publishing data.

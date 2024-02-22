@@ -182,7 +182,7 @@ family of functions.")
     (build-system pyproject-build-system)
     (propagated-inputs (list python-numpy python-scipy))
     (inputs (list fasttext))
-    (native-inputs (list pybind11))))
+    (native-inputs (list pybind11 python-setuptools python-wheel))))
 
 (define-public python-funsor
   (package
@@ -208,11 +208,13 @@ family of functions.")
                          python-pytest
                          python-pytest-xdist
                          python-requests
+                         python-setuptools
                          python-scipy
                          python-sphinx
                          python-sphinx-gallery
                          python-sphinx-rtd-theme
-                         python-torchvision))
+                         python-torchvision
+                         python-wheel))
     (home-page "https://github.com/pyro-ppl/funsor")
     (synopsis "Tensor-like library for functions and distributions")
     (description
@@ -357,7 +359,8 @@ classification.")
                         "-k" "not testJSONConversionBestEffort")))))))
     (propagated-inputs
      (list python-absl-py python-contextlib2 python-pyyaml python-six))
-    (native-inputs (list python-mock python-pytest))
+    (native-inputs (list python-mock python-pytest python-setuptools
+                         python-wheel))
     (home-page "https://github.com/google/ml_collections")
     (synopsis "Python collections designed for Machine Learning usecases")
     (description
@@ -931,6 +934,7 @@ depend on language-specific pre- or post-processing.")
          (sha256
           (base32 "018ilrp41fcclmb5lsml3aijwbmhbq3m7wy65hr1fryj0avic8fr"))))
       (build-system pyproject-build-system)
+      (native-inputs (list python-setuptools python-wheel))
       (home-page "https://github.com/sofiatolaosebikan/hopcroftkarp")
       (synopsis "Implementation of the Hopcroft-Karp algorithm")
       (description
@@ -956,7 +960,8 @@ cardinality matching from a bipartite graph.")
                              python-numpy
                              python-scikit-learn
                              python-scipy))
-    (native-inputs (list python-pytest python-pytest-cov))
+    (native-inputs (list python-pytest python-pytest-cov python-setuptools
+                         python-wheel))
     (home-page "https://persim.scikit-tda.org")
     (synopsis "Tools for analyzing persistence diagrams in Python")
     (description
@@ -987,7 +992,8 @@ It currently houses implementations of
     (build-system pyproject-build-system)
     (propagated-inputs (list python-numpy python-persim python-scikit-learn
                              python-scipy))
-    (native-inputs (list python-cython python-pytest))
+    (native-inputs (list python-cython python-pytest python-setuptools
+                         python-wheel))
     (home-page "https://ripser.scikit-tda.org")
     (synopsis "Persistent homology library for Python")
     (description
@@ -1764,7 +1770,9 @@ computing environments.")
      (list python-cython-3
            python-pandas
            python-pytest
-           python-pytest-xdist))
+           python-pytest-xdist
+           python-setuptools
+           python-wheel))
     (propagated-inputs
      (list python-numpy python-threadpoolctl python-scipy python-joblib))
     (home-page "https://scikit-learn.org/")
@@ -1825,7 +1833,8 @@ data analysis.")
              python-scikit-learn
              python-scipy
              python-packaging))
-      (native-inputs (list python-pytest python-pytest-cov python-cython))
+      (native-inputs (list python-pytest python-pytest-cov python-cython
+                           python-setuptools python-wheel))
       (home-page "https://github.com/scikit-learn-contrib/scikit-learn-extra")
       (synopsis "Set of tools for scikit-learn")
       (description
@@ -1890,7 +1899,8 @@ and are compatible with its API.")
                              python-srsly
                              python-typing-extensions
                              python-wasabi))
-    (native-inputs (list python-cython python-mock python-pytest))
+    (native-inputs (list python-cython python-mock python-pytest
+                         python-setuptools python-wheel))
     (home-page "https://github.com/explosion/thinc")
     (synopsis "Functional take on deep learning")
     (description
@@ -1989,7 +1999,9 @@ It is compatible with @code{scikit-learn}.")
                          python-nose
                          python-pytest
                          python-pandas
-                         python-networkx))
+                         python-networkx
+                         python-setuptools
+                         python-wheel))
     (home-page "https://github.com/scikit-learn-contrib/hdbscan")
     (synopsis "High performance implementation of HDBSCAN clustering")
     (description "HDBSCAN - Hierarchical Density-Based Spatial Clustering of
@@ -2012,7 +2024,7 @@ to return meaningful clusters (if there are any).")
        (sha256
         (base32 "0l5dpdsk5vg7rpay81bncp04119hnl5z7zxjv63jrnm9spcwwi3g"))))
     (build-system pyproject-build-system)
-    (native-inputs (list python-pytest))
+    (native-inputs (list python-pytest python-setuptools python-wheel))
     (propagated-inputs
      (list python-importlib-metadata
            python-joblib
@@ -2236,7 +2248,7 @@ Covariance Matrix Adaptation Evolution Strategy (CMA-ES) for Python.")
       (version version)
       (build-system pyproject-build-system)
       (native-inputs
-       (list python-nose python-pytest))
+       (list python-nose python-pytest python-setuptools python-wheel))
       (propagated-inputs
        (list python-future python-numpy))
       (synopsis "Efficiently computes derivatives of NumPy code")
@@ -2412,7 +2424,8 @@ discrete, and conditional dimensions.")
                             (setenv "HOME" "/tmp"))))))
     ;; DeepXDE supported backends are TensorFlow (v1 and v2), PyTorch, JAX and
     ;; PaddlePaddle.  We test with PyTorch because we have it up to date.
-    (native-inputs (list python-pytorch python-setuptools-scm))
+    (native-inputs (list python-pytorch python-setuptools
+                         python-setuptools-scm python-wheel))
     (propagated-inputs (list python-matplotlib python-numpy
                              python-scikit-learn python-scikit-optimize
                              python-scipy))
@@ -3637,7 +3650,8 @@ in a fast and accurate way.")
                 (symlink libxgboost (string-append xgbdir "/lib"
                                                    "/libxgboost.so"))))))))
     (native-inputs
-     (list python-pandas python-pytest python-scikit-learn))
+     (list python-pandas python-pytest python-scikit-learn python-setuptools
+           python-wheel))
     (inputs
      (list xgboost))
     (propagated-inputs
@@ -3990,7 +4004,7 @@ methodxs at scale on CPU or GPU.")
           (add-before 'check 'set-numba-cache-dir
             (lambda _
               (setenv "NUMBA_CACHE_DIR" "/tmp"))))))
-    (native-inputs (list python-pytest))
+    (native-inputs (list python-pytest python-setuptools python-wheel))
     (propagated-inputs
      (list python-numba
            python-numpy
@@ -4930,6 +4944,7 @@ Neural Networks for a wide range of applications related to structured data.")
                              python-urllib3
                              python-uvicorn
                              python-websocket-client))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://lightning.ai")
     (synopsis "Lightning Cloud command line client")
     (description "This package provides a command line interface for Lightning

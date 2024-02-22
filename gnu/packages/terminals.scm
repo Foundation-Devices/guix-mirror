@@ -1232,7 +1232,8 @@ the terminal.  It also supports IPython/Jupyter.")
                      (("(.*)==(.*)$" _ dep ver)
                       (string-append dep ">=" ver))))))))
     (propagated-inputs (list python-colorama))
-    (native-inputs (list python-coverage python-nose python-pylint python-tox))
+    (native-inputs (list python-coverage python-nose python-pylint
+                         python-setuptools python-tox python-wheel))
     (home-page "https://github.com/manrajgrover/py-log-symbols")
     (synopsis "Python library with graphical symbols for logging on the terminal")
     (description "This package provides a Python library with graphical symbols
@@ -1259,7 +1260,8 @@ purposes.")
                    (substitute* "requirements-dev.txt"
                      (("(.*)==(.*)$" _ dep ver)
                       (string-append dep ">=" ver))))))))
-    (native-inputs (list python-coverage python-nose python-pylint python-tox))
+    (native-inputs (list python-coverage python-nose python-pylint
+                         python-setuptools python-tox python-wheel))
     (home-page "https://github.com/manrajgrover/py-spinners")
     (synopsis "Python library with graphical spinners for the terminal")
     (description "Spinners is a Python library that contains graphical spinners

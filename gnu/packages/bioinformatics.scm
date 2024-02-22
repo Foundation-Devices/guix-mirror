@@ -680,6 +680,7 @@ memory usage.")
      (list python-numpy python-pysam))
     (inputs
      (list r-minimal))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://wlcb.oit.uci.edu/cpat/")
     (synopsis "Alignment-free distinction between coding and noncoding RNA")
     (description
@@ -1820,7 +1821,7 @@ Format (GFF) with Biopython integration.")
            python-scikit-learn
            python-scipy))
     (native-inputs
-     (list python-pytest))
+     (list python-pytest python-setuptools python-wheel))
     (home-page "https://github.com/simonvh/fluff/")
     (synopsis "Analysis and visualization of high-throughput sequencing data")
     (description
@@ -2549,6 +2550,7 @@ cells).")
            (("'argparse',") "")))))
     (build-system pyproject-build-system)
     (propagated-inputs (list python-numpy python-pysam))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/cancerit/parabam")
     (synopsis "Parallel BAM File Analysis")
     (description "Parabam is a tool for processing sequencing files in
@@ -2617,6 +2619,7 @@ encountered in PDB files prior to simulation tasks.")
            python-tqdm
            python-typing-extensions
            python-zipp))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/haessar/peaks2utr")
     (synopsis "Python CLI for annotating three prime UTR")
     (description
@@ -2925,7 +2928,8 @@ features:
                              python-pandas
                              python-pysam
                              python-tqdm))
-    (native-inputs (list python-cython python-pytest))
+    (native-inputs (list python-cython python-pytest python-setuptools
+                         python-wheel))
     (home-page "https://github.com/KindLab/scDamAndTools")
     (synopsis "Functions for processing raw scDam&T-seq data")
     (description
@@ -2958,6 +2962,7 @@ counts.")
            python-numpy
            python-pybedtools
            python-pysam))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/r3fang/SnapTools")
     (synopsis "Tools for processing snap files" )
     (description
@@ -2987,6 +2992,7 @@ operations:
     (arguments (list #:tests? #false)) ;there are none
     (propagated-inputs (list python-click python-numpy python-pandas
                              python-parabam python-pysam))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://github.com/cancerit/telomerecat")
     (synopsis "Telomere computational analysis tool")
     (description "Telomerecat is a tool for estimating the average telomere
@@ -5052,7 +5058,9 @@ annotations of the genome.")
            python-pytest
            python-pytest-mock
            python-pytest-timeout
-           python-setuptools-scm))
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (home-page "https://cutadapt.readthedocs.io/en/stable/")
     (synopsis "Remove adapter sequences from nucleotide sequencing reads")
     (description
@@ -5347,7 +5355,7 @@ accessing bigWig files.")
                  (("tests/data/" m)
                   (string-append (getcwd) "/" m))))))))
       (propagated-inputs (list python-numpy))
-      (native-inputs (list python-nose))
+      (native-inputs (list python-nose python-setuptools python-wheel))
       (home-page "https://github.com/brentp/pyfasta/")
       (synopsis "Pythonic access to fasta sequence files")
       (description
@@ -8597,7 +8605,7 @@ experiments.")
     (propagated-inputs
      (list python-cython python-numpy))
     (native-inputs
-     (list python-pytest))
+     (list python-pytest python-setuptools python-wheel))
     (home-page "https://github.com/macs3-project/MACS")
     (synopsis "Model based analysis for ChIP-Seq data")
     (description
@@ -15528,6 +15536,7 @@ mapped paired-end sequencing reads.")
            python-cython
            python-msgpack
            python-pysam))
+    (native-inputs (list python-setuptools python-wheel))
     (home-page "https://pypi.org/project/genomic-regions/")
     (synopsis "Consistently handle genomic regions")
     (description "This package aims to simplify working with genomic region /
@@ -20015,7 +20024,9 @@ updated much more frequently.")
            python-tqdm))
     (native-inputs
      (list python-pytest
-           python-setuptools-scm))
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (home-page "https://github.com/aertslab/ctxcore")
     (synopsis "Core functions for pycisTarget and the SCENIC tool suite")
     (description
