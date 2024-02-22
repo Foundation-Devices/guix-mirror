@@ -1406,7 +1406,7 @@ supports coverage of subprocesses.")
         (base32 "0bdxwaak5clhsd63b9q65nf2amqqv5hfn7dskfakyldxsqnnh0y6"))))
     (build-system pyproject-build-system)
     (propagated-inputs (list python-dotenv))
-    (native-inputs (list python-pytest))
+    (native-inputs (list python-pytest python-setuptools python-wheel))
     (home-page "https://github.com/quiqua/pytest-dotenv")
     (synopsis "Automatically detect and load a .env file before running tests")
     (description
@@ -1530,7 +1530,8 @@ contacting the real http server.")
     (build-system pyproject-build-system)
     (arguments (list #:tests? #false)) ;no tests included
     (propagated-inputs (list python-attrs python-pytest))
-    (native-inputs (list python-pytest python-pytest-cov python-xmlschema))
+    (native-inputs (list python-pytest python-pytest-cov python-setuptools
+                         python-wheel python-xmlschema))
     (home-page "https://github.com/pytest-dev/pytest-nunit")
     (synopsis "Pytest plugin for generating NUnit3 test result XML output")
     (description
@@ -2674,12 +2675,15 @@ mypy plugins.")
            python-pytest-cov
            python-pytest-enabler
            python-pytest-flake8
-           python-pytest-mypy))
+           python-pytest-mypy
+           python-setuptools
+           python-wheel))
     (propagated-inputs
      (list python-jaraco-context
            python-jaraco-functools
            python-more-itertools
            python-packaging
+           python-pip
            python-pip-run
            python-tempora))
     (home-page "https://github.com/jaraco/pytest-perf")

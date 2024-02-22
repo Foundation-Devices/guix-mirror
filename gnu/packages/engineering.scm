@@ -4360,7 +4360,7 @@ more.")
     (build-system pyproject-build-system)
     (native-inputs
      (list python-pytest-asyncio python-pytest-runner python-asynctest
-           python-pytest-mock))
+           python-pytest-mock python-setuptools python-wheel))
     (propagated-inputs
      (list python-aiofiles python-aiosqlite python-cryptography
            python-importlib-metadata python-dateutil python-pytz
