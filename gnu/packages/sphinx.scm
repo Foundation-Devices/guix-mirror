@@ -65,6 +65,97 @@
 (define-public python-sphinx
   (package
     (name "python-sphinx")
+    (version "6.2.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "Sphinx" version))
+       (sha256
+        (base32
+         "0sycp5qx7py75fvmjz0av5awfdlqn72azzjj07x9yx5vjx3a6mkd"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      ;; These require Internet access.
+      '(list "-k" "not test_latex_images")
+      #:phases
+      '(modify-phases %standard-phases
+         (add-before 'check 'pre-check
+           (lambda _
+             ;; for test_cython
+             (setenv "HOME" "/tmp"))))))
+    (propagated-inputs
+     (list python-babel
+           python-colorama
+           python-docutils
+           python-filelock
+           python-flake8
+           python-html5lib
+           python-imagesize
+           python-importlib-metadata
+           python-isort
+           python-jinja2
+           python-mypy
+           python-packaging
+           python-pygments
+           python-requests
+           python-snowballstemmer
+           python-sphinx-alabaster-theme
+           python-sphinxcontrib-applehelp
+           python-sphinxcontrib-devhelp
+           python-sphinxcontrib-htmlhelp
+           python-sphinxcontrib-jsmath
+           python-sphinxcontrib-qthelp
+           python-sphinxcontrib-serializinghtml
+           python-sphinxcontrib-websupport
+           python-types-requests
+
+           ;; The Sphinx LaTeX library '\RequirePackage' or \\usepackage
+           ;; these:
+           texlive-amsfonts             ;amsmath, amssymb, amstext
+           texlive-amsmath
+           texlive-booktabs
+           texlive-capt-of
+           texlive-carlisle             ;remreset
+           texlive-cmap
+           texlive-etoolbox
+           texlive-fancyhdr
+           texlive-fancyvrb
+           texlive-float
+           texlive-fncychap
+           texlive-framed
+           texlive-geometry
+           texlive-hyperref
+           texlive-kvoptions
+           texlive-latex-bin
+           texlive-ltxcmds
+           texlive-needspace
+           texlive-oberdiek             ;hypcap
+           texlive-parskip
+           texlive-preview
+           texlive-tabulary
+           texlive-titlesec
+           texlive-tools                ;multicol, longtable
+           texlive-upquote
+           texlive-varwidth
+           texlive-wrapfig
+           texlive-xcolor))
+    (native-inputs
+     (list imagemagick                  ;for "convert"
+           python-cython
+           python-flit-core
+           python-pytest))
+    (home-page "https://www.sphinx-doc.org")
+    (synopsis "Python documentation generator")
+    (description "Sphinx is a tool that makes it easy to create documentation
+for Python projects or other documents consisting of multiple reStructuredText
+sources.")
+    (license license:bsd-2)))
+
+(define-public python-sphinx-5
+  (package
+    (inherit python-sphinx)
     (version "5.3.0")
     (source
      (origin
@@ -73,7 +164,6 @@
        (sha256
         (base32
          "1dclwwz5rsvlw5rzyad1ar7i0zh4csni6jfp0lyc37zzm7h6s0ji"))))
-    (build-system pyproject-build-system)
     (arguments
      (list
       #:test-flags
@@ -150,13 +240,7 @@
      (list imagemagick                  ;for "convert"
            python-cython
            python-flit-core
-           python-pytest))
-    (home-page "https://www.sphinx-doc.org")
-    (synopsis "Python documentation generator")
-    (description "Sphinx is a tool that makes it easy to create documentation
-for Python projects or other documents consisting of multiple reStructuredText
-sources.")
-    (license license:bsd-2)))
+           python-pytest))))
 
 ;; Some packages do not support Sphinx 5 yet.  Remove when unused.
 (define-public python-sphinx-4
