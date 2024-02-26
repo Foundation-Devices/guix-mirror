@@ -36,6 +36,10 @@
 (define-public gcc-cross-arm-none-eabi-toolchain
   (cross-gcc-toolchain "arm-none-eabi"))
 
+(define-public gcc-cross-arm-none-eabi-toolchain-4
+  (cross-gcc-toolchain "arm-none-eabi"
+                       #:base-gcc gcc-4.9))
+
 (define-public gcc-cross-avr-toolchain
   (cross-gcc-toolchain "avr"))
 
