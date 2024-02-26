@@ -782,6 +782,8 @@ with XBINUTILS, XGCC and LIBC (if exists for TARGET)."
                  (((names . directory) ...)
                   (union-build #$output directory))))))
     (inputs `(,xbinutils ,xgcc ,@(if libc (list libc) '())))
+    (native-search-paths (cross-gcc-search-paths target))
+    (search-paths (cross-gcc-search-paths target))
     (home-page (package-home-page xgcc))
     (synopsis
      (format #f "Complete GCC tool chain for C/C++ development (~a)" target))
