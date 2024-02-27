@@ -23,84 +23,12 @@
 
 (define-module (gnu packages avr)
   #:use-module ((guix licenses) #:prefix license:)
-  #:use-module (guix gexp)
   #:use-module (guix memoization)
-  #:use-module (guix utils)
   #:use-module (guix download)
   #:use-module (guix packages)
   #:use-module (guix build-system gnu)
-  #:use-module (guix build-system trivial)
   #:use-module (gnu packages cross-base)
-  #:use-module (gnu packages flashing-tools)
-  #:use-module (gnu packages gcc)
-  #:export (make-avr-libc
-            make-avr-toolchain))
-
-;;; Commentary:
-;;;
-;;; This module defines a procedure that can be used to create a complete
-;;; avr-toolchain package.  The procedure must not be used at the top level,
-;;; to avoid cyclic module dependencies caused by the (gnu packages
-;;; cross-base) module referring to top level bindings from (gnu packages
-;;; gcc).
-;;;
-;;; It also contains packages for working with or targeting the AVR system.
-;;;
-
-(define make-avr-binutils
-  (mlambda ()
-    (package
-      (inherit (cross-binutils "avr"))
-      (name "avr-binutils"))))
-
-(define* (make-avr-gcc/implementation #:key (xgcc gcc))
-  "Return a XGCC-base cross-compiler for the AVR target."
-  (let ((xgcc (cross-gcc "avr" #:xgcc xgcc #:xbinutils (make-avr-binutils))))
-    (package
-      (inherit xgcc)
-      (name "avr-gcc")
-      (arguments
-       (substitute-keyword-arguments (package-arguments xgcc)
-         ((#:phases phases)
-          #~(modify-phases #$phases
-              (add-after 'set-paths 'augment-CPLUS_INCLUDE_PATH
-                (lambda* (#:key inputs #:allow-other-keys)
-                  (let ((gcc (assoc-ref inputs  "gcc")))
-                    ;; Remove the default compiler from CPLUS_INCLUDE_PATH
-                    ;; to prevent header conflict with the GCC from
-                    ;; native-inputs.
-                    (setenv "CPLUS_INCLUDE_PATH"
-                            (string-join
-                             (delete (string-append gcc "/include/c++")
-                                     (string-split (getenv "CPLUS_INCLUDE_PATH")
-                                                   #\:))
-                             ":"))
-                    (format #t
-                            "environment variable `CPLUS_INCLUDE_PATH' \
-changed to ~a~%"
-                            (getenv "CPLUS_INCLUDE_PATH")))))))))
-      (native-search-paths
-       (list (search-path-specification
-              (variable "CROSS_C_INCLUDE_PATH")
-              (files '("avr/include")))
-             (search-path-specification
-              (variable "CROSS_CPLUS_INCLUDE_PATH")
-              (files '("avr/include")))
-             (search-path-specification
-              (variable "CROSS_OBJC_INCLUDE_PATH")
-              (files '("avr/include")))
-             (search-path-specification
-              (variable "CROSS_OBJCPLUS_INCLUDE_PATH")
-              (files '("avr/include")))
-             (search-path-specification
-              (variable "CROSS_LIBRARY_PATH")
-              (files '("avr/lib")))))
-      (native-inputs
-       `(("gcc" ,gcc)
-         ,@(package-native-inputs xgcc))))))
-
-(define make-avr-gcc
-  (memoize make-avr-gcc/implementation))
+  #:export (make-avr-libc))
 
 (define* (make-avr-libc/implementation #:key
                                        (xbinutils (cross-binutils "avr"))
@@ -135,32 +63,3 @@ for use with GCC on Atmel AVR microcontrollers.")
 
 (define make-avr-libc
   (memoize make-avr-libc/implementation))
-
-(define* (make-avr-toolchain/implementation #:key (xgcc gcc))
-  (let ((avr-binutils (make-avr-binutils))
-        (avr-libc (make-avr-libc #:xgcc (cross-gcc "avr" #:xgcc xgcc)))
-        (avr-gcc (make-avr-gcc #:xgcc xgcc)))
-    ;; avr-libc checks the compiler version and passes "--enable-device-lib"
-    ;; for avr-gcc > 5.1.0.  It wouldn't install the library for atmega32u4
-    ;; etc if we didn't use the corret avr-gcc.
-    (package
-      (name "avr-toolchain")
-      (version (package-version avr-gcc))
-      (source #f)
-      (build-system trivial-build-system)
-      (arguments '(#:builder (begin (mkdir %output) #t)))
-      (propagated-inputs
-       `(("avrdude" ,avrdude)
-         ("binutils" ,avr-binutils)
-         ("gcc" ,avr-gcc)
-         ("libc" ,avr-libc)))
-      (synopsis "Complete GCC tool chain for AVR microcontroller development")
-      (description "This package provides a complete GCC tool chain for AVR
-microcontroller development.  This includes the GCC AVR cross compiler and
-avrdude for firmware flashing.  The supported programming languages are C and
-C++.")
-      (home-page (package-home-page avr-libc))
-      (license (package-license avr-gcc)))))
-
-(define make-avr-toolchain
-  (memoize make-avr-toolchain/implementation))
