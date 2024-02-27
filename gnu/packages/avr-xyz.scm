@@ -34,7 +34,7 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
-  #:use-module (gnu packages avr)
+  #:use-module (gnu packages cross-base)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages gl)
@@ -78,7 +78,7 @@
                            (string-append "PREFIX=" #$output)
                            (string-append "DESTDIR=" #$output))))
     (propagated-inputs
-     (list (make-avr-toolchain)))
+     (list (cross-gcc-toolchain "avr")))
     (native-inputs
      (list autoconf
            which
