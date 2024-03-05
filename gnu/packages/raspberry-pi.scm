@@ -129,7 +129,8 @@ used in the Raspberry Pi")
     (source %rpi-open-firmware-origin)
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f                   ; No tests exist
+     `(#:target "arm-none-eabi"
+       #:tests? #f                   ; No tests exist
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
@@ -175,11 +176,6 @@ used in the Raspberry Pi")
                (install-file "build/arm_chainloader.map" libexec)
                (install-file "build/arm_chainloader.bin" libexec)
                #t))))))
-    (native-inputs
-     `(("binutils" ,(cross-binutils "arm-none-eabi"))
-       ("gcc" ,(make-gcc-arm-none-eabi-6))))
-    (inputs
-     `())
     (synopsis "Raspberry Pi ARM bootloader")
     (description "This package provides a bootloader for the ARM part of a
 Raspberry Pi.  Note: It does not work on Raspberry Pi 1.")
@@ -205,6 +201,7 @@ Raspberry Pi.  Note: It does not work on Raspberry Pi 1.")
     (arguments
      `(#:implicit-inputs? #f
        ,@(substitute-keyword-arguments (package-arguments raspi-arm-chainloader)
+         ((#:target _) #f)
          ((#:phases phases)
           `(modify-phases ,phases
              (replace 'setenv
