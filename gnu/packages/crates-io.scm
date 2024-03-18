@@ -1675,6 +1675,27 @@ text to a terminal.")
      `(#:cargo-development-inputs
        (("rust-lexopt" ,rust-lexopt-0.3))))))
 
+(define-public rust-anstyle-lossy-1
+  (package
+    (name "rust-anstyle-lossy")
+    (version "1.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "anstyle-lossy" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "10c1cg8vjb7mxwky2xc8j7zdp15i1qvpmd2w6nlsxm6vcx3l9859"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anstyle" ,rust-anstyle-1))))
+    (home-page "https://github.com/rust-cli/anstyle")
+    (synopsis "Lossy conversion between ANSI Color Codes")
+    (description "This package provides a library to convert colors to and
+from ANSI color codes using the closest color representation.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-anstyle-parse-0.2
   (package
     (name "rust-anstyle-parse")
