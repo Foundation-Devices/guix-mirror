@@ -77807,8 +77807,35 @@ attribute that is not in the shared backend crate.")
         ("rust-wasm-bindgen-test" ,rust-wasm-bindgen-test-0.3)
         ("rust-web-sys" ,rust-web-sys-0.3))))))
 
+(define-public rust-wasmparser-0.201
+  (package
+    (name "rust-wasmparser")
+    (version "0.201.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmparser" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "027pdclgl642hqzdi592nnhdf7j570bhyi9sqsppy3bcp9nxzrc4"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-bitflags" ,rust-bitflags-2)
+                       ("rust-indexmap" ,rust-indexmap-2)
+                       ("rust-semver" ,rust-semver-1))))
+    (home-page "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser")
+    (synopsis "Simple event-driven library for parsing WebAssembly binary files")
+    (description
+     "This package provides a simple event-driven library for parsing
+WebAssembly binary files.")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
+
 (define-public rust-wasmparser-0.57
   (package
+    (inherit rust-wasmparser-0.201)
     (name "rust-wasmparser")
     (version "0.57.0")
     (source
@@ -77818,14 +77845,8 @@ attribute that is not in the shared backend crate.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32 "19kslk9pv1bcyp85w63dn1adbp13kz7kjha80abnwz27bmbxvz9j"))))
-    (build-system cargo-build-system)
-    (arguments `(#:skip-build? #t))
-    (home-page "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser")
-    (synopsis "Simple event-driven library for parsing WebAssembly binary files")
-    (description
-     "This package provides a simple event-driven library for parsing
-WebAssembly binary files.")
-    (license license:asl2.0)))
+    (arguments `(#:skip-build? #t))))
+
 
 (define-public rust-watchexec-1
   (package
