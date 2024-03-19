@@ -76550,18 +76550,18 @@ for @code{Valuable} types.")
 (define-public rust-value-bag-serde1-1
   (package
     (name "rust-value-bag-serde1")
-    (version "1.4.2")
+    (version "1.8.1")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "value-bag-serde1" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "1gsp0cn62ay2qq52wzck0j66iavf9k03y6ipmnx3bjqyg7f3kfh7"))))
+        (base32 "0f8x893rl3r3lfap31mmy27q1z1rjkbqkdgpiqkvbk6b84sp0dfc"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
-       (("rust-erased-serde" ,rust-erased-serde-0.3)
+       (("rust-erased-serde" ,rust-erased-serde-0.4)
         ("rust-serde" ,rust-serde-1)
         ("rust-serde-buf" ,rust-serde-buf-0.1)
         ("rust-serde-fmt" ,rust-serde-fmt-1)
