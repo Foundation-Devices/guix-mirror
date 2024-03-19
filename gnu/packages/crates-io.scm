@@ -9712,6 +9712,28 @@ capabilities.")
         ("rust-error-chain" ,rust-error-chain-0.12)
         ("rust-libc" ,rust-libc-0.2))))))
 
+(define-public rust-capstone-0.9
+  (package
+    (name "rust-capstone")
+    (version "0.9.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "capstone" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1v19wszrrhidh6z1ms0hda0dl4p0fl2n1mhx5mwkjfffnj03r2qp"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-capstone-sys" ,rust-capstone-sys-0.13)
+                       ("rust-libc" ,rust-libc-0.2))))
+    (home-page "https://github.com/capstone-rust/capstone-rs")
+    (synopsis "High-level bindings to the capstone disassembly library")
+    (description "High level bindings to capstone disassembly engine
+(https://capstone-engine.org/)")
+    (license license:expat)))
+
 ;; FIXME: This package contains bundled capstone sources and no easy way
 ;; to opt out and use system libraries.
 (define-public rust-capstone-sys-0.13
