@@ -77842,6 +77842,23 @@ WebAssembly binaries.")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-wasm-encoder-0.41
+  (package
+    (inherit rust-wasm-encoder-0.201)
+    (name "rust-wasm-encoder")
+    (version "0.41.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasm-encoder" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1bl7a871fw3dwrii2swqcn9x1g4hi8c98dfjvs6r13riv2jrfbwp"))))
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-leb128" ,rust-leb128-0.2)
+                       ("rust-wasmparser" ,rust-wasmparser-0.121))))))
+
 (define-public rust-wasm-streams-0.3
   (package
     (name "rust-wasm-streams")
