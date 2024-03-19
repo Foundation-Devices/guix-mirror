@@ -28532,17 +28532,17 @@ heap.")
 total runtime size of an object on the heap")
     (license license:mpl2.0)))
 
-(define-public rust-heck-0.4
+(define-public rust-heck-0.5
   (package
     (name "rust-heck")
-    (version "0.4.1")
+    (version "0.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "heck" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "1a7mqsnycv5z4z5vnv1k34548jzmc0ajic7c1j8jsaspnhw5ql4m"))))
+        (base32 "1sjmpsdl8czyh9ywl3qcsfsq9a307dg4ni2vnlwgnzzqhc4y0113"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
@@ -28555,6 +28555,22 @@ CamelCase and snake_case.  It is intended to be unicode aware, internally
 consistent, and reasonably well performing.")
     (license (list license:asl2.0
                    license:expat))))
+
+(define-public rust-heck-0.4
+  (package
+    (inherit rust-heck-0.5)
+    (name "rust-heck")
+    (version "0.4.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "heck" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1a7mqsnycv5z4z5vnv1k34548jzmc0ajic7c1j8jsaspnhw5ql4m"))))
+    (arguments
+     `(#:cargo-inputs
+       (("rust-unicode-segmentation" ,rust-unicode-segmentation-1))))))
 
 (define-public rust-heck-0.3
   (package
