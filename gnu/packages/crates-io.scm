@@ -78029,6 +78029,29 @@ for the WebAssembly Text formats WAT and WAST.")
      `(#:skip-build? #t
        #:cargo-inputs (("rust-leb128" ,rust-leb128-0.2))))))
 
+(define-public rust-wat-1
+  (package
+    (name "rust-wat")
+    (version "1.201.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wat" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0cizrxad8y4wdrgcdwdy7f4dfd1nqxgh2s6bykjdx62vlhvmnga5"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-wast" ,rust-wast-201))))
+    (home-page
+     "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wat")
+    (synopsis "Parser for the WebAssembly text format (WAT)")
+    (description "This package provides a library with a parser for the
+WebAssembly text format (WAT)")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-watchexec-1
   (package
     (name "rust-watchexec")
