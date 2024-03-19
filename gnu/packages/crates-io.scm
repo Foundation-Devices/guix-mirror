@@ -11389,18 +11389,18 @@ how to behave across the three main input sources")
 (define-public rust-clap-derive-4
   (package
     (name "rust-clap-derive")
-    (version "4.4.7")
+    (version "4.5.3")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "clap_derive" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "0hk4hcxl56qwqsf4hmf7c0gr19r9fbxk0ah2bgkr36pmmaph966g"))))
+        (base32 "0byp6k5kyvi9jcbnjjbyw7ak7avn87f2s4ya154f3xc01h29l8wh"))))
     (build-system cargo-build-system)
     (arguments
      (list #:cargo-inputs
-           `(("rust-heck" ,rust-heck-0.4)
+           `(("rust-heck" ,rust-heck-0.5)
              ("rust-proc-macro2" ,rust-proc-macro2-1)
              ("rust-quote" ,rust-quote-1)
              ("rust-syn" ,rust-syn-2))))
@@ -11433,7 +11433,7 @@ how to behave across the three main input sources")
 (define-public rust-clap-4
   (package
     (name "rust-clap")
-    (version "4.4.16")
+    (version "4.5.3")
     (source
      (origin
        (method url-fetch)
@@ -11441,7 +11441,7 @@ how to behave across the three main input sources")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "0ialpybl8n8ybfikzy5f07d64pfdajls0s00bf4wgkh4q20liraq"))))
+         "04w8fx68hzjzk45ir4b9jzwk4m7bki0k5afwns9zqgh61v82d5ll"))))
     (build-system cargo-build-system)
     (arguments
      (list #:cargo-inputs
@@ -11451,9 +11451,9 @@ how to behave across the three main input sources")
            `(("rust-humantime" ,rust-humantime-2)
              ("rust-rustversion" ,rust-rustversion-1)
              ("rust-shlex" ,rust-shlex-1)
-             ("rust-snapbox" ,rust-snapbox-0.4)
+             ("rust-snapbox" ,rust-snapbox-0.5)
              ("rust-trybuild" ,rust-trybuild-1)
-             ("rust-trycmd" ,rust-trycmd-0.14))))
+             ("rust-trycmd" ,rust-trycmd-0.15))))
     (home-page "https://clap.rs/")
     (synopsis "Command Line Argument Parser")
     (description
@@ -11539,14 +11539,14 @@ Command Line Argument Parser.")
 (define-public rust-clap-builder-4
   (package
     (name "rust-clap-builder")
-    (version "4.4.16")
+    (version "4.5.2")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "clap_builder" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1fv06ivpzpkhjm4bvxzg3fl4y61mvlf481zms4pksq1iypbq5jsr"))))
+                "1d7p4hph4fyhaphkf0v5zv0kq4lz25a9jq2f901yrq3afqp9w4mf"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-test-flags
@@ -11558,8 +11558,8 @@ Command Line Argument Parser.")
        (("rust-anstream" ,rust-anstream-0.6)
         ("rust-anstyle" ,rust-anstyle-1)
         ("rust-backtrace" ,rust-backtrace-0.3)
-        ("rust-clap-lex" ,rust-clap-lex-0.6)
-        ("rust-strsim" ,rust-strsim-0.10)
+        ("rust-clap-lex" ,rust-clap-lex-0.7)
+        ("rust-strsim" ,rust-strsim-0.11)
         ("rust-terminal-size" ,rust-terminal-size-0.3)
         ("rust-unicase" ,rust-unicase-2)
         ("rust-unicode-width" ,rust-unicode-width-0.1))
