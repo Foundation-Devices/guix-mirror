@@ -15000,6 +15000,33 @@ mile, ...).")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-isle-0.105
+  (package
+    (name "rust-cranelift-isle")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-isle" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1pab231qwp1f98szgs4qxqz6xzmcyh6szmcx1v41abvqsp56r9pl"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-codespan-reporting" ,rust-codespan-reporting-0.11)
+        ("rust-log" ,rust-log-0.4))))
+    (home-page
+     "https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/isle")
+    (synopsis
+     "ISLE: Instruction Selection and Lowering Expressions. A domain-specific language for instruction selection in Cranelift.")
+    (description
+     "ISLE: Instruction Selection and Lowering Expressions.  A domain-specific
+language for instruction selection in Cranelift.")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
