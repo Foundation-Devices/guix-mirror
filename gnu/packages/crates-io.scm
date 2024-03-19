@@ -77986,6 +77986,33 @@ WebAssembly binary files.")
     (arguments `(#:skip-build? #t))))
 
 
+(define-public rust-wast-201
+  (package
+    (name "rust-wast")
+    (version "201.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wast" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1aig4bvd0n4vvwj1nvjrmmngyyi2q2lv3ljg6wmkxnnp6kpy3xhy"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-bumpalo" ,rust-bumpalo-3)
+                       ("rust-leb128" ,rust-leb128-0.2)
+                       ("rust-memchr" ,rust-memchr-2)
+                       ("rust-unicode-width" ,rust-unicode-width-0.1)
+                       ("rust-wasm-encoder" ,rust-wasm-encoder-0.201))))
+    (home-page
+     "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wast")
+    (synopsis "Parsers for the WebAssembly Text formats WAT and WAST")
+    (description "This package provides a library with customizable parsers
+for the WebAssembly Text formats WAT and WAST.")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-watchexec-1
   (package
     (name "rust-watchexec")
