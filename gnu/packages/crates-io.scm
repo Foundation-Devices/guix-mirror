@@ -77818,6 +77818,30 @@ attribute that is not in the shared backend crate.")
        (("rust-proc-macro2" ,rust-proc-macro2-0.4)
         ("rust-quote" ,rust-quote-0.6))))))
 
+(define-public rust-wasm-encoder-0.201
+  (package
+    (name "rust-wasm-encoder")
+    (version "0.201.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasm-encoder" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "06lgfkb0r1dw0hc1mqgnrkg935h1qb668gq1kf0hc07n3mrx5ixr"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-leb128" ,rust-leb128-0.2)
+                       ("rust-wasmparser" ,rust-wasmparser-0.201))))
+    (home-page
+     "https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-encoder")
+    (synopsis "Encode WebAssembly binary files")
+    (description "This package provides a low-level interface to encode
+WebAssembly binaries.")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-wasm-streams-0.3
   (package
     (name "rust-wasm-streams")
