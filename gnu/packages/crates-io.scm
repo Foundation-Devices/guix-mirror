@@ -50641,7 +50641,7 @@ implementation crates.")
 (define-public rust-psm-0.1
   (package
     (name "rust-psm")
-    (version "0.1.10")
+    (version "0.1.21")
     (source
       (origin
         (method url-fetch)
@@ -50650,7 +50650,7 @@ implementation crates.")
          (string-append name "-" version ".tar.gz"))
         (sha256
          (base32
-          "1kr9sal8g9zil4ch8ra0ry96d5cl15xslk1p0wnqk1504ib3hb89"))))
+          "0x78nj5wxkxwijd2gvv2ycq06443b2y1ih4j46kk6c2flg6zg1sp"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-development-inputs
