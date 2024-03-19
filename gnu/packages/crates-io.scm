@@ -63972,6 +63972,27 @@ maximal amount of configuration possible intended.")
      "You can write SOCKS proxy clients with this crate.")
     (license (list license:asl2.0 license:expat))))
 
+(define-public rust-souper-ir-2
+  (package
+    (name "rust-souper-ir")
+    (version "2.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "souper-ir" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0i60q84w5k3rd0j3zhsdc5xasrd4wrkamyrs01rik3lq6g71h355"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-id-arena" ,rust-id-arena-2))))
+    (home-page "https://github.com/fitzgen/souper-ir")
+    (synopsis "Manipulate Souper's LLVM IR")
+    (description "This package provides a library for manipulating the
+Souper LLVM IR.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-sourcemap-6
   (package
     (name "rust-sourcemap")
