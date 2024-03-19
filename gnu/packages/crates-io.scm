@@ -14936,6 +14936,47 @@ mile, ...).")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-codegen-0.105
+  (package
+    (name "rust-cranelift-codegen")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-codegen" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "15dxcljx0vbkzxwq76h43wsmkg3m2dzkzrf35a1nwl27i8rs8h7g"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-bincode" ,rust-bincode-1)
+        ("rust-bumpalo" ,rust-bumpalo-3)
+        ("rust-capstone" ,rust-capstone-0.9)
+        ("rust-cranelift-bforest" ,rust-cranelift-bforest-0.105)
+        ("rust-cranelift-codegen-meta" ,rust-cranelift-codegen-meta-0.105)
+        ("rust-cranelift-codegen-shared" ,rust-cranelift-codegen-shared-0.105)
+        ("rust-cranelift-control" ,rust-cranelift-control-0.105)
+        ("rust-cranelift-entity" ,rust-cranelift-entity-0.105)
+        ("rust-cranelift-isle" ,rust-cranelift-isle-0.105)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-hashbrown" ,rust-hashbrown-0.14)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-regalloc2" ,rust-regalloc2-0.9)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-serde-derive" ,rust-serde-derive-1)
+        ("rust-sha2" ,rust-sha2-0.10)
+        ("rust-smallvec" ,rust-smallvec-1)
+        ("rust-souper-ir" ,rust-souper-ir-2)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Low-level code generator library")
+    (description "Low-level code generator library")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-cranelift-codegen-meta-0.105
   (package
     (name "rust-cranelift-codegen-meta")
