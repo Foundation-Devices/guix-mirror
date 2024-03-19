@@ -62968,6 +62968,28 @@ implementations.")
         ("rust-mach" ,rust-mach-0.2)
         ("rust-winapi" ,rust-winapi-0.3))))))
 
+(define-public rust-slice-group-by-0.3
+  (package
+    (name "rust-slice-group-by")
+    (version "0.3.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "slice-group-by" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "19vbyyxqvc25fv2dmhlxijlk5sa9j34yb6hyydb9vf89kh36fqc2"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t))
+    (home-page "https://github.com/Kerollmops/slice-group-by")
+    (synopsis "Iterate over groups in slices and strings")
+    (description "This package provieds a library implementing the
+@code{groupBy} function from Haskell providing tools to iterate slices and
+@code{str}s groups defined by a function that specifies if two elements are
+in the same group.")
+    (license license:expat)))
+
 (define-public rust-slog-2
   (package
     (name "rust-slog")
