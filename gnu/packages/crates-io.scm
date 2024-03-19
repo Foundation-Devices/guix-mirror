@@ -8508,7 +8508,7 @@ libraries and binaries.")
 (define-public rust-bumpalo-3
   (package
     (name "rust-bumpalo")
-    (version "3.13.0")
+    (version "3.15.4")
     (source
      (origin
        (method url-fetch)
@@ -8517,7 +8517,7 @@ libraries and binaries.")
         (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "1h9zmxb9d14m2sx34daz88fsjw1lx7d5mhaqbldwqgl8xzdc7qm3"))))
+         "1ahfhgw2lzlgv5j0h07z8mkdnk4kvl2grf8dkb32dm4zsjfrpxkz"))))
     (build-system cargo-build-system)
     (arguments
      `(#:tests? #f                      ; Not all files included.
