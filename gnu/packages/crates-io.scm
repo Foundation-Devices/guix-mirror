@@ -22230,6 +22230,27 @@ deserialized from environment variables.")
 @code{no_std} environment.")
     (license license:boost1.0)))
 
+(define-public rust-escape8259-0.5
+  (package
+    (name "rust-escape8259")
+    (version "0.5.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "escape8259" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1vjpfnk9fyq6qcc18bq7yfk9ahi2r12lfywr4rwcsvv6wc8ljkxs"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-rustversion" ,rust-rustversion-1))))
+    (home-page "https://github.com/ericseppanen/escape8259")
+    (synopsis "JSON compliant (RFC 8259) string escaping and un-escaping")
+    (description "This package provides a library to escape and un-escape
+strings following the JSON (RFC 8259) standard.")
+    (license license:expat)))
+
 (define-public rust-escaper-0.1
   (package
     (name "rust-escaper")
