@@ -78041,7 +78041,7 @@ for terminal and other window-less applications.")
 (define-public rust-webbrowser-0.8
   (package
     (name "rust-webbrowser")
-    (version "0.8.8")
+    (version "0.8.13")
     (source
      (origin
        (method url-fetch)
@@ -78052,7 +78052,7 @@ for terminal and other window-less applications.")
        (patches (search-patches "rust-webbrowser-remove-unsupported-os.patch"))
        (patch-flags '("-p0"))
        (sha256
-        (base32 "0zk1qidyksspa8pgvq8bh2lyqmmrs0fr5r1qsyhbzrawpn2w972p"))))
+        (base32 "0l691mzlvjp7l829p6wqpzs1acvm93ywcznl3nbvpac3kib4rc6i"))))
     (build-system cargo-build-system)
     (arguments
      `(#:skip-build? #t
