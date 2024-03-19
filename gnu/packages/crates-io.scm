@@ -14892,6 +14892,28 @@ mile, ...).")
     (description "Execute child processes with ease.")
     (license license:cc0)))
 
+(define-public rust-cranelift-entity-0.105
+  (package
+    (name "rust-cranelift-entity")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-entity" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1jsq40byd4akxhj7b8sh20m89lywhzfyz1wb4idlrp155yj8383f"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-serde" ,rust-serde-1)
+                       ("rust-serde-derive" ,rust-serde-derive-1))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Data structures using entity references as mapping keys")
+    (description "Data structures using entity references as mapping keys")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
