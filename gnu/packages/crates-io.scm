@@ -54530,6 +54530,34 @@ initial value.")
 memory to speed up reallocation.")
     (license license:mpl2.0)))
 
+(define-public rust-regalloc2-0.9
+  (package
+    (name "rust-regalloc2")
+    (version "0.9.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "regalloc2" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "19i94jyjma82hgyf5wj83zkqc5wnfxnh38k3lcj7m6w7ki9ns5dd"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-hashbrown" ,rust-hashbrown-0.13)
+                       ("rust-libfuzzer-sys" ,rust-libfuzzer-sys-0.4)
+                       ("rust-log" ,rust-log-0.4)
+                       ("rust-rustc-hash" ,rust-rustc-hash-1)
+                       ("rust-serde" ,rust-serde-1)
+                       ("rust-slice-group-by" ,rust-slice-group-by-0.3)
+                       ("rust-smallvec" ,rust-smallvec-1))))
+    (home-page "https://github.com/bytecodealliance/regalloc2")
+    (synopsis "Backtracking register allocator")
+    (description "This package provides a library for a backtracking register
+allocator inspired from IonMonkey.")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-regex-1
   (package
     (name "rust-regex")
