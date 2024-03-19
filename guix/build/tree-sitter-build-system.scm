@@ -1,5 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2022 Pierre Langlois <pierre.langlois@gmx.com>
+;;; Copyright © 2024 Foundation Devices, Inc. <hello@foundation.xyz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -51,6 +52,8 @@ and replace development dependencies with tree-sitter grammar node modules."
     (map (match-lambda
            (("dependencies" @ . _)
             '("dependencies" @))
+           (("peerDependencies" @ . _)
+            '("peerDependencies" @))
            (("devDependencies" @ . _)
             `("devDependencies" @
               ,@(filter-map (match-lambda
@@ -115,6 +118,7 @@ and replace development dependencies with tree-sitter grammar node modules."
                    "-O2"
                    "-g"
                    "-o" ,(string-append lib "/libtree-sitter-" lang ".so")
+                   "-Isrc"
                    ;; An additional `scanner.{c,cc}' file is sometimes
                    ;; provided.
                    ,@(cond

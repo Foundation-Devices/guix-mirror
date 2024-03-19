@@ -1,0 +1,38 @@
+From badd0f313ca4f2478cfcb6484eb03ab1536c54f0 Mon Sep 17 00:00:00 2001
+From: Jean-Pierre De Jesus DIAZ <jean@foundation.xyz>
+Date: Tue, 2 Apr 2024 16:28:29 +0200
+Subject: [PATCH] package.json: Add tree-sitter section.
+
+SPDX-FileCopyrightText: © 2024 Foundation Devices, Inc. <hello@foundation.xyz>
+SPDX-License-Identifier: MIT
+
+Needed by newer tree-sitter versions.
+---
+ package.json | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/package.json b/package.json
+index 7b31335..8597474 100644
+--- a/package.json
++++ b/package.json
+@@ -19,5 +19,16 @@
+   "devDependencies": {
+     "tree-sitter-cli": "^0.20.6",
+     "prettier": "^2.7.1"
+-  }
++  },
++  "tree-sitter": [
++    {
++      "scope": "source.wsd",
++      "file-types": [
++          "pu",
++          "puml",
++          "iuml",
++          "plantuml"
++      ]
++    }
++  ]
+ }
+-- 
+2.41.0
+

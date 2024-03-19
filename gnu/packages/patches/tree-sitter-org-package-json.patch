@@ -1,0 +1,35 @@
+From bdb16fc7157ad410cfc0c15235861a7e5a01783b Mon Sep 17 00:00:00 2001
+From: Jean-Pierre De Jesus DIAZ <me@jeandudey.tech>
+Date: Tue, 2 Apr 2024 16:39:55 +0200
+Subject: [PATCH] package.json: Add tree-sitter section.
+
+Needed by newer tree-sitter versions.
+---
+ package.json | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/package.json b/package.json
+index f1557ba..f0ea705 100644
+--- a/package.json
++++ b/package.json
+@@ -27,5 +27,16 @@
+   "license": "MIT",
+   "bugs": {
+     "url": "https://github.com/milisims/tree-sitter-org/issues"
+-  }
++  },
++  "tree-sitter": [
++    {
++      "scope": "none",
++      "file-types": [
++        "org"
++      ],
++      "highlights": [
++        "queries/highlights.scm"
++      ]
++    }
++  ]
+ }
+-- 
+2.41.0
+
