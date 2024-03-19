@@ -29611,6 +29611,27 @@ SystemTime}}.")
      "This package provides the IANA time zone for the current system.")
     (license (list license:expat license:asl2.0))))
 
+(define-public rust-id-arena-2
+  (package
+    (name "rust-id-arena")
+    (version "2.2.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "id-arena" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "01ch8jhpgnih8sawqs44fqsqpc7bzwgy0xpi6j0f4j0i5mkvr8i5"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-rayon" ,rust-rayon-1))))
+    (home-page "https://github.com/fitzgen/id-arena")
+    (synopsis "Arena allocator based on identifiers")
+    (description "This package provides an arena allocator library using
+identifiers to keep track of allocated objects.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-idea-0.5
   (package
     (name "rust-idea")
