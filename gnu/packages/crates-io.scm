@@ -647,6 +647,31 @@ the Rust programming language.")
      "Fuzz Rust code with american-fuzzy-lop.")
     (license license:asl2.0)))
 
+(define-public rust-afl-0.11
+  (package
+    (inherit rust-afl-0.12)
+    (name "rust-afl")
+    (version "0.11.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "afl" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (modules '((guix build utils)))
+       (snippet
+         #~(delete-file
+             "AFLplusplus/testcases/archives/common/ar/small_archive.a"))
+       (sha256
+        (base32 "0a2jm690mcxd073j9isd16rpzkjfmpgamw9h64f5l2fpns0423vc"))))
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-cc" ,rust-cc-1)
+                       ("rust-clap" ,rust-clap-2)
+                       ("rust-lazy-static" ,rust-lazy-static-1)
+                       ("rust-libc" ,rust-libc-0.2)
+                       ("rust-rustc-version" ,rust-rustc-version-0.4)
+                       ("rust-xdg" ,rust-xdg-2))))))
+
 (define-public rust-ahash-0.8
   (package
     (name "rust-ahash")
