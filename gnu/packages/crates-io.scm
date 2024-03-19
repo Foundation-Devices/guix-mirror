@@ -9712,6 +9712,32 @@ capabilities.")
         ("rust-error-chain" ,rust-error-chain-0.12)
         ("rust-libc" ,rust-libc-0.2))))))
 
+;; FIXME: This package contains bundled capstone sources and no easy way
+;; to opt out and use system libraries.
+(define-public rust-capstone-sys-0.13
+  (package
+    (name "rust-capstone-sys")
+    (version "0.13.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "capstone-sys" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1xpia1gs2b0zl7n521ldq6lax2jqqjw0hz2c8skak94gp2bksbyg"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-bindgen" ,rust-bindgen-0.53)
+                       ("rust-cc" ,rust-cc-1)
+                       ("rust-libc" ,rust-libc-0.2)
+                       ("rust-regex" ,rust-regex-1))))
+    (home-page "https://github.com/capstone-rust/capstone-rs")
+    (synopsis "Low-level bindings to the capstone disassembly library")
+    (description "This package provides a library with low-level bindings
+to the capstone disassembly library")
+    (license license:expat)))
+
 (define-public rust-carapace-spec-clap-0.1
   (package
     (name "rust-carapace-spec-clap")
