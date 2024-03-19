@@ -76526,14 +76526,14 @@ for @code{Valuable} types.")
 (define-public rust-value-bag-1
   (package
     (name "rust-value-bag")
-    (version "1.4.2")
+    (version "1.8.1")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "value-bag" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "1gjvsnhhf9jp8h62zin6azqrpmgmnxq2ppj72d2dcayy5n8f2wja"))))
+        (base32 "1s6yrwh2s4zdjvdx6sy6irffhhffl19yphy71701d1mrqcwp6ybl"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
