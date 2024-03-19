@@ -14914,6 +14914,28 @@ mile, ...).")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-bforest-0.105
+  (package
+    (name "rust-cranelift-bforest")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-bforest" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "092wi61n3j7q76dmgq9a6mh93iv5d5pvpv6y3nxnp9mw58g55m8n"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-cranelift-entity" ,rust-cranelift-entity-0.105))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "A forest of B+-trees")
+    (description "This package provides a forest of B+-trees")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
