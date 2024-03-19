@@ -77832,10 +77832,27 @@ WebAssembly binary files.")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-wasmparser-0.121
+  (package
+    (inherit rust-wasmparser-0.201)
+    (name "rust-wasmparser")
+    (version "0.121.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmparser" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1aza0g3v49nqsc856fd7x8zwrh4hzy4si9a7jifx5nyhz745bglx"))))
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-bitflags" ,rust-bitflags-2)
+                       ("rust-indexmap" ,rust-indexmap-2)
+                       ("rust-semver" ,rust-semver-1))))))
 
 (define-public rust-wasmparser-0.57
   (package
-    (inherit rust-wasmparser-0.201)
+    (inherit rust-wasmparser-0.121)
     (name "rust-wasmparser")
     (version "0.57.0")
     (source
