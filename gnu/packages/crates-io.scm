@@ -37641,6 +37641,27 @@ for searching bytes.")
      `(#:cargo-inputs (("rust-libc" ,rust-libc-0.2))
        #:cargo-development-inputs (("rust-quickcheck" ,rust-quickcheck-0.4))))))
 
+(define-public rust-memfd-0.6
+  (package
+    (name "rust-memfd")
+    (version "0.6.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "memfd" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0r5cm3wzyr1x7768h3hns77b494qbz0g05cb9wgpjvrcsm5gmkxj"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-rustix" ,rust-rustix-0.38))))
+    (home-page "https://github.com/lucab/memfd-rs")
+    (synopsis "A pure-Rust library to work with Linux memfd and sealing")
+    (description
+     "This package provides a pure-Rust library to work with Linux memfd and sealing")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-memchr-0.1
   (package
     (inherit rust-memchr-1)
