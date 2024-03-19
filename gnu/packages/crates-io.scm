@@ -14936,6 +14936,26 @@ mile, ...).")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-codegen-shared-0.105
+  (package
+    (name "rust-cranelift-codegen-shared")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-codegen-shared" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0v3ja501s26s4ykljy0ikxqa69jkpn7pg2mrghy0map3cd1lqn70"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "For code shared between cranelift-codegen-meta and cranelift-codegen")
+    (description "For code shared between cranelift-codegen-meta and cranelift-codegen")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
