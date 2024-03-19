@@ -14979,6 +14979,27 @@ mile, ...).")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-control-0.105
+  (package
+    (name "rust-cranelift-control")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-control" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0w85gyz7bnqjjxzz9gv3hc9l13fbkr68wainpbym6rcc17gcwppj"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-arbitrary" ,rust-arbitrary-1))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "White-box fuzz testing framework")
+    (description "White-box fuzz testing framework")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
