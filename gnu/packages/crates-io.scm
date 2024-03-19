@@ -78283,17 +78283,17 @@ UTF-32 types are provided, including support for malformed encoding.")
 command-line, uniformly on all platforms")
     (license (list license:asl2.0 license:expat))))
 
-(define-public rust-winnow-0.5
+(define-public rust-winnow-0.6
   (package
     (name "rust-winnow")
-    (version "0.5.31")
+    (version "0.6.5")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "winnow" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "0734xa05a1x1wg2kcphdhfb39pdcy5qpaf1sjll6qk8kdcp8i94p"))))
+        (base32 "1f0m48kfdvds456b1i1qd6ia9w3mckk2jf4q6z94snpdcw741ynz"))))
     (build-system cargo-build-system)
     (arguments
      `(#:skip-build? #t     ; Cut the dependency graph.
@@ -78308,6 +78308,27 @@ command-line, uniformly on all platforms")
     (description "This package provides a byte-oriented, zero-copy, parser
 combinators library.")
     (license license:expat)))
+
+(define-public rust-winnow-0.5
+  (package
+    (inherit rust-winnow-0.6)
+    (name "rust-winnow")
+    (version "0.5.31")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "winnow" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0734xa05a1x1wg2kcphdhfb39pdcy5qpaf1sjll6qk8kdcp8i94p"))))
+    (arguments
+     `(#:skip-build? #t     ; Cut the dependency graph.
+       #:cargo-inputs
+       (("rust-anstream" ,rust-anstream-0.3)
+        ("rust-anstyle" ,rust-anstyle-1)
+        ("rust-is-terminal" ,rust-is-terminal-0.4)
+        ("rust-memchr" ,rust-memchr-2)
+        ("rust-terminal-size" ,rust-terminal-size-0.2))))))
 
 (define-public rust-winnow-0.4
   (package
