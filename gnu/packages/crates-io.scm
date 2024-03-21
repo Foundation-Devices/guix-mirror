@@ -77850,9 +77850,26 @@ WebAssembly binary files.")
                        ("rust-indexmap" ,rust-indexmap-2)
                        ("rust-semver" ,rust-semver-1))))))
 
-(define-public rust-wasmparser-0.57
+(define-public rust-wasmparser-0.118
   (package
     (inherit rust-wasmparser-0.121)
+    (name "rust-wasmparser")
+    (version "0.118.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmparser" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0365n7dd01fh2jklq6q41nszhyyaz82shd4q3nhf4s5q397ibwbp"))))
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-indexmap" ,rust-indexmap-2)
+                       ("rust-semver" ,rust-semver-1))))))
+
+(define-public rust-wasmparser-0.57
+  (package
+    (inherit rust-wasmparser-0.118)
     (name "rust-wasmparser")
     (version "0.57.0")
     (source
