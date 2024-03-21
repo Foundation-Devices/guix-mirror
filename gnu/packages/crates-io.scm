@@ -78651,6 +78651,35 @@ functions to support the component model in Wasmtime.")
 generate WebAssembly component interface types from Rust types.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-cranelift-shared-18
+  (package
+    (name "rust-wasmtime-cranelift-shared")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-cranelift-shared" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0khk00q3b1hg4pwp5g06njqfgjyi3x3pdgifv29bjrx1vqglrhp8"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-cranelift-control" ,rust-cranelift-control-0.105)
+        ("rust-cranelift-native" ,rust-cranelift-native-0.105)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-object" ,rust-object-0.32)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12)
+        ("rust-wasmtime-environ" ,rust-wasmtime-environ-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Internal library integrating Wasmtime and Cranelift")
+    (description "This package provieds an internal library for
+Wasmtime to integrate the Cranelift code generation back-end.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-environ-18
   (package
     (name "rust-wasmtime-environ")
