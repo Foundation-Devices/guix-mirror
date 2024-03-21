@@ -78831,6 +78831,29 @@ WebAssembly environment.")
     (description "JIT debug interfaces support for Wasmtime")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-jit-icache-coherence-18
+  (package
+    (name "rust-wasmtime-jit-icache-coherence")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-jit-icache-coherence" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1wvd5sf79cshgrf45z7r94c2xmvh6sm58sr268mn7d49a1h38rl6"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-cfg-if" ,rust-cfg-if-1)
+                       ("rust-libc" ,rust-libc-0.2)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "JIT instruction cache maintenance")
+    (description "This package provides a library with utilities for JIT
+instruction cache maintenance")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-types-18
   (package
     (name "rust-wasmtime-types")
