@@ -78541,6 +78541,31 @@ WebAssembly binary format to the text format.")
 functions to support the component model in Wasmtime.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-types-18
+  (package
+    (name "rust-wasmtime-types")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-types" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "02if112fdf6ap6vnvglbi23crzbp0ixzjsrgrdpy1gi7v35pf8zk"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-cranelift-entity" ,rust-cranelift-entity-0.105)
+                       ("rust-serde" ,rust-serde-1)
+                       ("rust-serde-derive" ,rust-serde-derive-1)
+                       ("rust-thiserror" ,rust-thiserror-1)
+                       ("rust-wasmparser" ,rust-wasmparser-0.121))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "WebAssembly type definitions for Cranelift")
+    (description "This package provides a library with WebAssembly type
+definitions for Cranelift.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wast-201
   (package
     (name "rust-wast")
