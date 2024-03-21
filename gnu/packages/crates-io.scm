@@ -79226,6 +79226,36 @@ UTF-32 types are provided, including support for malformed encoding.")
 command-line, uniformly on all platforms")
     (license (list license:asl2.0 license:expat))))
 
+(define-public rust-winch-codegen-0.16
+  (package
+    (name "rust-winch-codegen")
+    (version "0.16.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "winch-codegen" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0wf3p4yfv5yl5fjn9rs29lqnzsq110gcxl3mshjrbmn8rbbd82qy"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-regalloc2" ,rust-regalloc2-0.9)
+        ("rust-smallvec" ,rust-smallvec-1)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12)
+        ("rust-wasmparser" ,rust-wasmparser-0.121)
+        ("rust-wasmtime-environ" ,rust-wasmtime-environ-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Code generation library")
+    (description "This package provides Winch, a code generation library
+used by the Wasmtime WebAssmebly runtime.")
+    ;; With LLVM exception.
+    (license license:asl2.0)))
+
 (define-public rust-winnow-0.6
   (package
     (name "rust-winnow")
