@@ -79404,6 +79404,35 @@ combinators library.")
                        ("rust-memchr" ,rust-memchr-2)
                        ("rust-terminal-size" ,rust-terminal-size-0.2))))))
 
+(define-public rust-wit-parser-0.13
+  (package
+    (name "rust-wit-parser")
+    (version "0.13.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wit-parser" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "022yfbn0sldlglxsf4wcdw9xyifh50vvqf9wn2j5lpq0y2lkcsri"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-id-arena" ,rust-id-arena-2)
+                       ("rust-indexmap" ,rust-indexmap-2)
+                       ("rust-log" ,rust-log-0.4)
+                       ("rust-semver" ,rust-semver-1)
+                       ("rust-serde" ,rust-serde-1)
+                       ("rust-serde-derive" ,rust-serde-derive-1)
+                       ("rust-serde-json" ,rust-serde-json-1)
+                       ("rust-unicode-xid" ,rust-unicode-xid-0.2))))
+    (home-page "https://github.com/bytecodealliance/wasm-tools")
+    (synopsis "Parse @acronym{WIT, WebAssembly Interface Type} files")
+    (description "This package provides a library to parser and work with
+@acronym{WIT, WebAssembly Interface Type}.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wycheproof-0.5
   (package
     (name "rust-wycheproof")
