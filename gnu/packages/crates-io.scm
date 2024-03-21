@@ -15053,6 +15053,30 @@ language for instruction selection in Cranelift.")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-native-0.105
+  (package
+    (name "rust-cranelift-native")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-native" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1ssqvky33g7ms8l752pqhixjf2ljigv5sa2vfzcxwycv3pgq0pi8"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-libc" ,rust-libc-0.2)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Autodetect Cranelift host target")
+    (description "This package provides a library to autodetect the host
+target for use with Cranelift.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
