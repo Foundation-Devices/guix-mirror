@@ -78499,6 +78499,27 @@ WebAssembly binary files.")
         (base32 "19kslk9pv1bcyp85w63dn1adbp13kz7kjha80abnwz27bmbxvz9j"))))
     (arguments `(#:skip-build? #t))))
 
+(define-public rust-wasmprinter-0.2
+  (package
+    (name "rust-wasmprinter")
+    (version "0.2.80")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmprinter" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1dw8559vdz6g8864rg4ggi88cm0kf7mygyavgkdzxzdpls33krv0"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-wasmparser" ,rust-wasmparser-0.121))))
+    (home-page "https://github.com/bytecodealliance/wasm-tools")
+    (synopsis "Convert from WebAssembly binary to text format")
+    (description "This package provides a library to convert from the
+WebAssembly binary format to the text format.")
+    (license license:asl2.0))) ;; With the LLVM exception.
 
 (define-public rust-wast-201
   (package
