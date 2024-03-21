@@ -15077,6 +15077,38 @@ language for instruction selection in Cranelift.")
 target for use with Cranelift.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-cranelift-wasm-0.105
+  (package
+    (name "rust-cranelift-wasm")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-wasm" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0mzp9v8cxq1v2njqpvya5iam6ng15yg6w691i27sl5px06mv0da1"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-cranelift-entity" ,rust-cranelift-entity-0.105)
+        ("rust-cranelift-frontend" ,rust-cranelift-frontend-0.105)
+        ("rust-hashbrown" ,rust-hashbrown-0.14)
+        ("rust-itertools" ,rust-itertools-0.10)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-serde-derive" ,rust-serde-derive-1)
+        ("rust-smallvec" ,rust-smallvec-1)
+        ("rust-wasmparser" ,rust-wasmparser-0.121)
+        ("rust-wasmtime-types" ,rust-wasmtime-types-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Translator from WebAssembly to Cranelift")
+    (description "This package provides a library to translate from
+WebAssembly to Cranelift @acronym{IR, Intermediate Representation}.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-crates-index-0.19
   (package
     (name "rust-crates-index")
