@@ -78687,6 +78687,30 @@ WebAssembly environment.")
 definitions for Cranelift.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-wit-bindgen-18
+  (package
+    (name "rust-wasmtime-wit-bindgen")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-wit-bindgen" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "14lbk00251ix1kk5pdky8131ai5l3vhz1xk94s00fzm2h5kwgwps"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-heck" ,rust-heck-0.4)
+                       ("rust-indexmap" ,rust-indexmap-2)
+                       ("rust-wit-parser" ,rust-wit-parser-0.13))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "@acronym{WIT, WebAssembly Interface Type} support for wasmtime")
+    (description "This package provides an internal library of wasmtime to support
+ @acronym{WIT, WebAssembly Interface Type} files.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wast-201
   (package
     (name "rust-wast")
