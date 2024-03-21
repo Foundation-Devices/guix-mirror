@@ -78651,6 +78651,44 @@ functions to support the component model in Wasmtime.")
 generate WebAssembly component interface types from Rust types.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-cranelift-18
+  (package
+    (name "rust-wasmtime-cranelift")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-cranelift" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1d7z97ngkgr05iiy1hx758wj4h5asm38s7gjn0m83p5ccyqbsnjr"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cfg-if" ,rust-cfg-if-1)
+        ("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-cranelift-control" ,rust-cranelift-control-0.105)
+        ("rust-cranelift-entity" ,rust-cranelift-entity-0.105)
+        ("rust-cranelift-frontend" ,rust-cranelift-frontend-0.105)
+        ("rust-cranelift-native" ,rust-cranelift-native-0.105)
+        ("rust-cranelift-wasm" ,rust-cranelift-wasm-0.105)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-object" ,rust-object-0.32)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12)
+        ("rust-thiserror" ,rust-thiserror-1)
+        ("rust-wasmparser" ,rust-wasmparser-0.121)
+        ("rust-wasmtime-cranelift-shared" ,rust-wasmtime-cranelift-shared-18)
+        ("rust-wasmtime-environ" ,rust-wasmtime-environ-18)
+        ("rust-wasmtime-versioned-export-macros" ,rust-wasmtime-versioned-export-macros-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Integration between Cranelift and Wasmtime")
+    (description "This package provides a library integrating Cranelift
+and Wasmtime.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-cranelift-shared-18
   (package
     (name "rust-wasmtime-cranelift-shared")
