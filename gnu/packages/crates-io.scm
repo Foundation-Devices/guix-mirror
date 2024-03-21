@@ -78806,6 +78806,31 @@ WebAssembly environment.")
     (description "Fiber support for Wasmtime")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-jit-debug-18
+  (package
+    (name "rust-wasmtime-jit-debug")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-jit-debug" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "08dkygs0mnyf9cwc9ck8bmnxmg4nzw85kd6j1idnwwvhjdrhgwv3"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-object" ,rust-object-0.32)
+        ("rust-once-cell" ,rust-once-cell-1)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-wasmtime-versioned-export-macros"
+         ,rust-wasmtime-versioned-export-macros-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "JIT debug interfaces support for Wasmtime")
+    (description "JIT debug interfaces support for Wasmtime")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-types-18
   (package
     (name "rust-wasmtime-types")
