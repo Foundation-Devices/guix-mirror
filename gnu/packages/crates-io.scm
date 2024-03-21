@@ -78521,6 +78521,26 @@ WebAssembly binary files.")
 WebAssembly binary format to the text format.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-component-util-18
+  (package
+    (name "rust-wasmtime-component-util")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-component-util" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0xr7ypmva710b4yrply4g84262hj431kpa0djnry0zh2k3nf5sl1"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Support code for the WebAssembly component model in Wasmtime")
+    (description "This package provides a library with utility types and
+functions to support the component model in Wasmtime.")
+    (license license:asl2.0))) ;; With the LLVM exception.
+
 (define-public rust-wast-201
   (package
     (name "rust-wast")
