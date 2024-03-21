@@ -78926,6 +78926,27 @@ exports in Wasmtime.")
  @acronym{WIT, WebAssembly Interface Type} files.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-wmemcheck-18
+  (package
+    (name "rust-wasmtime-wmemcheck")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-wmemcheck" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0bsg5iadgk1gpqbwk6swih5z181j4kjq35gq7798qfr0pmlxjirq"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "WebAssembyl memory checking for Wasmtime")
+    (description "This package provides wmemcheck a memory checker for
+Wasmtime with the ability to check for invalid @code{malloc} calls, reads and
+writes inside a WebAssembly module.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wast-201
   (package
     (name "rust-wast")
