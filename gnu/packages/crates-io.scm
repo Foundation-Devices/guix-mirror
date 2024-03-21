@@ -78541,6 +78541,45 @@ WebAssembly binary format to the text format.")
 functions to support the component model in Wasmtime.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-environ-18
+  (package
+    (name "rust-wasmtime-environ")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-environ" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "012a0yzxrgz65xc9sxg590byimw9r5ghmafqa0ai8n2k008day9j"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-bincode" ,rust-bincode-1)
+        ("rust-cpp-demangle" ,rust-cpp-demangle-0.3)
+        ("rust-cranelift-entity" ,rust-cranelift-entity-0.105)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-indexmap" ,rust-indexmap-2)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-object" ,rust-object-0.32)
+        ("rust-rustc-demangle" ,rust-rustc-demangle-0.1)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-serde-derive" ,rust-serde-derive-1)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12)
+        ("rust-thiserror" ,rust-thiserror-1)
+        ("rust-wasm-encoder" ,rust-wasm-encoder-0.41)
+        ("rust-wasmparser" ,rust-wasmparser-0.121)
+        ("rust-wasmprinter" ,rust-wasmprinter-0.2)
+        ("rust-wasmtime-component-util" ,rust-wasmtime-component-util-18)
+        ("rust-wasmtime-types" ,rust-wasmtime-types-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "WebAsssembly environment support code in Cranelift")
+    (description "This package provides a library used in Cranelift to manage
+WebAssembly environment.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-types-18
   (package
     (name "rust-wasmtime-types")
