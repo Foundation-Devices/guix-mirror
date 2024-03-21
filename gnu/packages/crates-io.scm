@@ -78571,6 +78571,27 @@ WebAssembly binary files.")
 WebAssembly binary format to the text format.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-asm-macros-18
+  (package
+    (name "rust-wasmtime-asm-macros")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-asm-macros" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "13zffpi0bx1hafy7bbcm3jfm3hs6yjvn83ivxqscw6lmx8ng031v"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-cfg-if" ,rust-cfg-if-1))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Define asssembly functions in Wasmtime")
+    (description "This package provides macros for defining assembly
+functions in Wasmtime.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-cache-18
   (package
     (name "rust-wasmtime-cache")
