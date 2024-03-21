@@ -78571,6 +78571,38 @@ WebAssembly binary files.")
 WebAssembly binary format to the text format.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-cache-18
+  (package
+    (name "rust-wasmtime-cache")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-cache" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0pgbnc5xmi3sar6plw250i97xy3k0kyqm8gfnczxaa6pf5520j9j"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-base64" ,rust-base64-0.21)
+                       ("rust-bincode" ,rust-bincode-1)
+                       ("rust-directories-next" ,rust-directories-next-2)
+                       ("rust-log" ,rust-log-0.4)
+                       ("rust-rustix" ,rust-rustix-0.38)
+                       ("rust-serde" ,rust-serde-1)
+                       ("rust-serde-derive" ,rust-serde-derive-1)
+                       ("rust-sha2" ,rust-sha2-0.10)
+                       ("rust-toml" ,rust-toml-0.5)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52)
+                       ("rust-zstd" ,rust-zstd-0.11))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Automatic module caching with Wasmtime")
+    (description "This package provides a library for Wasmtime to
+automatically add modules to cache.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-component-util-18
   (package
     (name "rust-wasmtime-component-util")
@@ -78679,8 +78711,7 @@ definitions for Cranelift.")
     (synopsis "Parsers for the WebAssembly Text formats WAT and WAST")
     (description "This package provides a library with customizable parsers
 for the WebAssembly Text formats WAT and WAST.")
-    ;; With LLVM exception.
-    (license license:asl2.0)))
+    (license license:asl2.0))) ;; With LLVM exception.
 
 (define-public rust-wast-35
   (package
