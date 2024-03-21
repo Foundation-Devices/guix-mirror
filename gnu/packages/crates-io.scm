@@ -15000,6 +15000,32 @@ mile, ...).")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-cranelift-frontend-0.105
+  (package
+    (name "rust-cranelift-frontend")
+    (version "0.105.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cranelift-frontend" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0s4blnryr1idk0k1bmbkgn8ai0qadf753xw4fwj7wydgyl9fg5lp"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-hashbrown" ,rust-hashbrown-0.14)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-smallvec" ,rust-smallvec-1)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Cranelift @acronym{IR, Intermediate Representation} builder")
+    (description "This package provides a librayr to construct a function
+in the Cranelift @acronym{IR, Intermediate Representation}.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-cranelift-isle-0.105
   (package
     (name "rust-cranelift-isle")
