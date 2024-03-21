@@ -78623,6 +78623,34 @@ automatically add modules to cache.")
 functions to support the component model in Wasmtime.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-component-macro-18
+  (package
+    (name "rust-wasmtime-component-macro")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-component-macro" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0xp3pmlzlk137h7y6dldnpjbcv7hk5if9h2jk1nfqr8mag08cdvx"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-proc-macro2" ,rust-proc-macro2-1)
+        ("rust-quote" ,rust-quote-1)
+        ("rust-syn" ,rust-syn-2)
+        ("rust-wasmtime-component-util" ,rust-wasmtime-component-util-18)
+        ("rust-wasmtime-wit-bindgen" ,rust-wasmtime-wit-bindgen-18)
+        ("rust-wit-parser" ,rust-wit-parser-0.13))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Generate WebAssembly component interface")
+    (description "This package provides a library with procedural macros to
+generate WebAssembly component interface types from Rust types.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-environ-18
   (package
     (name "rust-wasmtime-environ")
