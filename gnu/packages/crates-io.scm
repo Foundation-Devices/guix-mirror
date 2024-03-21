@@ -78778,6 +78778,34 @@ Wasmtime to integrate the Cranelift code generation back-end.")
 WebAssembly environment.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-fiber-18
+  (package
+    (name "rust-wasmtime-fiber")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-fiber" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0c9cv409vm5fky5v3i62420v2s1hv6q66mjz4v8l2xqiy9jzc7cv"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cc" ,rust-cc-1)
+        ("rust-cfg-if" ,rust-cfg-if-1)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-wasmtime-asm-macros" ,rust-wasmtime-asm-macros-18)
+        ("rust-wasmtime-versioned-export-macros"
+         ,rust-wasmtime-versioned-export-macros-18)
+        ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Fiber support for Wasmtime")
+    (description "Fiber support for Wasmtime")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-types-18
   (package
     (name "rust-wasmtime-types")
