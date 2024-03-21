@@ -1,0 +1,46 @@
+SPDX-FileCopyrightText: © 2024 Foundation Devices, Inc. <hello@foundation.xyz>
+SPDX-License-Identifier: Apache-2.0
+
+The Intel ITT API is a stub that doesn't provide functionality and requires a
+closed source library in order to work.
+
+This patch removes the need for the dependency and disables the vtune module.
+Index: wasmtime-18.0.3/Cargo.toml
+===================================================================
+--- wasmtime-18.0.3.orig/Cargo.toml
++++ wasmtime-18.0.3/Cargo.toml
+@@ -215,7 +215,6 @@ pooling-allocator = [
+ profiling = [
+     "dep:fxprof-processed-profile",
+     "dep:wasmtime-jit-debug",
+-    "dep:ittapi",
+ ]
+ runtime = [
+     "dep:wasmtime-runtime",
+@@ -227,10 +226,6 @@ wmemcheck = [
+     "wasmtime-cranelift?/wmemcheck",
+ ]
+ 
+-[target."cfg(all(target_arch = \"x86_64\", not(target_os = \"android\")))".dependencies.ittapi]
+-version = "0.4.0"
+-optional = true
+-
+ [target."cfg(target_os = \"linux\")".dependencies.rustix]
+ version = "0.38.21"
+ features = ["thread"]
+Index: wasmtime-18.0.3/src/profiling_agent.rs
+===================================================================
+--- wasmtime-18.0.3.orig/src/profiling_agent.rs
++++ wasmtime-18.0.3/src/profiling_agent.rs
+@@ -31,8 +31,9 @@ cfg_if::cfg_if! {
+     // Note: VTune support is disabled on windows mingw because the ittapi crate doesn't compile
+     // there; see also https://github.com/bytecodealliance/wasmtime/pull/4003 for rationale.
+     if #[cfg(all(feature = "profiling", target_arch = "x86_64", not(any(target_os = "android", all(target_os = "windows", target_env = "gnu")))))] {
+-        mod vtune;
+-        pub use vtune::new as new_vtune;
++        pub fn new_vtune() -> Result<Box<dyn ProfilingAgent>> {
++            bail!("VTune support disabled at compile time.");
++        }
+     } else {
+         pub fn new_vtune() -> Result<Box<dyn ProfilingAgent>> {
+             if cfg!(feature = "vtune") {

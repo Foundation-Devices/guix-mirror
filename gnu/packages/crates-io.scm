@@ -78571,6 +78571,65 @@ WebAssembly binary files.")
 WebAssembly binary format to the text format.")
     (license license:asl2.0))) ;; With the LLVM exception.
 
+(define-public rust-wasmtime-18
+  (package
+    (name "rust-wasmtime")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0x4p8kwlix5qdixzvwmspz40yvz40dxwqbg282wvrlb35p9df1l1"))
+       (patches
+        (search-patches "rust-wasmtime-18-remove-ittapi.patch"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:tests? #f ;; use of undeclared crate or module `wasi_common`.
+       #:cargo-inputs
+       (("rust-addr2line" ,rust-addr2line-0.21)
+        ("rust-anyhow" ,rust-anyhow-1)
+        ("rust-async-trait" ,rust-async-trait-0.1)
+        ("rust-bincode" ,rust-bincode-1)
+        ("rust-bumpalo" ,rust-bumpalo-3)
+        ("rust-cfg-if" ,rust-cfg-if-1)
+        ("rust-encoding-rs" ,rust-encoding-rs-0.8)
+        ("rust-fxprof-processed-profile" ,rust-fxprof-processed-profile-0.6)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-indexmap" ,rust-indexmap-2)
+        ("rust-libc" ,rust-libc-0.2)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-object" ,rust-object-0.32)
+        ("rust-once-cell" ,rust-once-cell-1)
+        ("rust-paste" ,rust-paste-1)
+        ("rust-rayon" ,rust-rayon-1)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-serde-derive" ,rust-serde-derive-1)
+        ("rust-serde-json" ,rust-serde-json-1)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12)
+        ("rust-wasm-encoder" ,rust-wasm-encoder-0.41)
+        ("rust-wasmparser" ,rust-wasmparser-0.121)
+        ("rust-wasmtime-cache" ,rust-wasmtime-cache-18)
+        ("rust-wasmtime-component-macro" ,rust-wasmtime-component-macro-18)
+        ("rust-wasmtime-component-util" ,rust-wasmtime-component-util-18)
+        ("rust-wasmtime-cranelift" ,rust-wasmtime-cranelift-18)
+        ("rust-wasmtime-environ" ,rust-wasmtime-environ-18)
+        ("rust-wasmtime-fiber" ,rust-wasmtime-fiber-18)
+        ("rust-wasmtime-jit-debug" ,rust-wasmtime-jit-debug-18)
+        ("rust-wasmtime-jit-icache-coherence"
+         ,rust-wasmtime-jit-icache-coherence-18)
+        ("rust-wasmtime-runtime" ,rust-wasmtime-runtime-18)
+        ("rust-wasmtime-winch" ,rust-wasmtime-winch-18)
+        ("rust-wat" ,rust-wat-1)
+        ("rust-windows-sys" ,rust-windows-sys-0.52))
+       #:cargo-development-inputs (("rust-tempfile" ,rust-tempfile-3))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "High-level API to expose the Wasmtime runtime")
+    (description "High-level API to expose the Wasmtime runtime")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-asm-macros-18
   (package
     (name "rust-wasmtime-asm-macros")

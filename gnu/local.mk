@@ -2029,6 +2029,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/rust-nettle-disable-vendor.patch		 \
   %D%/packages/patches/rust-rspec-1-remove-clippy.patch	\
   %D%/packages/patches/rust-trash-2-update-windows.patch	\
+  %D%/packages/patches/rust-wasmtime-18-remove-ittapi.patch	\
   %D%/packages/patches/rust-webbrowser-remove-unsupported-os.patch	\
   %D%/packages/patches/rust-wl-clipboard-rs-newer-wl.patch      \
   %D%/packages/patches/rw-igraph-0.10.patch			\
