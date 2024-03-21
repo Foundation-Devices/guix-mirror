@@ -78854,6 +78854,49 @@ WebAssembly environment.")
 instruction cache maintenance")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-runtime-18
+  (package
+    (name "rust-wasmtime-runtime")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-runtime" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0zw6fkx32vn3201ppcywk35gknxsnkwlzbpm5399bxddik48a4g1"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cc" ,rust-cc-1)
+        ("rust-cfg-if" ,rust-cfg-if-1)
+        ("rust-encoding-rs" ,rust-encoding-rs-0.8)
+        ("rust-indexmap" ,rust-indexmap-2)
+        ("rust-libc" ,rust-libc-0.2)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-mach" ,rust-mach-0.3)
+        ("rust-memfd" ,rust-memfd-0.6)
+        ("rust-memoffset" ,rust-memoffset-0.9)
+        ("rust-paste" ,rust-paste-1)
+        ("rust-psm" ,rust-psm-0.1)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-sptr" ,rust-sptr-0.3)
+        ("rust-wasm-encoder" ,rust-wasm-encoder-0.41)
+        ("rust-wasmtime-asm-macros" ,rust-wasmtime-asm-macros-18)
+        ("rust-wasmtime-environ" ,rust-wasmtime-environ-18)
+        ("rust-wasmtime-fiber" ,rust-wasmtime-fiber-18)
+        ("rust-wasmtime-jit-debug" ,rust-wasmtime-jit-debug-18)
+        ("rust-wasmtime-versioned-export-macros"
+         ,rust-wasmtime-versioned-export-macros-18)
+        ("rust-wasmtime-wmemcheck" ,rust-wasmtime-wmemcheck-18)
+        ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Runtime library support for Wasmtime")
+    (description "This package provides the Wasmtime Runtime library.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-types-18
   (package
     (name "rust-wasmtime-types")
