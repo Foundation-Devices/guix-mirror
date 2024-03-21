@@ -78902,6 +78902,36 @@ definitions for Cranelift.")
 exports in Wasmtime.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-winch-18
+  (package
+    (name "rust-wasmtime-winch")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-winch" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0jilhha1qhqwqz4z7m844yc97a3jyhbfnxggkivd2hf2rjzrfnms"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cranelift-codegen" ,rust-cranelift-codegen-0.105)
+        ("rust-gimli" ,rust-gimli-0.28)
+        ("rust-object" ,rust-object-0.32)
+        ("rust-target-lexicon" ,rust-target-lexicon-0.12)
+        ("rust-wasmparser" ,rust-wasmparser-0.121)
+        ("rust-wasmtime-cranelift-shared" ,rust-wasmtime-cranelift-shared-18)
+        ("rust-wasmtime-environ" ,rust-wasmtime-environ-18)
+        ("rust-winch-codegen" ,rust-winch-codegen-0.16))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Integration between Wasmtime and Winch")
+    (description "This package provides an internal crate for Wasmtime integrating
+the Winch code generation back-end.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-wit-bindgen-18
   (package
     (name "rust-wasmtime-wit-bindgen")
