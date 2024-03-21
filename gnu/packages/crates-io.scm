@@ -78744,6 +78744,29 @@ WebAssembly environment.")
 definitions for Cranelift.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-versioned-export-macros-18
+  (package
+    (name "rust-wasmtime-versioned-export-macros")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-versioned-export-macros" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "18a7zihkrrz9cwxrpbdbiqp5ils0bq6cjjhxrzw44v10dmbdgf2a"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-proc-macro2" ,rust-proc-macro2-1)
+                       ("rust-quote" ,rust-quote-1)
+                       ("rust-syn" ,rust-syn-2))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Macros for defining versioned exports in Wasmtime")
+    (description "This package provides macros for defining versioned
+exports in Wasmtime.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-wit-bindgen-18
   (package
     (name "rust-wasmtime-wit-bindgen")
