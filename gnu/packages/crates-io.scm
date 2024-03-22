@@ -9586,6 +9586,32 @@ brightness between monitors.")
 tracking memory usage and enabling limits to be set.")
     (license (list license:expat license:asl2.0))))
 
+(define-public rust-cap-fs-ext-2
+  (package
+    (name "rust-cap-fs-ext")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cap-fs-ext" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0rj878djc7dwhlrf5k831vjazvd1l5jff2v0rsnrl0n1bb8l3qw8"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-arf-strings" ,rust-arf-strings-0.7)
+                       ("rust-camino" ,rust-camino-1)
+                       ("rust-cap-primitives" ,rust-cap-primitives-2)
+                       ("rust-cap-std" ,rust-cap-std-2)
+                       ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/bytecodealliance/cap-std")
+    (synopsis "Extension traits for cap-std's file-system module")
+    (description "This package provides a library with extension traits for
+cap-std's file-system module.")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-cap-primitives-2
   (package
     (name "rust-cap-primitives")
