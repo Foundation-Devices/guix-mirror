@@ -14,6 +14,7 @@
 ;;; Copyright © 2023 Jaeme Sifat <jaeme@runbox.com>
 ;;; Copyright © 2023 Daniel Ziltener <dziltener@lyrion.ch>
 ;;; Copyright © 2024 Tomas Volf <~@wolfsden.cz>
+;;; Copyright © 2024 Foundation Devices, Inc. <hello@foundation.xyz>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1984,6 +1985,26 @@ crate.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32 "03h0c6qs1yyl0z69p4k1hdq636j868qdxnri1dy47nprjvckacbm"))))))
+
+(define-public rust-windows-result-0.1
+  (package
+    (name "rust-windows-result")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "windows-result" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0r1z5903al7pzv1jsvbmnqnsn8nlp38x2hy3xl5gp38nwmwdy6fd"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-windows-targets" ,rust-windows-targets-0.52))))
+    (home-page "https://github.com/microsoft/windows-rs")
+    (synopsis "Windows error handling")
+    (description "This package provides types to manage Windows APIs errors.")
+    (license (list license:expat license:asl2.0))))
 
 (define-public rust-windows-sys-0.52
   (package
