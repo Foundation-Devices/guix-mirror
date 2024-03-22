@@ -9617,6 +9617,32 @@ tracking memory usage and enabling limits to be set.")
 @code{cap-std} crate. ")
     (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
 
+(define-public rust-cap-std-2
+  (package
+    (name "rust-cap-std")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cap-std" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0c6k36hmpn4si6hlxfd3jd7j3hs9i1qyxrxshhr2vxji9h7b4gar"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-arf-strings" ,rust-arf-strings-0.7)
+                       ("rust-camino" ,rust-camino-1)
+                       ("rust-cap-primitives" ,rust-cap-primitives-2)
+                       ("rust-io-extras" ,rust-io-extras-0.18)
+                       ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+                       ("rust-rustix" ,rust-rustix-0.38))))
+    (home-page "https://github.com/bytecodealliance/cap-std")
+    (synopsis "Capability-based version of the Rust standard library")
+    (description "This package provides a version like of the Rust standard
+library (@code{std}) based on capabilities.")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-capnp-0.14
   (package
     (name "rust-capnp")
