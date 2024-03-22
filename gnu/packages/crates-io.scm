@@ -9586,6 +9586,37 @@ brightness between monitors.")
 tracking memory usage and enabling limits to be set.")
     (license (list license:expat license:asl2.0))))
 
+(define-public rust-cap-primitives-2
+  (package
+    (name "rust-cap-primitives")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cap-primitives" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1fvsyrp239bpbxpbjm7b2ywnl8hwp1v7ashdy3qx7rpfv1z7c5py"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-ambient-authority" ,rust-ambient-authority-0.0.2)
+        ("rust-arbitrary" ,rust-arbitrary-1)
+        ("rust-fs-set-times" ,rust-fs-set-times-0.20)
+        ("rust-io-extras" ,rust-io-extras-0.18)
+        ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+        ("rust-ipnet" ,rust-ipnet-2)
+        ("rust-maybe-owned" ,rust-maybe-owned-0.3)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-windows-sys" ,rust-windows-sys-0.52)
+        ("rust-winx" ,rust-winx-0.36))))
+    (home-page "https://github.com/bytecodealliance/cap-std")
+    (synopsis "Capability-based standard library primitives")
+    (description "This package provides an internal library of the
+@code{cap-std} crate. ")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-capnp-0.14
   (package
     (name "rust-capnp")
