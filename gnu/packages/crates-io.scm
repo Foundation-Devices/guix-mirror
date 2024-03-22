@@ -79908,6 +79908,27 @@ combinators library.")
                        ("rust-memchr" ,rust-memchr-2)
                        ("rust-terminal-size" ,rust-terminal-size-0.2))))))
 
+(define-public rust-winx-0.36
+  (package
+    (name "rust-winx")
+    (version "0.36.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "winx" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0ikk6cnlfiq7dm36jqwrczxa8jyh9m2zmrdbxi3d430cha1knr7r"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-bitflags" ,rust-bitflags-2)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/sunfishcode/winx")
+    (synopsis "Windows API helper library")
+    (description "Windows API helper library")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wit-parser-0.13
   (package
     (name "rust-wit-parser")
