@@ -9643,6 +9643,29 @@ cap-std's file-system module.")
 @code{cap-std} crate. ")
     (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
 
+(define-public rust-cap-rand-2
+  (package
+    (name "rust-cap-rand")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cap-rand" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1jm4iw7jlricrpi0ngmp5dvhwm4p6lr70w9wph373kghcmankr90"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-ambient-authority" ,rust-ambient-authority-0.0.2)
+        ("rust-rand" ,rust-rand-0.8))))
+    (home-page "https://github.com/bytecodealliance/cap-std")
+    (synopsis "Capability-based random number generators")
+    (description "This package provides a library for capability-based random
+number generators.")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-cap-std-2
   (package
     (name "rust-cap-std")
