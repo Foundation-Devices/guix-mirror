@@ -9692,6 +9692,34 @@ number generators.")
 library (@code{std}) based on capabilities.")
     (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
 
+(define-public rust-cap-time-ext-2
+  (package
+    (name "rust-cap-time-ext")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cap-time-ext" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0aq05yqg8mjc039cs5zm534mn9i8g228rwrn191jbx4iy8q1c9h3"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-ambient-authority" ,rust-ambient-authority-0.0.2)
+        ("rust-cap-primitives" ,rust-cap-primitives-2)
+        ("rust-cap-std" ,rust-cap-std-2)
+        ("rust-iana-time-zone" ,rust-iana-time-zone-0.1)
+        ("rust-once-cell" ,rust-once-cell-1)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-winx" ,rust-winx-0.36))))
+    (home-page "https://github.com/bytecodealliance/cap-std")
+    (synopsis "Extension traits for the cap-std's time module")
+    (description "This packge provides a library with extension traits for
+cap-std's time module.")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-capnp-0.14
   (package
     (name "rust-capnp")
