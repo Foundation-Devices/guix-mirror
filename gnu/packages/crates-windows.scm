@@ -1568,6 +1568,28 @@ crate.")
                        ("rust-syn" ,rust-syn-2)
                        ("rust-windows-metadata" ,rust-windows-metadata-0.51))))))
 
+(define-public rust-windows-core-0.52
+  (package
+    (name "rust-windows-core")
+    (version "0.52.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "windows-core" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1nc3qv7sy24x0nlnb32f7alzpd6f72l4p24vl65vydbyil669ark"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-windows-result" ,rust-windows-result-0.1)
+                       ("rust-windows-targets" ,rust-windows-targets-0.52))))
+    (home-page "https://github.com/microsoft/windows-rs")
+    (synopsis "Windows base types for Rust")
+    (description "This package provides a library with base types
+of Windows.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-windows-i686-gnu-0.52
   (package
     (name "rust-windows-i686-gnu")
