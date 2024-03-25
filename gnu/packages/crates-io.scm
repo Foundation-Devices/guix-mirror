@@ -65504,6 +65504,31 @@ SPIR-V.")
        (("rust-libc" ,rust-libc-0.2)
         ("rust-sqlite3-src" ,rust-sqlite3-src-0.3))))))
 
+(define-public rust-ssh2-0.9
+  (package
+    (name "rust-ssh2")
+    (version "0.9.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "ssh2" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0malilb9lbzlh3i24nb6s61lmz5as801swy30ib6v7sm20cldzp7"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-bitflags" ,rust-bitflags-1)
+                       ("rust-libc" ,rust-libc-0.2)
+                       ("rust-libssh2-sys" ,rust-libssh2-sys-0.3)
+                       ("rust-parking-lot" ,rust-parking-lot-0.11))))
+    (home-page "https://github.com/alexcrichton/ssh2-rs")
+    (synopsis "High-level bindings of libssh2 for Rust")
+    (description "This package provides high-level idiomatic bindings to
+libssh2 for interacting with SSH servers and executing remote commands,
+forwarding local ports, etc.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-st-map-0.1
   (package
     (name "rust-st-map")
