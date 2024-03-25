@@ -79067,6 +79067,28 @@ WebAssembly binary format to the text format.")
 functions in Wasmtime.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-c-api-macros-18
+  (package
+    (name "rust-wasmtime-c-api-macros")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-c-api-macros" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1h4428v7b4vvmdba9lqirf7qnn1xh47x6qkn10yxbdj5yxirwm6r"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-proc-macro2" ,rust-proc-macro2-1)
+                       ("rust-quote" ,rust-quote-1))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Support macros for Wasmtime C bindings")
+    (description "This package provides a library with support macros for the
+Wasmtime C bindings library.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-cache-18
   (package
     (name "rust-wasmtime-cache")
