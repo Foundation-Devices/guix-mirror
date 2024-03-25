@@ -80222,6 +80222,30 @@ combinators library.")
 @acronym{WIT, WebAssembly Interface Type}.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-witx-0.9
+  (package
+    (name "rust-witx")
+    (version "0.9.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "witx" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0jzgmayh2jjbv70jzfka38g4bk4g1fj9d0m70qkxpkdbbixg4rp3"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-log" ,rust-log-0.4)
+                       ("rust-thiserror" ,rust-thiserror-1)
+                       ("rust-wast" ,rust-wast-35))))
+    (home-page "https://github.com/WebAssembly/WASI")
+    (synopsis "Parse and validate WITX files")
+    (description "This package provides a library to parse and validate
+WITX files.")
+    (license license:asl2.0)))
+
 (define-public rust-wycheproof-0.5
   (package
     (name "rust-wycheproof")
