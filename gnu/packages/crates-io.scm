@@ -25581,6 +25581,37 @@ from_variants crate.")
 duplication.")
     (license (list license:expat license:asl2.0))))
 
+(define-public rust-fs4-0.8
+  (package
+    (name "rust-fs4")
+    (version "0.8.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "fs4" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1r7zmrg7xdn32ybxdk3pdjw6c0mx81s4j8cq618h2zwx6r7f7cap"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:tests? #f ;; "#![feature] may not be used on the stable release channe"
+       #:cargo-inputs (("rust-async-std" ,rust-async-std-1)
+                       ("rust-async-trait" ,rust-async-trait-0.1)
+                       ("rust-rustix" ,rust-rustix-0.38)
+                       ("rust-smol" ,rust-smol-2)
+                       ("rust-tokio" ,rust-tokio-1)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52))
+       #:cargo-development-inputs (("rust-async-std" ,rust-async-std-1)
+                                   ("rust-libc" ,rust-libc-0.2)
+                                   ("rust-smol-potat" ,rust-smol-potat-1)
+                                   ("rust-tempdir" ,rust-tempdir-0.3)
+                                   ("rust-tokio" ,rust-tokio-1))))
+    (home-page "https://github.com/al8n/fs4-rs")
+    (synopsis "Cross-platform file locks")
+    (description "This package provides cross-platform file locks, originally
+based on the @code{fs2} library.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-fs-at-0.1
   (package
     (name "rust-fs-at")
