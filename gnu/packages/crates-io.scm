@@ -78013,6 +78013,22 @@ for the WebAssembly Text formats WAT and WAST.")
     ;; With LLVM exception.
     (license license:asl2.0)))
 
+(define-public rust-wast-35
+  (package
+    (inherit rust-wast-201)
+    (name "rust-wast")
+    (version "35.0.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wast" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0s2d43g326dw21bygpalzjnr1fi83lx4afimg1h5hilrnkql1w9f"))))
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-leb128" ,rust-leb128-0.2))))))
+
 (define-public rust-watchexec-1
   (package
     (name "rust-watchexec")
