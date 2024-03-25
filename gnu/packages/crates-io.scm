@@ -11047,6 +11047,32 @@ clauses.")
      "This package provides a combines the chalk-engine with chalk-ir.")
     (license (list license:asl2.0 license:expat))))
 
+(define-public rust-char-device-0.16
+  (package
+    (name "rust-char-device")
+    (version "0.16.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "char-device" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "04rbxrjq32hbhyj1ddyixz2w42vvrnzvma7kkxlrwipa4f0ysm6y"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-async-std" ,rust-async-std-1)
+                       ("rust-io-extras" ,rust-io-extras-0.18)
+                       ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+                       ("rust-rustix" ,rust-rustix-0.38)
+                       ("rust-tokio" ,rust-tokio-1)
+                       ("rust-winx" ,rust-winx-0.36))))
+    (home-page "https://github.com/sunfishcode/char-device")
+    (synopsis "Character Device I/O")
+    (description "This packag provides a wrapper around @code{std::fs::File}
+to specifically interact with character devices such as @code{/dev/tty}.")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-charset-0.1
   (package
     (name "rust-charset")
