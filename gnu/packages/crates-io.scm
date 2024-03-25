@@ -79466,6 +79466,51 @@ definitions for Cranelift.")
 exports in Wasmtime.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-wasi-18
+  (package
+    (name "rust-wasmtime-wasi")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-wasi" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0y4h0wl5ls6bw5p72z048ggsqjmkaik2qrdpbb98n609lfyi5acw"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-async-trait" ,rust-async-trait-0.1)
+                       ("rust-bitflags" ,rust-bitflags-2)
+                       ("rust-bytes" ,rust-bytes-1)
+                       ("rust-cap-fs-ext" ,rust-cap-fs-ext-2)
+                       ("rust-cap-net-ext" ,rust-cap-net-ext-2)
+                       ("rust-cap-rand" ,rust-cap-rand-2)
+                       ("rust-cap-std" ,rust-cap-std-2)
+                       ("rust-cap-time-ext" ,rust-cap-time-ext-2)
+                       ("rust-cfg-if" ,rust-cfg-if-1)
+                       ("rust-fs-set-times" ,rust-fs-set-times-0.20)
+                       ("rust-futures" ,rust-futures-0.3)
+                       ("rust-io-extras" ,rust-io-extras-0.18)
+                       ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+                       ("rust-log" ,rust-log-0.4)
+                       ("rust-once-cell" ,rust-once-cell-1)
+                       ("rust-rustix" ,rust-rustix-0.38)
+                       ("rust-system-interface" ,rust-system-interface-0.26)
+                       ("rust-thiserror" ,rust-thiserror-1)
+                       ("rust-tokio" ,rust-tokio-1)
+                       ("rust-tracing" ,rust-tracing-0.1)
+                       ("rust-url" ,rust-url-2)
+                       ("rust-wasi-common" ,rust-wasi-common-18)
+                       ("rust-wasmtime" ,rust-wasmtime-18)
+                       ("rust-wiggle" ,rust-wiggle-18)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "WASI implementation")
+    (description "WASI implementation in Rust")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-winch-18
   (package
     (name "rust-wasmtime-winch")
