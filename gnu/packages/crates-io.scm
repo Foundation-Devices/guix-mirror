@@ -10717,7 +10717,7 @@ types that works on stable Rust.")
 (define-public rust-cc-1
   (package
     (name "rust-cc")
-    (version "1.0.83")
+    (version "1.0.90")
     (source
      (origin
        (method url-fetch)
@@ -10725,7 +10725,7 @@ types that works on stable Rust.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "1l643zidlb5iy1dskc5ggqs4wqa29a02f44piczqc8zcnsq4y5zi"))))
+         "1xg1bqnq50dpf6g1hl90caxgz4afnf74pxa426gh7wxch9561mlc"))))
     (build-system cargo-build-system)
     (arguments
      `(#:tests? #f
