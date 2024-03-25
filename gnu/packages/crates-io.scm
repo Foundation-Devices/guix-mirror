@@ -64340,6 +64340,29 @@ monotone matrix.")
         ("rust-piper" ,rust-piper-0.1)
         ("rust-tempfile" ,rust-tempfile-3))))))
 
+(define-public rust-smol-potat-1
+  (package
+    (name "rust-smol-potat")
+    (version "1.1.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "smol-potat" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "13nqzzqjscav3flc9jhwiabw8vnb22mv2accgilsn3swmxhzlkw9"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-async-io" ,rust-async-io-1)
+                       ("rust-num-cpus" ,rust-num-cpus-1)
+                       ("rust-smol-potat-macro" ,rust-smol-potat-macro-0.6))))
+    (home-page "https://github.com/wusyong/smol-potat")
+    (synopsis "Macros to initalize the @code{smol} asynchronous runtime.")
+    (description "This package provides a Rust procedural macro to simplify
+initialization of the @code{smol} asynchronous runtime in final binaries.")
+    (license (list license:expat license:asl2.0))))
+
 (define-public rust-smol-potat-macro-0.6
   (package
     (name "rust-smol-potat-macro")
