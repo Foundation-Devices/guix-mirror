@@ -80053,6 +80053,33 @@ UTF-32 types are provided, including support for malformed encoding.")
      `(#:cargo-development-inputs
        (("rust-winapi" ,rust-winapi-0.3))))))
 
+(define-public rust-wiggle-generate-18
+  (package
+    (name "rust-wiggle-generate")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wiggle-generate" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1kjm1bsa4lndqa0ldljvbhidvmnazf8j9zgjsi071mimg94r0m3c"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-heck" ,rust-heck-0.4)
+                       ("rust-proc-macro2" ,rust-proc-macro2-1)
+                       ("rust-quote" ,rust-quote-1)
+                       ("rust-shellexpand" ,rust-shellexpand-2)
+                       ("rust-syn" ,rust-syn-2)
+                       ("rust-witx" ,rust-witx-0.9))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Code generation back-end for Wasmtime")
+    (description "This package provides a library specific to Wasmtime to
+generate code.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wild-2
   (package
     (name "rust-wild")
