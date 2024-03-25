@@ -80080,6 +80080,30 @@ UTF-32 types are provided, including support for malformed encoding.")
 generate code.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wiggle-macro-18
+  (package
+    (name "rust-wiggle-macro")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wiggle-macro" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0n2rjpb4yll4vc6hs3s51iwvl98f4fyl1gx2y517in50q78k2gyq"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-proc-macro2" ,rust-proc-macro2-1)
+                       ("rust-quote" ,rust-quote-1)
+                       ("rust-syn" ,rust-syn-2)
+                       ("rust-wiggle-generate" ,rust-wiggle-generate-18))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Macros for the Wiggle code generator")
+    (description "This package provides macros for use with the Wiggle
+code generator.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wild-2
   (package
     (name "rust-wild")
