@@ -9612,6 +9612,30 @@ tracking memory usage and enabling limits to be set.")
 cap-std's file-system module.")
     (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
 
+(define-public rust-cap-net-ext-2
+  (package
+    (name "rust-cap-net-ext")
+    (version "2.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "cap-net-ext" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1adpbanxbs9rzajp4s7liqrxpmzn7yz9l0q4887my19kcpz6hha3"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-cap-primitives" ,rust-cap-primitives-2)
+                       ("rust-cap-std" ,rust-cap-std-2)
+                       ("rust-rustix" ,rust-rustix-0.38)
+                       ("rust-smallvec" ,rust-smallvec-1))))
+    (home-page "https://github.com/bytecodealliance/cap-std")
+    (synopsis "Extension traits for networking APIs")
+    (description "This packag provides a library with extension traits for:
+@code{TcpListener}, @code{Pool}, etc.")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-cap-primitives-2
   (package
     (name "rust-cap-primitives")
