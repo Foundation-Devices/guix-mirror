@@ -1366,14 +1366,14 @@ if they were just another Rust module.")
 (define-public rust-windows-aarch64-gnullvm-0.52
   (package
     (name "rust-windows-aarch64-gnullvm")
-    (version "0.52.0")
+    (version "0.52.4")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "windows_aarch64_gnullvm" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "1shmn1kbdc0bpphcxz0vlph96bxz0h1jlmh93s9agf2dbpin8xyb"))
+        (base32 "1jfam5qfngg8v1syxklnvy8la94b5igm7klkrk8z5ik5qgs6rx5w"))
        (snippet
         '(delete-file "lib/libwindows.0.52.0.a"))))
     (build-system cargo-build-system)
@@ -1420,14 +1420,14 @@ if they were just another Rust module.")
 (define-public rust-windows-aarch64-msvc-0.52
   (package
     (name "rust-windows-aarch64-msvc")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows_aarch64_msvc" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1vvmy1ypvzdvxn9yf0b8ygfl85gl2gpcyvsvqppsmlpisil07amv"))
+                "0xdn6db0rk8idn7dxsyflixq2dbj9x60kzdzal5rkxmwsffjb7ys"))
               (snippet
                '(delete-file "lib/windows.0.52.0.lib"))))
     (build-system cargo-build-system)
@@ -1571,14 +1571,14 @@ crate.")
 (define-public rust-windows-i686-gnu-0.52
   (package
     (name "rust-windows-i686-gnu")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows_i686_gnu" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "04zkglz4p3pjsns5gbz85v4s5aw102raz4spj4b0lmm33z5kg1m2"))
+                "1lq1g35sbj55ms86by4c080jcqrlfjy9bw5r4mgrkq4riwkdhx5l"))
               (snippet
                '(delete-file "lib/libwindows.0.52.0.a"))))
     (build-system cargo-build-system)
@@ -1682,14 +1682,14 @@ crate.")
 (define-public rust-windows-i686-msvc-0.52
   (package
     (name "rust-windows-i686-msvc")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows_i686_msvc" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "16kvmbvx0vr0zbgnaz6nsks9ycvfh5xp05bjrhq65kj623iyirgz"))
+                "00lfzw88dkf3fdcf2hpfhp74i9pwbp7rwnj1nhy79vavksifj58m"))
               (snippet
                '(delete-file "lib/windows.0.52.0.lib"))))
     (build-system cargo-build-system)
@@ -2168,14 +2168,14 @@ if they were just another Rust module.")
 (define-public rust-windows-targets-0.52
   (package
     (name "rust-windows-targets")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows-targets" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1kg7a27ynzw8zz3krdgy6w5gbqcji27j1sz4p7xk2j5j8082064a"))))
+                "06sdd7fin3dj9cmlg6n1dw0n1l10jhn9b8ckz1cqf0drb9z7plvx"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
@@ -2272,14 +2272,14 @@ windows crate.")
 (define-public rust-windows-x86-64-gnu-0.52
   (package
     (name "rust-windows-x86-64-gnu")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows_x86_64_gnu" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1zdy4qn178sil5sdm63lm7f0kkcjg6gvdwmcprd2yjmwn8ns6vrx"))
+                "00qs6x33bf9lai2q68faxl56cszbv7mf7zqlslmc1778j0ahkvjy"))
               (snippet
                '(delete-file "lib/libwindows.0.52.0.a"))))
     (build-system cargo-build-system)
@@ -2383,14 +2383,14 @@ windows crate.")
 (define-public rust-windows-x86-64-gnullvm-0.52
   (package
     (name "rust-windows-x86-64-gnullvm")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows_x86_64_gnullvm" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "17lllq4l2k1lqgcnw1cccphxp9vs7inq99kjlm2lfl9zklg7wr8s"))
+                "0xr13xxakp14hs4v4hg2ynjcv7wrzr3hg7zk5agglj8v8pr7kjkp"))
               (snippet
                '(delete-file "lib/libwindows.0.52.0.a"))))
     (build-system cargo-build-system)
@@ -2436,14 +2436,14 @@ windows crate.")
 (define-public rust-windows-x86-64-msvc-0.52
   (package
     (name "rust-windows-x86-64-msvc")
-    (version "0.52.0")
+    (version "0.52.4")
     (source (origin
               (method url-fetch)
               (uri (crate-uri "windows_x86_64_msvc" version))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "012wfq37f18c09ij5m6rniw7xxn5fcvrxbqd0wd8vgnl3hfn9yfz"))
+                "1n0yc7xiv9iki1j3xl8nxlwwkr7dzsnwwvycvgxxv81d5bjm5drj"))
               (snippet
                '(delete-file "lib/windows.0.52.0.lib"))))
     (build-system cargo-build-system)
