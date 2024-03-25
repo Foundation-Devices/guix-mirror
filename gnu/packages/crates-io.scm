@@ -68924,6 +68924,38 @@ well.")
        #:cargo-development-inputs
        (("rust-itertools" ,rust-itertools-0.9))))))
 
+(define-public rust-system-interface-0.26
+  (package
+    (name "rust-system-interface")
+    (version "0.26.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "system-interface" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0n0z5cf98178n8pw39nln5aaiacr14caq8v658wiwxrmvl3f10h6"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-bitflags" ,rust-bitflags-2)
+        ("rust-cap-fs-ext" ,rust-cap-fs-ext-2)
+        ("rust-cap-std" ,rust-cap-std-2)
+        ("rust-char-device" ,rust-char-device-0.16)
+        ("rust-fd-lock" ,rust-fd-lock-4)
+        ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+        ("rust-os-pipe" ,rust-os-pipe-1)
+        ("rust-rustix" ,rust-rustix-0.38)
+        ("rust-socketpair" ,rust-socketpair-0.19)
+        ("rust-ssh2" ,rust-ssh2-0.9)
+        ("rust-windows-sys" ,rust-windows-sys-0.52)
+        ("rust-winx" ,rust-winx-0.36))))
+    (home-page "https://github.com/bytecodealliance/system-interface")
+    (synopsis "Extensions to the Rust standard library")
+    (description "Extensions to the Rust standard library")
+    (license (list license:asl2.0 license:expat)))) ;; With LLVM exception.
+
 (define-public rust-tabwriter-1
   (package
     (name "rust-tabwriter")
