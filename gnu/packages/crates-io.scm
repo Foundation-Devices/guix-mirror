@@ -70982,14 +70982,14 @@ handle Unicode characters correctly.")
 (define-public rust-thiserror-1
   (package
     (name "rust-thiserror")
-    (version "1.0.56")
+    (version "1.0.58")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "thiserror" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "1b9hnzngjan4d89zjs16i01bcpcnvdwklyh73lj16xk28p37hhym"))))
+        (base32 "15rjgd1abi2mzjgzfhrvmsxf9h65n95h6sp8f4s52q4i00wqhih3"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
@@ -71052,14 +71052,14 @@ handle Unicode characters correctly.")
 (define-public rust-thiserror-impl-1
   (package
     (name "rust-thiserror-impl")
-    (version "1.0.56")
+    (version "1.0.58")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "thiserror-impl" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "0w9ldp8fa574ilz4dn7y7scpcq66vdjy59qal8qdpwsh7faal3zs"))))
+        (base32 "1xylyqcb8rv5yh2yf97hg4n4kg27qccc0ijafr1zqklrhahkn7y6"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
