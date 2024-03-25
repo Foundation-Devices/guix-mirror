@@ -78413,6 +78413,46 @@ result.")
                (base32
                 "06g5v3vrdapfzvfq662cij7v8a1flwr2my45nnncdv2galrdzkfc"))))))
 
+(define-public rust-wasi-common-18
+  (package
+    (name "rust-wasi-common")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasi-common" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0b1xisd9rhw8w3gjb3d6qjhf1ydbj40hx3wa1b6g8snmkb125q4m"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs (("rust-anyhow" ,rust-anyhow-1)
+                       ("rust-bitflags" ,rust-bitflags-2)
+                       ("rust-cap-fs-ext" ,rust-cap-fs-ext-2)
+                       ("rust-cap-rand" ,rust-cap-rand-2)
+                       ("rust-cap-std" ,rust-cap-std-2)
+                       ("rust-cap-time-ext" ,rust-cap-time-ext-2)
+                       ("rust-fs-set-times" ,rust-fs-set-times-0.20)
+                       ("rust-io-extras" ,rust-io-extras-0.18)
+                       ("rust-io-lifetimes" ,rust-io-lifetimes-2)
+                       ("rust-libc" ,rust-libc-0.2)
+                       ("rust-log" ,rust-log-0.4)
+                       ("rust-once-cell" ,rust-once-cell-1)
+                       ("rust-rustix" ,rust-rustix-0.38)
+                       ("rust-system-interface" ,rust-system-interface-0.26)
+                       ("rust-thiserror" ,rust-thiserror-1)
+                       ("rust-tokio" ,rust-tokio-1)
+                       ("rust-tracing" ,rust-tracing-0.1)
+                       ("rust-wasmtime" ,rust-wasmtime-18)
+                       ("rust-wiggle" ,rust-wiggle-18)
+                       ("rust-windows-sys" ,rust-windows-sys-0.52))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "WASI implementation common library")
+    (description "This package provides a library with common code for the
+Wasmtime @acronym{WASI, WebAssembly System Interface} implementation.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasm-bindgen-0.2
   (package
     (name "rust-wasm-bindgen")
