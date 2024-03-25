@@ -79091,6 +79091,37 @@ WebAssembly binary format to the text format.")
 functions in Wasmtime.")
     (license license:asl2.0))) ;; With LLVM exception.
 
+(define-public rust-wasmtime-c-api-impl-18
+  (package
+    (name "rust-wasmtime-c-api-impl")
+    (version "18.0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "wasmtime-c-api-impl" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "07l3s3jd3rxd8fghkpi4zs41mr88gg4vcjcky2mpzlklz13n1y8p"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:cargo-inputs
+       (("rust-anyhow" ,rust-anyhow-1)
+        ("rust-cap-std" ,rust-cap-std-2)
+        ("rust-env-logger" ,rust-env-logger-0.10)
+        ("rust-futures" ,rust-futures-0.3)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-once-cell" ,rust-once-cell-1)
+        ("rust-tracing" ,rust-tracing-0.1)
+        ("rust-wasi-common" ,rust-wasi-common-18)
+        ("rust-wasmtime" ,rust-wasmtime-18)
+        ("rust-wasmtime-c-api-macros" ,rust-wasmtime-c-api-macros-18)
+        ("rust-wasmtime-wasi" ,rust-wasmtime-wasi-18)
+        ("rust-wat" ,rust-wat-1))))
+    (home-page "https://github.com/bytecodealliance/wasmtime")
+    (synopsis "Wasmtime runtime C bindings")
+    (description "This package provides bindings of Wasmtime from Rust to C.")
+    (license license:asl2.0))) ;; With LLVM exception.
+
 (define-public rust-wasmtime-c-api-macros-18
   (package
     (name "rust-wasmtime-c-api-macros")
