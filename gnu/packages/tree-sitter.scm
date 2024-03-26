@@ -574,13 +574,10 @@ which will be used as a snippet in origin."
      #:commit commit)))
 
 (define-public tree-sitter-json
-  ;; Not tagged
-  (let ((commit "5d992d9dd42d533aa25618b3a0588f4375adf9f3"))
-    (tree-sitter-grammar
-     "json" "JSON"
-     "08kxzqyyl900al8mc0bwigxlkzsh2f14qzjyb5ki7506myxlmnql"
-     "0.20.0"
-     #:commit commit)))
+  (tree-sitter-grammar
+   "json" "JSON"
+   "0cfmpfxr6dav0bzckzr03448x1k5a1vq21y6x4ynn8xqr19rby2l"
+   "0.20.2"))
 
 (define-public tree-sitter-julia
   (tree-sitter-grammar
