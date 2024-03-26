@@ -530,8 +530,8 @@ which will be used as a snippet in origin."
 (define-public tree-sitter-elm
   (tree-sitter-grammar
    "elm" "Elm"
-   "0b5jpj8bnil1ylisyc4w48j8a30dyf3zylhidj73mlrb8rf7xm2s"
-   "5.6.3"
+   "1cbn5qiq2n607hcxg786jrhs2abln8fcsvkcab9wp9j8iw9pb0xx"
+   "5.7.0"
    #:article "an"
    #:repository-url "https://github.com/elm-tooling/tree-sitter-elm"))
 
