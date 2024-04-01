@@ -418,10 +418,28 @@ which will be used as a snippet in origin."
      #:license license:expat)))
 
 (define-public tree-sitter-css
-  (tree-sitter-grammar
-   "css" "CSS"
-   "014jrlgi7zfza9g38hsr4vlbi8964i5p7iglaih6qmzaiml7bja2"
-   "0.19.0"))
+  (let* ((commit "02b4ee757654b7d54fe35352fd8e53a8a4385d42")
+        (revision "1")
+        (base (tree-sitter-grammar
+               "css" "CSS"
+               "0j1kg16sly7xsvvc3kxyy5zaznlbz7x2j2bwwv1r1nki2249ly12"
+               (git-version "0.20.0" revision commit)
+               #:commit commit)))
+    (package
+      (inherit base)
+      (arguments
+       (substitute-keyword-arguments (package-arguments base)
+         ((#:phases phases #~%standard-phases)
+          #~(modify-phases #$phases
+              ;; NOTE: Remove this once tree-sitter-cli is update to fix this
+              ;; error.
+              ;;
+              ;; See <https://github.com/tree-sitter/tree-sitter/issues/3238>.
+              (add-before 'check 'fix-failing-test
+                (lambda _
+                  (substitute* "test/corpus/selectors.txt"
+                    (("::slotted pseudo element")
+                     "slotted pseudo element")))))))))))
 
 (define-public tree-sitter-c
   (tree-sitter-grammar
