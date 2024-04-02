@@ -851,8 +851,8 @@ which will be used as a snippet in origin."
 (define-public tree-sitter-lua
   (tree-sitter-grammar
    "lua" "Lua"
-   "05irhg6gg11r9cnzh0h3691pnxjhd396sa1x8xrgqjz2fd09brf3"
-   "0.0.19"
+   "1184dazb4agqf3v55sz8i7xmynsn4rkddhbph3mgmh5qsnk88mmq"
+   "0.1.0"
    #:repository-url "https://github.com/MunifTanjim/tree-sitter-lua"))
 
 (define-public tree-sitter-scala
