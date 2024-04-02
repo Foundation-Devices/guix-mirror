@@ -798,13 +798,13 @@ which will be used as a snippet in origin."
      #:commit commit)))
 
 (define-public tree-sitter-racket
-  ;; No tags
-  (let ((commit "1a5df0206b25a05cb1b35a68d2105fc7493df39b")
-        (revision "0"))
+  ;; From `git describe --tags'.
+  (let ((commit "d9858a0f607578814f2d34662ad4bc21aa37a455")
+        (revision "10"))
     (tree-sitter-grammar
      "racket" "Racket"
-     "06gwn3i7swhkvbkgxjlljdjgvx8y1afafbqmpwya70r9z635593h"
-     (git-version "0.1.0" revision commit)
+     "00ls8aalxp9jxw65c7hmbjjzdngnl8y9bz3qzf2mq1lpazz7v8ai"
+     (git-version "0.3.0" revision commit)
      #:repository-url "https://github.com/6cdh/tree-sitter-racket"
      #:commit commit)))
 
