@@ -786,13 +786,14 @@ which will be used as a snippet in origin."
                  (search-patches "tree-sitter-org-package-json.patch")))))))
 
 (define-public tree-sitter-scheme
-  ;; There are a lot of additions, the last tag was placed a while ago
-  (let ((commit "67b90a365bebf4406af4e5a546d6336de787e135")
-        (revision "0"))
+  ;; From `git describe --tags'. There are a lot of additions, the last tag
+  ;; was placed a while ago.
+  (let ((commit "184e7596ee0cbaef79230cae1b4ee5bb4fbad314")
+        (revision "9"))
     (tree-sitter-grammar
      "scheme" "Scheme (R5RS, R6RS)"
-     "1pvxckza1kdfwqs78ka3lbwldrwkgymb31f5x1fq5vyawg60wxk8"
-     (git-version "0.2.0" revision commit)
+     "0sqccw5az31di8jhb88v3afryiz7a4136g9a9xq8qni4znifw7y3"
+     (git-version "0.6.0" revision commit)
      #:repository-url "https://github.com/6cdh/tree-sitter-scheme"
      #:commit commit)))
 
