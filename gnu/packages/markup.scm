@@ -13,6 +13,7 @@
 ;;; Copyright © 2022, 2024 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2023 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2023 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2024 Ricardo Wurmus <rekado@elephly.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -56,6 +57,7 @@
   #:use-module (gnu packages perl-compression)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages tex)
   #:use-module (gnu packages web)
@@ -602,7 +604,9 @@ with a few extensions.")
     (arguments
      ;; FileNotFoundError (not distributed in PyPI).
      (list #:test-flags #~(list "-k" "not test_main")))
-    (native-inputs (list python-parameterized python-pytest))
+    (native-inputs
+     (list python-parameterized python-pytest
+           python-setuptools python-wheel))
     (home-page "https://github.com/miyuchina/mistletoe")
     (synopsis "Extensible Markdown parser in pure Python")
     (description
