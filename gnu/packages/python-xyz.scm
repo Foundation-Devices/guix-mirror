@@ -27854,6 +27854,7 @@ they use the same path.")
            python-pandas
            python-pyzmq
            python-toolz))
+    (native-inputs (list python-setuptools))
     (home-page "https://github.com/dask/partd/")
     (synopsis "Appendable key-value storage")
     (description "Partd stores key-value pairs.  Values are raw bytes.  We
