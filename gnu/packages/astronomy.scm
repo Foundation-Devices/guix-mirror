@@ -1783,7 +1783,9 @@ astronomy and astrophysics.")
      (list python-hypothesis
            python-pytest
            python-pytest-remotedata
-           python-setuptools-scm))
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (home-page "https://docs.astropy.org/en/latest/utils/iers.html")
     (synopsis "IERS Earth Rotation and Leap Second tables for the astropy core package")
     (description
