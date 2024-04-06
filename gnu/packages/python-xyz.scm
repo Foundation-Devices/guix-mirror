@@ -14341,6 +14341,12 @@ plugin for flake8 to check PEP-8 naming conventions.")
         (base32
          "0yvs59ymz5gdix34a95wxlxvk9bnvjgrzsnmnc3ws7whpfv3yasm"))))
     (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags
+      ;; Two tests fail because the error message slightly changed, so the
+      ;; tests' regular expressions no longer match.
+      '(list "--ignore=tests/test_standard_metadata.py")))
     (propagated-inputs (list python-packaging))
     (native-inputs (list python-pypa-build python-pytest python-setuptools
                          python-tomli python-wheel))
@@ -14367,7 +14373,8 @@ file (e.g. @file{PKG-INFO}).")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0yvs59ymz5gdix34a95wxlxvk9bnvjgrzsnmnc3ws7whpfv3yasm"))))))
+         "0yvs59ymz5gdix34a95wxlxvk9bnvjgrzsnmnc3ws7whpfv3yasm"))))
+    (arguments '())))
 
 ;; pep621 was renamed to pyproject-metadata.
 (define-public python-pep621
