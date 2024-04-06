@@ -1078,6 +1078,25 @@ names for 256 color terminal setups.")
 as functions or string constants to form colored terminal output.")
     (license license:expat)))
 
+(define-public python-colorthief
+  (package
+    (name "python-colorthief")
+    (version "0.2.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "colorthief" version))
+       (sha256
+        (base32 "08bjsmmkihyksms2vgndslln02rvw56lkxz28d39qrnxbg4v1707"))))
+    (build-system pyproject-build-system)
+    (propagated-inputs (list python-pillow))
+    (home-page "https://github.com/fengsp/color-thief-py")
+    (synopsis "Grab the color palette of an image")
+    (description
+     "This package provides methods to determine the dominant color
+of an image, as well as constructing a representative color palette.")
+    (license license:bsd-3)))
+
 (define-public python-construct-classes
   (package
     (name "python-construct-classes")
@@ -13702,18 +13721,16 @@ applications.")
 (define-public python-immutabledict
   (package
     (name "python-immutabledict")
-    (version "2.2.1")
+    (version "4.2.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "immutabledict" version))
        (sha256
-        (base32 "0fpc4gbk7inpfbgdypsg6c18bmdjw8gwx47bjw0hvixn3gghxnqx"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:tests? #f)) ; no tests in PyPI release and no setup.py in GitHub
+        (base32 "0pvwfasa5l78pi32zk55x5ihpdzkdh4f3xwbfmd7ldyjma0zs0z0"))))
+    (build-system pyproject-build-system)
     (native-inputs
-     (list python-pytest))
+     (list python-poetry-core python-pytest))
     (home-page "https://github.com/corenting/immutabledict")
     (synopsis "Immutable wrapper around dictionaries")
     (description
@@ -19313,7 +19330,7 @@ applications.")
 (define-public python-qasync
   (package
     (name "python-qasync")
-    (version "0.22.0")
+    (version "0.27.1")
     (source
      (origin
        ;; There are no tests in the PyPI tarball.
@@ -19323,17 +19340,16 @@ applications.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1q9cllrwf94whr0f6mipa0hdq1rcyqvklwx19g35g2dav8f3xkjl"))))
-    (build-system python-build-system)
+        (base32 "0j6ksfnq9qfjdfppbkdz7jh6w0gnslwnckhafmlgim29b25g0z51"))))
+    (build-system pyproject-build-system)
     (arguments
-     `(#:test-target "pytest"
-       #:phases
-       (modify-phases %standard-phases
-         (add-before 'check 'set-qpa
-           (lambda _
-             (setenv "QT_QPA_PLATFORM" "offscreen"))))))
+     (list #:phases
+           #~(modify-phases %standard-phases
+               (add-before 'check 'set-qpa
+                 (lambda _
+                   (setenv "QT_QPA_PLATFORM" "offscreen"))))))
     (native-inputs
-     (list python-pytest python-pytest-runner))
+     (list python-poetry-core python-pytest))
     (propagated-inputs
      (list python-pyqt))
     (home-page "https://github.com/CabbageDevelopment/qasync")

@@ -34,7 +34,7 @@
 ;;; Copyright © 2018 Vasile Dumitrascu <va511e@yahoo.com>
 ;;; Copyright © 2019 Tim Gesthuizen <tim.gesthuizen@yahoo.de>
 ;;; Copyright © 2019 mikadoZero <mikadozero@yandex.com>
-;;; Copyright © 2019, 2020, 2021, 2022, 2023 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2019, 2020, 2021, 2022, 2023, 2024 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019 Stefan Stefanović <stefanx2ovic@gmail.com>
 ;;; Copyright © 2019-2022 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2019 Kei Kebreau <kkebreau@posteo.net>
@@ -114,6 +114,7 @@
   #:use-module (gnu packages calendar)
   #:use-module (gnu packages check)
   #:use-module (gnu packages cpio)
+  #:use-module (gnu packages crates-io)
   #:use-module (gnu packages crypto)
   #:use-module (gnu packages cryptsetup)
   #:use-module (gnu packages compression)
@@ -123,6 +124,7 @@
   #:use-module (gnu packages disk)
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages documentation)
+  #:use-module (gnu packages dlang)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
@@ -143,6 +145,7 @@
   #:use-module (gnu packages haskell-apps)
   #:use-module (gnu packages haskell-xyz)
   #:use-module (gnu packages image)
+  #:use-module (gnu packages kde-frameworks)
   #:use-module (gnu packages libunwind)
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages llvm)
@@ -166,6 +169,7 @@
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
   #:use-module (gnu packages rrdtool)
   #:use-module (gnu packages rsync)
@@ -197,6 +201,7 @@
   #:use-module (guix build-system meson)
   #:use-module (guix build-system pyproject)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system qt)
   #:use-module (guix build-system trivial)
   #:use-module (guix build-system linux-module)
   #:use-module (guix download)
@@ -497,17 +502,17 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
 
 ;; The current "mainline" kernel.
 
-(define-public linux-libre-6.8-version "6.8.1")
+(define-public linux-libre-6.8-version "6.8.2")
 (define-public linux-libre-6.8-gnu-revision "gnu")
 (define deblob-scripts-6.8
   (linux-libre-deblob-scripts
    linux-libre-6.8-version
    linux-libre-6.8-gnu-revision
    (base32 "1kqwcm8baq3zx1z8jrgnvm9yps3y9jbf4pv1pbqqprpdscgl9089")
-   (base32 "04xk6myysrfrhfpq6zah8wk2ska7idmr968nh6pcd0ixbhas2k92")))
+   (base32 "1bh8mwwarzp5l9bwa6235qqqmm0i14wix6lfs6wi7nszia5k9j0a")))
 (define-public linux-libre-6.8-pristine-source
   (let ((version linux-libre-6.8-version)
-        (hash (base32 "0s7zgk9m545v8y7qjhv7cprrh58j46gpmb8iynyhy2hlwcv8j34d")))
+        (hash (base32 "013xs37cnan72baqvmn2qrcbs5bbcv1gaafrcx3a166gbgc25hws")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-6.8)))
@@ -517,17 +522,17 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
 ;; The current "stable" kernels. That is, the most recently released major
 ;; versions that are still supported upstream.
 
-(define-public linux-libre-6.7-version "6.7.10")
+(define-public linux-libre-6.7-version "6.7.11")
 (define-public linux-libre-6.7-gnu-revision "gnu")
 (define deblob-scripts-6.7
   (linux-libre-deblob-scripts
    linux-libre-6.7-version
    linux-libre-6.7-gnu-revision
    (base32 "1ddngihfmwffgvxxv8xsppi76r6grvdxr6zzfzvgl9qw07a6c9fd")
-   (base32 "1lhsy2qnmz47r8m926k1kng912m64j7pnpcvd1ddgdqpq5byp88j")))
+   (base32 "16zh4cj1q7khl943ij4fzc815plbcdllns93chv6725gsm338hsl")))
 (define-public linux-libre-6.7-pristine-source
   (let ((version linux-libre-6.7-version)
-        (hash (base32 "00vw90mypcliq0d72jdh1ql2dfmm7gpswln2qycxdz7rfsrrzfd9")))
+        (hash (base32 "0jhb175nlcncrp0y8md7p83yydlx6qqql6llav8djbv3f74rfr1c")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-6.7)))
@@ -536,52 +541,52 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
 ;; Here are the support timelines:
 ;; <https://www.kernel.org/category/releases.html>
 
-(define-public linux-libre-6.6-version "6.6.22")
+(define-public linux-libre-6.6-version "6.6.23")
 (define-public linux-libre-6.6-gnu-revision "gnu")
 (define deblob-scripts-6.6
   (linux-libre-deblob-scripts
    linux-libre-6.6-version
    linux-libre-6.6-gnu-revision
    (base32 "1qm8f3fq4yx59f7b6yky5ryyf229ypxnry922sr8cy0s7mp62cmv")
-   (base32 "014w19b9igdy3rpwrqn21why151zlc9hdx2b1qvdkjsbz6smx3lp")))
+   (base32 "17hq5pirvxaq1yscb204950xlakrd4r4mknjqayh1rzj4rzngzyq")))
 (define-public linux-libre-6.6-pristine-source
   (let ((version linux-libre-6.6-version)
-        (hash (base32 "1x52c6ywmspp3naishzsknhy7i0b7mv9baxx25a0y987cjsygqr3")))
+        (hash (base32 "1fd824ia3ngy65c5qaaln7m66ca4p80bwlnvvk76pw4yrccx23r0")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-6.6)))
 
-(define-public linux-libre-6.1-version "6.1.82")
+(define-public linux-libre-6.1-version "6.1.83")
 (define-public linux-libre-6.1-gnu-revision "gnu")
 (define deblob-scripts-6.1
   (linux-libre-deblob-scripts
    linux-libre-6.1-version
    linux-libre-6.1-gnu-revision
    (base32 "1sf80f2i4vf888xjcn84ymn4w5ynn30ib9033zwmv7f09yvfhapy")
-   (base32 "08y5smwgbl2l74dlk850pbvn8d1y14cqvll2gbx80vmvfwlzp8c3")))
+   (base32 "1ixyx604zwrvn1njxadhmd9j1w3jd13xx5za789l3kj5rgygdwsm")))
 (define-public linux-libre-6.1-pristine-source
   (let ((version linux-libre-6.1-version)
-        (hash (base32 "01pcrcjp5mifjjmfz7j1jb8nhq8nkxspavxmv1l7d1qnskcx4l6i")))
+        (hash (base32 "145iw3wii7znhrqdmgnwhswk235g6gw8axjjji2cw4rn148rddl8")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-6.1)))
 
-(define-public linux-libre-5.15-version "5.15.152")
+(define-public linux-libre-5.15-version "5.15.153")
 (define-public linux-libre-5.15-gnu-revision "gnu")
 (define deblob-scripts-5.15
   (linux-libre-deblob-scripts
    linux-libre-5.15-version
    linux-libre-5.15-gnu-revision
    (base32 "18ac30kxg2mf2f6gk3p935hzhz2qs110jy4xwk21kblnnkskbxj8")
-   (base32 "1a4la9nfdl5qiyfbzhgbqhl638wy1crkgpfnfaj0qf3hg4jsg0g4")))
+   (base32 "121shkzgixmywa19xx5f2yxg1primarpg4bxin3jyw0214xbfh2n")))
 (define-public linux-libre-5.15-pristine-source
   (let ((version linux-libre-5.15-version)
-        (hash (base32 "0zm4wkryj4mim4fr7pf5g9rlzh31yb1c40lkp85lvcm5yhjm507h")))
+        (hash (base32 "1g44gjcwcdq5552vwinljqwiy90bxax72jjvdasp71x88khv3pfp")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-5.15)))
 
-(define-public linux-libre-5.10-version "5.10.213")
+(define-public linux-libre-5.10-version "5.10.214")
 (define-public linux-libre-5.10-gnu-revision "gnu1")
 (define deblob-scripts-5.10
   (linux-libre-deblob-scripts
@@ -591,12 +596,12 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "12csh2zyjrqzgqcv799gv8h4xaw1irxh2zqddn4jqp5p7psx4j5k")))
 (define-public linux-libre-5.10-pristine-source
   (let ((version linux-libre-5.10-version)
-        (hash (base32 "105df7w6m5a3fngi6ajqs5qblaq4lbxsgcppllrk7v1r68i31kw4")))
+        (hash (base32 "0n7m82hw2rkw5mhdqw0vvmq7kq0s43jalr53sbv09wl17vai9w20")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-5.10)))
 
-(define-public linux-libre-5.4-version "5.4.272")
+(define-public linux-libre-5.4-version "5.4.273")
 (define-public linux-libre-5.4-gnu-revision "gnu1")
 (define deblob-scripts-5.4
   (linux-libre-deblob-scripts
@@ -606,12 +611,12 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "0x0xg0fcykpd117x3q0gim8jilhx922ashhckjvafxv2gk2zzjhj")))
 (define-public linux-libre-5.4-pristine-source
   (let ((version linux-libre-5.4-version)
-        (hash (base32 "0rp3waqrm489crcrms2ls7fxcw5jdkjhazvx82z68gj0kaaxb69m")))
+        (hash (base32 "0hs7af3mcnk5mmp3c5vjl187nva2kzsdx487nd12a8m7zb9wz84b")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-5.4)))
 
-(define-public linux-libre-4.19-version "4.19.310")
+(define-public linux-libre-4.19-version "4.19.311")
 (define-public linux-libre-4.19-gnu-revision "gnu1")
 (define deblob-scripts-4.19
   (linux-libre-deblob-scripts
@@ -621,7 +626,7 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "0fgkp3v7qgqpn7l1987xcwwlrmwsbscqnxfv06p8nkavrhymrv3c")))
 (define-public linux-libre-4.19-pristine-source
   (let ((version linux-libre-4.19-version)
-        (hash (base32 "0sfy2g9jzxd8ia0idll72l7npi2kssdkz29h8jjxhilgmg299v4m")))
+        (hash (base32 "10dww3cyazcf3wjzh8igpa0frb8gvl6amnksh42zfkji4mskh2r6")))
     (make-linux-libre-source version
                              (%upstream-linux-source version hash)
                              deblob-scripts-4.19)))
@@ -1348,7 +1353,24 @@ Linux kernel.  It has been modified to remove all non-free binary blobs.")
                      linux-libre-gnu-revision
                      linux-libre-source
                      '("riscv64-linux")
-                     #:extra-version "riscv64-generic"))
+                     #:extra-version "riscv64-generic"
+                     #:extra-options
+                     (append
+                      ;; required `guix system vm'
+                      `(("CONFIG_USB_HID" . m)
+                        ("CONFIG_HID_GEMBIRD" . m)
+                        ("CONFIG_AHCI_DWC" . m)
+                        ("CONFIG_SATA_AHCI" . m)
+                        ("CONFIG_CRYPTO_SERPENT" . m)
+                        ("CONFIG_CRYPTO_WP512" . m)
+                        ("CONFIG_USB_UAS" . m)
+                        ("CONFIG_USB_STORAGE" . m)
+                        ("CONFIG_HID_GENERIC" . m)
+                        ("CONFIG_DRM_CIRRUS_QEMU" . m)
+                        ("CONFIG_HW_RANDOM_VIRTIO" . m)
+                        ("CONFIG_VIRTIO_CONSOLE" . m)
+                        ("CONFIG_CRYPTO_XTS" . m))
+                      %default-extra-linux-options)))
 
 (define-public linux-libre-mips64el-fuloong2e
   (make-linux-libre* linux-libre-version
@@ -1794,7 +1816,7 @@ supported under @file{/sys/class/backlight/}.")
 (define-public v4l2loopback-linux-module
   (package
     (name "v4l2loopback-linux-module")
-    (version "0.12.7")
+    (version "0.13.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1803,7 +1825,7 @@ supported under @file{/sys/class/backlight/}.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1yghxl7gjr1zxi3a1kiz6d7yh68z64xayzm925zan4jqhrwv1h68"))))
+                "0580pzac0bfb98phmsm5rxmarx22wiprca13n8bk23sdgkzwb706"))))
     (build-system linux-module-build-system)
     (arguments
      (list #:tests? #f))                ; no test suite
@@ -7116,6 +7138,130 @@ not as a replacement for it.")
                    (license:non-copyleft "file://nist/packtest.c")
                    license:public-domain        ; nist/dfft.c
                    license:gpl3+))))            ; everything else
+
+(define-public hotspot
+  (package
+    (name "hotspot")
+    (version "1.4.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/KDAB/hotspot")
+                    (commit (string-append "v" version))
+                    ;; Include the bundled perfparser and PrefixTickLabels
+                    ;; libraries, which are to be used in source form.
+                    (recursive? #t)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0wz4qr3dwjji79x7kj44g7xp11qsscp3b95h6627k8p7xbpi2vhd"))))
+    (build-system qt-build-system)
+    (arguments
+     (list
+      ;; As mentioned in the option help text, the KAuth helper cannot be
+      ;; installed to a custom prefix and the build fails with "file cannot
+      ;; create directory: /polkit-1/actions.  Maybe need administrative"
+      ;; (see: https://bugs.kde.org/show_bug.cgi?id=363678).
+      #:configure-flags #~(list "-DINSTALL_KAUTH_HELPER=OFF")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-perfparser
+            ;; XXX: This phase is copied from qt-creator: keep them in sync!
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; perfparser attempts to dynamically load the demangle
+              ;; libraries; use their absolute file name to avoid having to
+              ;; set LD_LIBRARY_PATH.
+              (let ((librustc_demangle.so
+                     (with-exception-handler (lambda (ex)
+                                               (if (search-error? ex)
+                                                   #f
+                                                   (raise-exception ex)))
+                       (lambda ()
+                         (search-input-file inputs "lib/librustc_demangle.so"))
+                       #:unwind? #t)))
+                (substitute* "3rdparty/perfparser/app/demangler.cpp"
+                  (("loadDemangleLib\\(QStringLiteral\\(\"rustc_demangle\")"
+                    all)
+                   (if librustc_demangle.so
+                       (format #f "loadDemangleLib(QStringLiteral(~s)"
+                               librustc_demangle.so)
+                       all))            ;no rustc_demangle; leave unchanged
+                  (("loadDemangleLib\\(QStringLiteral\\(\"d_demangle\")")
+                   (format #f "loadDemangleLib(QStringLiteral(~s)"
+                           (search-input-file inputs
+                                              "lib/libd_demangle.so")))))))
+          (add-after 'unpack 'path-paths
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "src/perfoutputwidgetkonsole.cpp"
+                (("\"tail\"")
+                 (format #f "~s" (search-input-file inputs "bin/tail"))))
+              (substitute* "src/perfrecord.cpp"
+                (("\"perf( )?\"" _ space)
+                 (string-append "\"" (search-input-file inputs "bin/perf")
+                                (or space "") "\"")))))
+          (replace 'check
+            (lambda* (#:key tests? #:allow-other-keys)
+              (when tests?
+                ;; The 'tst_models' and 'tst_callgraphgenerator' fail, with
+                ;; the later seemingly requiring sudo or access to the kernel
+                ;; trace points.
+                (invoke "ctest" "-E"
+                        (string-append
+                         "("
+                         (string-join
+                          ;; The 'tst_models' expected output doesn't exactly
+                          ;; match.
+                          '("tst_models"
+                            ;; The 'tst_callgraphgenerator' perf invocation
+                            ;; fails when run in the build container.
+                            "tst_callgraphgenerator"
+                            ;; The 'tst_perfparser' test requires sudo/access
+                            ;; to the kernel scheduler trace points.
+                            "tst_perfparser")
+                          "|")
+                         ")"))))))))
+    (native-inputs
+     (list extra-cmake-modules
+           vulkan-headers))
+    (inputs
+     (append
+      (list coreutils-minimal
+            d-demangler
+            elfutils
+            karchive
+            kconfig
+            kcoreaddons
+            kddockwidgets-1    ;see https://github.com/KDAB/hotspot/issues/610
+            kgraphviewer
+            kio
+            kiconthemes
+            kitemmodels
+            kitemviews
+            knotifications
+            kparts
+            ksyntaxhighlighting
+            kwindowsystem
+            libxkbcommon
+            perf
+            qcustomplot
+            qtbase-5
+            qtdeclarative-5
+            qtquickcontrols2-5
+            qtsvg-5
+            qtx11extras
+            solid
+            threadweaver
+            `(,zstd "lib"))
+      (if (supported-package? rust-rustc-demangle-capi-0.1)
+          (list rust-rustc-demangle-capi-0.1)
+          '())))
+    (home-page "https://github.com/KDAB/hotspot")
+    (synopsis "Performance analysis GUI for Linux perf")
+    (description "Hotspot is a standalone GUI for performance data analysis.
+It aims to be similar to KCachegrind, but for data collected with the
+@command{perf}, a profiler for use with the kernel Linux.  Its main feature is
+graphically visualizing a @file{perf.data} file.")
+    (license (list license:gpl2+ license:gpl3+)))) ;dual licensed
 
 (define-public ecryptfs-utils
   (package

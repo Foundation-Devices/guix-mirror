@@ -141,7 +141,7 @@
 (define-public gmt
   (package
     (name "gmt")
-    (version "6.4.0")
+    (version "6.5.0")
     (source
      (origin
        (method url-fetch)
@@ -149,7 +149,7 @@
                            "releases/download/"
                            version "/gmt-" version "-src.tar.xz"))
        (sha256
-        (base32 "0wh694cwcw2dz5rsh6pdn9irx08d65iih0vbxz350vzrkkjzyvml"))))
+        (base32 "07hlqg3adxrz7wqih8pydr44v7j40savcxfjlkaw3y9k82sas8j0"))))
     (build-system cmake-build-system)
     (arguments (list #:tests? #false)) ;tests need costline data and caches
     (inputs
@@ -2574,7 +2574,7 @@ track your position right from your laptop.")
            qtbase-5
            qtimageformats-5
            qtlocation
-           qtsensors
+           qtsensors-5
            zlib))
     (native-inputs
      (list doxygen
@@ -2609,7 +2609,6 @@ orienteering sport.")
          ("gdal" ,gdal)
          ("geos" ,geos)
          ("glu" ,glu)
-         ("lapack" ,lapack)
          ("libpng" ,libpng)
          ("libtiff" ,libtiff)
          ("mesa" ,mesa)
@@ -2643,6 +2642,11 @@ orienteering sport.")
                              (guix build python-build-system))
          #:phases
          (modify-phases %standard-phases
+           (add-after 'unpack 'fix-lapack
+             (lambda _
+               (substitute* "./configure"
+                 (("-lblas") "-lopenblas")
+                 (("-llapack") "-lopenblas"))))
            (replace 'configure
              (lambda* (#:key inputs outputs #:allow-other-keys)
                (let ((shell (search-input-file inputs "/bin/bash")))
@@ -3187,23 +3191,19 @@ latitude and longitude.")
 (define-public gplates
   (package
     (name "gplates")
-    ;; Note: use a pre-release to cope with newer Boost, ref
-    ;; https://discourse.gplates.org/t/compilation-error-with-boost-1-77/452/3
-    (version "2.3.01-beta.3")
+    (version "2.4")
     (source (origin
-              (method url-fetch)
-              (uri "https://cloudstor.aarnet.edu.au/plus/s\
-/ojsYNOyUYE3evNp/download?path=%2F&files=gplates_2.3.1-beta.3_src.zip")
-              (file-name (string-append name "-" version ".zip"))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/GPlates/GPlates")
+                    (commit (string-append "GPlates-" version))))
               (sha256
                (base32
-                "06i87dfab0cq9gdi5mh6sf9wigawpp0d05zbyslv910443i26gwv"))))
+                "1awb4igchgpmrvj6blxd1w81c617bs66w6cfrwvf30n6rjlyn6q5"))
+              (file-name (git-file-name name version))))
     (build-system cmake-build-system)
     (arguments
-     `(#:configure-flags (list "-DBoost_NO_BOOST_CMAKE=ON")
-       #:tests? #f))                    ;no test target
-    (native-inputs
-     (list unzip))                      ;for the beta
+     (list #:tests? #f))                    ;no test target
     (inputs
      (list boost
            cgal

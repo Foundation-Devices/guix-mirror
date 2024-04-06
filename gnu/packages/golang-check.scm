@@ -441,23 +441,83 @@ differently.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32
-         "1hh6n7q92y0ai8k6rj2yzw6wwxikhyiyk4j92zgvf1zad0gmqqmz"))))
+        (base32 "1hh6n7q92y0ai8k6rj2yzw6wwxikhyiyk4j92zgvf1zad0gmqqmz"))))
     (build-system go-build-system)
     (arguments
-     (list #:import-path "github.com/onsi/ginkgo"))
+     (list
+      #:import-path "github.com/onsi/ginkgo"))
     (propagated-inputs
-     (list go-golang-org-x-sys
-           go-golang-org-x-tools
-           go-github-com-go-task-slim-sprig
+     (list go-github-com-go-task-slim-sprig
            go-github-com-nxadm-tail
-           go-github-com-onsi-gomega))
+           go-github-com-onsi-gomega
+           go-golang-org-x-sys
+           go-golang-org-x-tools))
     (home-page "https://github.com/onsi/ginkgo")
     (synopsis "BDD-style testing framework for Go")
     (description
      "Ginkgo is a Behaviour-Driven Development testing framework for Go.  It
 builds on top of Go's builtin @code{testing} library and is complemented by the
 Gomega matcher library.")
+    (license license:expat)))
+
+(define-public go-github-com-onsi-ginkgo-v2
+  (package
+    (inherit go-github-com-onsi-ginkgo)
+    (name "go-github-com-onsi-ginkgo-v2")
+    (version "2.17.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/onsi/ginkgo")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "089x6pz5563ldbxiwaqvd2g4dqfzlr25dflmas3gfq51ibwzh4vz"))))
+    (arguments
+     (list
+      #:go go-1.20
+      #:import-path "github.com/onsi/ginkgo/v2"))
+    (propagated-inputs
+     (list go-github-com-go-logr-logr
+           ;; go-github-com-google-pprof ; not packed yet in Guix, for profiling
+           go-github-com-onsi-gomega
+           go-github-com-go-task-slim-sprig
+           go-golang-org-x-net
+           go-golang-org-x-sys
+           go-golang-org-x-tools))))
+
+(define-public go-github-com-onsi-gomega
+  (package
+    (name "go-github-com-onsi-gomega")
+    (version "1.19.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/onsi/gomega")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "092phwk97sk4sv0nbx5pfhqs6x3x1lnrjwyda1m6b6zwrfmq5c6i"))))
+    (build-system go-build-system)
+    (arguments
+     (list #:import-path "github.com/onsi/gomega"
+           ;; Unless we disable the tests, we have a circular dependency on
+           ;; ginkgo/v2.
+           #:tests? #f))
+    (propagated-inputs
+     (list go-github-com-golang-protobuf-proto
+           go-golang-org-x-net
+           go-golang-org-x-sys
+           go-golang-org-x-text
+           go-google-golang-org-protobuf
+           go-gopkg-in-yaml-v2))
+    (home-page "https://github.com/onsi/gomega")
+    (synopsis "Matcher library for Ginkgo")
+    (description
+     "Gomega is the preferred matcher/assertion library for the Ginkgo test
+framework.")
     (license license:expat)))
 
 (define-public go-github-com-prashantv-gostub

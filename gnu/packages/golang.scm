@@ -1881,7 +1881,7 @@ retry strategies, such as fixed delay, backoff delay, and random delay.")
       (build-system go-build-system)
       (arguments `(#:import-path "howett.net/plist"))
       (inputs
-       (list go-github.com-jessevdk-go-flags go-github-com-kr-pretty
+       (list go-github-com-jessevdk-go-flags go-github-com-kr-pretty
              go-gopkg-in-check-v1 go-gopkg-in-yaml-v2))
       (home-page "https://github.com/DHowett/go-plist")
       (synopsis "Apple property list transcoder")
@@ -2839,9 +2839,9 @@ Under Windows, the console APIs are used.  Otherwise, ANSI texts are output.")
 specified by @uref{https://tools.ietf.org/html/rfc2141, IETF RFC 2141}.")
     (license license:expat)))
 
-(define-public go-github.com-jessevdk-go-flags
+(define-public go-github-com-jessevdk-go-flags
   (package
-    (name "go-github.com-jessevdk-go-flags")
+    (name "go-github-com-jessevdk-go-flags")
     (version "1.5.0")
     (source (origin
               (method git-fetch)
@@ -9640,51 +9640,6 @@ kubernetes-sigs/yaml is a permanent fork of
      "Colorstring provides functions for colorizing strings for terminal output.")
     (license license:expat)))
 
-(define-public go-github-com-schollz-progressbar-v3
-  (package
-    (name "go-github-com-schollz-progressbar-v3")
-    (version "3.13.1")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/schollz/progressbar")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "1hjahr5r52i7w6iyvl3rpzr46iignhfdh4694fl7m2b4gkaw9gd6"))))
-    (build-system go-build-system)
-    (arguments
-     (list #:import-path "github.com/schollz/progressbar/v3"
-           #:phases
-           #~(modify-phases %standard-phases
-               (add-after 'unpack 'remove-examples
-                 (lambda* (#:key import-path #:allow-other-keys)
-                   (delete-file-recursively
-                    (string-append "src/" import-path "/examples"))))
-               (replace 'check
-                 (lambda* (#:key tests? import-path #:allow-other-keys)
-                   (when tests?
-                     ;; The full test suite requires Internet access, so only
-                     ;; run the short tests.
-                     (invoke "go" "test" "-test.short" import-path)))))))
-    (propagated-inputs
-     (list go-golang-org-x-term
-           go-github-com-stretchr-testify
-           go-github-com-mitchellh-colorstring
-           go-github-com-mattn-go-runewidth
-           go-github-com-mattn-go-isatty
-           go-github-com-davecgh-go-spew))
-    (home-page "https://github.com/schollz/progressbar")
-    (synopsis "Simple command-line interface (CLI) progress bar")
-    (description
-     "This package provides a very simple thread-safe progress bar.  The
-@code{progressbar} implements an @code{io.Writer} so it can automatically
-detect the number of bytes written to a stream, so you can use it as a
-@code{progressbar} for an @code{io.Reader}.  When @code{progressbar}'s length
-is undetermined, a customizable spinner is shown.")
-    (license license:expat)))
-
 (define-public go-git-sr-ht-emersion-go-scfg
   (package
     (name "go-git-sr-ht-emersion-go-scfg")
@@ -10314,37 +10269,6 @@ serialiser for Go.")
     (description
      "A speedy fuzzy matching package for Go inspired by the JavaScript
 library bevacqua/fuzzysearch.")
-    (license license:expat)))
-
-(define-public go-github-com-onsi-gomega
-  (package
-    (name "go-github-com-onsi-gomega")
-    (version "1.19.0")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/onsi/gomega")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "092phwk97sk4sv0nbx5pfhqs6x3x1lnrjwyda1m6b6zwrfmq5c6i"))))
-    (build-system go-build-system)
-    (arguments
-     (list #:import-path "github.com/onsi/gomega"
-           ;; Unless we disable the tests, we have a circular dependency on
-           ;; ginkgo/v2.
-           #:tests? #f))
-    (propagated-inputs (list go-github-com-golang-protobuf-proto
-                             go-golang-org-x-net
-                             go-golang-org-x-sys
-                             go-golang-org-x-text
-                             go-google-golang-org-protobuf
-                             go-gopkg-in-yaml-v2))
-    (home-page "https://github.com/onsi/gomega")
-    (synopsis "Matcher library for Ginkgo")
-    (description
-     "Gomega is the preferred matcher library for the Ginkgo test framework.")
     (license license:expat)))
 
 ;;;

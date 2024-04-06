@@ -19,7 +19,7 @@
 ;;; Copyright © 2020 Christine Lemmer-Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2020 Tom Zander <tomz@freedommail.ch>
 ;;; Copyright © 2020, 2023 Marius Bakke <marius@gnu.org>
-;;; Copyright © 2020, 2021, 2022 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2021, 2022, 2024 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Carlo Holl <carloholl@gmail.com>
 ;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2021 ZmnSCPxj jxPCSnmZ <ZmnSCPxj@protonmail.com>
@@ -147,7 +147,7 @@
   ;; <https://bitcoincore.org/en/lifecycle/#schedule>.
   (package
     (name "bitcoin-core")
-    (version "26.0")
+    (version "26.1")
     (source (origin
               (method url-fetch)
               (uri
@@ -155,7 +155,7 @@
                               version "/bitcoin-" version ".tar.gz"))
               (sha256
                (base32
-                "18f0rl7nzr64m54d6hmrphg7z39mmj2ix47kv78n5nr8dqkrj7db"))))
+                "1vimkcm5bd6dyncy6kw16ibkcbykv526ajgh175j0jkvf5fywr4i"))))
     (build-system gnu-build-system)
     (native-inputs
      (list autoconf
@@ -296,20 +296,20 @@ Accounting.")
 (define-public homebank
   (package
     (name "homebank")
-    (version "5.6.6")
+    (version "5.7.4")
     (source (origin
               (method url-fetch)
-              (uri (string-append "http://homebank.free.fr/public/sources/"
-                                  "homebank-" version ".tar.gz"))
+              (uri (string-append "https://www.gethomebank.org/public/sources"
+                                  "/homebank-" version ".tar.gz"))
               (sha256
                (base32
-                "03nwcpxmsw82gnhy1dialky1d9mfb2jqdzlgc79bxwhlhpqwsvv5"))))
+                "1r2lpf2qjvyc9l4llgy6453dn527pylvd49kr6ihrskmr1373kj2"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
      (list pkg-config intltool))
     (inputs
-     (list gtk+ libofx libsoup-minimal-2))
-    (home-page "http://homebank.free.fr/")
+     (list gtk+ libofx libsoup-minimal))
+    (home-page "https://gethomebank.org/en/index.php")
     (synopsis "Graphical personal accounting application")
     (description "HomeBank allows you to manage your personal accounts at
 home.  The seeks to be lightweight, simple and easy to use.  It brings

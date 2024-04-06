@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015 Taylan Ulrich Bayırlı/Kammer <taylanbayirli@gmail.com>
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2024 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2016 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2015 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2016 Jelle Licht <jlicht@fsfe.org>
@@ -84,7 +84,8 @@
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages slang)
   #:use-module (gnu packages syncthing)
-  #:use-module (gnu packages web))
+  #:use-module (gnu packages web)
+  #:use-module (gnu packages xorg))
 
 (define-public dos2unix
   (package
@@ -932,7 +933,7 @@ Filter, list, or split a tar file.
 (define-public java-rsyntaxtextarea
   (package
     (name "java-rsyntaxtextarea")
-    (version "2.6.1")
+    (version "3.4.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -941,16 +942,31 @@ Filter, list, or split a tar file.
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0dyflzvxq2wvs0rgqfyi5yzzrb6r4bzw2dm8cl304dakxk38ddys"))))
+                "0ad3cmfxwz9963kbh5ryba9jp88hsx03jsl8r4qinwhy6aahx6f3"))))
     (build-system ant-build-system)
     (arguments
-     `(;; FIXME: some tests fail because locale resources cannot be found.
-       ;; Even when I add them to the class path,
-       ;; RSyntaxTextAreaEditorKitDumbCompleteWordActionTest fails.
-       #:tests? #f
-       #:jar-name "rsyntaxtextarea.jar"))
+     (list
+      #:jar-name "rsyntaxtextarea.jar"
+      #:source-dir "RSyntaxTextArea/src/main/java"
+      #:test-dir "RSyntaxTextArea/src/test"
+      #:tests? #false ;requires junit5
+      #:phases
+      '(modify-phases %standard-phases
+         (add-before 'build 'copy-resources
+           (lambda _
+             (copy-recursively "RSyntaxTextArea/src/main/resources" "build/classes")))
+         #;
+         (add-before 'check 'start-xorg-server
+           (lambda _
+             ;; The test suite requires a running X server.
+             (system "Xvfb :1 &")
+             (setenv "DISPLAY" ":1")
+             ;; Prevent irrelevant errors that cause test output mismatches:
+             ;; ‘Fontconfig error: No writable cache directories’
+             (setenv "XDG_CACHE_HOME" (getcwd)))))))
     (native-inputs
-     (list java-junit java-hamcrest-core))
+     (list java-hamcrest-core
+           xorg-server-for-tests))
     (home-page "https://bobbylight.github.io/RSyntaxTextArea/")
     (synopsis "Syntax highlighting text component for Java Swing")
     (description "RSyntaxTextArea is a syntax highlighting, code folding text
@@ -958,6 +974,48 @@ component for Java Swing.  It extends @code{JTextComponent} so it integrates
 completely with the standard @code{javax.swing.text} package.  It is fast and
 efficient, and can be used in any application that needs to edit or view
 source code.")
+    (license license:bsd-3)))
+
+(define-public java-autocomplete
+  (package
+    (name "java-autocomplete")
+    (version "3.3.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/bobbylight/AutoComplete")
+                     (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0ksa3k3xkdjpyq9sbsvchyhfzzpb67pv8xzbpljj8rqilgk8ysy0"))))
+    (build-system ant-build-system)
+    (arguments
+     (list
+      #:tests? #false ;needs junit5
+      #:jar-name "autocomplete.jar"
+      #:source-dir "AutoComplete/src/main/java"
+      #:test-dir "AutoComplete/src/test"
+      #:phases
+      '(modify-phases %standard-phases
+         (add-before 'build 'copy-resources
+           (lambda _
+             (copy-recursively "AutoComplete/src/main/resources" "build/classes"))))))
+    (propagated-inputs
+     (list java-rsyntaxtextarea))
+    (native-inputs
+     (list java-hamcrest-core))
+    (home-page "https://github.com/bobbylight/AutoComplete")
+    (synopsis "Text completion library")
+    (description "AutoComplete is a library allowing you to add IDE-like
+auto-completion (aka \"code completion\" or \"Intellisense\") to any Swing
+JTextComponent.  Special integration is added for @code{RSyntaxTextArea},
+since this feature is commonly needed when editing source code.  Features
+include: Drop-down completion choice list. Optional companion \"description\"
+window, complete with full HTML support and navigable with hyperlinks.
+Optional parameter completion assistance for functions and methods, ala
+Eclipse and NetBeans.  Completion information is typically specified in an XML
+file, but can even be dynamic.")
     (license license:bsd-3)))
 
 ;; We use the sources from git instead of the tarball from pypi, because the

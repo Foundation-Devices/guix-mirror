@@ -5,6 +5,7 @@
 ;;; Copyright © 2017 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2017 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2018 Chris Marusich <cmmarusich@gmail.com>
+;;; Copyright © 2024 Zheng Junjie <873216071@qq.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -51,6 +52,7 @@
 
   #:use-module (gnu bootloader)
   #:use-module (gnu bootloader grub)
+  #:use-module (gnu bootloader u-boot)
   #:use-module (gnu image)
   #:use-module (gnu system image)
   #:use-module (gnu system linux-container)
@@ -136,7 +138,9 @@
 
 (define* (virtualized-operating-system os
                                        #:optional (mappings '())
-                                       #:key (full-boot? #f) volatile?)
+                                       #:key (full-boot? #f) volatile?
+                                       (system (%current-system))
+                                       (target (%current-target-system)))
   "Return an operating system based on OS suitable for use in a virtualized
 environment with the store shared with the host.  MAPPINGS is a list of
 <file-system-mapping> to realize in the virtualized OS."
@@ -166,15 +170,18 @@ environment with the store shared with the host.  MAPPINGS is a list of
           (append (map mapping->file-system mappings)
                   user-file-systems)))
 
-  (operating-system (inherit os)
-
+  (operating-system
+    (inherit os)
     ;; XXX: Until we run QEMU with UEFI support (with the OVMF firmware),
     ;; force the traditional i386/BIOS method.
     ;; See <https://bugs.gnu.org/28768>.
     (bootloader (bootloader-configuration
-                  (inherit (operating-system-bootloader os))
-                  (bootloader grub-bootloader)
-                  (targets '("/dev/vda"))))
+                 (inherit (operating-system-bootloader os))
+                 (bootloader
+                  (if (target-riscv64? (or target system))
+                      u-boot-qemu-riscv64-bootloader
+                      grub-bootloader))
+                 (targets '("/dev/vda"))))
 
     (initrd (lambda (file-systems . rest)
               (apply (operating-system-initrd os)
@@ -203,7 +210,9 @@ environment with the store shared with the host.  MAPPINGS is a list of
                        virtual-file-systems)))))
 
 (define* (common-qemu-options image shared-fs
-                              #:key rw-image?)
+                              #:key
+                              rw-image?
+                              (target (%current-target-system)))
   "Return the a string-value gexp with the common QEMU options to boot IMAGE,
 with '-virtfs' options for the host file systems listed in SHARED-FS."
 
@@ -214,7 +223,7 @@ with '-virtfs' options for the host file systems listed in SHARED-FS."
   #~(;; Only enable kvm if we see /dev/kvm exists.
      ;; This allows users without hardware virtualization to still use these
      ;; commands.
-     #$@(if (file-exists? "/dev/kvm")
+     #$@(if (and (not target) (file-exists? "/dev/kvm"))
             '("-enable-kvm")
             '())
 
@@ -258,7 +267,9 @@ useful when FULL-BOOT?  is true."
   (mlet* %store-monad ((os ->  (virtualized-operating-system
                                 os mappings
                                 #:full-boot? full-boot?
-                                #:volatile? volatile?))
+                                #:volatile? volatile?
+                                #:system system
+                                #:target target))
                        (base-image -> (system-image
                                        (image
                                         (inherit
@@ -270,7 +281,7 @@ useful when FULL-BOOT?  is true."
                                         (volatile-root? volatile?)))))
     (define kernel-arguments
       #~(list #$@(if graphic? #~() #~("console=ttyS0"))
-              #+@(operating-system-kernel-arguments os "/dev/vda1")))
+              #$@(operating-system-kernel-arguments os "/dev/vda1")))
 
     (define rw-image
       #~(format #f "/tmp/guix-image-~a" (basename #$base-image)))
@@ -286,10 +297,15 @@ useful when FULL-BOOT?  is true."
                         "-initrd" #$(file-append os "/initrd")
                         (format #f "-append ~s"
                                 (string-join #$kernel-arguments " "))))
+              ;; Default qemu-riscv64 have not PCI, virt have it, so we set it.
+              #$@(if (target-riscv64? (or target system))
+                     #~("-M" "virt")
+                     #~())
               #$@(common-qemu-options (if volatile? base-image rw-image)
                                       (map file-system-mapping-source
                                            (cons %store-mapping mappings))
-                                      #:rw-image? (not volatile?))
+                                      #:rw-image? (not volatile?)
+                                      #:target target)
               "-m " (number->string #$memory-size)
               #$@options))
 
@@ -340,7 +356,7 @@ host."
 
   (define kernel-arguments
     #~(list #$@(if graphic? #~() #~("console=ttyS0"))
-            #+@(operating-system-kernel-arguments os "/dev/vda1")))
+            #$@(operating-system-kernel-arguments os "/dev/vda1")))
 
   #~`(#+(file-append qemu "/bin/"
                      (qemu-command (or target system)))

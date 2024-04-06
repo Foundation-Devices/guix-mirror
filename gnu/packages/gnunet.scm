@@ -163,14 +163,14 @@ tool to extract metadata from a file and print the results.")
 (define-public libmicrohttpd
   (package
    (name "libmicrohttpd")
-   (version "0.9.77")
+   (version "1.0.1")
    (source (origin
             (method url-fetch)
             (uri (string-append "mirror://gnu/libmicrohttpd/libmicrohttpd-"
                                 version ".tar.gz"))
             (sha256
              (base32
-              "185hfvdxs3njcja5rz5c9v73x4x97k0s8vkah396000ja6hj6w4y"))))
+              "151bi13xx8dz5c9v33chp6ch5q8wmbxb9z7l37g4vqsdkgy0k7m8"))))
    (build-system gnu-build-system)
    (arguments
     (list #:configure-flags
@@ -190,75 +190,75 @@ authentication and support for SSL3 and TLS.")
 
 (define-public gnurl
   (package
-   (name "gnurl")
-   (version "7.70.0")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "mirror://gnu/gnunet/gnurl-" version ".tar.gz"))
-            (sha256
-             (base32
-              "0px9la8v4bj1dzxb95fx3yxk0rcjqjrxpj733ga27cza45wwzkqa"))))
-   (build-system gnu-build-system)
-   (outputs '("out"
-              "doc"))                             ; 1.8 MiB of man3 pages
-   (inputs `(("gnutls" ,gnutls/dane)
-             ("libidn2" ,libidn2)
-             ("zlib" ,zlib)))
-   (native-inputs
-    (list libtool perl pkg-config python))
-   (arguments
-    `(#:configure-flags
+    (name "gnurl")
+    (version "7.72.0")
+    ;; Fetch from git, as the tarball causes the build to fail with "No rule
+    ;; to make target 'convsrctest.pl', needed by 'all-am'." (see
+    ;; https://bugs.gnunet.org/view.php?id=8684).
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://git.taler.net/gnurl.git")
+                    (commit (string-append name "-" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0b3jqxlarkiphf71i50vnvsmr8gh38ishrxqqbq77m0hjwyx4kv1"))))
+    (build-system gnu-build-system)
+    (outputs '("out"
+               "doc"))                  ; 1.8 MiB of man3 pages
+    (arguments
+     (list
+      #:test-target "test-nonflaky"     ;do not run flaky tests
+      #:configure-flags
       ;; All of these produce errors during configure.
-      (list "--disable-ftp"
-            "--disable-file"
-            "--disable-ldap"
-            "--disable-rtsp"
-            "--disable-dict"
-            "--disable-telnet"
-            "--disable-tftp"
-            "--disable-pop3"
-            "--disable-imap"
-            "--disable-smb"
-            "--disable-smtp"
-            "--disable-gopher"
-            "--without-ssl"
-            "--without-libpsl"
-            "--without-librtmp"
-            "--disable-ntlm-wb")
+      #~(list "--disable-ftp"
+              "--disable-file"
+              "--disable-ldap"
+              "--disable-rtsp"
+              "--disable-dict"
+              "--disable-telnet"
+              "--disable-tftp"
+              "--disable-pop3"
+              "--disable-imap"
+              "--disable-smb"
+              "--disable-smtp"
+              "--disable-gopher"
+              "--without-ssl"
+              "--without-libpsl"
+              "--without-librtmp"
+              "--disable-ntlm-wb")
       #:phases
-      (modify-phases %standard-phases
-        (add-after 'install 'move-man3-pages
-          (lambda* (#:key outputs #:allow-other-keys)
-            ;; Move section 3 man pages to "doc".
-            (let ((out (assoc-ref outputs "out"))
-                  (doc (assoc-ref outputs "doc")))
-              (mkdir-p (string-append doc "/share/man"))
-              (rename-file (string-append out "/share/man/man3")
-                           (string-append doc "/share/man/man3"))
-              #t)))
-        ;; We have to patch runtests.pl in tests/ directory
-        (replace 'check
-          (lambda _
-            (substitute* "tests/runtests.pl"
-              (("/bin/sh") (which "sh")))
-
-            ;; Make test output more verbose.
-            (invoke "make" "-C" "tests" "test"))))))
-   (synopsis "Microfork of cURL with support for the HTTP/HTTPS/GnuTLS subset of cURL")
-   (description
-    "Gnurl is a microfork of cURL, a command line tool for transferring data
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-paths
+            (lambda _
+              (substitute* "tests/runtests.pl.in"
+                (("/bin/sh")
+                 (which "sh")))))
+          (add-after 'install 'move-man3-pages
+            (lambda _
+              ;; Move section 3 man pages to "doc".
+              (mkdir-p (string-append #$output:doc "/share/man"))
+              (rename-file (string-append #$output "/share/man/man3")
+                           (string-append #$output:doc "/share/man/man3")))))))
+    (native-inputs (list autoconf automake libtool perl pkg-config python))
+    (inputs (list gnutls/dane libidn2 zlib))
+    (synopsis
+     "Microfork of cURL with support for the HTTP/HTTPS/GnuTLS subset of cURL")
+    (description
+     "Gnurl is a microfork of cURL, a command line tool for transferring data
 with URL syntax.  While cURL supports many crypto backends, libgnurl only
 supports HTTP, HTTPS and GnuTLS.")
-   (license (license:non-copyleft "file://COPYING"
-                                  "See COPYING in the distribution."))
-   (properties '((ftp-server . "ftp.gnu.org")
-                 (ftp-directory . "/gnunet")))
-   (home-page "https://gnunet.org/en/gnurl.html")))
+    (license (license:non-copyleft "file://COPYING"
+                                   "See COPYING in the distribution."))
+    (properties '((ftp-server . "ftp.gnu.org")
+                  (ftp-directory . "/gnunet")))
+    (home-page "https://gnunet.org/en/gnurl.html")))
 
 (define-public gnunet
   (package
     (name "gnunet")
-    (version "0.20.0")
+    (version "0.21.1")
     (source
      (origin
        (method url-fetch)
@@ -266,7 +266,7 @@ supports HTTP, HTTPS and GnuTLS.")
                            ".tar.gz"))
        (sha256
         (base32
-         "064mmhksznbsymanikwqkgmdhk2f0zjll2aq2cmxa14wm5w9w0jn"))))
+         "0p3q9590bm0d6q6p17jcbq2yiciqmvk5ys6pwdrp4257mhz8prlk"))))
     (build-system gnu-build-system)
     (inputs
      (list bluez
@@ -306,15 +306,17 @@ supports HTTP, HTTPS and GnuTLS.")
       #~(modify-phases %standard-phases
           (add-after 'unpack 'disable-problematic-tests
             (lambda _
-              (substitute* "src/cadet/Makefile.in"
-                ;; The speed_reliable tests appear to be unreliable (see:
-                ;; https://bugs.gnunet.org/view.php?id=7787).
-                (("test_cadet_[0-9]+_speed_reliable\\$\\(EXEEXT)")
+              ;; The 'test_communicator_bidirect-tcp' fails
+              ;; non-deterministically (see:
+              ;; https://bugs.gnunet.org/view.php?id=8689).
+              (substitute* "src/service/transport/Makefile.in"
+                (("test_communicator_bidirect-tcp\\$\\(EXEEXT) ")
                  ""))
-              (substitute* "src/core/Makefile.in"
-                ;; The 'test_core_api' test fails non-deterministically (see:
-                ;; https://bugs.gnunet.org/view.php?id=7784).
-                (("test_core_api\\$\\(EXEEXT) ") ""))))
+              ;; The 'test_fs_search_with_and' fails non-deterministically
+              ;; (see: https://bugs.gnunet.org/view.php?id=8692).
+              (substitute* "src/service/fs/Makefile.in"
+                (("test_fs_search_with_and\\$\\(EXEEXT) ")
+                 ""))))
           (add-before 'check 'set-env-var-for-tests
             (lambda _
               (setenv "LANG" "en_US.UTF-8")))
@@ -433,20 +435,17 @@ The following services are supported:
     (license (list license:agpl3+ license:gpl3+ license:fdl1.3+ license:lgpl3+))
     (home-page "https://git.gnunet.org/gnunet-scheme.git")))
 
-;; FIXME: "gnunet-setup" segfaults under certain conditions and "gnunet-gtk"
-;; does not seem to be fully functional.  This has been reported upstream:
-;; http://lists.gnu.org/archive/html/gnunet-developers/2016-02/msg00004.html
 (define-public gnunet-gtk
   (package (inherit gnunet)
     (name "gnunet-gtk")
-    (version "0.20.0")
+    (version "0.21.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://gnu/gnunet/gnunet-gtk-"
                                   version ".tar.gz"))
               (sha256
                (base32
-                "0bandj2f24v4wfq1v5j73zn5jp25dn8r7y0wd7znlkmbh86fb4g9"))))
+                "1b7xfypa0s7zlijgvya8p3rvljnn65w5cjkaw6x83v9ra8l6s0dx"))))
     (arguments
      (list #:configure-flags
            #~(list "--with-libunique"

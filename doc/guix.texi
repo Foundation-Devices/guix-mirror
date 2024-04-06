@@ -17,8 +17,8 @@
 @set BASE-URL https://ftp.gnu.org/gnu/guix
 
 @c The official substitute server used by default.
-@set SUBSTITUTE-SERVER-1 ci.guix.gnu.org
-@set SUBSTITUTE-SERVER-2 bordeaux.guix.gnu.org
+@set SUBSTITUTE-SERVER-1 bordeaux.guix.gnu.org
+@set SUBSTITUTE-SERVER-2 ci.guix.gnu.org
 @set SUBSTITUTE-URLS https://@value{SUBSTITUTE-SERVER-1} https://@value{SUBSTITUTE-SERVER-2}
 
 @copying
@@ -60,7 +60,7 @@ Copyright @copyright{} 2018, 2021, 2023 Oleg Pykhalov@*
 Copyright @copyright{} 2018 Mike Gerwitz@*
 Copyright @copyright{} 2018 Pierre-Antoine Rouby@*
 Copyright @copyright{} 2018, 2019 Gábor Boskovits@*
-Copyright @copyright{} 2018, 2019, 2020, 2022, 2023 Florian Pelz@*
+Copyright @copyright{} 2018, 2019, 2020, 2022, 2023, 2024 Florian Pelz@*
 Copyright @copyright{} 2018 Laura Lazzati@*
 Copyright @copyright{} 2018 Alex Vong@*
 Copyright @copyright{} 2019 Josh Holland@*
@@ -696,12 +696,11 @@ to join!  @xref{Contributing}, for information about how you can help.
 We recommend the use of this
 @uref{https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh,
 shell installer script} to install Guix on top of a running GNU/Linux system,
-thereafter called a @dfn{foreign distro}.@footnote{This section is concerned
+thereafter called a @dfn{foreign distro}@footnote{This section is concerned
 with the installation of the package manager, which can be done on top of a
 running GNU/Linux system.  If, instead, you want to install the complete GNU
-operating system, @pxref{System Installation}.} The script automates the
-download, installation, and initial configuration of Guix.  It should be run
-as the root user.
+operating system, @pxref{System Installation}.}.  @xref{Binary
+Installation}, for more information.
 @end quotation
 
 @cindex foreign distro
@@ -757,6 +756,22 @@ wget https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh
 chmod +x guix-install.sh
 ./guix-install.sh
 @end example
+
+The script automates the download, installation, and initial
+configuration of Guix, interactively offering various configuration
+options.
+
+@cindex uninstalling Guix
+@cindex uninstallation, of Guix
+Should you eventually want to uninstall Guix, run the same script with
+the @option{--uninstall} flag:
+
+@example
+./guix-install.sh --uninstall
+@end example
+
+With @option{--uninstall}, the script irreversibly deletes all the Guix
+files, configuration, and services.
 
 If you're running Debian or a derivative such as Ubuntu, you can instead
 install the package (it might be a version older than @value{VERSION}
@@ -5514,6 +5529,7 @@ account security concerns and deal with authenticated updates.
 * Specifying Additional Channels::  Extending the package collection.
 * Using a Custom Guix Channel::  Using a customized Guix.
 * Replicating Guix::            Running the @emph{exact same} Guix.
+* Customizing the System-Wide Guix:: Default channels on Guix System.
 * Channel Authentication::      How Guix verifies what it fetches.
 * Channels with Substitutes::   Using channels with available substitutes.
 * Creating a Channel::          How to write your custom channel.
@@ -5670,6 +5686,64 @@ This gives you super powers, allowing you to track the provenance of binary
 artifacts with very fine grain, and to reproduce software environments at
 will---some sort of ``meta reproducibility'' capabilities, if you will.
 @xref{Inferiors}, for another way to take advantage of these super powers.
+
+@node Customizing the System-Wide Guix
+@section Customizing the System-Wide Guix
+
+@cindex system-wide Guix, customization
+@cindex channels, for the default Guix
+If you're running Guix System or building system images with it, maybe
+you will want to customize the system-wide @command{guix} it
+provides---specifically, @file{/run/current-system/profile/bin/guix}.
+For example, you might want to provide additional channels or to pin its
+revision.
+
+This can be done using the @code{guix-for-channels} procedure, which
+returns a package for the given channels, and using it as part of your
+operating system configuration, as in this example:
+
+@lisp
+(use-modules (guix channels))
+
+(define my-channels
+  ;; Channels that should be available to
+  ;; /run/current-system/profile/bin/guix.
+  (append
+   (list (channel
+          (name 'guix-science)
+          (url "https://github.com/guix-science/guix-science")
+          (branch "master")))
+   %default-channels))
+
+(operating-system
+  ;; @dots{}
+  (services
+    ;; Change the package used by 'guix-service-type'.
+    (modify-services %base-services
+      (guix-service-type
+       config => (guix-configuration
+                  (inherit config)
+                  (channels my-channels)
+                  (guix (guix-for-channels my-channels)))))))
+@end lisp
+
+The resulting operating system will have both the @code{guix} and the
+@code{guix-science} channels visible by default.  The @code{channels}
+field of @code{guix-configuration} above further ensures that
+@file{/etc/guix/channels.scm}, which is used by @command{guix pull},
+specifies the same set of channels (@pxref{guix-configuration-channels,
+@code{channels} field of @code{guix-configuration}}).
+
+The @code{(gnu packages package-management)} module exports the
+@code{guix-for-channels} procedure, described below.
+
+@deffn {Procedure} guix-for-channels @var{channels}
+Return a package corresponding to @var{channels}.
+
+The result is a ``regular'' package, which can be used in
+@code{guix-configuration} as shown above or in any other place that
+expects a package.
+@end deffn
 
 @node Channel Authentication
 @section Channel Authentication
@@ -10451,7 +10525,10 @@ field (@pxref{Channels}); alternatively, its source can be a directory
 name, in which case an additional @code{#:commit} argument must be
 supplied to specify the commit being built (a hexadecimal string).
 
-The resulting package is a Guix instance of the given channel, similar
+Optionally, a @code{#:channels} argument specifying additional channels
+can be provided.
+
+The resulting package is a Guix instance of the given channel(s), similar
 to how @command{guix time-machine} would build it.
 @end defvar
 
@@ -19731,7 +19808,8 @@ This data type represents the configuration of the Guix build daemon.
 
 @table @asis
 @item @code{guix} (default: @var{guix})
-The Guix package to use.
+The Guix package to use.  @xref{Customizing the System-Wide Guix} to
+learn how to provide a package with a pre-configured set of channels.
 
 @item @code{build-group} (default: @code{"guixbuild"})
 Name of the group for build user accounts.

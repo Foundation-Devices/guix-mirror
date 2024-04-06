@@ -20,6 +20,7 @@
 ;;; Copyright © 2023 Hilton Chain <hako@ultrarare.space>
 ;;; Copyright © 2023 Katherine Cox-Buday <cox.katherine.e@gmail.com>
 ;;; Copyright © 2023 Nicolas Graves <ngraves@ngraves.fr>
+;;; Copyright © 2023 Sergey Trofimov <sarg@sarg.org.ru>
 ;;; Copyright © 2023 Thomas Ieong <th.ieong@free.fr>
 ;;; Copyright © 2023 Timo Wilken <guix@twilken.net>
 ;;; Copyright © 2024 Artyom V. Poptsov <poptsov.artyom@gmail.com>
@@ -67,6 +68,37 @@
 ;;;
 ;;; Libraries:
 ;;;
+
+(define-public go-code-cloudfoundry-org-bytefmt
+  (package
+    (name "go-code-cloudfoundry-org-bytefmt")
+    (version "0.0.0-20240329144308-0c372429d24b")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/cloudfoundry/bytefmt")
+             (commit (go-version->git-ref version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0aqzbiy3idddyj39i7ydkjhnmpcbwr99g094kqiw72m9flrvrnxj"))
+       (snippet
+        #~(begin (use-modules (guix build utils))
+                 (delete-file-recursively "vendor")))))
+    (build-system go-build-system)
+    (arguments
+     (list
+      #:go go-1.20
+      #:import-path "code.cloudfoundry.org/bytefmt"))
+    (native-inputs
+     (list go-github-com-onsi-gomega
+           go-github-com-onsi-ginkgo-v2))
+    (home-page "https://pkg.go.dev/code.cloudfoundry.org/bytefmt")
+    (synopsis "Human readable byte formatter for Golang")
+    (description
+     "Package bytefmt contains helper methods and constants for converting to and from
+a human-readable byte format.")
+    (license license:asl2.0)))
 
 (define-public go-github-com-a8m-envsubst
   (package
@@ -991,6 +1023,42 @@ Differentiation between text and binary files}.
 @end itemize")
     (license license:expat)))
 
+(define-public go-github-com-go-logr-logr
+  (package
+    (name "go-github-com-go-logr-logr")
+    (version "1.4.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/go-logr/logr")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0x0q9jkk2p5pz4lii1qs8ifnsib4ib5s8pigmjwdmagl976g8nhm"))))
+    (build-system go-build-system)
+    (arguments
+     (list
+      #:go go-1.18
+      #:import-path "github.com/go-logr/logr"
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'remove-examples-and-benchmarks
+            (lambda* (#:key import-path #:allow-other-keys)
+              (delete-file-recursively
+               (string-append "src/" import-path "/examples"))
+              (delete-file-recursively
+               (string-append "src/" import-path "/funcr/example"))
+              (delete-file-recursively
+               (string-append "src/" import-path "/benchmark")))))))
+    (home-page "https://github.com/go-logr/logr")
+    (synopsis "Minimal logging API for Go")
+    (description
+     "Package @code{logr} defines a general-purpose logging API and abstract
+interfaces to back that API.  Packages in the Go ecosystem can depend on it,
+while callers can implement logging with whatever backend is appropriate.")
+    (license license:asl2.0)))
+
 (define-public go-github-com-hashicorp-errwrap
   (package
     (name "go-github-com-hashicorp-errwrap")
@@ -1013,65 +1081,6 @@ Differentiation between text and binary files}.
     (description
      "@code{errwrap} is a package for Go that formalizes the pattern of
 wrapping errors and checking if an error contains another error.")
-    (license license:mpl2.0)))
-
-(define-public go-github-com-hashicorp-hcl
-  (package
-    (name "go-github-com-hashicorp-hcl")
-    (version "1.0.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/hashicorp/hcl")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0q6ml0qqs0yil76mpn4mdx4lp94id8vbv575qm60jzl1ijcl5i66"))))
-    (build-system go-build-system)
-    (arguments
-     (list
-      #:import-path "github.com/hashicorp/hcl"))
-    (native-inputs
-     (list go-github-com-davecgh-go-spew))
-    (synopsis "Go implementation of HashiCorp Configuration Language V1")
-    (description
-     "This package contains the main implementation of the @acronym{HCL,
-HashiCorp Configuration Language}.  HCL is designed to be a language for
-expressing configuration which is easy for both humans and machines to read.")
-    (home-page "https://github.com/hashicorp/hcl")
-    (license license:mpl2.0)))
-
-(define-public go-github-com-hashicorp-hcl-v2
-  (package
-    (name "go-github-com-hashicorp-hcl-v2")
-    (version "2.11.1")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/hashicorp/hcl")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0f9flmmkj7fr1337fc56cqy73faq87ix375hnz3id4wc023przv1"))))
-    (build-system go-build-system)
-    (arguments
-     (list
-      #:import-path "github.com/hashicorp/hcl/v2"))
-    (native-inputs
-     (list go-github-com-davecgh-go-spew))
-    (inputs
-     (list go-github-com-agext-levenshtein
-           go-github-com-apparentlymart-go-textseg-v13
-           go-github-com-mitchellh-go-wordwrap
-           go-github-com-zclconf-go-cty))
-    (synopsis "Go implementation of HashiCorp Configuration Language V2")
-    (description
-     "This package contains the main implementation of the @acronym{HCL,
-HashiCorp Configuration Language}.  HCL is designed to be a language for
-expressing configuration which is easy for both humans and machines to read.")
-    (home-page "https://github.com/hashicorp/hcl")
     (license license:mpl2.0)))
 
 (define-public go-github-com-hashicorp-go-hclog
@@ -1210,6 +1219,65 @@ constraints")
 constraints, and verifying versions against a set of constraints.  It can sort
 a collection of versions properly, handles prerelease/beta versions, can
 increment versions.")
+    (license license:mpl2.0)))
+
+(define-public go-github-com-hashicorp-hcl
+  (package
+    (name "go-github-com-hashicorp-hcl")
+    (version "1.0.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/hashicorp/hcl")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0q6ml0qqs0yil76mpn4mdx4lp94id8vbv575qm60jzl1ijcl5i66"))))
+    (build-system go-build-system)
+    (arguments
+     (list
+      #:import-path "github.com/hashicorp/hcl"))
+    (native-inputs
+     (list go-github-com-davecgh-go-spew))
+    (synopsis "Go implementation of HashiCorp Configuration Language V1")
+    (description
+     "This package contains the main implementation of the @acronym{HCL,
+HashiCorp Configuration Language}.  HCL is designed to be a language for
+expressing configuration which is easy for both humans and machines to read.")
+    (home-page "https://github.com/hashicorp/hcl")
+    (license license:mpl2.0)))
+
+(define-public go-github-com-hashicorp-hcl-v2
+  (package
+    (name "go-github-com-hashicorp-hcl-v2")
+    (version "2.11.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/hashicorp/hcl")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0f9flmmkj7fr1337fc56cqy73faq87ix375hnz3id4wc023przv1"))))
+    (build-system go-build-system)
+    (arguments
+     (list
+      #:import-path "github.com/hashicorp/hcl/v2"))
+    (native-inputs
+     (list go-github-com-davecgh-go-spew))
+    (inputs
+     (list go-github-com-agext-levenshtein
+           go-github-com-apparentlymart-go-textseg-v13
+           go-github-com-mitchellh-go-wordwrap
+           go-github-com-zclconf-go-cty))
+    (synopsis "Go implementation of HashiCorp Configuration Language V2")
+    (description
+     "This package contains the main implementation of the @acronym{HCL,
+HashiCorp Configuration Language}.  HCL is designed to be a language for
+expressing configuration which is easy for both humans and machines to read.")
+    (home-page "https://github.com/hashicorp/hcl")
     (license license:mpl2.0)))
 
 (define-public go-github-com-hhrutter-tiff
@@ -1394,6 +1462,33 @@ called concurrently with themselves and each other.")
 customized globally.")
     (license license:expat)))
 
+(define-public go-github-com-kballard-go-shellquote
+  ;; No release, see <https://github.com/kballard/go-shellquote/issues/13>.
+  (let ((commit "95032a82bc518f77982ea72343cc1ade730072f0")
+        (revision "1"))
+    (package
+      (name "go-github-com-kballard-go-shellquote")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/kballard/go-shellquote")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1rspvmnsikdq95jmx3dykxd4k1rmgl98ryjrysvl0cf18hl1vq80"))))
+      (build-system go-build-system)
+      (arguments
+       (list
+        #:import-path "github.com/kballard/go-shellquote"))
+      (synopsis "Shell-style string joins and splits")
+      (description
+       "Shellquote provides utilities for joining/splitting strings using sh's
+word-splitting rules.")
+      (home-page "https://github.com/kballard/go-shellquote")
+      (license license:expat))))
+
 (define-public go-github-com-lib-pq
   (package
     (name "go-github-com-lib-pq")
@@ -1485,33 +1580,6 @@ Printf/Sprintf etc.")
       #:import-path "github.com/logrusorgru/aurora/v3"))
     (native-inputs
      (list go-github-com-stretchr-testify))))
-
-(define-public go-github-com-kballard-go-shellquote
-  ;; No release, see <https://github.com/kballard/go-shellquote/issues/13>.
-  (let ((commit "95032a82bc518f77982ea72343cc1ade730072f0")
-        (revision "1"))
-    (package
-      (name "go-github-com-kballard-go-shellquote")
-      (version (git-version "0.0.0" revision commit))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/kballard/go-shellquote")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32 "1rspvmnsikdq95jmx3dykxd4k1rmgl98ryjrysvl0cf18hl1vq80"))))
-      (build-system go-build-system)
-      (arguments
-       (list
-        #:import-path "github.com/kballard/go-shellquote"))
-      (synopsis "Shell-style string joins and splits")
-      (description
-       "Shellquote provides utilities for joining/splitting strings using sh's
-word-splitting rules.")
-      (home-page "https://github.com/kballard/go-shellquote")
-      (license license:expat))))
 
 (define-public go-github-com-marcinbor85-gohex
   ;; No release, see <https://github.com/marcinbor85/gohex/issues/5>.
@@ -1897,6 +1965,30 @@ comparison library, to Go.  Both a library and a command-line tool are
 included in this package.")
     (license license:expat)))
 
+(define-public go-github-com-pierrec-cmdflag
+  (package
+    (name "go-github-com-pierrec-cmdflag")
+    (version "0.0.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pierrec/cmdflag")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0nxmqkjwd7i3blmspvxib352vm6167h2ffqy4m9zc3fb9srvrpqc"))))
+    (build-system go-build-system)
+    (arguments
+     (list
+      #:import-path "github.com/pierrec/cmdflag"))
+    (home-page "https://github.com/pierrec/cmdflag")
+    (synopsis "Augment the flag package with commands")
+    (description
+     "Package @code{cmdflag} provides simple command line commands processing
+on top of the standard library @code{flag} package.")
+    (license license:bsd-3)))
+
 (define-public go-github-com-prometheus-client-model
   (let ((commit "14fe0d1b01d4d5fc031dd4bec1823bd3ebbe8016")
         (revision "2"))
@@ -1956,6 +2048,50 @@ included in this package.")
 Metrics library.")
       (home-page "https://github.com/rcrowley/go-metrics")
       (license license:bsd-2))))
+
+(define-public go-github-com-schollz-progressbar-v3
+  (package
+    (name "go-github-com-schollz-progressbar-v3")
+    (version "3.13.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/schollz/progressbar")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1hjahr5r52i7w6iyvl3rpzr46iignhfdh4694fl7m2b4gkaw9gd6"))))
+    (build-system go-build-system)
+    (arguments
+     (list #:import-path "github.com/schollz/progressbar/v3"
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'remove-examples
+                 (lambda* (#:key import-path #:allow-other-keys)
+                   (delete-file-recursively
+                    (string-append "src/" import-path "/examples"))))
+               (replace 'check
+                 (lambda* (#:key tests? import-path #:allow-other-keys)
+                   (when tests?
+                     ;; The full test suite requires Internet access, so only
+                     ;; run the short tests.
+                     (invoke "go" "test" "-test.short" import-path)))))))
+    (native-inputs
+     (list go-github-com-stretchr-testify))
+    (propagated-inputs
+     (list go-github-com-mattn-go-runewidth
+           go-github-com-mitchellh-colorstring
+           go-golang-org-x-term))
+    (home-page "https://github.com/schollz/progressbar")
+    (synopsis "Simple command-line interface (CLI) progress bar")
+    (description
+     "This package provides a very simple thread-safe progress bar.  The
+@code{progressbar} implements an @code{io.Writer} so it can automatically
+detect the number of bytes written to a stream, so you can use it as a
+@code{progressbar} for an @code{io.Reader}.  When @code{progressbar}'s length
+is undetermined, a customizable spinner is shown.")
+    (license license:expat)))
 
 (define-public go-github-com-shirou-gopsutil
   (package

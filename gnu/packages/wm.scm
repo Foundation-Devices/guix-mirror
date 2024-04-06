@@ -797,7 +797,7 @@ desktop environment.")
 (define-public icewm
   (package
     (name "icewm")
-    (version "3.4.6")
+    (version "3.4.7")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -805,7 +805,7 @@ desktop environment.")
                     version "/icewm-" version ".tar.lz"))
               (sha256
                (base32
-                "1j4jd1fim12h8ry7jkx6y298kyn63pabih1m61rljbzvr3lyy1db"))))
+                "0c1c9qwaq9kdlma5kfqzjzzm6wk3bww6b7mw4b3j76fn7ms4982s"))))
     (build-system gnu-build-system)
     (native-inputs (list pkg-config))
     (inputs (list fontconfig
@@ -1852,7 +1852,7 @@ narrow the items to those matching the tokens in the input.")
   (package
     (inherit sway)
     (name "swayfx")
-    (version "0.3.1")
+    (version "0.3.2")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1861,8 +1861,20 @@ narrow the items to those matching the tokens in the input.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1550n9xnqbl1am4cwlnj8ip5cs7kgdzx96ga2hkcw29cpyian7rv"))))
+                "13d8icd45j937jgkidr7cyjys4nnvxh4ilp7ml0i2ml39ipv01qv"))))
     (build-system meson-build-system)
+    (inputs (list basu
+                  cairo
+                  gdk-pixbuf
+                  json-c
+                  libevdev
+                  libinput-minimal
+                  libxkbcommon
+                  pango
+                  pcre2
+                  swaybg
+                  wayland
+                  wlroots-0.16))
     (home-page "https://github.com/WillPower3309/swayfx")
     (synopsis "Sway Fork with extra options and effects")
     (description
@@ -2117,7 +2129,7 @@ compository, supporting the following featuers:
 (define-public waybar
   (package
     (name "waybar")
-    (version "0.9.20")
+    (version "0.10.0")
     (source
      (origin
        (method git-fetch)
@@ -2126,7 +2138,7 @@ compository, supporting the following featuers:
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "07h5l7h7wmzqgg7fbp98khrxg2sq2s4ncp4fiiz1yg62r752idy4"))))
+        (base32 "00a8npilvcvicn9mff00i5rdzdll0zrmq0y8wgr314gnljn52md7"))))
     (build-system meson-build-system)
     (arguments
      (list #:configure-flags #~(list "--wrap-mode=nodownload")))
@@ -2197,7 +2209,7 @@ core/thread.")
 (define-public wlr-randr
   (package
     (name "wlr-randr")
-    (version "0.4.0")
+    (version "0.4.1")
     (source
      (origin
        (method git-fetch)
@@ -2206,7 +2218,7 @@ core/thread.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1f3dc2i6c1rn2adfcnqmh10570ps335188zllg66sv1d0l8mggry"))))
+        (base32 "1kl5awwclmlfcxfz0jp8gzpg2vffsl9chfilysfsv1mq11a96ifs"))))
     (build-system meson-build-system)
     (inputs (list wayland))
     (native-inputs (list pkg-config))
@@ -3195,7 +3207,7 @@ read and write, and compatible with JSON.")
 (define-public labwc
   (package
     (name "labwc")
-    (version "0.7.0")
+    (version "0.7.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3204,7 +3216,7 @@ read and write, and compatible with JSON.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "17p3wcnggnd4v37z1dgv8nmc35nq4261s8sglr44bf71vjircggz"))))
+                "09j6p4p2c00rpcr65r6igj0llfablg5j2d1ys87kyh858dhajpza"))))
     (build-system meson-build-system)
     (native-inputs
      (list pkg-config gettext-minimal scdoc))
