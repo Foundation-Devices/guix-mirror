@@ -1789,7 +1789,8 @@ same arguments.")
         (base32
          "1psf5dqxvc38qzxvc305mkg5xpdmdkbkkfiyqlmdnkgh7z5dx025"))))
     (build-system pyproject-build-system)
-    (native-inputs (list python-setuptools-scm python-filelock python-pytest))
+    (native-inputs (list python-setuptools-scm python-filelock python-pytest
+                         python-setuptools python-wheel))
     (propagated-inputs (list python-execnet python-pytest-forked))
     (home-page "https://github.com/pytest-dev/pytest-xdist")
     (synopsis
