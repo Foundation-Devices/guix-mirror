@@ -6925,6 +6925,24 @@ used to convert between several docstring styles.")
 Google and Numpydoc format.")
     (license license:expat)))
 
+(define-public python-docstring-to-markdown
+  (package
+    (name "python-docstring-to-markdown")
+    (version "0.15")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "docstring-to-markdown" version))
+       (sha256
+        (base32 "0gdpabnyl1kyy0cjrnph6xl4fyhgim50a1amsaqq3hahki6i2ip1"))))
+    (build-system pyproject-build-system)
+    (native-inputs (list python-setuptools python-wheel))
+    (home-page "https://pypi.org/project/docstring-to-markdown/")
+    (synopsis "On the fly conversion of Python docstrings to markdown")
+    (description "This is a package for on the fly conversion of Python
+docstrings to markdown.")
+    (license license:lgpl2.1+)))
+
 (define-public python-docutils
   (package
     (name "python-docutils")
