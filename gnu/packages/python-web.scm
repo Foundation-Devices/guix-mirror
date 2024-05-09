@@ -5871,20 +5871,10 @@ library to create slugs from unicode strings while keeping it DRY.")
        (uri (pypi-uri "tinycss" version))
        (sha256
         (base32 "0vkifr595h28ymkjhrswwf0bm23lhznh5f44xyp7x7jy1ssnyc0j"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'disable-flake8-isort
-           ;; Flake8 and isort tests fail.
-           (lambda _
-             (substitute* "setup.cfg" ((" --flake8 --isort") ""))
-             #t))
-         (replace 'check
-           (lambda _
-             ;; Disable failing test.
-             (invoke "python" "-m" "pytest" "-k"
-                     "not test_speedups"))))))
+     (list #:test-flags
+           '(list "-k" "not test_speedups")))
     (native-inputs
      (list python-pytest-cov python-pytest-flake8 python-pytest-isort
            python-pytest-runner))
