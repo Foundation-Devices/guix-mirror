@@ -1574,34 +1574,36 @@ notebooks.")
        (uri (pypi-uri "nbval" version))
        (sha256
         (base32 "0h3xrnw0mj1srigrx2rfnd73h8s0xjycclmjs0vx7qkfyqpcvvyg"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-before 'check 'fix-test
-           (lambda _
-             ;; This test fails because of a mismatch in the output of LaTeX
-             ;; equation environments.  Seems OK to skip.
-             (delete-file
-              "tests/ipynb-test-samples/test-latex-pass-correctouput.ipynb")))
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (when tests?
-               (invoke "pytest" "-vv" "-k"
-                       (string-append
-                        ;; This only works with Pytest < 5.
-                        "not nbdime_reporter"
-                        ;; https://github.com/computationalmodelling/nbval/pull/148.
-                        " and not test_timeouts"
-                        ;; It seems the output format has changed; the following
-                        ;; test fails with "Unexpected output fields from
-                        ;; running code: {'text/plain'}".
-                        " and not test_conf_ignore_stderr "))))))))
+     (list
+      #:test-flags
+      '(list
+        ;; This test fails because of a mismatch in the output of LaTeX
+        ;; equation environments.  Seems OK to skip.
+        "--ignore=tests/ipynb-test-samples/test-latex-pass-correctouput.ipynb"
+        "-k" (string-append
+              ;; This only works with Pytest < 5.
+              "not nbdime_reporter"
+              ;; https://github.com/computationalmodelling/nbval/pull/148.
+              " and not test_timeouts"
+              ;; It seems the output format has changed; the following
+              ;; test fails with "Unexpected output fields from
+              ;; running code: {'text/plain'}".
+              " and not test_conf_ignore_stderr "))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'check 'fix-test
+            (lambda _
+              ;; This test fails because of a mismatch in the output of LaTeX
+              ;; equation environments.  Seems OK to skip.
+              (delete-file "tests/\
+ipynb-test-samples/test-latex-pass-correctouput.ipynb"))))))
     (native-inputs
      (list python-pytest python-pytest-cov python-sympy))
     (propagated-inputs
      (list python-ipykernel python-jupyter-client python-nbformat
-           python-six))
+           python-six python-coverage))
     (home-page "https://github.com/computationalmodelling/nbval")
     (synopsis "Pytest plugin to validate Jupyter notebooks")
     (description
