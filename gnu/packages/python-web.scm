@@ -6061,29 +6061,25 @@ event loop.  It is implemented in Cython and uses libuv under the hood.")
         (base32
          "1s7670qw36x90bgmazmgib170i5gnpyb2ypxzlla7y0mpasniag0"))))
     (outputs '("out" "doc"))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
+     (list
+      #:test-flags '(list
+                     ;; Disable the geventlet tests because eventlet uses
+                     ;; dnspython, which does not work in the build
+                     ;; container due to lack of /etc/resolv.conf, etc.
+                     "--ignore=tests/workers/test_geventlet.py")
+      #:phases
+      #~(modify-phases %standard-phases
          (add-after 'build 'build-doc
            (lambda _
              (invoke "make" "-C" "docs" "PAPER=a4" "html" "info")
              (delete-file "docs/build/texinfo/Makefile")
              (delete-file "docs/build/texinfo/Gunicorn.texi")))
-         (replace 'check
-           (lambda* (#:key tests? #:allow-other-keys)
-             (if tests?
-                 (begin
-                   (invoke "pytest" "-vv"
-                           ;; Disable the geventlet tests because eventlet uses
-                           ;; dnspython, which does not work in the build
-                           ;; container due to lack of /etc/resolv.conf, etc.
-                           "--ignore=tests/workers/test_geventlet.py"))
-                 (format #t "test suite not run~%"))))
          (add-after 'install 'install-doc
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((doc (string-append (assoc-ref outputs "doc")
-                                        "/share/doc/" ,name "-" ,version))
+                                        "/share/doc/" #$name "-" #$version))
                     (html (string-append doc "/html"))
                     (info (string-append doc "/info"))
                     (examples (string-append doc "/examples")))
@@ -6095,22 +6091,7 @@ event loop.  It is implemented in Cython and uses libuv under the hood.")
                (copy-recursively "examples" examples)
                (for-each (lambda (file)
                            (copy-file file (string-append doc "/" file)))
-                         '("README.rst" "NOTICE" "LICENSE" "THANKS")))))
-         ;; XXX: The wrap phase includes native inputs on PYTHONPATH, (see
-         ;; <https://bugs.gnu.org/25235>), leading to an inflated closure
-         ;; size.  Override it to only add the essential entries.
-         (replace 'wrap
-           (lambda* (#:key native-inputs inputs outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (python (assoc-ref (or native-inputs inputs) "python"))
-                    (sitedir (string-append "/lib/python"
-                                            (python-version python)
-                                            "/site-packages")))
-               (wrap-program (string-append out "/bin/gunicorn")
-                 `("PYTHONPATH" ":" prefix
-                   ,(map (lambda (output)
-                           (string-append output sitedir))
-                         (list python out))))))))))
+                         '("README.rst" "NOTICE" "LICENSE" "THANKS"))))))))
     (native-inputs
      (list binutils ;; for ctypes.util.find_library()
            python-aiohttp
