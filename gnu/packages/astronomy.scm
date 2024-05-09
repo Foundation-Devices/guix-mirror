@@ -4942,8 +4942,6 @@ specification.")
     (build-system pyproject-build-system)
     (arguments
      (list
-      #:test-flags
-      #~(list "-n" "auto")
       #:phases #~(modify-phases %standard-phases
                    (add-before 'check 'set-home-env
                      (lambda _ (setenv "HOME" "/tmp"))))))
