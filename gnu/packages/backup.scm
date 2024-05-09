@@ -24,6 +24,7 @@
 ;;; Copyright © 2022 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2022 Feng Shu <tumashu@163.com>
 ;;; Copyright © 2023 Timo Wilken <guix@twilken.net>
+;;; Copyright © 2024 Nicolas Graves <ngraves@ngraves.fr>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -46,6 +47,7 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system go)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system pyproject)
   #:use-module (guix build-system qt)
   #:use-module (guix download)
   #:use-module (guix gexp)
@@ -1332,7 +1334,7 @@ compression parameters used by Gzip.")
        (uri (pypi-uri "borgmatic" version))
        (sha256
         (base32 "1xmqv0gg2ic7lp5kmygr9f6qkabsr86mma7pigan12vk2bcdbw31"))))
-    (build-system python-build-system)
+    (build-system pyproject-build-system)
     (arguments
      (list
       #:phases #~(modify-phases %standard-phases
@@ -1348,15 +1350,7 @@ compression parameters used by Gzip.")
                          (("(module.get_local_path.+ == )'borg'" all start)
                           (string-append start "'"
                                          (search-input-file inputs "bin/borg")
-                                         "'")))))
-                   (replace 'check
-                     (lambda* (#:key tests? #:allow-other-keys)
-                       (when tests?
-                         ;; Tests require the installed executable.
-                         (setenv "PATH"
-                                 (string-append #$output "/bin" ":"
-                                                (getenv "PATH")))
-                         (invoke "pytest")))))))
+                                         "'"))))))))
     (inputs (list borg
                   python-apprise
                   python-colorama
