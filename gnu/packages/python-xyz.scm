@@ -329,12 +329,7 @@
                          python-wheel))
     (arguments
      (list
-      #:phases #~(modify-phases %standard-phases
-                   (replace 'check
-                     (lambda* (#:key tests? inputs outputs #:allow-other-keys)
-                       (when tests?
-                         (delete-file "test/test_plugin_macosx.py")
-                         (invoke "pytest")))))))
+      #:test-flags '(list "--ignore=test/test_plugin_macosx.py")))
     (home-page "https://github.com/caronc/apprise")
     (synopsis
      "Push notification Python library that works with many platforms")
