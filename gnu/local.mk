@@ -1920,7 +1920,6 @@ dist_patch_DATA =						\
   %D%/packages/patches/python-3-search-paths.patch		\
   %D%/packages/patches/python-3-fix-tests.patch			\
   %D%/packages/patches/python-3-hurd-configure.patch		\
-  %D%/packages/patches/python-aionotify-0.2.0-py3.8.patch	\
   %D%/packages/patches/python-cross-compile.patch		\
   %D%/packages/patches/python-configobj-setuptools.patch	\
   %D%/packages/patches/python-dateutil-pytest-compat.patch	\
