@@ -966,17 +966,7 @@ private network between hosts on the internet.")
        (sha256
         (base32
          "0vp13xwrhx4m6zgsyzvai84lkq9mzkaw47j58dk0ll95kaymk2x8"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-FHS-file-names
-           (lambda _
-             (substitute* "sshuttle/client.py"
-               (("/usr/bin/env") (which "env")))
-             (substitute* "sshuttle/ssh.py"
-               (("/bin/sh") "sh"))
-             #t)))))
+    (build-system pyproject-build-system)
     (native-inputs
      (list python-setuptools-scm
            ;; For tests only.
