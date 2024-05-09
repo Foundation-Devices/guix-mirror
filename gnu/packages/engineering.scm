@@ -2663,6 +2663,12 @@ measurement devices and test equipment via GPIB, RS232, Ethernet or USB.")
                 "1cidv2373lwxy26kbzg4slaqvn2gpq67mvijgp0rydfx6mm6a89i"))
               (file-name (git-file-name name version))))
     (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:test-flags '(list ;; Missing docscrape dependency.
+                          "--ignore=doc/sphinxext/tests/test_docscrape.py"
+                          ;; these test require network
+                          "--ignore=skrf/tests/test_network.py")))
     (propagated-inputs (list python-matplotlib
                              python-networkx
                              python-numpy
