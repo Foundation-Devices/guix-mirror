@@ -2041,7 +2041,10 @@ Herschel.")
             (lambda _
               (invoke "python" "setup.py" "build_ext" "--inplace"))))))
     (native-inputs
-     (list python-pytest python-pytest-cov python-pytest-openfiles))
+     (list python-pytest
+           python-pytest-cov
+           python-pytest-openfiles
+           python-setuptools))
     (propagated-inputs
      (list python-astropy python-click python-dask python-numpy))
     (home-page "https://casa-formats-io.readthedocs.io/")
@@ -2254,9 +2257,11 @@ Cesium.")
     (build-system pyproject-build-system)
     (native-inputs
      (list python-astropy
-           python-pytest-astropy
            python-pytest
-           python-setuptools-scm))
+           python-pytest-astropy
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (propagated-inputs (list python-numpy python-pandas))
     (home-page "https://sunpy.org")
     (synopsis "Access astronomical HMI, AIA and MDI data with Python")
@@ -3230,7 +3235,9 @@ python_files = test_*.py"))))))))
     (native-inputs
      (list python-pytest
            python-pytest-astropy-header
-           python-setuptools-scm))
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (inputs
      (list qd))
     (propagated-inputs
@@ -4607,6 +4614,7 @@ of the old packages.")
            python-pytest
            python-pytest-cov
            python-scipy
+           python-setuptools
            python-setuptools-scm))
     (home-page "https://tweakwcs.readthedocs.io/en/latest/")
     (synopsis
@@ -4800,7 +4808,9 @@ package such as asdf-astropy.")
     (native-inputs
      (list python-pytest
            python-pytest-xdist
-           python-setuptools-scm))
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (propagated-inputs
      (list python-asdf))
     (home-page "https://github.com/asdf-format/asdf-coordinates-schemas")
@@ -5053,7 +5063,10 @@ default) to world coordinates.")
       ;; python-rad -> python-roman-datamodels -> python-crds -> python-rad
       #:test-flags #~(list "--ignore=tests/test_schemas.py")))
     (native-inputs
-     (list python-pytest python-setuptools-scm))
+     (list python-pytest
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (propagated-inputs (list python-asdf python-asdf-astropy))
     (home-page "https://github.com/spacetelescope/rad")
     (synopsis "Roman Attribute Dictionary")

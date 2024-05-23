@@ -2030,10 +2030,12 @@ mainly implemented in user space.")
                   (format #t "test suite not run~%")))))))
     (native-inputs
      (list python-avocado-framework
-           python-setuptools-scm
            python-flake8
            python-isort
-           python-pylint))
+           python-pylint
+           python-setuptools
+           python-setuptools-scm
+           python-wheel))
     (propagated-inputs
      (list python-pygments
            python-urwid
@@ -2807,7 +2809,12 @@ use with virtualization provisioning tools")
            python-requests
            python-toml))
     (native-inputs
-     (list python-black python-mypy python-pyhamcrest python-twine))
+     (list python-black
+           python-mypy
+           python-pyhamcrest
+           python-setuptools
+           python-twine
+           python-wheel))
     (home-page "https://github.com/ALSchwalm/transient")
     (synopsis "QEMU Wrapper written in Python")
     (description
