@@ -509,10 +509,10 @@ trouble using them, because you do not have to remember each snippet name.")
                  ;; they don't get installed.
                  (delete-file-recursively "python/__pycache__")))))))
       (native-inputs
-       (list coq-for-coqtail
+       (list coq
              python-pytest
              vim-vader))
-      (propagated-inputs (list coq coq-ide-server))
+      (propagated-inputs (list coq))
       (synopsis "Interactive Coq proofs in Vim")
       (description "Coqtail enables interactive Coq proof development in Vim
 similar to CoqIDE or ProofGeneral.")

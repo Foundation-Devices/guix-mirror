@@ -56,7 +56,7 @@
 (define-public coq
   (package
     (name "coq")
-    (version "8.17.1")
+    (version "8.19.1")
     (source
      (origin
        (method git-fetch)
@@ -66,7 +66,7 @@
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0gg6hizq0i08lk741b579cbswhy6qvkh6inc3d3i5a2af98psq63"))))
+         "0jd29l87hz4cx37r5l0j54jahhbj0k7j8fknp4bymf0r9c30w8fr"))))
     (native-search-paths
      (list (search-path-specification
             (variable "COQPATH")
@@ -74,7 +74,13 @@
     (build-system dune-build-system)
     (arguments
      (list
-      #:package "coq-core,coq-stdlib,coq"
+      ;; Building coqide-server is required here since the test suite since
+      ;; Coq 8.19 requires it to be installed and present.
+      ;;
+      ;; Ideally all of these packages should be built separately but the
+      ;; build configuration system expects most of the binaries and libraries
+      ;; to be installed onto the same prefix.
+      #:package "coq-core,coq-stdlib,coq,coqide-server"
       #:phases
       #~(modify-phases %standard-phases
           (add-before 'build 'configure
@@ -88,11 +94,20 @@
             (lambda _
               (let ((libdir (string-append #$output "/lib/ocaml/site-lib")))
                 (invoke "dune" "install" "--prefix" #$output
-                        "--libdir" libdir "coq" "coq-core" "coq-stdlib")))))))
+                        "--libdir" libdir "coq" "coq-core" "coq-stdlib"
+                        "coqide-server"))))
+          (delete 'check)
+          (add-after 'install 'check
+            (lambda _
+              ;; These tests fail because the run.sh script needs patching to
+              ;; find the tools and also the generated Makefiles from
+              ;; _CoqProjects fail as they can't find the time command.
+              (delete-file-recursively "test-suite/coq-makefile/timing")
+              (invoke "dune" "runtest" "-p" "coq-core,coq-stdlib,coq,coqide-server"))))))
     (inputs
      (list gmp ocaml-zarith))
     (native-inputs
-     (list ocaml-ounit2 which))
+     (list ocaml-ounit2 python-minimal which))
     (properties '((upstream-name . "coq"))) ; also for inherited packages
     (home-page "https://coq.inria.fr")
     (synopsis "Proof assistant for higher-order logic")
@@ -104,16 +119,6 @@ It is developed using Objective Caml and Camlp5.")
     ;; Some of the documentation is distributed under opl1.0+.
     (license (list license:lgpl2.1 license:opl1.0+))))
 
-(define-public coq-ide-server
-  (package
-    (inherit coq)
-    (name "coq-ide-server")
-    (arguments
-     `(#:tests? #f
-       #:package "coqide-server"))
-    (inputs
-     (list coq gmp ocaml-zarith))))
-
 (define-public coq-ide
   (package
     (inherit coq)
@@ -122,7 +127,7 @@ It is developed using Objective Caml and Camlp5.")
      `(#:tests? #f
        #:package "coqide"))
     (propagated-inputs
-     (list coq coq-ide-server zlib))
+     (list coq zlib))
     (inputs
      (list lablgtk3 ocaml-lablgtk3-sourceview3))))
 
@@ -259,32 +264,6 @@ the Coq system.  It provides a comprehensive library of theorems on a multi-radi
 multi-precision arithmetic.  It also supports efficient numerical computations
 inside Coq.")
     (license license:lgpl3+)))
-
-;; Union of coq and coq-ide-server as vim-coqtail expects coqc and coqidetop
-;; to be in the same bin folder, when vim-coqtail is installed coqc and
-;; coqidetop will be in the "same" bin folder in the profile, so this is only
-;; required for testing the package.
-;;
-;; This is deeply ingrained in the internals of vim-coqtail so this is why
-;; it's necessary.
-(define-public coq-for-coqtail
-  (hidden-package
-    (package
-      (inherit coq)
-      (name "coq-for-coqtail")
-      (source #f)
-      (build-system trivial-build-system)
-      (arguments
-       '(#:modules ((guix build union))
-         #:builder
-         (begin
-           (use-modules (ice-9 match)
-                        (guix build union))
-           (match %build-inputs
-             (((names . directories) ...)
-              (union-build (assoc-ref %outputs "out")
-                           directories))))))
-      (inputs (list coq coq-ide-server)))))
 
 (define-public coq-gappa
   (package
@@ -435,16 +414,16 @@ theorems between the two libraries.")
 (define-public coq-bignums
   (package
     (name "coq-bignums")
-    (version "8.16.0")
+    (version "9.0.0+coq8.19")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                      (url "https://github.com/coq/bignums")
-                     (commit (string-append "V" version))))
+                     (commit (string-append "v" version))))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "07ndnm7pndmai3a2bkcmwjfjzfaqyq19c5an15hmhgmd0rdy4z8c"))))
+                "197hasma9xzkna0k5n6pvn438xf37kvjkwxfgf3zfllvlpx8nsyk"))))
     (build-system gnu-build-system)
     (native-inputs
      (list ocaml coq))
@@ -560,7 +539,7 @@ uses Ltac to synthesize the substitution operation.")
 (define-public coq-equations
   (package
     (name "coq-equations")
-    (version "1.3-8.17")
+    (version "1.3-8.19")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -569,7 +548,7 @@ uses Ltac to synthesize the substitution operation.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0g68h4c1ijpphixvl9wkd7sibds38v4236dpvvh194j5ii42vnn8"))))
+                "1j86k4c6q527qjppbgrcy8wq8zr3ijf5fnv2cwv0q3q7y1cl505f"))))
     (build-system gnu-build-system)
     (native-inputs
      (list ocaml coq camlp5))
