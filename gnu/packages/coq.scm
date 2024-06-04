@@ -78,18 +78,16 @@
       #:phases
       #~(modify-phases %standard-phases
           (add-before 'build 'configure
-            (lambda* (#:key outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (coqlib (string-append out "/lib/ocaml/site-lib/coq/")))
-                (invoke "./configure" "-prefix" out
+            (lambda _
+              (let* ((coqlib (string-append #$output "/lib/ocaml/site-lib/coq/")))
+                (invoke "./configure" "-prefix" #$output
                         "-libdir" coqlib))))
           (add-before 'build 'make-dunestrap
             (lambda _ (invoke "make" "dunestrap")))
           (replace 'install
-            (lambda* (#:key outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (libdir (string-append out "/lib/ocaml/site-lib")))
-                (invoke "dune" "install" "--prefix" out
+            (lambda _
+              (let ((libdir (string-append #$output "/lib/ocaml/site-lib")))
+                (invoke "dune" "install" "--prefix" #$output
                         "--libdir" libdir "coq" "coq-core" "coq-stdlib")))))))
     (inputs
      (list gmp ocaml-zarith))
