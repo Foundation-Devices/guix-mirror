@@ -518,31 +518,35 @@ Coq proof assistant.")
     (license license:cecill-c)))
 
 (define-public coq-autosubst
-  (package
-    (name "coq-autosubst")
-    (version "1.8")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/coq-community/autosubst")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32 "0qk72r6cqxwhqqkl2kmryhw365w3l2016qii1q1sk3md7zq46jcz"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:tests? #f
-       #:make-flags (list (string-append "COQLIBINSTALL="
-                                         (assoc-ref %outputs "out")
-                                         "/lib/coq/user-contrib"))
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure))))
-    (native-inputs
-     (list coq))
-    (home-page "https://www.ps.uni-saarland.de/autosubst/")
-    (synopsis "Coq library for parallel de Bruijn substitutions")
-    (description "Formalizing syntactic theories with variable binders is
+  ;; Latest tag does not build with Coq >=8.19, recent commits contain a fix
+  ;; of the problem.
+  (let ((revision "0")
+        (commit "6ba0acccef68c75f6cca8928706c726754d69791"))
+    (package
+      (name "coq-autosubst")
+      (version (git-version "1.8" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/coq-community/autosubst")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32 "0k62ygj3zqcs17nhyalcxgwbs8as3f9kdxx6b6a0d44j0iqqnw0l"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:tests? #f
+         #:make-flags (list (string-append "COQLIBINSTALL="
+                                           (assoc-ref %outputs "out")
+                                           "/lib/coq/user-contrib"))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure))))
+      (native-inputs
+       (list coq))
+      (home-page "https://www.ps.uni-saarland.de/autosubst/")
+      (synopsis "Coq library for parallel de Bruijn substitutions")
+      (description "Formalizing syntactic theories with variable binders is
 not easy.  Autosubst is a library for the Coq proof assistant to
 automate this process.  Given an inductive definition of syntactic objects in
 de Bruijn representation augmented with binding annotations, Autosubst
@@ -553,7 +557,7 @@ usage of substitution lemmas unnecessary.  The tactic is based on our current
 work on a decision procedure for the equational theory of an extension of the
 sigma-calculus by Abadi et al.  The library is completely written in Coq and
 uses Ltac to synthesize the substitution operation.")
-    (license license:bsd-3)))
+      (license license:bsd-3))))
 
 (define-public coq-equations
   (package
