@@ -104,8 +104,8 @@
               ;; _CoqProjects fail as they can't find the time command.
               (delete-file-recursively "test-suite/coq-makefile/timing")
               (invoke "dune" "runtest" "-p" "coq-core,coq-stdlib,coq,coqide-server"))))))
-    (inputs
-     (list gmp ocaml-zarith))
+    (inputs (list gmp))
+    (propagated-inputs (list ocaml-zarith))
     (native-inputs
      (list ocaml-ounit2 python-minimal which))
     (properties '((upstream-name . "coq"))) ; also for inherited packages
