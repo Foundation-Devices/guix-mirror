@@ -75,6 +75,7 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages pretty-print)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages sqlite)
   #:use-module (gnu packages web)
@@ -245,7 +246,7 @@ information, refer to the @samp{dbus-daemon(1)} man page.")))
 (define glib
   (package
     (name "glib")
-    (version "2.78.0")
+    (version "2.80.5")
     (source
      (origin
        (method url-fetch)
@@ -254,7 +255,7 @@ information, refer to the @samp{dbus-daemon(1)} man page.")))
                        name "/" (string-take version 4) "/"
                        name "-" version ".tar.xz"))
        (sha256
-        (base32 "0c3vagxl77wma85qinbj974jvw96n5bvch2m7hqcwxq8fa5spsj4"))
+        (base32 "0wb77rnfcfmz368dg7b8d4waif8qddidcdvyvszmns9wh3gaj8wz"))
        (patches
         (search-patches "glib-appinfo-watch.patch"
                         "glib-skip-failing-test.patch"))
@@ -477,7 +478,12 @@ information, refer to the @samp{dbus-daemon(1)} man page.")))
                 (("^bindir=.*")
                  "")
                 (("=\\$\\{bindir\\}/")
-                 "=")))))))
+                 "="))))
+          (add-after 'install 'wrap-python
+            (lambda* (#:key outputs #:allow-other-keys)
+              ;; gdbus-codegen imports packaging.version.
+              (wrap-program (search-input-file outputs "bin/gdbus-codegen")
+                `("GUIX_PYTHONPATH" = (,(getenv "GUIX_PYTHONPATH")))))))))
     (native-inputs
      (list dbus
            gettext-minimal
@@ -488,13 +494,17 @@ information, refer to the @samp{dbus-daemon(1)} man page.")))
            python-wrapper
            tzdata-for-tests))           ;for tests/gdatetime.c
     (inputs
-     (list ;; "python", "python-wrapper" and "bash-minimal"
+     (list
+      ;; "python", "python-wrapper" and "bash-minimal"
       ;; are for the 'patch-shebangs' phase, to make
       ;; sure the installed scripts end up with a correct shebang
       ;; when cross-compiling.
+      ;; "python-packaging-bootstrap" is needed by 'wrap-python' to
+      ;; ensure gdbus-codegen works as expected.
       bash-minimal
       python
-      python-wrapper))
+      python-wrapper
+      python-packaging-bootstrap))
     (propagated-inputs
      (list libffi            ; in the Requires.private field of gobject-2.0.pc
            pcre2             ; in the Requires.private field of glib-2.0.pc
