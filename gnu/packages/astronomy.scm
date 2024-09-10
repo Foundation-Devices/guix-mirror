@@ -2122,7 +2122,7 @@ deconvolution).  Such post-processing is not performed by Stackistry.")
            nlopt
            openssl
            qtbase-5
-           qtcharts
+           qtcharts-5
            qtlocation-5
            qtmultimedia-5
            qtpositioning
