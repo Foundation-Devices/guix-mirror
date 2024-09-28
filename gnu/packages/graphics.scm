@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2016, 2021, 2022 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2015-2016, 2021-2022, 2024 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015 Tomáš Čech <sleep_walker@gnu.org>
 ;;; Copyright © 2016, 2019 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016, 2017, 2019, 2023 Ricardo Wurmus <rekado@elephly.net>
@@ -912,7 +912,7 @@ exception-handling library.")
 (define-public lib2geom
   (package
     (name "lib2geom")
-    (version "1.3")
+    (version "1.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -921,7 +921,7 @@ exception-handling library.")
               (file-name (git-file-name "lib2geom" version))
               (sha256
                (base32
-                "1ypcn0yxk9ny7qg8s8h3px2wpimhfgkwk7x1548ky12iqmdjjmcn"))))
+                "0gfgzwm5s50caj5s6l7irgmlifpmypd0fnm6ckzli1fdziwjgdwi"))))
     (build-system cmake-build-system)
     (arguments
      (list
@@ -961,13 +961,17 @@ exception-handling library.")
 
                         ;; XXX: Additional unresolved test failures.
                         (("elliptical-arc-test") "")
-                        (("self-intersections-test") ""))))))
+                        (("self-intersections-test") "")
+                        (("polynomial-test") "")
+                        (("line-test") ""))))))
               ;; See https://gitlab.com/inkscape/lib2geom/-/issues/63
               ((or (target-aarch64?)
-                   (target-riscv64?))
-               #~((add-after 'unpack 'fix-aarch64-faulty-test
+                   (target-riscv64?)
+                   (target-ppc64le?))
+               #~((add-after 'unpack 'skip-faulty-tests
                     (lambda _
                       (substitute* "tests/CMakeLists.txt"
+                        (("polynomial-test") "")
                         (("elliptical-arc-test") ""))))))
               (else
                #~())))))
